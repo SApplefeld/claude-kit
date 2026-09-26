@@ -10,7 +10,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 ## plugins/claude-kit/skills/systematic-debugging/SKILL.md
 
-This document is the kit's root-cause debugging discipline: it defines a four-phase gated workflow (reproduce, investigate, hypothesize and test, fix the root cause) plus an escalation rule for repeated failed fixes. It owns the moments where a session is investigating a bug, a failure, unexpected behavior, a failing test, or a production incident, and specifically the moment before any fix is proposed; it also owns the decision point after two failed fix attempts, where it directs a consult and a stop-and-report. Its load class is `named-trigger`: the frontmatter says to use it whenever investigating a bug or failure and BEFORE proposing any fix, naming triggers such as 'bug', 'broken', 'failing', 'why is this happening', error reports, and any situation where a previous fix attempt did not work, with the sole carve-out that it is skipped for trivial fixes whose cause is directly visible.
+This document is the kit's root-cause debugging discipline: it defines a five-phase gated workflow (classify, reproduce, investigate, hypothesize and test, fix the root cause) plus an escalation rule for repeated failed fixes. It owns the moments where a session is investigating a bug, a failure, unexpected behavior, a failing test, or a production incident, and specifically the moment before any fix is proposed; it also owns the decision point after two failed fix attempts, where it directs a consult and a stop-and-report. Its load class is `named-trigger`: the frontmatter says to use it whenever investigating a bug or failure and BEFORE proposing any fix, naming triggers such as 'bug', 'broken', 'failing', 'why is this happening', error reports, and any situation where a previous fix attempt did not work, with the sole carve-out that it is skipped for trivial fixes whose cause is directly visible.
 
 Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 
@@ -51,7 +51,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("reproduce" as the first phase).
 - verdict: keep
 - reason: This is Phase 1's gate and the skill owns the debugging moment; the doctrine's temporary-repro bullet is the mechanic it invokes and C005 points at it in the next sentence, so neither document copies the other.
-- passage: Reproduce the failure reliably before anything else
+- passage: Reproduce the failure reliably before investigating
 
 ### C005
 - key: Build the reproduction as a minimal temporary script or test that demonstrates the failure on demand, per the global temporary repro-script discipline.
@@ -82,7 +82,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - verdict: rewrite
 - landed: e4f8ade section 44
 - reason: The same prohibition as C006's "not fixing", voiced as the sentence a session would type; it survives as the antipattern named inside C006's sentence rather than as a separate rule. Keep the quoted form when merging, since a named antipattern is what a reader recognizes in its own draft. Lands at line 12 (section 44's close) inside C006's sentence, the quoted offer verbatim in double quotes; C006's entry records the landed sentence.
-- passage: I can't reproduce it but this change should help" is never an outcome.
+- passage: Reproduce the failure reliably before investigating, with a minimal temporary script or test per the doctrine's "Make the test earn its green" bullet. If it will not reproduce, gather evidence by logging, narrowing inputs and comparing environments. "I can't reproduce it but this change should help" is never an outcome.
 
 ### C008
 - key: Build the evidence before forming any opinion about the cause.
@@ -209,7 +209,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("hypothesize one change at a time").
 - verdict: keep
 - reason: The Phase 3 method; the paragraph around it is re-cut only to drop C023's cost clause and C024's closing tag, and this sentence stands verbatim.
-- passage: State one hypothesis at a time: "X causes Y because Z.
+- passage: State one hypothesis at a time: "X causes Y because Z." Test it with the smallest check that can falsify it, such as a query, a log line or a one-variable change. Never bundle changes.
 
 ### C021
 - key: Test each hypothesis with the smallest test that can falsify it, such as a query, a log line, or a one-variable change.
@@ -409,7 +409,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. The carve-out that keeps the four phases from being ceremony on a typo; it is bounded by C041 in the same paragraph, which is why the two are kept together.
-- passage: A directly visible cause with a trivial fix, such as a typo, skips the phases.
+- passage: A directly visible cause with a trivial fix, such as a typo, skips the phases and is fixed under the doctrine's rules.
 
 ### C041
 - key: Treat a failed first fix as the signal that you are now debugging and must use this skill.

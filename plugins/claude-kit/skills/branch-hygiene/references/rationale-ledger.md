@@ -26,7 +26,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - proposed: Move the why-they-pile-up sentence to the ledger and merge the remainder into A001's one-sentence lead.
 - proposed: Folded into A001's lead sentence.
 - baseline-test: yes
-- passage: This sweeps local branches and worktrees whose work has already landed, under the conditions Safe Set and Hard Rules state, and leaves everything else alone.
+- passage: This skill sweeps local branches and worktrees whose work has already landed, under the conditions Safe Set and Hard Rules state, and leaves everything else alone.
 
 ### C002
 - key: Auto-remove only what you can verify is merged.
@@ -276,8 +276,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - provenance: c800e05 2026-06-26.
 - verdict: keep
 - reason: No finding. "Bring the commits over" is a parity-test anchor (test/doctrine-parity.test.js INTEGRATION_EXEMPT); the cherry-pick produces new SHAs, which is why the original never enters the merged set afterward and why the contested delete row exists.
-- passage: 3. Bring the commits over: `git cherry-pick <sha>
-- passage: ` for each, or `git cherry-pick <integration-ref>..<branch>` for the range.
+- passage: 3. Bring the commits over: `git cherry-pick <sha>...` for each, or `git cherry-pick <integration-ref>..<branch>` for the range.
 
 ### C027
 - key: Push the recovery branch and open a new PR against the integration branch.

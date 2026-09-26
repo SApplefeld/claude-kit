@@ -9,19 +9,19 @@ Read [references/sql-style.md](references/sql-style.md), the detailed pattern re
 
 ## Core Philosophy
 
-1. **Idempotent deployment.** Procedures use shell-then-ALTER, which preserves GRANTs. Functions drop and recreate. Tables and indexes guard with IF NOT EXISTS. A script never breaks on re-execution.
+1. **Idempotent deployment.** Procedures use shell-then-ALTER, which preserves GRANTs. Functions are dropped and recreated. Tables and indexes guard with IF NOT EXISTS. A script never breaks on re-execution.
 2. **Tab alignment.** In parameter, DECLARE, column and SET lists, names align, then types, then defaults. Non-negotiable.
-3. **Leading commas and semicolons.** A comma starts each continuation line so items line up. Statements lead with `;` to guard against a missing terminator in the previous batch.
+3. **Leading commas and semicolons.** A comma starts each continuation line. The items then line up. Statements lead with `;`. That guards against a missing terminator in the previous batch.
 4. **Banners over narration.** `/********** TITLE **********/` banners divide every procedure into named phases.
-5. **Mimic a sibling.** When unsure, copy the layout of an existing procedure or table of similar shape. In a greenfield repo, use the exemplar below and the reference's templates.
+5. **Mimic a sibling.** When unsure, copy the layout of an existing procedure or table of similar shape exactly. In a greenfield repo, use the exemplar below and the reference's templates.
 
 ## Precedence
 
-A committed formatter config, `.editorconfig` or CI lint gate overrides this style, and nothing softer does. Otherwise this style is the default authority. Point 5 keeps a body already in this style consistent, so a messy legacy sibling in a foreign repo is no reason to drop it.
+A committed formatter config, `.editorconfig` or CI lint gate overrides this style, and nothing softer does. Otherwise this style is the default authority. Point 5, mimic a sibling, keeps a body already in this style consistent. A messy legacy sibling in a foreign repo is no reason to drop the style.
 
 ## Deployment Exemplar
 
-`<schema>`, `<schema_owner>` and `usp_LogError` are placeholders for the project's own. Keep `WITH EXECUTE AS` only where the project uses owner-impersonation.
+`<schema>`, `<schema_owner>` and `usp_LogError` are placeholders for the project's own schema, owner and error-logging proc. Keep `WITH EXECUTE AS` only where the project uses owner-impersonation.
 
 ```sql
 -- CREATE A SHELL PROCEDURE IF NONE EXISTS.
@@ -72,7 +72,7 @@ In a SQL file past roughly 1,000 lines opened to find one thing, grep the defini
 
 A banner sentence opening with an object keyword still matches and is read past rather than filtered.
 
-Take banners second with `grep -n -A 1 -E '^\s*/\*{3,}'`, where `-A 1` supplies the label the border lacks, and a doubled border's second line is the label. Read past hits outside the definitions' ranges rather than scoping the grep, since range-restricting forms renumber lines. Never anchor on `GO`: it carries no structure, and one vendor install script holds 936. The pattern is case-sensitive, missing 9 of 5,332 definitions on one corpus, so add `-i` for a vendor script. Find `LOGIN`, `ROLE`, `SEQUENCE` and `SYNONYM` by name, as the pattern excludes them by design.
+Take banners second with `grep -n -A 1 -E '^\s*/\*{3,}'`, where `-A 1` supplies the label the border lacks, and a doubled border's second line is the label. Read past hits outside the definitions' ranges rather than scoping the grep. Range-restricting forms renumber lines. Never anchor on `GO`: it carries no structure, and one vendor install script holds 936 of them. The definitions pattern is case-sensitive and missed 9 of 5,332 definitions on one corpus. That matters only in a file this style did not write, so add `-i` for a vendor script. Find `LOGIN`, `ROLE`, `SEQUENCE` and `SYNONYM` by name, as the pattern excludes them by design.
 
 ## Antipatterns
 
@@ -101,5 +101,5 @@ Take banners second with `grep -n -A 1 -E '^\s*/\*{3,}'`, where `-A 1` supplies 
 - [ ] Section banners for phases, `/* Sub-Section. */` comments ending in a period, group labels without one
 - [ ] Tables: `/* Group Name */` column groups, audit fields (CreatedDt/UpdatedDt, SYSDATETIMEOFFSET defaults) at the bottom, `PK_<Table>` last
 - [ ] Indexes: `IX_<Table>_<Cols>`, own IF NOT EXISTS block, in the table's file
-- [ ] TRY/CATCH around main logic, CATCH auditing via the project's error-logging proc without re-throwing, bar a nested CATCH whose error must propagate (reference §11)
+- [ ] TRY/CATCH around main logic, CATCH auditing via the project's error-logging proc without re-throwing, except a nested CATCH whose error must propagate (reference §11)
 - [ ] File ends with `GO`

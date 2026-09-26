@@ -13,7 +13,7 @@ Before reproducing, sort the failure into one of five bins: code, environment, t
 
 ## Phase 1 - Reproduce
 
-Reproduce the failure reliably before anything else, with a minimal temporary script or test per the doctrine's "Make the test earn its green" bullet. If it will not reproduce, gather evidence by logging, narrowing inputs and comparing environments. "I can't reproduce it but this change should help" is never an outcome.
+Reproduce the failure reliably before investigating, with a minimal temporary script or test per the doctrine's "Make the test earn its green" bullet. If it will not reproduce, gather evidence by logging, narrowing inputs and comparing environments. "I can't reproduce it but this change should help" is never an outcome.
 
 ## Phase 2 - Investigate
 
@@ -32,7 +32,7 @@ Build the evidence before forming opinions:
 
 State one hypothesis at a time: "X causes Y because Z." Test it with the smallest check that can falsify it, such as a query, a log line or a one-variable change. Never bundle changes.
 
-## Phase 4 - Fix the Root Cause
+## Phase 4 - Fix the Cause
 
 Fix the cause, not the symptom. Verify the repro now passes, and run the targeted lane the doctrine's After-each-step bullet names for a fix round. Bank any durable learning to the kit memory store as the gotcha, not the incident. In a planned effort, record the finding in the plan doc's Chapter.
 
@@ -42,4 +42,4 @@ Fix the cause, not the symptom. Verify the repro now passes, and run the targete
 
 ## When Not to Use
 
-A directly visible cause with a trivial fix, such as a typo, skips the phases. A failed first fix means you are now debugging, so use this skill.
+A directly visible cause with a trivial fix, such as a typo, skips the phases and is fixed under the doctrine's rules. A failed first fix means you are now debugging, so use this skill.

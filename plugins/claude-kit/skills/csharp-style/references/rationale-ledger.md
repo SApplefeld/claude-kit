@@ -57,7 +57,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 058e3a3 2026-07-24, the operator's hand-edit review of Claude-authored C# (PrePass plugin, 2026-07-21) sharpened the comment voice; installed in the philosophy and reference §6 together.
 - verdict: keep
 - reason: Incident-born (wrong comment voice in shipped code), the incident recurs on every C# task, and no machinery checks voice. The antipattern bullet C038 is the observed-habit side of the same rule and was installed for that purpose.
-- passage: It states imperatively what the next block does: "Validate Parameters." not "Now we check the inputs" or "This handles the case where
+- passage: 1. **Comments are visual structure.** A short `// Title.` comment above a block is a section header marking where one thing ends and the next begins. **Every section comment ends with a period.** It states imperatively what the next block does: "Validate Parameters." not "Now we check the inputs" or "This handles the case where...". Judge intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. A comment never explains history, decisions, alternatives weighed or issues met. Under the doctrine's prose register, a section comment is the rule alone. A WHY comment is rare, and there the reason follows as its own sentence, with at most one case. XML `/// <summary>` docs on public members are welcome when well written, never when they only restate the signature.
 
 ### C006
 - key: Judge a comment by intent rather than vocabulary, so `// Abort if we don't have a Valid VIN, make no changes.` counts as in-voice while "Now we check the inputs" does not.
@@ -141,7 +141,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT; bounded to code already in this style by 830ff28 2026-06-17.
 - verdict: keep
 - reason: The "highly self-similar" clause is the premise that a sibling exists and the search is worth running; the Precedence section bounds it. The SQL twin is per-language.
-- passage: The codebase is highly self-similar, so follow the layout of an existing file of similar shape.
+- passage: The codebase is highly self-similar, so when in doubt follow the layout of an existing file of similar shape exactly.
 
 ### C015
 - key: In a greenfield repo with no sibling to mimic, follow the exemplar in this document and the full template in the reference.
@@ -178,7 +178,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 830ff28 2026-06-17, as C016; the session mining found sessions dropping the style to match a foreign repo's siblings.
 - verdict: keep
 - reason: This clause closes the loophole philosophy point 5 opens; the SQL reference's unbounded sibling sentence is not a runtime conflict for a C# decision and sits under its own SKILL.md bound.
-- passage: Point 5 keeps code consistent within this style and is never a reason to abandon it in a foreign repo.
+- passage: Point 5, mimic a sibling, keeps code consistent within this style and is never a reason to abandon it in a foreign repo.
 
 ### C019
 - key: Write the section comments so that the comments alone tell the story of the method, as the exemplar method shows.
@@ -370,7 +370,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 058e3a3 2026-07-24, the PrePass hand-edit review: Claude had generated folder-mirroring sub-namespaces.
 - verdict: keep
 - reason: Incident-born, the habit recurs on every new file, and no analyzer in the kit enforces namespace shape.
-- passage: - ❌ Fine-grained namespaces - keep them coarse and minimal, since many files declare none and plugin assemblies use the global namespace, and never map folders to sub-namespaces
+- passage: - ❌ Fine-grained namespaces - keep them coarse and minimal, one root namespace per project where warranted, and never map folders to sub-namespaces
 
 ### C038
 - key: Never write apologetic or explanatory comments such as "This handles the case where..."; write imperative section labels.
@@ -388,9 +388,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: cabbf89 2026-06-28, the doc-closeout-discipline plan (docs/archive/claude-kit_doc-closeout-discipline_spec_v1.md): the doctrine's current-state rule, the two style-skill antipatterns and the implementer-brief forwarding, baseline-tested under mimicry and deferral pressure.
 - verdict: keep
 - reason: The bullet already cites the doctrine and adds the C# instance for the subagent path; the wording was baseline-tested, so cutting it to a bare pointer discards that evidence.
-- passage: - ❌ Change-narrative comments ("Updated to
-- passage: , "Now we
-- passage: , "per the new spec") - the doctrine's current-state rule applies: a comment states what the code does now, never the session, the change, or the prior version
+- passage: - ❌ Change-narrative comments ("Updated to...", "Now we...", "per the new spec") - the doctrine's current-state rule applies: a comment states what the code does now, never the session, the change, or the prior version
 
 ### C040
 - key: Never leave a section comment without a terminating period: write `// Save Services.` not `// Save Services`.
@@ -539,8 +537,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 058e3a3 2026-07-24, grounded in a real data-loss bug: a discarded `Enumerable.Append` result in the source session.
 - verdict: keep
 - reason: Incident-born (a discarded `Append` return silently lost data) and the spread form makes that shape impossible; no analyzer enforces it.
-- passage: - [ ] Collection expressions and spreads: `[.. source.Where(
-- passage: )]` not `.ToArray()`, `[item]` not `new[] { item }`, `[.. existing, item]` not `Append`/`Concat` + `ToArray`
+- passage: - [ ] Collection expressions and spreads: `[.. source.Where(...)]` not `.ToArray()`, `[item]` not `new[] { item }`, `[.. existing, item]` not `Append`/`Concat` + `ToArray`
 
 ### C056
 - key: Put the Async suffix on all `Task` methods and pass `CancellationToken` last and down the whole chain.

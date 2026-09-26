@@ -5,9 +5,9 @@ description: "Use to clean up local branches and worktrees left over after Branc
 
 # Branch Hygiene
 
-This sweeps local branches and worktrees whose work has already landed, under the conditions Safe Set and Hard Rules state, and leaves everything else alone.
+This skill sweeps local branches and worktrees whose work has already landed, under the conditions Safe Set and Hard Rules state, and leaves everything else alone.
 
-The SessionStart nudge flags **reapable** branches, merged and safe to sweep, and **stranded** ones. Stranded branches take priority: recover them before sweeping anything.
+The SessionStart nudge flags **reapable** branches, merged and safe to sweep, and **stranded** ones, whose remote is gone because the PR merged while the branch still holds commits that never reached the trunk. Stranded branches take priority: recover them before sweeping anything.
 
 ## Safe Set
 

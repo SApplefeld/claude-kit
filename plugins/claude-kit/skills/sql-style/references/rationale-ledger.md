@@ -21,7 +21,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: f8c0649 2026-06-10, the kit's initial consolidation of the operator's house style from prior artifacts; re-quoted at 830ff28 with the CATCH trait corrected and de-named at a8770b3, neither an incident.
 - verdict: keep
 - reason: The description is the harness's skill-selection text, so the object-kind enumeration and trait list are what make the skill fire on SQL work with style unnamed; shortening it changes load behaviour, not prose.
-- passage: description: "My T-SQL house style. Use whenever writing or modifying ANY SQL: stored procedures, tables, functions, indexes, install or deployment scripts, or ad-hoc queries. Signature traits: shell-then-ALTER deployment, banner-comment headers, leading commas, tab-aligned columns, leading semicolons, audit-logging CATCH blocks that do not re-throw. Trigger on any SQL work even when style is not named.
+- passage: description: "My T-SQL house style. Use whenever writing or modifying ANY SQL: stored procedures, tables, functions, indexes, install or deployment scripts, or ad-hoc queries. Signature traits: shell-then-ALTER deployment, banner-comment headers, leading commas, tab-aligned columns, leading semicolons, audit-logging CATCH blocks that do not re-throw. Trigger on any SQL work even when style is not named."
 
 ### C002
 - key: Read references/sql-style.md for the detailed pattern reference before writing SQL code.
@@ -48,7 +48,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: f8c0649 2026-06-10, the initial consolidation; no incident narrative.
 - verdict: keep
 - reason: Same three-moment structure as C003; reference §3 is the same owner's detail layer.
-- passage: Functions drop and recreate.
+- passage: Functions are dropped and recreated.
 
 ### C005
 - key: Guard table and index creation with IF NOT EXISTS.
@@ -85,7 +85,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: f8c0649 2026-06-10, the initial consolidation; no incident narrative.
 - verdict: keep
 - reason: Antipattern (C029) and checklist (C048) are the same rule at the writing and completion moments; the reference §12 enumeration is the detail layer.
-- passage: A comma starts each continuation line so items line up.
+- passage: A comma starts each continuation line. The items then line up.
 
 ### C009
 - key: Begin statements with a leading semicolon.
@@ -94,7 +94,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: f8c0649 2026-06-10, the initial consolidation; ddd6c72 2026-08-23 cited this sentence's terminator reason as evidence the skill owns the idiom.
 - verdict: keep
 - reason: This is the general rule with its reason; the reference's four mentions are template annotations. The reason clause is referenced by the Outlining section at :73 and by the outline-first consult, so it is load-bearing beyond this line.
-- passage: Statements lead with `;` to guard against a missing terminator in the previous batch.
+- passage: Statements lead with `;`. That guards against a missing terminator in the previous batch.
 - flag: stale
 
 ### C010
@@ -122,7 +122,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: f8c0649 2026-06-10 for the rule; 830ff28 2026-06-17 added the foreign-repo bound in the Precedence section, ported from a peer fork.
 - verdict: keep
 - reason: Each style skill owns the sibling rule for its language; the SKILL carries the foreign-repo carve-out and the reference's narrower in-library mentions are consistent with it.
-- passage: **Mimic a sibling.** When unsure, copy the layout of an existing procedure or table of similar shape.
+- passage: **Mimic a sibling.** When unsure, copy the layout of an existing procedure or table of similar shape exactly.
 
 ### C013
 - key: In a greenfield repository, follow the exemplar in this skill and the full templates in the reference.
@@ -141,7 +141,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - verdict: keep
 - reason: The ownership map makes the style skills the owners and the doctrine's Defaults bullet the pointer, and the copy here is the one a subagent reads because subagents do not inherit the doctrine. The third sentence bounds the sibling rule against the legacy-sibling reading and stays.
 - passage: A committed formatter config, `.editorconfig` or CI lint gate overrides this style, and nothing softer does.
-- passage: Point 5 keeps a body already in this style consistent, so a messy legacy sibling in a foreign repo is no reason to drop it.
+- passage: Point 5, mimic a sibling, keeps a body already in this style consistent. A messy legacy sibling in a foreign repo is no reason to drop the style.
 
 ### C015
 - key: Treat this style as the default authority where no mechanically-enforced contract exists.
@@ -159,7 +159,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: 830ff28 2026-06-17, written when a concrete client schema was replaced with placeholders in the same change.
 - verdict: keep
 - reason: Naming `<schema>`, `<schema_owner>` and `usp_LogError` as placeholders is what stops them being copied as names; the reference's equivalent sentence covers its own examples, not this file's exemplar.
-- passage: `<schema>`, `<schema_owner>` and `usp_LogError` are placeholders for the project's own.
+- passage: `<schema>`, `<schema_owner>` and `usp_LogError` are placeholders for the project's own schema, owner and error-logging proc.
 
 ### C017
 - key: Apply `WITH EXECUTE AS` only where the project uses owner-impersonation, and drop it where it does not.
@@ -219,7 +219,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: ddd6c72 2026-08-23, as C021.
 - verdict: keep
 - reason: The sentence survives verbatim in the C021 rewrite; its one-clause reason (range-restricting grep forms renumber their output) is the bound that stops a session scoping the grep under context pressure.
-- passage: Read past hits outside the definitions' ranges rather than scoping the grep, since range-restricting forms renumber lines.
+- passage: Read past hits outside the definitions' ranges rather than scoping the grep. Range-restricting forms renumber lines.
 
 ### C023
 - key: Take banners with `grep -n -A 1 -E '^\s*/\*{3,}'`, where `-A 1` supplies the label line.
@@ -250,7 +250,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - landed: e6f408d section 38
 - reason: Survives in the C021 rewrite with its figure as the bound and its antecedent respelled; a `GO` anchor is the obvious wrong move on a T-SQL install script and the rule is what forecloses it. Respelled at section 38's close by C024's retire, which took the install script its "that one" pointed at; lands at line 75 as "Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them.", the rule and the figure unchanged.
 - proposed: Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them.
-- passage: Never anchor on `GO`: it carries no structure, and one vendor install script holds 936.
+- passage: Never anchor on `GO`: it carries no structure, and one vendor install script holds 936 of them.
 
 ### C026
 - key: Add `-i` to the definitions grep when reading a vendor script.
@@ -261,7 +261,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - landed: e6f408d section 38
 - reason: Survives in the C021 rewrite with its antecedent respelled; the case-sensitivity cost (9 of 5,332) is the bound that tells a session when the flag matters. Respelled at section 38's close by C020's retire on line 73, which took the deployment corpus its "that corpus" pointed at; lands at line 75 as "The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script.", the bound unchanged.
 - proposed: The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script.
-- passage: The pattern is case-sensitive, missing 9 of 5,332 definitions on one corpus, so add `-i` for a vendor script.
+- passage: The definitions pattern is case-sensitive and missed 9 of 5,332 definitions on one corpus. That matters only in a file this style did not write, so add `-i` for a vendor script.
 
 ### C027
 - key: Find `LOGIN`, `ROLE`, `SEQUENCE`, and `SYNONYM` objects by name rather than through the definitions pattern.
@@ -316,8 +316,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: f8c0649 2026-06-10, the initial consolidation; 830ff28 genericized the proc name.
 - verdict: keep
 - reason: Names `RAISERROR`, the default a model writes, at the writing moment; the checklist (C052) gates the CATCH shape at completion and §11 owns the predicate and the THROW exception.
-- passage: ❌ `RAISERROR` for routine errors - `EXECUTE <schema>.usp_LogError @p_ErrorData =
-- passage: ` in CATCH, guarded by an OBJECT_ID check
+- passage: - ❌ `RAISERROR` for routine errors - `EXECUTE <schema>.usp_LogError @p_ErrorData = ...` in CATCH, guarded by an OBJECT_ID check
 
 ### C033
 - key: Never build dynamic SQL by string concatenation.
@@ -363,9 +362,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: cabbf89 2026-06-28, the doc-closeout-discipline plan (docs/archive/claude-kit_doc-closeout-discipline_spec_v1.md), which specified a one-line cross-reference to the doctrine's current-state rule in both style skills because implementers read the style skills and not the doctrine; baseline-tested under mimicry and deferral pressure.
 - verdict: keep
 - reason: The line already names the doctrine as owner, which is the pointer form, and its specimen phrases are the recognizable habit; compressing baseline-tested wording with no incident behind the compression is a re-baseline for nothing.
-- passage: ❌ Change-narrative comments ("Updated to
-- passage: , "fixed the
-- passage: , "per the new spec") - per the doctrine's current-state rule, a comment states what the code does now.
+- passage: - ❌ Change-narrative comments ("Updated to...", "fixed the...", "per the new spec") - per the doctrine's current-state rule, a comment states what the code does now. Sentence-style comments (`/* Sub-Section Title. */`, `-- Comment.`) state what the next block does, never history or rationale. Under the doctrine's prose register, a section comment is the rule alone, and a rare WHY comment adds its reason as its own sentence, with at most one case. Banners and group labels are titles and are unaffected
 
 ### C038
 - key: Write sentence-style comments as short imperative statements of what the next block does, never history, decision narrative, or rationale essays.
@@ -500,7 +497,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: adf3d51 2026-07-24, a kit-wide consistency audit that found this line unconditional while §11 sanctioned a nested THROW; the carve-out and §11 pointer were added with the reference staying owner.
 - verdict: keep
 - reason: The line already points at §11 for the exception and was repaired to agree with it; the completion gate is where an unconditional no-re-throw would otherwise be enforced wrongly.
-- passage: - [ ] TRY/CATCH around main logic, CATCH auditing via the project's error-logging proc without re-throwing, bar a nested CATCH whose error must propagate (reference §11)
+- passage: - [ ] TRY/CATCH around main logic, CATCH auditing via the project's error-logging proc without re-throwing, except a nested CATCH whose error must propagate (reference §11)
 
 ### C053
 - key: End every SQL file with `GO`.

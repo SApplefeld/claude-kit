@@ -135,7 +135,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: "Outcome" is glossed only abstractly; the 50ms-versus-Redis pair is what tells an orchestrator which side of the line a phrasing falls on, so the rule cannot be reliably obeyed without it.
-- passage: Profile reads return under 50ms and skip the DB when cached" lets the council weigh caching against query optimization, while "add a Redis cache" pre-commits the argument.
+- passage: State the decision as an **outcome**, what is true when done, plus the 2–N candidate approaches. "Profile reads return under 50ms and skip the DB when cached" lets the council weigh caching against query optimization, while "add a Redis cache" pre-commits the argument. The default lenses are performance, maintainability/architecture, and risk-security, which reads `docs/security-model.md` if present. Swap a lens to fit the fork, such as a data-model lens on a schema decision, or an opposite-approach steelman when one option is the obvious favorite. Name the cost to me as seats × round cap, and proceed on my yes.
 
 ### C013
 - key: Default the lens roster to three: performance, maintainability/architecture, and risk-security, with the risk-security lens reading `docs/security-model.md` where it exists.
@@ -190,6 +190,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - verdict: keep
 - reason: The brief contract the orchestrator composes from, and the single owner of it once C004 retires. The read-only item is now also enforced by plugins/claude-kit/hooks/readonly-agent-guard.js for the council-member type, so a later pass may drop that one field without loss.
 - passage: Each brief carries verbatim the outcome, the approaches, that member's lens, the repo paths and data worth reading, and the read-only constraint.
+- passage: Members inherit nothing else
 
 ### C019
 - key: Keep members from seeing each other's briefs or outputs during round one.
@@ -200,7 +201,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - landed: 970ecf1 section 40
 - reason: Blindness is the first false-convergence defense and nothing mechanical withholds a brief; the hard-requirements copy (C036) retires so step 2 is the single statement. Flipped to rewrite at section 40's close by C020's retire, which took the clause after the spaced hyphen: the sentence's words are unchanged and it now closes on a period.
 - proposed: Members must not see each other's briefs or outputs this round.
-- passage: Members must not see each other's briefs or outputs this round.
+- passage: they must not see each other's briefs or outputs this round.
 
 ### C020
 - key: Keep round one blind because blindness puts genuine divergence on the record before anyone anchors.
@@ -245,7 +246,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: Becomes the single statement of the facilitator's return contract in this document, absorbing C038's soft-convergence flag; the orchestrator checks the output against this line and never loads the charter, so a pointer would drop it. Lands at line 32 (section 40's close) with the contract sentence word for word and the classification and the soft-convergence flag as two sentences after it, "It classes each resolved point as evidence-resolved or capitulation. It flags a member that caved without citing why as soft convergence rather than agreement.", the two-sentence form taken on the writing-skills one-idea bar where the proposal says the sentence gains one clause.
 - proposed: Line 32's contract sentence gains "with each resolved point classed as evidence-resolved or capitulation, and a member that caved without citing why flagged as soft convergence rather than agreement".
 - baseline-test: yes
-- passage: It returns the agreement map, the attributed live disagreements, each one's crux, and a status: CONVERGED, ANOTHER_ROUND with a targeted question per member, or DEADLOCK.
+- passage: It returns the agreement map, the attributed live disagreements, each one's crux as the factual or value question that would settle it, and a status: CONVERGED, ANOTHER_ROUND with a targeted question per member, or DEADLOCK.
 
 ### C024
 - key: Treat a CONVERGED verdict after one round as suspect and check it is not just correlated models agreeing.

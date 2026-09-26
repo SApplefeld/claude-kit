@@ -281,7 +281,6 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - verdict: keep
 - reason: The contention with brainstorming's wait rule is two intentional semantics: memory `model-tier-substitution-for-review` (operator, 2026-08-18) draws the line at design and planning work, which waits, while a gate-shaped mid-execution seat substitutes. The condition's wording is pinned, so any edit to this line must keep "the stand-in is Opus at `max`" and "could not be run at the fable tier".
 - passage: Where this consult could not be run at the fable tier in this environment, per finishing-work's unavailability rule, or where that reading returned `-> downgrade`, the stand-in is Opus at `max` through `Workflow`'s `agent()`.
-- flag: weak-reason
 
 ### C030
 - key: Fill executing-work's Reviewer Dispatch template naming all three fields explicitly: `agentType` as `claude-kit:consultant`, `model`, and `effort`.

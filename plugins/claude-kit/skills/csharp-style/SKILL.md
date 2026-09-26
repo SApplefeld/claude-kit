@@ -13,11 +13,11 @@ Read [references/csharp-style.md](references/csharp-style.md), the full pattern 
 2. **Group related items; separate groups with whitespace and a label.**
 3. **Idempotent by default.** Code never breaks on re-execution. DI registration uses `.AsImplementedInterfaces().PreserveExistingDefaults()`.
 4. **Section banners over inline narration.** `#region Title` / `#endregion` organize every class.
-5. **Find a sibling and mimic it.** The codebase is highly self-similar, so follow the layout of an existing file of similar shape. With no sibling, use the exemplar below and the reference's full template.
+5. **Find a sibling and mimic it.** The codebase is highly self-similar, so when in doubt follow the layout of an existing file of similar shape exactly. With no sibling, use the exemplar below and the reference's full template.
 
 ## Precedence
 
-A repo's mechanically enforced contract, such as a committed formatter config (CSharpier, `dotnet format`), an `.editorconfig` or a CI lint gate, overrides this style. Nothing softer does. Otherwise this style is the default authority, and a legacy sibling is no authority by itself. Point 5 keeps code consistent within this style and is never a reason to abandon it in a foreign repo.
+A repo's mechanically enforced contract, such as a committed formatter config (CSharpier, `dotnet format`), an `.editorconfig` or a CI lint gate, overrides this style. Nothing softer does. Otherwise this style is the default authority, and a legacy sibling is no authority by itself. Point 5, mimic a sibling, keeps code consistent within this style and is never a reason to abandon it in a foreign repo.
 
 ## Method Exemplar
 
@@ -71,7 +71,7 @@ A positional record or primary constructor appears in both the type and member l
 ## Antipatterns
 
 - ❌ Block-scoped namespaces in *new* files - a new file that declares a namespace uses file-scoped (`namespace X;`), and existing block-scoped files are left alone
-- ❌ Fine-grained namespaces - keep them coarse and minimal, since many files declare none and plugin assemblies use the global namespace, and never map folders to sub-namespaces
+- ❌ Fine-grained namespaces - keep them coarse and minimal, one root namespace per project where warranted, and never map folders to sub-namespaces
 - ❌ Change-narrative comments ("Updated to...", "Now we...", "per the new spec") - the doctrine's current-state rule applies: a comment states what the code does now, never the session, the change, or the prior version
 - ❌ Removing `#region` blocks because "modern style" dislikes them
 - ❌ The null-forgiving operator `!` - use null-conditional and null-coalescing instead
