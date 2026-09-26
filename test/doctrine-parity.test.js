@@ -971,8 +971,8 @@ test('the testing-discipline skill still carries what the doctrine routes to it'
         'the doctrine\'s gate, test-authoring and test-earning bullets all route '
         + 'to a skill that is not on disk: ' + parts.join('/'));
     const body = fs.readFileSync(target, 'utf8');
-    for (const heading of [/^## Price the shape at authoring$/m, /^## The lanes$/m,
-        /^## The clock and the box$/m, /^## What retires a test$/m]) {
+    for (const heading of [/^## Price the Shape at Authoring$/m, /^## Test Lanes$/m,
+        /^## Clock and Box$/m, /^## What Retires a Test$/m]) {
         assert.match(body, heading, 'the doctrine bullets route their lane '
             + 'mechanics, cost shapes, wall-clock capture, contention rule and '
             + 'retire classes here and carry none of that content themselves, so '
@@ -1362,9 +1362,9 @@ function retireClassHead(name, statedNames) {
 // definition clause is the only thing left to compare a carrier against.
 function ownerRetireClasses(headOf = retireClassHead) {
     const body = readRepoFile(RETIRE_OWNER);
-    const section = body.split(/^## /m).find((s) => s.startsWith('What retires a test'));
+    const section = body.split(/^## /m).find((s) => s.startsWith('What Retires a Test'));
     assert.ok(section, RETIRE_OWNER + ' no longer carries a '
-        + '"What retires a test" section for the classes to be read from');
+        + '"What Retires a Test" section for the classes to be read from');
     const stated = [...section.matchAll(/^- \*\*(?:An?|The)\s+([^*]+?)\*\*:\s*([^\r\n]*)$/gm)]
         .map((m) => ({ name: m[1].trim(), def: m[2].trim() }));
     assert.ok(stated.length >= CARRIER_FLOOR, 'the owner states ' + stated.length
