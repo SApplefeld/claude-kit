@@ -553,7 +553,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 
 This document is the detailed pattern reference for the operator's T-SQL house style, modeled on a numbered-folder, procedure-only deployment database library. It owns the moments in which a session writes or modifies any SQL: folder placement and file naming, the shell-then-ALTER procedure deployment idiom, drop-and-recreate function deployment, defensive table and index existence checks, the procedure header banner, parameter and variable declarations, SET statements, in-body section banners, TRY/CATCH with non-rethrowing audit logging, leading-comma and tab alignment, SELECT/INSERT/UPDATE layout, JOIN and CTE form, preferred string, date and null functions, temp tables, comment voice and punctuation, naming conventions, and the full procedure, table and function skeletons. A session loads it as a `named-trigger` (inferred) reference: it is pulled in before writing or modifying SQL of any kind, when the governing style skill directs a session to the detailed patterns, and its opening line names it as the pattern reference rather than an always-on or plan-scoped surface.
 
-Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.md`).
+Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.md`). Redrafted on 2026-09-26 by section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `18997a84` with its fix round at `bac21117`, so every live entry's `passage:` line quotes the text at `bac21117`.
 
 ### C001
 - key: Substitute the project's own schema and procedure names for the example names rather than copying them literally.

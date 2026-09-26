@@ -636,7 +636,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 
 This document is the detailed pattern reference for the operator's C# house style, using a generic document-processing library as its worked example shape. It owns every moment in which C# is written or modified: file layout and using order, namespace shape, class organization into #region blocks, field naming and grouping, constructor form, method declarations, method-body section comments, async and cancellation patterns, logging, exception handling, null handling, Autofac DI registration, naming conventions, MediatR notifications, models and settings classes, whitespace and indentation, and the skeleton for a brand-new service. A session loads it before writing or changing any C# code, which is a named-trigger load class (inferred, since the document itself states no loading rule and its content is a per-act pattern reference rather than standing doctrine).
 
-Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-style.md`).
+Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-style.md`). Redrafted on 2026-09-26 by section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `2b366196` with its fix round at `bac21117`, so every live entry's `passage:` line quotes the text at `bac21117`.
 
 ### C001
 - key: Substitute the target project's own namespaces and type names for the example names rather than copying the example names literally.
