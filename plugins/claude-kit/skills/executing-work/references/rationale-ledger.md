@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the completion leash, which only the operator's typed `/kit-goal` arms, and taking on a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (Y003 and Y004 below, with c4.C051, c4.C064 and V001 amended in place).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (Y003 and Y004 below, with c4.C051, c4.C064 and V001 amended in place). Amended by `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 3 on 2026-09-26 (A001 below).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -636,7 +636,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 8a2daa8 2026-08-26 (the park predicate no longer conflates the two zero-non-synthetic shapes), on d66c58d 2026-08-23's hallmark.
 - verdict: keep
 - reason: A `WAITING:` on a wedged dispatch sleeps the run with nothing to wake it; the readings are readable from the dispatch record at parking time, and finishing-work owns their definitions.
-- passage: Where a dispatch's growth or first-turn window has already closed at parking time, run the hallmark check through its probe, or a synthetic-only pair through its TaskStop, before writing that line.
+- passage: Where a dispatch's growth or first-turn window has already closed at parking time, run the hallmark check through its probe before writing that line. A synthetic-only pair, whose transcript holds no assistant line but the harness's placeholder for an API error, goes through its TaskStop instead.
 
 ### c1.C064
 - key: Do not park while a dispatch's first-turn reading is still pending; hold the turn in-turn until every in-flight dispatch's first-turn reading is taken and resolved.
@@ -1044,7 +1044,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: e872098 2026-08-18, with the format locked across three parallel implementers' briefs so they could not drift.
 - verdict: keep
 - reason: The only site stating the format; the Chapter line is the record the close-out reads onto the dialog (executing-work :523), so the doctrine's dialog-surface rule is met rather than contradicted; the other in-document mentions are arrival-route pointers or the template field itself.
-- passage: A non-material gap, answered from a cited source or a declared low-blast reversible default, goes on that section's Chapter `Assumptions:` line in brainstorming's declared-assumption format, dated today with `, section N` in the parenthetical.
+- passage: A non-material gap, answered under route (a) from a cited source or under route (b) by a declared low-blast reversible default, goes on that section's Chapter `Assumptions:` line in brainstorming's declared-assumption format, dated today with `, section N` in the parenthetical.
 
 ### c1.C103
 - key: Carry the resolved answer in the dispatch brief rather than the gap.
@@ -1155,7 +1155,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: c7e5f64 2026-07-09, the chain-mode entry point ("the worker running this skill (orchestrating, not implementing inline)").
 - verdict: keep
 - reason: A headless worker that implements inline skips the review roster and the Chapter; the rule is what keeps the engine's worker inside this skill's loop.
-- passage: The **worker runs this skill**, orchestrating, dispatching implementers and writing Chapters, and never absorbs implementation inline because it is headless.
+- passage: The **worker runs this skill**, orchestrating, dispatching implementers and writing Chapters as any session would. Being headless is no reason to absorb implementation inline.
 - flag: weak-reason
 
 ### c1.C115
@@ -1192,7 +1192,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 83b81ac 2026-08-19, the stagger rule that made concurrent sections possible.
 - verdict: keep
 - reason: The clause is already a pointer at :491's rule by section name.
-- passage: Run each Section of Work in order. Sections run concurrently only where the disjoint-files rule in "Delegating to subagents" permits.
+- passage: Run each Section of Work in order. Sections run concurrently only where the disjoint-files rule in "Delegating to Subagents" permits.
 
 ### c1.C119
 - key: At the start of a section on a leashed run, clear any compaction checkpoint the last boundary left open, since work is resuming and this is no longer a boundary.
@@ -8320,7 +8320,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: fb5d4fe 2026-09-07; reattached to both branches of S076 by abfa98d 2026-09-09.
 - verdict: keep
 - reason: The four forms are what responding-to-review points at as the owner's; the close pass and the fix round use the same set.
-- passage: A claim finding takes one of four forms: delete the false sentence, add a cheap mechanical check, write a Chapter line naming the sentence left standing and why the finding does not hold, or take the out-of-scope route.
+- passage: A claim finding takes one of four forms: delete the false sentence, add a cheap mechanical check where the claim earns keeping, write a Chapter line naming the sentence left standing and why the finding does not hold, or take the out-of-scope route where the sentence sits outside the section's files.
 
 ### S078
 - key: Owe no review round for a fix delta of prose deletions alone; any other delta takes the fix-delta bar.
@@ -8405,7 +8405,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The split keeps and its "since an amendment steers the writer" clause moves here: an amendment steers the writer, and the writer is the one who cannot see the class in a sentence just written.
 - proposed: Keep the split sentence and drop its "since an amendment steers the writer" clause; the ledger holds the ground.
 - baseline-test: yes
-- passage: Only a behavior class takes an amendment. A second instance of a claims class takes a mechanical check or a deletion sweep.
+- passage: Only a behavior class takes an amendment. A claim an exception holds to the behavior bar counts as behavior here. Any other second instance of a claims class takes a mechanical check or a deletion sweep.
 
 ### S087
 - key: Apply the amendment to a sibling section already in flight at its next review round.
@@ -8870,7 +8870,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Step 0's gap-check paragraph states the destination, the format and the reason, so this becomes a pointer there; the propagation's purpose (no surface stating the superseded rule) is met by a pointer.
 - proposed: Replace the Assumptions sentence with a pointer at step 0's gap-check paragraph.
 - baseline-test: yes
-- passage: The Assumptions line is where the intake gap check under Before starting sends an execution-time assumption.
+- passage: The Assumptions line is where the intake gap check under Before Starting or Resuming sends an execution-time assumption.
 
 ### S135
 - key: Leave the plan doc's `## Assumptions` section frozen at approval, holding the design-time entries alone.
@@ -9523,7 +9523,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f26619c 2026-09-08, the round that refused to claim peer-sessions' bounds hold unchanged; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
 - verdict: keep
 - reason: A refuse here suppresses an escalation the expert paragraph never lets an answer suppress, and the widening is stated so the two paragraphs cannot be read as one.
-- passage: This widens the expert paragraph's bound, and says so.
+- passage: This paragraph widens the expert paragraph's bound.
 
 ### T057
 - key: Treat a ruling whose `GROUNDS` will not check out as a lead rather than a ruling, and fall the finding to the adjudicator as an unanswered ask does.
@@ -9894,7 +9894,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: keep
 - reason: A stop is worth nothing if the repair it interrupts proceeds while the ask is out; the rule is the hold's other half.
 - passage: **A fix whose add-decision adds a mechanism no clause names is a design stop, not a fix round.**
-- passage: The fix then enters the round it was held out of, as proposed.
+- passage: An ask holds the section at this step and goes to me on the BLOCKED path under the first line `BLOCKED: section <n> hit a design stop; the judge recommends an ask`.
 - flag: weak-reason
 
 ### T097
@@ -10643,6 +10643,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - proposed: (via A039) State at step 2 that a delta a guard should have refused, found in a delegated diff, takes step 3's incident path; leave the writer-tier sentence as it stands.
 - baseline-test: yes
 - passage: A delta in that diff a guard should have refused takes step 3's incident path.
+- passage: On round 1, dispatch two reviewers in parallel with each other, overlapping no run of yours.
 
 ### U016
 - key: Dispatch a re-raised round on round 1's rows below rather than on a row of its own.
@@ -10816,7 +10817,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
 - verdict: keep
 - reason: The operator's ask that a fix not be taken on the lens's word alone. The judge is spent only where the orchestrator leans to fix, or where the lens claims a threat-model citation, which is a claim about this project the judge confirms or refuses. The brief is fixed because the charter's blindness to the fix narrative is the property the ruling needs, and a relevance question is answerable from the threat model and the plan's what alone.
-- passage: A fix-now lean takes one relevance ruling from the `scope-adjudicator` before the fix is written: does this finding apply to this project's stated requirements and deployment? A refuse or a defer of a Major or an uncited Critical needs no ruling. The seat is dispatched as the held-finding paragraph below dispatches it, on the fixed relevance brief its charter states. That brief carries the finding verbatim, the plan's `## Goal` and `## Intent` record, and one item by lens, for a security finding its `threat:` field and the project's `## Threat model` section or the line `threat model: absent`.
+- passage: A fix-now lean takes one relevance ruling from the `scope-adjudicator` before the fix is written: does this finding apply to this project's stated requirements and deployment? A refuse or a defer of a Major or an uncited Critical needs no ruling. The seat is dispatched as the held-finding paragraph below dispatches it, on the fixed relevance brief its charter states. That brief carries the finding verbatim, the plan's `## Goal` and `## Intent` record, and one item by lens. For a security finding it is the finding's `threat:` field and the project's `## Threat model` section, or the line `threat model: absent`. For a performance finding it is the requirement the finding names, quoted from the plan or stated as assumed, and the acceptance bullet it quotes where it quotes one. Nothing else rides.
 - flag: weak-reason
 
 ### T178
@@ -11191,7 +11192,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: keep
 - landed: 005a7fde section 2
 - reason: The arm gate refuses any arm the operator did not type, so a run told to re-arm for itself would meet a refusal, and a self-armed leash is what stranded a relaunched persona. Stating the unleashed outcome here is what keeps a run from reading a missing leash as a blocker.
-- passage: A run that finds no leash, or one bound to another session, never arms or re-arms one. It proceeds unleashed, kept moving by its supervisor, and takes the remedy step 0 of the section loop states. Any other session leaves the goal alone.
+- passage: A run that finds no leash, or one bound to another session, never arms or re-arms one. It proceeds unleashed, the way a supervised persona runs its plans, kept moving by its supervisor, and takes the remedy step 0 of the section loop states. Any other session leaves the goal alone.
 
 ### Y002
 - key: On a leashed run that takes on an inbound plan, ask the operator in an `ASK:` reply to type `/kit-goal --append <inbound plan>`, record the plan in the in-flight plan's doc until then, and name it as next to run in the last leashed plan's close-out status where no append landed; an unleashed run records it and runs it next.
@@ -11223,6 +11224,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - landed: 49d2dea6 section 4
 - reason: A declaration is honored at the session's next deferred offer, so one made with a dispatch pending, a blocker open or a section half-written lands a compaction on exactly the state the invariant says is not on disk. Naming the three stops is what keeps a run from reading every turn end as a boundary.
 - passage: A declaration says context holds nothing the disk does not, so make it at banked moments only. A dispatch `WAITING:` stop, a `BLOCKED:` stop and a mid-section turn end each leave work in flight and declare nothing.
+
+### A001
+- key: Record each approach tried and abandoned in a section on the Chapter's `Failed approaches:` line, as "tried X, failed because Y, learned Z", with "none" acceptable.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:593
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 3, 2026-09-26, which adds the field after `Decisions / Surprises` as declared growth of about twenty words.
+- verdict: keep
+- reason: A Chapter is what a fresh session resumes from, and without this line an approach that failed leaves no trace in it, so the next session can spend the same attempt again. The fixed form makes the lesson as findable as the failure.
+- passage: Failed approaches: <each as "tried X, failed because Y, learned Z"; "none" is acceptable>
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
