@@ -31,7 +31,7 @@ Run this close path at close-out, in order:
 3. Repoint the plan's own relative links, before or right after the move. An archived sibling reached as `../archive/<file>` from `plans/` is `<file>` once the plan is itself in `archive/`. Grep the moved file for `../archive/` and fix every hit.
 4. Cross-reference. If the plan built on or superseded another, link both through a `## Related` section and mark a superseded plan in its header. Act on any cross-reference gap `docs-curator` flagged. The pointers run one way when the other plan is already archived: the moving plan gets the `## Related` section and the archived one is left alone.
 5. Prune the backlog, per Backlog Pruning below.
-6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list and reflect the archive. Where either carries the most-recent chain, the `Most recent:` and `Before it:` entries on the line opening `Completed plans are in`, both name the same four most recently archived plans. An archival prepends the newly closed plan and drops the oldest.
+6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list and reflect the archive. The most-recent chain is the `Most recent:` and `Before it:` entries on the line opening `Completed plans are in`. Where either index carries it, both name the same four most recently archived plans. An archival prepends the newly closed plan and drops the oldest.
 
 Archive in the same close-out that finished the work, never later or in a batch.
 

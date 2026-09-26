@@ -192,7 +192,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: afc7790 2026-07-25, which "names both index files rather than one".
 - verdict: keep
 - reason: Two indexes move on every archival (memory archiving-a-plan-touches-two-indexes-not-three, applied x10); finishing-work's one-index wording is the surface that gives way, since this skill owns index refresh.
-- passage: 6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list and reflect the archive. Where either carries the most-recent chain, the `Most recent:` and `Before it:` entries on the line opening `Completed plans are in`, both name the same four most recently archived plans. An archival prepends the newly closed plan and drops the oldest.
+- passage: 6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list and reflect the archive. The most-recent chain is the `Most recent:` and `Before it:` entries on the line opening `Completed plans are in`. Where either index carries it, both name the same four most recently archived plans. An archival prepends the newly closed plan and drops the oldest.
 
 ### C019
 - key: Move a Complete plan out of `plans/` rather than relying on the status header, because status is not location.

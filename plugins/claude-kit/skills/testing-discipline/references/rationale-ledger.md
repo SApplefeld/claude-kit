@@ -487,7 +487,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - reason: The pricing narrative moves here: reserving the whole gate for the handoff means a targeted lane reads the changed files' families and nothing further out, so an untouched consumer of a changed shared module can go red unseen until finishing, except where a push to an install-surface trunk or a mid-plan merge fires the whole gate. The clause naming those two moments stays in the skill. Lands at line 64 with the two pricing sentences gone; the lead now reads "Two of the moments above run the whole gate mid-plan, which cuts short the stretch where only targeted lanes read the tree.", respelled inside this entry's own passage because "that window" lost its definition with the first pricing sentence, and the sentence naming the two moments is word for word.
 - proposed: Reduce the paragraph to the window-cutting clause and C050; the pricing sentences ("Reserving the whole gate for the handoff buys wall clock at a named price", "So the price is paid between the sections only...") move to the ledger.
 - baseline-test: yes
-- passage: Two of those moments, the install-surface push and a merge, run the whole gate mid-plan.
+- passage: Two of those moments, a push to a trunk consumers install from directly and a merge, run the whole gate mid-plan. Between them only targeted lanes read the tree, so a family the plan never touched can carry a red unseen.
 - flag: stale
 
 ### C050
@@ -667,7 +667,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 7ef71e3 2026-09-01, Section 2 (the epoch as a memory record at a canonical key).
 - verdict: keep
 - reason: The parity test checks the far end still carries the epoch record and the expiry rule; the pointer is pinned at both ends.
-- passage: The machine places the figure against the configuration epoch recorded per hostname, which the memory-system skill owns with the expiry rule that reads a figure against it.
+- passage: The machine is part of the pin: the configuration epoch a figure is read against is recorded per hostname, so a pin naming no machine can be placed against no epoch.
 
 ### C067
 - key: Treat the journal layer as the conversation, the plan doc's Chapters, the commit message, and append-only history such as an archive or changelog.

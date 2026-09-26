@@ -207,7 +207,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 6c725a0 2026-09-03, "with the loss accepted in place rather than argued away".
 - verdict: keep
 - reason: A029. The third cost is the one instruction that stops a rescue on the only-record ground the founding incident used; the backlog contests this pricing (lines 368, 369), which shows it is load-bearing. Amendment 2: the docs/backlog.md lines 368 and 369 cites sit at the items whose bold leads read 'The watch chassis names no author for a keeper-learned standing DO-NOT, and no destination for one either' and 'The watch chassis's admission default still drops a DO-NOT-shaped line whose membership the keeper cannot call' (lines 383 and 384 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the leads over the lines.
-- passage: Kept off wrongly, a line the watched system reproduces costs a re-derivation under the tick order. A durable line with a home under the destination rule costs one read of that home. Any other line is lost, and that loss is accepted. What the default exists to keep off, a keeper's reasoning and an episode's narrative, is recorded nowhere else, so sparing the irreplaceable would spare all of it.
+- passage: Kept off wrongly, a line costs one of three things. A line the watched system reproduces costs a re-derivation under the tick order. A durable line with a home under the destination rule costs one read of that home. Any other line is lost, and that loss is accepted. What the default exists to keep off, a keeper's reasoning and an episode's narrative, is recorded nowhere else, so sparing the irreplaceable would spare all of it.
 
 ### C021
 - key: Expect a wrongly-admitted line to survive every rewrite, because supersede, prune and the per-pass write all ask what fact a line holds and never whether it belongs.
@@ -829,7 +829,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 6c725a0 2026-09-03 added the bound that "what it turned out to mean" is a fact of the watched system, never the keeper's reasoning.
 - verdict: keep
 - reason: A021, A022, A091. The bound cites the admission test's tell rather than restating it. The backlog (line 364) asks whether one pass record survives the next pass, a design question on this line. Amendment 2: the docs/backlog.md line 364 cite sits at the item whose bold lead reads 'The watch chassis does not say whether one pass record survives the next pass' (line 379 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
-- passage: So write every pass in a form that survives distillation: the condition, what was done about it, and what it turned out to mean. That last is the fact of the watched system the pass established, never the keeper's reasoning, which the admission test's second tell refuses.
+- passage: The ledger is the raw material for that list, so write every pass in a form that survives distillation: the condition, what was done about it, and what it turned out to mean. That last is the fact of the watched system the pass established, never the keeper's reasoning, which the admission test's second tell refuses.
 
 ### C088
 - key: Send a decision about a plan to that plan's Chapters.

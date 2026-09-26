@@ -228,7 +228,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17 ("setup: signpost"); 1c8ae4e 2026-07-24 reworded the line when adding the cache prohibition.
 - verdict: keep
 - reason: The signpost writers are pinned by test/kaizen-signpost.test.js but the read is the session's; without it a capturing session in another repo has no way to the inbox.
-- passage: Find the kit clone via the machine-local signpost `~/.claude/claude-kit.local.json`, which records `kitRepoPath`.
+- passage: Find the kit clone via the machine-local signpost `~/.claude/claude-kit.local.json`, written by `doctor -Fix` on Windows and `setup.sh` on POSIX, which records `kitRepoPath`.
 
 ### C024
 - key: Append the note to `<kitRepoPath>/kaizen/notes-<machine>.md`, where `<machine>` is the hostname.
@@ -358,7 +358,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: c606b62 2026-08-29, widening fb0f194's coordinator-only carve-out to standing adjudication at two seats on the operator's grant.
 - verdict: keep
 - reason: The grant is positional and this sentence is where it sits; the 2026-09-02 pass ran under it and its record cites it.
-- passage: The machine-coordinator seat and the kit repo's expert seat each hold the operator's standing authority to disposition the inbox at any time, with no per-note operator round.
+- passage: The machine-coordinator seat and the kit repo's expert seat each hold the operator's standing authority to disposition the inbox at any time, deciding what a note is worth and what it builds into, with no per-note operator round.
 
 ### C038
 - key: Standing adjudication is what keeps the inbox moving between attended passes.

@@ -1030,7 +1030,7 @@ test('the document-length bullet routes its sentence-shape bars to writing-skill
         'the document-length bullet routes to a skill that is not on disk: '
         + parts.join('/'));
     const body = fs.readFileSync(target, 'utf8');
-    assert.match(body, /^## What a sentence has to earn$/m,
+    assert.match(body, /^## What a Sentence Must Earn$/m,
         'writing-skills must carry the sentence-shape section the doctrine '
         + 'points at, since the doctrine carries no bar of its own: deleting '
         + 'the section leaves that pointer aimed at nothing');

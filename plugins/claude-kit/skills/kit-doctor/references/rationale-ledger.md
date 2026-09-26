@@ -291,7 +291,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: eac64fa 2026-08-03, the memory-sync section: the store root is `~/.claude`, which also holds `.credentials.json`, `settings.json`, `history.jsonl` and every transcript, and the doctor gained four probes that prove the exclusion rather than assume it; widened at 70c3a3b 2026-08-28 to name the coordinator directory.
 - verdict: keep
 - reason: The one doctor line whose FAIL is a credential exposure rather than a broken feature, so it is read before the outward act it guards. Overlap with C032 is intentional: this says when the line is read, C032 what a FAIL earns.
-- passage: Read `Memory sync` before any push, because its FAIL means credentials are in reach.
+- passage: Read `Memory sync` before any push. Its FAIL means credentials are in reach.
 
 ### C029
 - key: Expect the store root to hold `.credentials.json`, `settings.json`, `history.jsonl`, and every session transcript, with the repository there admitting only the memory tiers and the machine coordinator directory.
@@ -449,7 +449,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. The trailing reading is the state a fix pass run from the clone must not treat as the drift FAIL C034 covers, so the operator does not run an install a healthy machine does not need.
-- passage: INFO means the allowlist matches the installed copy, and one matching neither copy is the drift FAIL.
+- passage: INFO means the allowlist matches the installed copy, and `-Fix` from the clone then leaves the store as found.
 - passage: Where the machine matches the installed copy and not the clone, those report INFO reading `trails the checkout in hand`, and `-Fix` from the clone installs nothing there.
 
 ### C046

@@ -5,7 +5,7 @@ description: "Use when writing or reviewing any prose for a reader beyond a sing
 
 # Prose register
 
-This skill holds four things: the recipe, the scaling, the voice references and the tells catalog. It keeps three things out, each with its owner. The rule itself is the doctrine's, stated in its Directness and register section (`skills/operating-instructions/SKILL.md` under the kit plugin root). The sentence bars are `writing-skills`', in its "What a sentence has to earn" section. The review procedure is the `prose-reviewer` charter's: its pass order, its severity ladder and its conflict rule. So a sentence found here that states a rule, a bar or a review step is a defect. It is routed to its owner rather than kept as a fifth thing.
+This skill holds four things: the recipe, the scaling, the voice references and the tells catalog. It keeps three things out, each with its owner. The rule itself is the doctrine's, stated in its Directness and register section (`skills/operating-instructions/SKILL.md` under the kit plugin root). The sentence bars are `writing-skills`', in its "What a Sentence Must Earn" section. The review procedure is the `prose-reviewer` charter's: its pass order, its severity ladder and its conflict rule. So a sentence found here that states a rule, a bar or a review step is a defect. It is routed to its owner rather than kept as a fifth thing.
 
 The doctrine's register bullet names the three layers and this skill's place among them. This skill states how a writer applies each structure bullet and how a reviewer checks it, and never what a bullet requires, which the doctrine states once.
 

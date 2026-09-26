@@ -20,7 +20,7 @@ A skill is behavior-shaping prose, not documentation. If it does not change what
 - **Frontmatter: always quote the description.** `name` and `description` are the two fields that matter.
 - Body: the principle, the rules that carry judgment, the antipatterns. Tables and lists for what gets scanned, prose for the why. A flowchart only for a decision the agent might genuinely get wrong, never for linear steps.
 - **One owner per rule.** The doctrine's one-owner bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) owns the principle and the forms a mention may take. The ownership map it names gives each moment's owner. When editing a rule, grep its key phrases across the kit and fix the owner, not the nearest copy.
-- The plan-doc header and structure belong to `curating-docs/SKILL.md`'s "machine contract" section. Point at it rather than restating any of its lines.
+- The plan-doc header and structure belong to `curating-docs/SKILL.md`'s "Plan Doc Machine Contract" section. Point at it rather than restating any of its lines.
 
 ## Description Field
 
@@ -45,12 +45,12 @@ Three rules govern any rule you write:
 
 ## Checkable Facts
 
-- **Of two true framings of a fact, ship the one the reader can verify from where they sit.** Name the file, command, observable event or artifact the fact lives in.
+- **Of two true framings of a fact, ship the one the reader can verify from where they sit.** Name the file, command, observable event or artifact the fact lives in, and pick the framing that makes it findable.
 - **A list drawn from observed instances is stated as open unless a contract closes it.** Closure comes from a contract (a schema, an enum, a validated surface with a published shape), never from the sample agreeing with itself. So write the list as open and say what would close it, or cite the contract that already does.
 
 Those two are instances rather than the boundary. Any fact a rule rests on that the reader cannot check, or whose edges they cannot see, is inside the rule.
 
-## What a sentence has to earn
+## What a Sentence Must Earn
 
 Whether a sentence belongs at all is the doctrine's call, in its "Documents ship the current state; the journey lives in git" bullet. How an accepted lesson enters standing prose is the kaizen skill's disposition step (`skills/kaizen/SKILL.md` under the kit plugin root): the owning passage is rewritten with the lesson in mind, never appended to. The bars below shape the surviving sentences at authoring, read over that rewrite's result.
 

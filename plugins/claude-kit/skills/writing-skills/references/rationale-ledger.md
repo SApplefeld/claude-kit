@@ -133,8 +133,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: The ratchet test makes a stale cap visible but nothing runs sync for the session, and the path list is the writer's choice. The why of naming paths (C013, moved here): on a shared checkout the bare form would move the caps of a peer's in-flight files into your diff. Flipped from keep to rewrite at section 31's close: C011's split made this clause its own sentence with a leading verb, as C011's proposal orders, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched.
-- passage: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>
-- passage: `, naming the files the change touched.
+- passage: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched.
 
 ### C013
 - key: Name the touched paths so a peer's in-flight files' caps stay out of your diff on a shared checkout.
@@ -321,7 +320,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 662e5e3 2026-08-01, an external engine parsing every plan doc case-sensitively with nothing telling an author which lines are load-bearing; curating-docs took the contract and this skill a pointer.
 - verdict: keep
 - reason: No finding. A pointer at a frozen shape external tooling parses; the pointer sits here because this is the skill loaded when a plan doc's shape is written.
-- passage: The plan-doc header and structure belong to `curating-docs/SKILL.md`'s "machine contract" section. Point at it rather than restating any of its lines.
+- passage: The plan-doc header and structure belong to `curating-docs/SKILL.md`'s "Plan Doc Machine Contract" section. Point at it rather than restating any of its lines.
 
 ### C032
 - key: Write a skill description as "Use when..." plus the symptoms that pull it in, and stop there.
@@ -486,7 +485,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25, the same round.
 - verdict: keep
 - reason: The recipe half of C047; stays as its own sentence in the line 52 rewrite.
-- passage: Name the file, command, observable event or artifact the fact lives in.
+- passage: Name the file, command, observable event or artifact the fact lives in, and pick the framing that makes it findable.
 
 ### C049
 - key: Prefer "`memq recall` returns the whole memory store as one bounded digest" over "the memory store is available in bulk", because a rule taken on trust cannot be repaired when the fact underneath it moves.

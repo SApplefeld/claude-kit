@@ -40,7 +40,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 6806b04 2026-07-16 placed the kit leash beside native `/goal`; dbf5e6a 2026-08-16 added that a queue is what `/kit-goal` takes.
 - verdict: keep
 - reason: No finding. The split keeps plan runs on the deterministic hook the kit tests.
-- passage: Native `/goal` is for goals that are not plan-based, and it never sequences plans.
+- passage: Native `/goal` is for goals that are not plan-based, and `/kit-goal` is the tool that sequences plans.
 
 ### C004
 - key: Give each argument as a repo-relative plan path such as `docs/plans/foo_spec_v1.md`.
@@ -49,8 +49,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: dbf5e6a 2026-08-16.
 - verdict: keep
 - reason: No finding. The path shape is what the CLI validates and the hook matches.
-- passage: `/kit-goal <plan path>
-- passage: ` takes repo-relative plan paths such as `docs/plans/foo_spec_v1.md`.
+- passage: `/kit-goal <plan path>...` takes repo-relative plan paths such as `docs/plans/foo_spec_v1.md`.
 
 ### C005
 - key: Arm by running `node <plugin-root>/hooks/kit-goal.js arm <plan path>...`, which is `../../hooks/kit-goal.js` from this skill's base directory.
@@ -784,7 +783,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - proposed: naming what is pending, one of the two occasions executing-work's third stop shape states: the dispatched background work it awaits, or a park at a safe boundary per the park skill.
 - proposed: "naming what is pending, one of the two occasions executing-work's third stop shape states: the dispatched background work it awaits, or a park at a safe boundary taken on a request."
 - proposed: The same literal-leading-prefix rule applies.
-- passage: (c) the last assistant message opens with `WAITING:` as its very first characters, naming one of the two occasions executing-work's third stop shape states. The same literal-leading-prefix rule applies. The goal stays armed. An awaited dispatch's completion re-invokes the session, and the first stop after the wake re-enters enforcement.
+- passage: (c) the last assistant message opens with `WAITING:` as its very first characters, naming one of the two occasions executing-work's third stop shape states: an awaited background dispatch, or a park at a safe boundary taken on a request. The same literal-leading-prefix rule applies. The goal stays armed. An awaited dispatch's completion re-invokes the session, and the first stop after the wake re-enters enforcement.
 
 ### C077
 - key: Expect the hook to refuse a `WAITING:` for context, compaction or a fresh session, which is not background work.
@@ -952,4 +951,4 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - verdict: keep
 - landed: 005a7fde section 2
 - reason: The gate makes a bound arm the expected result, so an unbound one is worth reading. The two ordinary causes are the ones the CLI's own notes print, the append's `(still unbound)` and the path-screen note, and each has a route that binds it; anything else has no route and reaches the operator.
-- passage: The result names the binding, ordinarily `(bound to this session)`. An unbound result has two ordinary causes, and the sentence the CLI prints names which. An append reports the binding the queue already carries, so a queue armed before the gate existed can read unbound. `armingSessionClaims` in `hooks/kit-goal-lib.js` owns the route that claims it. An arm also lands unbound where its path screen refuses the transcript path, and the Stop hook or the compaction gate then binds the goal at the next stop or compaction offer. Any other unbound result is a defect signal, and it goes to the operator as one.
+- passage: The result names the binding, ordinarily `(bound to this session)`. An unbound result has two ordinary causes, and the sentence the CLI prints names which. An append reports the binding the queue already carries, so a queue armed before the gate existed can read unbound. `armingSessionClaims` in `hooks/kit-goal-lib.js` owns the route that claims such a queue. An arm also lands unbound where its path screen refuses the transcript path, and the Stop hook or the compaction gate then binds the goal at the next stop or compaction offer. Any other unbound result is a defect signal, and it goes to the operator as one.
