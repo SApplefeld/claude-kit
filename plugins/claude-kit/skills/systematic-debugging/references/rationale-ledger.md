@@ -10,9 +10,9 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 ## plugins/claude-kit/skills/systematic-debugging/SKILL.md
 
-This document is the kit's root-cause debugging discipline: it defines a four-phase gated workflow (reproduce, investigate, hypothesize and test, fix the root cause) plus an escalation rule for repeated failed fixes. It owns the moments where a session is investigating a bug, a failure, unexpected behavior, a failing test, or a production incident, and specifically the moment before any fix is proposed; it also owns the decision point after two failed fix attempts, where it directs a consult and a stop-and-report. Its load class is `named-trigger`: the frontmatter says to use it whenever investigating a bug or failure and BEFORE proposing any fix, naming triggers such as 'bug', 'broken', 'failing', 'why is this happening', error reports, and any situation where a previous fix attempt did not work, with the sole carve-out that it is skipped for trivial fixes whose cause is directly visible.
+This document is the kit's root-cause debugging discipline: it defines a five-phase gated workflow (classify, reproduce, investigate, hypothesize and test, fix the root cause) plus an escalation rule for repeated failed fixes. It owns the moments where a session is investigating a bug, a failure, unexpected behavior, a failing test, or a production incident, and specifically the moment before any fix is proposed; it also owns the decision point after two failed fix attempts, where it directs a consult and a stop-and-report. Its load class is `named-trigger`: the frontmatter says to use it whenever investigating a bug or failure and BEFORE proposing any fix, naming triggers such as 'bug', 'broken', 'failing', 'why is this happening', error reports, and any situation where a previous fix attempt did not work, with the sole carve-out that it is skipped for trivial fixes whose cause is directly visible.
 
-Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `d0d590ec` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags, and A003 below is the classify-first step that section added.
 
 ### C001
 - key: Load and follow this debugging discipline whenever investigating a bug, failure, unexpected behavior, failing test, or incident, before proposing any fix.
@@ -21,6 +21,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit, which states the discipline as a design rather than an incident; 0e47170 2026-07-15 quoted the description and left its trigger list whole while trimming sibling skills' tails.
 - verdict: keep
 - reason: The description is the harness's skill-selection surface, so its trigger words are matching machinery rather than prose to a reader; the failed-fix trigger is repeated at line 41 because that line is read by a session already inside the skill weighing the trivial-fix carve-out.
+- passage: Use whenever investigating a bug, failure, unexpected behavior, failing test, or production incident - BEFORE proposing any fix.
+- passage: A failed first fix means you are now debugging, so use this skill.
 
 ### C002
 - key: Never propose a fix until you have reproduced and understood the root cause.
@@ -29,6 +31,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("fix the cause not the symptom").
 - verdict: keep
 - reason: The ownership map makes this skill the owner of root-causing a failure before proposing a fix and the doctrine's Root-cause bullet the pointer, so the iron rule is the owner's whole statement. The sentence "This is the one workflow where gating is deliberate" stays with it as the bound that keeps the doctrine's effort-matching rule from licensing a skip of the phases.
+- passage: The iron rule: **no fix without a reproduced, understood root cause.** This is the one workflow where gating is deliberate.
 
 ### C003
 - key: Treat a pre-cause fix as a guess, and a guess that hides the symptom as the worst outcome because the defect survives unseen.
@@ -48,6 +51,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("reproduce" as the first phase).
 - verdict: keep
 - reason: This is Phase 1's gate and the skill owns the debugging moment; the doctrine's temporary-repro bullet is the mechanic it invokes and C005 points at it in the next sentence, so neither document copies the other.
+- passage: Reproduce the failure reliably before investigating
 
 ### C005
 - key: Build the reproduction as a minimal temporary script or test that demonstrates the failure on demand, per the global temporary repro-script discipline.
@@ -56,6 +60,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. This sentence is the skill's pointer at the doctrine's "Make the test earn its green" bullet, which testing-discipline names as the governor of a temporary repro, and it is the pointer that lets Phase 4 drop its own copy of the delete step.
+- passage: with a minimal temporary script or test per the doctrine's "Make the test earn its green" bullet.
 
 ### C006
 - key: When the failure cannot be reproduced, gather evidence through logging, input narrowing, and environment comparison instead of fixing.
@@ -67,6 +72,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - reason: The cannot-reproduce carve-out is this skill's alone and stays; the change is that the next sentence's quoted offer ("I can't reproduce it but this change should help") folds into this one as the named antipattern, so the passage forbids the fix once rather than twice. Behavior-shaping wording, so baseline-test the merged sentence. Lands at line 12 (section 44's close) as "If the failure cannot be reproduced, the job is evidence-gathering (logging, narrowing inputs, environment comparison) rather than fixing, which is why 'I can't reproduce it but this change should help' is never a debugging outcome.", one sentence composed from this proposal's shape with C007's quoted offer kept verbatim inside it; C004's and C005's sentences before it are unchanged.
 - proposed: (via A012) One sentence: the job is evidence-gathering rather than fixing, and "I can't reproduce it but this change should help" is the offer that sentence forbids.
 - baseline-test: yes
+- passage: If it will not reproduce, gather evidence by logging, narrowing inputs and comparing environments. "I can't reproduce it but this change should help" is never an outcome.
 
 ### C007
 - key: Never offer "I can't reproduce it but this change should help" as a debugging outcome.
@@ -76,6 +82,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - verdict: rewrite
 - landed: e4f8ade section 44
 - reason: The same prohibition as C006's "not fixing", voiced as the sentence a session would type; it survives as the antipattern named inside C006's sentence rather than as a separate rule. Keep the quoted form when merging, since a named antipattern is what a reader recognizes in its own draft. Lands at line 12 (section 44's close) inside C006's sentence, the quoted offer verbatim in double quotes; C006's entry records the landed sentence.
+- passage: Reproduce the failure reliably before investigating, with a minimal temporary script or test per the doctrine's "Make the test earn its green" bullet. If it will not reproduce, gather evidence by logging, narrowing inputs and comparing environments. "I can't reproduce it but this change should help" is never an outcome.
 
 ### C008
 - key: Build the evidence before forming any opinion about the cause.
@@ -84,6 +91,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: The Phase 2 lead and the document's earliest statement of evidence-before-opinion; the Phase 3 closing tag "Evidence first, code second" (C024) retires as its duplicate, which makes this the surviving in-skill statement.
+- passage: Build the evidence before forming opinions:
 
 ### C009
 - key: Read the actual error in full: the whole message, the whole stack, and the relevant log lines, not a summary.
@@ -92,6 +100,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; 830ff28 2026-06-17 genericized the ELEOS.ErrorLog reference in the same bullet.
 - verdict: keep
 - reason: The doctrine's red-is-a-signal bullet gates calling a red a flake; this gates the investigation's first read of the error, a different act. The bullet is re-cut so this instruction and the server-side check (C010) stand as two sentences.
+- passage: **Read the actual error**: the whole message, stack and log lines, not a summary.
 
 ### C010
 - key: Check the project's server-side error log or audit table for the server-side view of the failure.
@@ -102,6 +111,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - landed: e4f8ade section 44
 - reason: No finding. The instruction stands on its own once C011's reason moves here; it names where the server-side view lives on a stack whose client exception and server error are recorded separately. Flipped to rewrite at section 44's close by C011's retire, which took the clause after its semicolon: the words are unchanged and the sentence closes on a period.
 - proposed: Check the project's server-side error log or audit table for the server-side view.
+- passage: Check the project's server-side error log or audit table for the server-side view.
+- flag: environment
 
 ### C011
 - key: Expect the C# exception and the SQL error to be different facts rather than one.
@@ -121,6 +132,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: The doctrine's Judgment bullet sends a reader to git history to ground a recommendation; this sends a debugger to it to locate a regression's onset, and the skill owns the investigation moment. The base-rate sentence beside it (C013) moves here.
+- passage: **Check what changed**: git log and diff around the onset, and deployment history.
 
 ### C013
 - key: Assume most bugs are regressions from a recent, findable change.
@@ -140,6 +152,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. The backward trace is the investigation's method for locating the divergence point and nothing else in the corpus states it.
+- passage: **Trace the data flow backward** from the symptom to where reality first diverges from expectation.
 
 ### C015
 - key: Dispatch the Explore subagent for unfamiliar territory rather than guessing at the structure.
@@ -148,6 +161,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. The doctrine's standing dispatch request covers the Explore dispatch; this names the moment in the investigation where structure is unknown and guessing is the failure mode.
+- passage: Dispatch the Explore subagent for unfamiliar territory rather than guessing.
 
 ### C016
 - key: Check for deployment drift by comparing the deployed object against source via `sys.sql_modules` and the file.
@@ -156,6 +170,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, whose message names deployment drift as one of this stack's recurring root causes.
 - verdict: keep
 - reason: No finding. Shell-then-ALTER deployment (the sql-style house convention) is what makes a missed deployment silent, and the commit installing it names drift as a recurring cause; nothing mechanical detects a stale proc.
+- passage: Deployment drift: does the deployed object match source? (shell-then-ALTER means a missed deployment leaves a stale proc silently in place - compare `sys.sql_modules` against the file).
+- flag: environment
 
 ### C017
 - key: Check whether a trigger or nested call runs as the caller instead of the impersonated user, inspecting `WITH EXECUTE AS` boundaries.
@@ -164,6 +180,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, whose message names EXECUTE AS context as one of this stack's recurring root causes.
 - verdict: keep
 - reason: No finding. Named at install as a recurring, invisible cause on a stack where application principals are EXECUTE-only and procs impersonate; no machinery surfaces it.
+- passage: Security context: is a trigger or nested call running as the caller instead of the impersonated user? `WITH EXECUTE AS` boundaries are a classic invisible cause.
+- flag: environment
 
 ### C018
 - key: Query the actual data rather than assuming its shape.
@@ -172,6 +190,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, whose message names data shape as one of this stack's recurring root causes.
 - verdict: keep
 - reason: No finding. The doctrine's Root-cause bullet says to interrogate the actual data at the principle level; this is the owner's checklist item with the shapes that recur (NULLs, duplicates, empty string versus NULL).
+- passage: Actual data: query it. The bug is often a data shape nobody believed existed (NULLs, duplicates, empty strings vs NULL).
 
 ### C019
 - key: Confirm the procedure's declared isolation level matches its use.
@@ -180,6 +199,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. A READ UNCOMMITTED proc returning mid-transaction state is a cause no other document names and no tool flags.
+- passage: Isolation level: READ UNCOMMITTED procs can return mid-transaction state; confirm the proc's declared level matches its use.
+- flag: environment
 
 ### C020
 - key: State one hypothesis at a time explicitly, in the form "X causes Y because Z."
@@ -188,6 +209,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("hypothesize one change at a time").
 - verdict: keep
 - reason: The Phase 3 method; the paragraph around it is re-cut only to drop C023's cost clause and C024's closing tag, and this sentence stands verbatim.
+- passage: State one hypothesis at a time: "X causes Y because Z." Test it with the smallest check that can falsify it, such as a query, a log line or a one-variable change. Never bundle changes.
 
 ### C021
 - key: Test each hypothesis with the smallest test that can falsify it, such as a query, a log line, or a one-variable change.
@@ -196,6 +218,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: Stands verbatim inside the re-cut Phase 3 paragraph; the falsifying test is what makes a hypothesis a hypothesis rather than a guess.
+- passage: Test it with the smallest check that can falsify it, such as a query, a log line or a one-variable change.
 
 ### C022
 - key: Never bundle changes while testing a hypothesis.
@@ -206,6 +229,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - landed: e4f8ade section 44
 - reason: Stands verbatim; the cost clause that follows it (C023) moves here and the prohibition is whole without it. Flipped to rewrite at section 44's close by C023's retire, which took the clause after its semicolon: the words are unchanged and the sentence closes on a period, the last of the paragraph once C024's tag left.
 - proposed: Never bundle changes.
+- passage: Never bundle changes.
 
 ### C023
 - key: Treat a symptom that moves after two simultaneous changes as having taught you nothing.
@@ -236,6 +260,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("fix the cause not the symptom").
 - verdict: keep
 - reason: A different moment from the iron rule: C002 gates when a fix may be proposed and this says what the fix must target, and a session can satisfy the first while violating the second. Stands verbatim while the sentence after it is re-cut.
+- passage: Fix the cause, not the symptom.
 
 ### C026
 - key: After the fix, verify the reproduction now passes.
@@ -244,6 +269,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: Phase 4's exit condition; the doctrine's watch-it-pass step is the same act, but a phase workflow that names no exit is not followable, so this is the one repro step the skill keeps beside its C005 pointer.
+- passage: Verify the repro now passes
 
 ### C027
 - key: After the fix, run the surrounding tests to confirm nothing else moved.
@@ -255,6 +281,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - reason: A real conflict: "surrounding tests" is looser than the targeted lane (the changed files' tests plus any whole-tree pin whose subject those files are), so a session obeying this line can skip a family pin the doctrine requires at a fix round. The doctrine owns which lane each moment takes, so this line names the targeted lane and points at that bullet; baseline-test the reworded step. Lands at line 33 (section 44's close) as "run the targeted lane the doctrine's After-each-step bullet names for a fix round", the proposal's words; the bullet it points at opens 'After each step, run the lane the moment calls for, and report the delta.' at line 100 of `plugins/claude-kit/skills/operating-instructions/SKILL.md` (line 95 of the frontmatter-free doctrine copies), and C026's and C029's sentences beside it are unchanged.
 - proposed: Replace "run the surrounding tests to confirm nothing else moved" with "run the targeted lane the doctrine's After-each-step bullet names for a fix round".
 - baseline-test: yes
+- passage: run the targeted lane the doctrine's After-each-step bullet names for a fix round.
+- flag: stale
 
 ### C028
 - key: Delete the repro script after the fix.
@@ -274,6 +302,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11 installed it pointing at "auto memory"; eb7d29d 2026-08-09, from a kaizen inbox note on harness-injection claims, re-pointed it at the kit memory store, which the kit is independent of auto-memory by design.
 - verdict: keep
 - reason: Already pointer-length, and the history shows the destination word is what goes wrong: the clause must name the kit memory store, since a bare pointer at the doctrine would be no shorter and would drop the fix eb7d29d made. The "gotcha, not the incident" bar copies the doctrine's one-level-more-general rule in four words.
+- passage: Bank any durable learning to the kit memory store as the gotcha, not the incident.
 
 ### C030
 - key: Record the finding in the plan doc's Chapter.
@@ -282,6 +311,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: Not in conflict with the doctrine's memory clause: the same line routes the general lesson to memory (C029) and the section's finding to the Chapter, which the doctrine's Chapter bullet asks to carry decisions and surprises. Two destinations for two different records.
+- passage: In a planned effort, record the finding in the plan doc's Chapter.
 
 ### C031
 - key: Stop after two failed fixes, because the mental model is wrong.
@@ -290,6 +320,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11 installed the escalation rule; 1d9c467 2026-08-15 (consult plan, Section 5) placed the consult before the stop after Scenario B's RED showed the old text read as conditional.
 - verdict: keep
 - reason: An operator-decision gate that fires once per stuck problem, not per loop: it is one of executing-work's four blockers, and 1d9c467 kept it deliberately when adding the consult ("The stop still happens"). The bold sentence stays verbatim; its restatement (C032) retires.
+- passage: **Two failed fixes mean the mental model is wrong - stop.**
 
 ### C032
 - key: Do not attempt a third fix from the same understanding.
@@ -307,6 +338,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: What a session does instead of the third attempt; stands verbatim inside the re-cut escalation paragraph.
+- passage: List every assumption in play and verify each against evidence.
 
 ### C034
 - key: Widen the frame to consider the design, the spec, the deployment, or the data as the defect's home rather than the suspected code.
@@ -315,6 +347,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: Stands verbatim. Note for a session editing this paragraph: Scenario B's RED arm read "widen the frame" as licence for a third unassisted investigation, and the consult sentence that follows (C035) is what closed that reading, so the two sentences are edited together.
+- passage: Widen the frame to the design, the spec, the deployment and the data, not just the suspect code.
 
 ### C035
 - key: Convene a consult on the dead end before you stop and report.
@@ -325,6 +358,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - landed: e4f8ade section 44
 - reason: The consult skill owns the trigger (its trigger (c) is this dead end) and this sentence is the in-workflow pointer at it; the baseline test shows this document's sentence is what moved behavior, since the RED arm ran with the old text and did not convene. Flipped to rewrite at section 44's close by C036's retire, which took the clause after its colon: the words are unchanged and the sentence closes on a period, still following C034's sentence directly.
 - proposed: Convene a consult on the dead end before you stop and report.
+- passage: Convene a consult on the dead end before you stop and report.
 
 ### C036
 - key: Use a fresh-context ruling because it never formed the mental model that just failed twice and can test the frame you can only extend.
@@ -346,6 +380,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - landed: e4f8ade section 44
 - reason: The pointer at the owner the ownership map names for consult triggers and mechanics; a compression that drops it would leave this skill carrying a copy of a rule it does not own. Flipped to rewrite at section 44's close by C036's retire, which left this clause to open its own sentence: the words are unchanged and its first letter is capitalised.
 - proposed: The consult skill (`consult/SKILL.md`) owns the triggers and the mechanics.
+- passage: The consult skill (`consult/SKILL.md`) owns the triggers and mechanics.
 
 ### C038
 - key: Still stop and still send the report after the consult, carrying the consult's ruling in it.
@@ -356,6 +391,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - landed: e4f8ade section 44
 - reason: Written to keep the consult from being read as replacing the stop: the dead end stays a blocker in executing-work's set, and the ruling rides in the report so the operator decides with it rather than before it. Flipped to rewrite at section 44's close by C036's retire, which took 'a fresh-context ruling' from the paragraph and left 'the ruling' with no stated antecedent: respelled 'the consult's ruling', this entry's own key, after round 1's adversarial lens read the bare phrase; every other word unchanged.
 - proposed: The stop still happens and the report still goes out, carrying the consult's ruling: if the root cause implicates a design decision, surface it to me with the evidence and the ruling attached rather than quietly patching around it.
+- passage: The stop and the report still happen, carrying the consult's ruling.
 
 ### C039
 - key: Surface a root cause that implicates a design decision to the operator with the evidence and the ruling attached, rather than quietly patching around it.
@@ -364,6 +400,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11 ("surface it to Scott with the evidence"); a8770b3 2026-06-28 re-voiced it to "me"; 1d9c467 2026-08-15 added "and the ruling attached".
 - verdict: keep
 - reason: An operator-decision gate: a design decision is the material-decision blocker executing-work names, and the blocked-escalation plan records that class as a gap in standing no relayed answer resolves. The act it forbids, patching around a design defect silently, is the one a green fix would hide.
+- passage: A root cause implicating a design decision comes to me with the evidence and the ruling, never patched around quietly.
 
 ### C040
 - key: Fix a directly visible cause with a trivial fix under the global rules without this skill's ceremony.
@@ -372,6 +409,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. The carve-out that keeps the four phases from being ceremony on a typo; it is bounded by C041 in the same paragraph, which is why the two are kept together.
+- passage: A directly visible cause with a trivial fix, such as a typo, skips the phases and is fixed under the doctrine's rules.
 
 ### C041
 - key: Treat a failed first fix as the signal that you are now debugging and must use this skill.
@@ -380,3 +418,13 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: The bound on C040's carve-out, read by a session already inside the skill; the frontmatter's failed-fix trigger serves the harness's selection and is not re-read mid-work, so the body line is not a duplicate of it. The doctrine's craft bullet on re-diagnosing a new symptom instructs a different next act.
+- passage: A failed first fix means you are now debugging, so use this skill.
+
+### A003
+- key: Before reproducing a failure, sort it into code, environment, tool, external service or unknown, and never change working code to route around an environment problem.
+- class: rule
+- source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:12
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 9, 2026-09-26, the classify-first step the operator approved from the Supreme review, declared growth of about forty words.
+- verdict: keep
+- reason: A failure read as code by default gets a code fix, and an environment, tool or external-service failure fixed in code leaves working code bent around a problem that is not in it. The sort comes before reproduction because the bin decides whether a repro in this tree can show the cause at all. The four implementer charters point their BLOCKED status here (A004 to A007 under the executing-work ledger), so this step is the one owner of the sort.
+- passage: Before reproducing, sort the failure into one of five bins: code, environment, tool, external service, or unknown. Never change working code to route around an environment problem.

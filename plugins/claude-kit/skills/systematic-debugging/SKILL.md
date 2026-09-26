@@ -7,35 +7,39 @@ description: "Root-cause debugging discipline. Use whenever investigating a bug,
 
 The iron rule: **no fix without a reproduced, understood root cause.** This is the one workflow where gating is deliberate.
 
+## Phase 0 - Classify
+
+Before reproducing, sort the failure into one of five bins: code, environment, tool, external service, or unknown. Never change working code to route around an environment problem.
+
 ## Phase 1 - Reproduce
 
-Get a reliable reproduction before anything else. Use the temporary repro-script discipline from the global rules: a minimal script or test that demonstrates the failure on demand. If the failure cannot be reproduced, the job is evidence-gathering (logging, narrowing inputs, environment comparison) rather than fixing, which is why "I can't reproduce it but this change should help" is never a debugging outcome.
+Reproduce the failure reliably before investigating, with a minimal temporary script or test per the doctrine's "Make the test earn its green" bullet. If it will not reproduce, gather evidence by logging, narrowing inputs and comparing environments. "I can't reproduce it but this change should help" is never an outcome.
 
 ## Phase 2 - Investigate
 
 Build the evidence before forming opinions:
 
-- **Read the actual error.** The whole message, the whole stack, the relevant log lines, not the summary of it. Check the project's server-side error log or audit table for the server-side view.
-- **Check what changed.** git log/diff around the onset; deployment history.
-- **Trace the data flow backward** from the symptom to the first place reality diverges from expectation. Dispatch the Explore subagent for unfamiliar territory rather than guessing at structure.
+- **Read the actual error**: the whole message, stack and log lines, not a summary. Check the project's server-side error log or audit table for the server-side view.
+- **Check what changed**: git log and diff around the onset, and deployment history.
+- **Trace the data flow backward** from the symptom to where reality first diverges from expectation. Dispatch the Explore subagent for unfamiliar territory rather than guessing.
 - **SQL-specific checks** (this stack's recurring root causes):
   - Deployment drift: does the deployed object match source? (shell-then-ALTER means a missed deployment leaves a stale proc silently in place - compare `sys.sql_modules` against the file).
   - Security context: is a trigger or nested call running as the caller instead of the impersonated user? `WITH EXECUTE AS` boundaries are a classic invisible cause.
   - Actual data: query it. The bug is often a data shape nobody believed existed (NULLs, duplicates, empty strings vs NULL).
   - Isolation level: READ UNCOMMITTED procs can return mid-transaction state; confirm the proc's declared level matches its use.
 
-## Phase 3 - Hypothesize and test
+## Phase 3 - Hypothesize and Test
 
-One hypothesis at a time, stated explicitly: "X causes Y because Z." Then the smallest possible test that can falsify it - a query, a log line, a one-variable change. Never bundle changes.
+State one hypothesis at a time: "X causes Y because Z." Test it with the smallest check that can falsify it, such as a query, a log line or a one-variable change. Never bundle changes.
 
-## Phase 4 - Fix the root cause
+## Phase 4 - Fix the Cause
 
-Fix the cause, not the symptom. Then: verify the repro now passes, run the targeted lane the doctrine's After-each-step bullet names for a fix round, and bank any durable learning to the kit memory store (the gotcha, not the incident). If the work was part of a planned effort, record the finding in the plan doc's Chapter.
+Fix the cause, not the symptom. Verify the repro now passes, and run the targeted lane the doctrine's After-each-step bullet names for a fix round. Bank any durable learning to the kit memory store as the gotcha, not the incident. In a planned effort, record the finding in the plan doc's Chapter.
 
-## The escalation rule
+## Escalation
 
-**Two failed fixes mean the mental model is wrong - stop.** Instead: list every assumption in play, verify each against evidence, and widen the frame - the bug may be in the design, the spec, the deployment, or the data rather than the code under suspicion. Convene a consult on the dead end before you stop and report. The consult skill (`consult/SKILL.md`) owns the triggers and the mechanics. The stop still happens and the report still goes out, carrying the consult's ruling: if the root cause implicates a design decision, surface it to me with the evidence and the ruling attached rather than quietly patching around it.
+**Two failed fixes mean the mental model is wrong - stop.** List every assumption in play and verify each against evidence. Widen the frame to the design, the spec, the deployment and the data, not just the suspect code. Convene a consult on the dead end before you stop and report. The consult skill (`consult/SKILL.md`) owns the triggers and mechanics. The stop and the report still happen, carrying the consult's ruling. A root cause implicating a design decision comes to me with the evidence and the ruling, never patched around quietly.
 
-## When not to use
+## When Not to Use
 
-A directly visible cause with a trivial fix (typo, missing using, obvious null guard) does not need the ceremony - fix it under the global rules. The tell that you DO need this skill is the second attempt: if fix one didn't work, you are now debugging, whether you admit it or not.
+A directly visible cause with a trivial fix, such as a typo, skips the phases and is fixed under the doctrine's rules. A failed first fix means you are now debugging, so use this skill.

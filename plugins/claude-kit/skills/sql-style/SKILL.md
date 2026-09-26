@@ -5,23 +5,23 @@ description: "My T-SQL house style. Use whenever writing or modifying ANY SQL: s
 
 # T-SQL Style
 
-My personal SQL style. Internalize the philosophy, then consult [references/sql-style.md](references/sql-style.md) for the detailed pattern reference (all 21 sections: deployment idioms, banner formats, full procedure/table/function templates) before writing code.
+Read [references/sql-style.md](references/sql-style.md), the detailed pattern reference, before writing code.
 
-## Core philosophy
+## Core Philosophy
 
-1. **Idempotent and re-runnable by default.** Procedures use shell-then-ALTER (preserves GRANTs). Functions drop-and-recreate. Tables and indexes guard with IF NOT EXISTS. A deployment script never breaks on re-execution.
-2. **Tab-aligned columns for related values.** Parameter lists, DECLARE blocks, column lists, SET clauses: names align, then types align, then defaults align. Non-negotiable.
-3. **Leading commas, leading semicolons.** Commas start the continuation line so items line up. Statements lead with `;` to defend against missing terminators in the previous batch.
-4. **Section banners over inline narration.** `/********** TITLE **********/` banners divide every procedure into named phases.
-5. **Find a sibling and mimic it.** When in doubt, find an existing procedure/table solving a similar shape and copy its layout exactly. In greenfield repos, use the exemplar below and the full templates in the reference.
+1. **Idempotent deployment.** Procedures use shell-then-ALTER, which preserves GRANTs. Functions are dropped and recreated. Tables and indexes guard with IF NOT EXISTS. A script never breaks on re-execution.
+2. **Tab alignment.** In parameter, DECLARE, column and SET lists, names align, then types, then defaults. Non-negotiable.
+3. **Leading commas and semicolons.** A comma starts each continuation line. The items then line up. Statements lead with `;`. That guards against a missing terminator in the previous batch.
+4. **Banners over narration.** `/********** TITLE **********/` banners divide every procedure into named phases.
+5. **Mimic a sibling.** When unsure, copy the layout of an existing procedure or table of similar shape exactly. In a greenfield repo, use the exemplar below and the reference's templates.
 
 ## Precedence
 
-A repo's mechanically-enforced contract wins first: a committed formatter config, an `.editorconfig`, or a CI lint gate overrides this style, nothing softer does. Absent that, this style is the default authority. Philosophy point 5 (mimic a sibling) is for staying consistent inside a body of code already written in this style; a messy legacy sibling in a foreign repo is not a reason to drop the style.
+A committed formatter config, `.editorconfig` or CI lint gate overrides this style, and nothing softer does. Otherwise this style is the default authority. Point 5, mimic a sibling, keeps a body already in this style consistent. A messy legacy sibling in a foreign repo is no reason to drop the style.
 
-## Exemplar (the deployment idiom and body skeleton)
+## Deployment Exemplar
 
-The schema and the audit-logging proc below are placeholders (`<schema>`, `<schema_owner>`, `usp_LogError`). The pattern is what transfers: substitute the project's own schema and error-logging proc. `WITH EXECUTE AS` applies only where the project uses owner-impersonation; drop it where it does not.
+`<schema>`, `<schema_owner>` and `usp_LogError` are placeholders for the project's own schema, owner and error-logging proc. Keep `WITH EXECUTE AS` only where the project uses owner-impersonation.
 
 ```sql
 -- CREATE A SHELL PROCEDURE IF NONE EXISTS.
@@ -66,40 +66,40 @@ GO
 
 ## Outlining a large file
 
-When you are opening a SQL file past roughly 1,000 lines to find one thing, take the definitions first, with line numbers:
+In a SQL file past roughly 1,000 lines opened to find one thing, grep the definitions first, with line numbers, using this pattern as written:
 
 `^\s*;?\s*(CREATE|ALTER)(\s+OR\s+ALTER)?(\s+(UNIQUE|CLUSTERED|NONCLUSTERED|SPATIAL|COLUMNSTORE|FULLTEXT|XML))*\s+(PROCEDURE|TABLE|VIEW|FUNCTION|INDEX|TRIGGER|SCHEMA|TYPE)\b`
 
-Every piece of that shape is load-bearing, so use the pattern as written. A banner sentence opening with a real object keyword still matches and is read past rather than filtered.
+A banner sentence opening with an object keyword still matches and is read past rather than filtered.
 
-Take banners second, and read past the hits outside the range the definitions narrowed to rather than trying to scope the grep, since the range-restricting forms renumber their output and the line numbers are the whole point: `grep -n -A 1 -E '^\s*/\*{3,}'`, the `-A 1` being what supplies the label, since the border line carries no text of its own. A doubled border yields its second line as a label. Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them. Two limits worth knowing rather than discovering. The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script. And the object-keyword list covers the kinds a deployment tree is mostly made of; `LOGIN`, `ROLE`, `SEQUENCE`, and `SYNONYM` are deliberately outside it and are found by name when you need one.
+Take banners second with `grep -n -A 1 -E '^\s*/\*{3,}'`, where `-A 1` supplies the label the border lacks, and a doubled border's second line is the label. Read past hits outside the definitions' ranges rather than scoping the grep. Range-restricting forms renumber lines. Never anchor on `GO`: it carries no structure, and one vendor install script holds 936 of them. The definitions pattern is case-sensitive and missed 9 of 5,332 definitions on one corpus. That matters only in a file this style did not write, so add `-i` for a vendor script. Find `LOGIN`, `ROLE`, `SEQUENCE` and `SYNONYM` by name, as the pattern excludes them by design.
 
-## Antipatterns (common AI habits that violate the style)
+## Antipatterns
 
-- ❌ `CREATE OR ALTER PROCEDURE` - shell-then-ALTER, always (it preserves GRANTs)
-- ❌ Trailing commas in any list - leading commas, always
-- ❌ Lowercase keywords - UPPERCASE always
-- ❌ Unbracketed columns - `[ColumnName]` always
-- ❌ `RAISERROR` for routine errors - `EXECUTE <schema>.usp_LogError @p_ErrorData = ...` in CATCH, guarded by OBJECT_ID check
-- ❌ Dynamic SQL built by string concatenation - inside a `WITH EXECUTE AS` procedure this is a privilege-escalation vector, not a style issue; where dynamic SQL is truly unavoidable, `sp_executesql` with typed parameters and a justifying comment
+- ❌ `CREATE OR ALTER PROCEDURE` - shell-then-ALTER, which preserves GRANTs
+- ❌ Trailing commas in any list - leading commas
+- ❌ Lowercase keywords - UPPERCASE
+- ❌ Unbracketed columns - `[ColumnName]`
+- ❌ `RAISERROR` for routine errors - `EXECUTE <schema>.usp_LogError @p_ErrorData = ...` in CATCH, guarded by an OBJECT_ID check
+- ❌ Dynamic SQL built by string concatenation - a privilege-escalation vector inside a `WITH EXECUTE AS` procedure. Where unavoidable, use `sp_executesql` with typed parameters and a justifying comment
 - ❌ Skipping `;SET NOCOUNT ON` + `;SET TRANSACTION ISOLATION LEVEL` - both required, paired, at the top
 - ❌ Verbose multi-paragraph header comments - banner blocks with SCRIPT/AUTHOR/DATE/VERSION/NOTES only
-- ❌ Change-narrative comments ("Updated to...", "fixed the...", "per the new spec") - the doctrine's current-state rule applies: a comment or banner states what the code does now, never the session, the change, or the prior version. Sentence-style comments (`/* Sub-Section Title. */`, `-- Comment.`) are short imperative statements of what the next block does, never history, decision narrative, or rationale essays; a WHY comment is rare and exceptional. A comment is a passage under the doctrine's prose register. A section comment is the rule alone, in the sentence-style forms above. The rare WHY comment is where the reason follows as its own sentence, with at most one case. Banners and group labels are titles and are unaffected
+- ❌ Change-narrative comments ("Updated to...", "fixed the...", "per the new spec") - per the doctrine's current-state rule, a comment states what the code does now. Sentence-style comments (`/* Sub-Section Title. */`, `-- Comment.`) state what the next block does, never history or rationale. Under the doctrine's prose register, a section comment is the rule alone, and a rare WHY comment adds its reason as its own sentence, with at most one case. Banners and group labels are titles and are unaffected
 - ❌ `GETDATE()` for audit timestamps - `SYSDATETIMEOFFSET()`
 - ❌ Right-hand aliases (`expr AS Alias`) in SELECT - left-hand form: `[Alias] = expression`
 - ❌ `SELECT *` in result sets returned to callers
 
-## Checklist before declaring SQL work complete
+## Completion Checklist
 
-- [ ] Procs: shell-then-ALTER; functions: drop-and-recreate; tables/indexes: IF NOT EXISTS guards
-- [ ] `WITH EXECUTE AS '<schema_owner>'` on procs and scalar/multi-statement functions where the codebase uses impersonation (never on inline TVFs; dropped entirely where the codebase does not impersonate)
-- [ ] Banner header: SCRIPT / AUTHOR / DATE (ordinal English) / VERSION / NOTES; new versions ADD a note line, never rewrite history
+- [ ] Procs shell-then-ALTER, functions drop-and-recreate, tables and indexes IF NOT EXISTS
+- [ ] `WITH EXECUTE AS '<schema_owner>'` on procs and scalar or multi-statement functions where the codebase impersonates, never on inline TVFs
+- [ ] Banner header: SCRIPT / AUTHOR / DATE (ordinal English) / VERSION / NOTES, a new version adding a note line rather than rewriting history
 - [ ] `BEGIN	-- PROCEDURE` with tab + trailing label after `AS`
-- [ ] `;SET NOCOUNT ON` paired with isolation level (`READ UNCOMMITTED` for Get*, `READ COMMITTED` for writes)
-- [ ] Statements lead with `;`; parameters use `@p_` prefix; locals plain `@PascalCase`; `@True`/`@False` BIT pair when conditionals exist
-- [ ] Leading commas + tab alignment in every multi-line list; first item gets a leading space
-- [ ] Section banners divide logic into phases; `/* Sub-Section. */` comments end with a period; group labels do not
+- [ ] `;SET NOCOUNT ON` paired with an isolation level: `READ UNCOMMITTED` for Get*, `READ COMMITTED` for writes
+- [ ] `;`-led statements, `@p_` parameters, plain `@PascalCase` locals, an `@True`/`@False` BIT pair where conditionals exist
+- [ ] Leading commas + tab alignment in every multi-line list, first item with a leading space
+- [ ] Section banners for phases, `/* Sub-Section. */` comments ending in a period, group labels without one
 - [ ] Tables: `/* Group Name */` column groups, audit fields (CreatedDt/UpdatedDt, SYSDATETIMEOFFSET defaults) at the bottom, `PK_<Table>` last
 - [ ] Indexes: `IX_<Table>_<Cols>`, own IF NOT EXISTS block, in the table's file
-- [ ] TRY/CATCH wraps main logic; CATCH audits via the project's error-logging proc and does not re-throw (a nested CATCH whose error genuinely must propagate is the rare THROW exception; reference §11)
+- [ ] TRY/CATCH around main logic, CATCH auditing via the project's error-logging proc without re-throwing, except a nested CATCH whose error must propagate (reference §11)
 - [ ] File ends with `GO`

@@ -19586,7 +19586,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 
 This document is the charter for a dispatched implementation agent named implementer-fable, the top model tier of the kit's scoped implementer family. It governs the moment a single Section of Work from an already-approved spec is built by a subagent: how the agent reads its brief, what it must read before writing, how far its edits may reach, what evidence proves the work done, whether it may stage or commit, and which of four terminal statuses it must end its report with. It owns the execution-quality moments inside one section and explicitly does not own design, the dispatch brief's field list, or the commit model. The load class is `plan-run`: the charter is loaded by the dispatched agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C064 and C065 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C064 and C065 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below). Amended on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` at `d0d590ec` (A004 below, the BLOCKED bullet's pointer at systematic-debugging's classify step).
 
 ### C001
 - key: Dispatch this agent under the name implementer-fable.
@@ -20194,11 +20194,20 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - verdict: keep
 - reason: Supersedes C012. The report stays the only channel the duty can travel on, since the agent cannot write the Chapter. A reduction is flagged as an extension is, which is what makes the amendment a recorded delta the reviewer can read against the plan. Part of the marked region W001 describes.
 
+### A004
+- key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
+- class: pointer
+- source: plugins/claude-kit/agents/implementer-fable.md:39
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 9, 2026-09-26, the classify-first step the operator approved from the Supreme review, declared growth of about forty words.
+- verdict: keep
+- reason: The classify step (A003 under the systematic-debugging ledger) owns the sort; this bullet points at it so an implementer reads the bins before it reports an environment problem as a code change or a code change as BLOCKED. The prohibition rides here as well as there because a dispatched implementer inherits no skill body and reaches the step only by opening the file. The four charters carry one text under the corpus rewrite's ruling 1.
+- passage: Sort the failure first by the classify step, Phase 0 of `skills/systematic-debugging/SKILL.md` under the kit plugin root, and never change working code to route around an environment problem.
+
 ## plugins/claude-kit/agents/implementer-opus.md
 
 This document is the charter for a scoped implementation agent at the Opus tier, dispatched to build exactly one Section of Work from an already-approved spec. It owns the moments that follow that dispatch: how the agent treats the brief it was handed, what it reads before writing (the spec section, the named style skills, the in-scope files and their siblings, with an outlining discipline for large and generated files), how narrowly it may change code and how it comments it, how it proves the work with a build and targeted tests run to completion inside its own turn without backgrounding through the tool parameter that would end that turn, the prohibition on committing or staging, and the single closing status it must report (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED) with what each one carries. It does not own design decisions, which stay with the spec, nor the commit model, which stays with the orchestrator. Load class: plan-run - the charter loads for the dispatched agent at the moment the orchestrator dispatches it, per the description's instruction to dispatch with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C062 and C063 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C062 and C063 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below). Amended on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` at `d0d590ec` (A005 below, the BLOCKED bullet's pointer at systematic-debugging's classify step).
 
 ### C001
 - key: Dispatch this agent under the name implementer-opus.
@@ -20764,11 +20773,20 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: keep
 - reason: Supersedes C013. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
 
+### A005
+- key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
+- class: pointer
+- source: plugins/claude-kit/agents/implementer-opus.md:40
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 9, 2026-09-26, the classify-first step the operator approved from the Supreme review, declared growth of about forty words.
+- verdict: keep
+- reason: The classify step (A003 under the systematic-debugging ledger) owns the sort; this bullet points at it so an implementer reads the bins before it reports an environment problem as a code change or a code change as BLOCKED. The prohibition rides here as well as there because a dispatched implementer inherits no skill body and reaches the step only by opening the file. The four charters carry one text under the corpus rewrite's ruling 1.
+- passage: Sort the failure first by the classify step, Phase 0 of `skills/systematic-debugging/SKILL.md` under the kit plugin root, and never change working code to route around an environment problem.
+
 ## plugins/claude-kit/agents/implementer-sonnet.md
 
 This document is the charter for the Sonnet-tier scoped implementation agent: it tells a dispatched agent how to build exactly one Section of Work from an approved spec that is mechanical or well-bounded (clear contract, an existing sibling to mimic, low integration risk). It owns the moments between that agent's dispatch and its final report: reading and validating the dispatch brief, reading the spec section and the named style skills, reading in-scope files and their siblings (including when to outline versus read whole), implementing surgically within section scope, writing comments that state current state, verifying with a real build and targeted tests run to completion inside the turn, leaving all changes unstaged, and choosing and shaping exactly one of the four end-of-report statuses (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED). Load class: `plan-run` - the charter is loaded by the agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C059 and C060 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C059 and C060 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below). Amended on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` at `d0d590ec` (A006 below, the BLOCKED bullet's pointer at systematic-debugging's classify step).
 
 ### C001
 - key: Answer to the agent name `implementer-sonnet` when dispatched.
@@ -21306,11 +21324,20 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - verdict: keep
 - reason: Supersedes C011. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
 
+### A006
+- key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
+- class: pointer
+- source: plugins/claude-kit/agents/implementer-sonnet.md:40
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 9, 2026-09-26, the classify-first step the operator approved from the Supreme review, declared growth of about forty words.
+- verdict: keep
+- reason: The classify step (A003 under the systematic-debugging ledger) owns the sort; this bullet points at it so an implementer reads the bins before it reports an environment problem as a code change or a code change as BLOCKED. The prohibition rides here as well as there because a dispatched implementer inherits no skill body and reaches the step only by opening the file. The four charters carry one text under the corpus rewrite's ruling 1.
+- passage: Sort the failure first by the classify step, Phase 0 of `skills/systematic-debugging/SKILL.md` under the kit plugin root, and never change working code to route around an environment problem.
+
 ## plugins/claude-kit/agents/implementer-haiku.md
 
 This document is the agent charter for `implementer-haiku`, a scoped Haiku-tier implementation agent that builds exactly one pure-transcription Section of Work from an approved spec by cloning an exact sibling file with the section's substitutions. It owns the moments in which that dispatched agent reads its brief and the named style skills, mirrors the sibling, confines its edits to the section, runs the self-surfacing gate commands to completion inside its own turn, leaves its work unstaged, and closes with exactly one of the four statuses DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT or BLOCKED. It governs escalation over guessing: any judgment call, missing brief field, or oversized or mismatched sibling is reported rather than resolved. Load class: `plan-run` - the charter is loaded by the dispatched agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template with its haiku-only fields filled.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C056 and C057 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C056 and C057 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below). Amended on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` at `d0d590ec` (A007 below, the BLOCKED bullet's pointer at systematic-debugging's classify step).
 
 ### C001
 - key: Dispatch this agent under the name `implementer-haiku`.
@@ -21817,6 +21844,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C013. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+
+### A007
+- key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
+- class: pointer
+- source: plugins/claude-kit/agents/implementer-haiku.md:39
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 9, 2026-09-26, the classify-first step the operator approved from the Supreme review, declared growth of about forty words.
+- verdict: keep
+- reason: The classify step (A003 under the systematic-debugging ledger) owns the sort; this bullet points at it so an implementer reads the bins before it reports an environment problem as a code change or a code change as BLOCKED. The prohibition rides here as well as there because a dispatched implementer inherits no skill body and reaches the step only by opening the file. The four charters carry one text under the corpus rewrite's ruling 1.
+- passage: Sort the failure first by the classify step, Phase 0 of `skills/systematic-debugging/SKILL.md` under the kit plugin root, and never change working code to route around an environment problem.
 
 ## plugins/claude-kit/agents/qa-verifier.md
 

@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the procedure for convening a read-only, multi-lens "design council" that pressure-tests competing approaches at a genuine architecture fork, built specifically against false convergence (models agreeing by capitulation rather than by evidence). It owns the moments of framing a design fork as an outcome plus candidate approaches, picking and dispatching the lens roster, running the blind first round, running the neutral facilitator's convergence verdict, running cross-examination rounds up to a cap, and delivering the synthesis and any unresolved fork to the operator for decision; it also owns the opt-in and cost-envelope gate for that spend. Its load class is `named-trigger`: the description states it is offered by the brainstorming skill when a decision is material and hard to reverse, and is directly invocable when the operator asks to convene the council, pressure-test an approach, or get multiple angles on a design before building, and it explicitly does not govern code review, non-code judgment calls, or a session stuck mid-execution.
 
-Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `6128340d` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Do not let the orchestrator judge convergence or act as a council member.
@@ -21,6 +21,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install, which adapted the blind-then-converge protocol from DheerG/swarms Converge and built every rule against false convergence; the seed's a8770b3 changed only pronouns.
 - verdict: keep
 - reason: The doer-is-not-judge separation is the skill's central defense and nothing mechanical enforces it; the hard-requirements copy (C037) retires so this bullet is the single statement.
+- passage: The orchestrator does not judge convergence and is not a council member.
 
 ### C002
 - key: Run the main session as orchestrator: frame the fork, dispatch agents, carry text between rounds, and present the result to the operator.
@@ -29,6 +30,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: No finding; the seat definition the rest of the procedure assumes.
+- passage: It frames the fork, dispatches agents, carries text between rounds, and presents the result to me.
+- flag: weak-reason
 
 ### C003
 - key: Use read-only `council-member` agents, one per lens, to research the repo and data, take positions, and engage each other across rounds.
@@ -37,6 +40,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: Picks the agent type the orchestrator dispatches; the read-only property is enforced for that type by plugins/claude-kit/hooks/readonly-agent-guard.js, so the word here is descriptive and the type name is what steers dispatch.
+- passage: **Council members** - read-only `council-member` agents, one per lens. They research the real repo and data, take positions, and engage each other across rounds.
 
 ### C004
 - key: Assume members start blank and put the lens and everything they need into the brief.
@@ -60,6 +64,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: The seat definition stays; the return contract it carries is stated again at step 3 (C023), where the orchestrator receives and checks the output, so the contract clauses leave this bullet and live once at line 32. Lands at line 16 (section 40's close) as "**Facilitator** - one read-only `design-facilitator` agent, neutral, separate from the orchestrator.", the seat definition alone; the return contract sits on line 32 under C023 with C038's flag folded in.
 - proposed: (via A011) Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
 - baseline-test: yes
+- passage: **Facilitator** - one read-only `design-facilitator` agent, neutral, separate from the orchestrator.
 
 ### C006
 - key: Keep the facilitator separate from the orchestrator so the operator's design partner never declares the debate settled.
@@ -79,6 +84,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install; re-grounded by 1d9c467 2026-08-15, the consult plan, which made "operator-present, never auto-run" the council's discriminator from the auto-convenable consult.
 - verdict: keep
 - reason: Operator-decision gate: the fork is the operator's to adjudicate and they must be present for the output, with a spend of up to three seats by three rounds behind it. The standing dispatch request does not reach it because this skill and the consult plan carve it out.
+- passage: Before dispatching anything, confirm I opted in, via the brainstorming offer or a direct request.
 
 ### C008
 - key: When invoked cold, restate the fork and the roster and get the operator's go before proceeding.
@@ -120,6 +126,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: Outcome framing is what lets the council weigh approaches the operator did not name; nothing enforces it and the compressions offered lose the example that makes it operable.
+- passage: State the decision as an **outcome**, what is true when done, plus the 2–N candidate approaches.
 
 ### C012
 - key: Frame by outcome because it widens the debate, while naming a solution pre-commits the argument.
@@ -128,6 +135,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: "Outcome" is glossed only abstractly; the 50ms-versus-Redis pair is what tells an orchestrator which side of the line a phrasing falls on, so the rule cannot be reliably obeyed without it.
+- passage: State the decision as an **outcome**, what is true when done, plus the 2–N candidate approaches. "Profile reads return under 50ms and skip the DB when cached" lets the council weigh caching against query optimization, while "add a Redis cache" pre-commits the argument. The default lenses are performance, maintainability/architecture, and risk-security, which reads `docs/security-model.md` if present. Swap a lens to fit the fork, such as a data-model lens on a schema decision, or an opposite-approach steelman when one option is the obvious favorite. Name the cost to me as seats × round cap, and proceed on my yes.
 
 ### C013
 - key: Default the lens roster to three: performance, maintainability/architecture, and risk-security, with the risk-security lens reading `docs/security-model.md` where it exists.
@@ -136,6 +144,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install; dc87c38 2026-06-28 removed the hardcoded counts from brainstorming so this line is the only place the default lives.
 - verdict: keep
 - reason: The framing step is where the roster is picked, so it owns the default; the cost-envelope copy (C042) retires.
+- passage: The default lenses are performance, maintainability/architecture, and risk-security, which reads `docs/security-model.md` if present.
 
 ### C014
 - key: Swap a lens to fit the fork, such as a data-model lens on a schema decision or an opposite-approach steelman when one option is the obvious favorite.
@@ -144,6 +153,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The bound on C013's default and the only statement of when a non-default lens is used; the member charter names the lenses but not the trigger.
+- passage: Swap a lens to fit the fork, such as a data-model lens on a schema decision, or an opposite-approach steelman when one option is the obvious favorite.
 
 ### C015
 - key: Name the cost to the operator as seats times round cap.
@@ -152,6 +162,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install; dc87c38 2026-06-28 made this skill the sizing authority by dropping the counts from brainstorming.
 - verdict: keep
 - reason: The only statement of what the cost is measured in; brainstorming's "name its cost" points here and C043's copy retires.
+- passage: Name the cost to me as seats × round cap
 
 ### C016
 - key: Proceed past framing only on the operator's yes.
@@ -160,6 +171,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: Operator-decision gate on this fork, roster and cost, distinct from the opt-in that admits the council at all; C008's cold-invocation go is this yes and folds here.
+- passage: and proceed on my yes.
 
 ### C017
 - key: Dispatch each council member separately and in parallel for round one.
@@ -168,6 +180,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: Separate dispatch is how blindness is achieved; brainstorming's bar on delegating the conversation does not reach it, since the council argues the fork and returns to the conversation (line 8).
+- passage: Dispatch each member separately and in parallel.
 
 ### C018
 - key: Put verbatim into each round-one brief the outcome, the candidate approaches, that member's lens, the repo paths and data worth reading, and the read-only constraint.
@@ -176,6 +189,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The brief contract the orchestrator composes from, and the single owner of it once C004 retires. The read-only item is now also enforced by plugins/claude-kit/hooks/readonly-agent-guard.js for the council-member type, so a later pass may drop that one field without loss.
+- passage: Each brief carries verbatim the outcome, the approaches, that member's lens, the repo paths and data worth reading, and the read-only constraint.
+- passage: Members inherit nothing else
 
 ### C019
 - key: Keep members from seeing each other's briefs or outputs during round one.
@@ -186,6 +201,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - landed: 970ecf1 section 40
 - reason: Blindness is the first false-convergence defense and nothing mechanical withholds a brief; the hard-requirements copy (C036) retires so step 2 is the single statement. Flipped to rewrite at section 40's close by C020's retire, which took the clause after the spaced hyphen: the sentence's words are unchanged and it now closes on a period.
 - proposed: Members must not see each other's briefs or outputs this round.
+- passage: they must not see each other's briefs or outputs this round.
 
 ### C020
 - key: Keep round one blind because blindness puts genuine divergence on the record before anyone anchors.
@@ -208,6 +224,8 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: Stays as the return contract and gains C041's one added clause, that an ungrounded assertion carries no weight, so the evidence bar is stated once at the step that receives the positions. Lands at line 28 (section 40's close) with the contract sentence word for word and C041's clause as its own sentence, "An ungrounded assertion carries no weight.", the two-sentence form taken on the writing-skills one-idea bar where the proposal says the sentence gains a clause.
 - proposed: (via A042) Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
 - baseline-test: yes
+- passage: Each returns a position grounded in evidence it actually read, plus its strongest objection to each alternative.
+- passage: An ungrounded assertion carries no weight.
 
 ### C022
 - key: Hand the facilitator all member positions after the round.
@@ -216,6 +234,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The hand-off that makes the neutral seat the judge; the charter states the receiving side and neither seat loads the other's document.
+- passage: Hand the facilitator all member positions.
 
 ### C023
 - key: Require the facilitator to return the agreement map, the attributed live disagreements, each dispute's crux, and a status of CONVERGED, ANOTHER_ROUND with a targeted question per member, or DEADLOCK.
@@ -227,6 +246,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: Becomes the single statement of the facilitator's return contract in this document, absorbing C038's soft-convergence flag; the orchestrator checks the output against this line and never loads the charter, so a pointer would drop it. Lands at line 32 (section 40's close) with the contract sentence word for word and the classification and the soft-convergence flag as two sentences after it, "It classes each resolved point as evidence-resolved or capitulation. It flags a member that caved without citing why as soft convergence rather than agreement.", the two-sentence form taken on the writing-skills one-idea bar where the proposal says the sentence gains one clause.
 - proposed: Line 32's contract sentence gains "with each resolved point classed as evidence-resolved or capitulation, and a member that caved without citing why flagged as soft convergence rather than agreement".
 - baseline-test: yes
+- passage: It returns the agreement map, the attributed live disagreements, each one's crux as the factual or value question that would settle it, and a status: CONVERGED, ANOTHER_ROUND with a targeted question per member, or DEADLOCK.
 
 ### C024
 - key: Treat a CONVERGED verdict after one round as suspect and check it is not just correlated models agreeing.
@@ -235,6 +255,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The orchestrator is the one seat that can send another round after the facilitator has signed, so its own instruction to distrust an instant CONVERGED stays beside the charter's.
+- passage: Treat a CONVERGED after one round as suspect, and check it is not just correlated models agreeing.
 
 ### C025
 - key: On ANOTHER_ROUND, re-dispatch the members the facilitator named.
@@ -243,6 +264,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The loop step; every clause of the paragraph is a distinct act except the statelessness aside (C027), which leaves.
+- passage: On ANOTHER_ROUND, re-dispatch the named members.
 
 ### C026
 - key: Re-dispatch a member as a fresh agent handed the full transcript.
@@ -253,6 +275,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - landed: 970ecf1 section 40
 - reason: States the re-dispatch form, which forecloses keeping members alive across rounds; obeyable without the equivalence argument that follows it. Flipped to rewrite at section 40's close by C027's retire, which took the clause after the spaced hyphen: the sentence's words are unchanged and it now closes on a period.
 - proposed: A re-dispatched member is a fresh agent handed the full transcript.
+- passage: A re-dispatched member is a fresh agent handed the full transcript.
 
 ### C027
 - key: Treat a fresh agent with the full transcript as identical to the same expert continuing, since the model is stateless, so nothing is lost.
@@ -272,6 +295,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The cross-examination brief contract on the composing side; the charter states the receiving side.
+- passage: Its brief carries its own prior position, the other positions, and the facilitator's question for it.
 
 ### C029
 - key: Require each member to engage the strongest objection aimed at it by conceding, rebutting with evidence, or revising, and to report what it conceded versus held.
@@ -280,6 +304,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The requirement the orchestrator's brief carries; the charter states the member's act and output shape. Compose versus act.
+- passage: It must engage the strongest objection aimed at it by conceding, rebutting with evidence, or revising, and report what it conceded versus held.
 
 ### C030
 - key: Run another facilitator pass after each cross-examination round.
@@ -288,6 +313,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The loop-back from step 4 to step 3; five words of control flow the procedure has no other statement of.
+- passage: Then run another facilitator pass.
 
 ### C031
 - key: Stop the rounds on CONVERGED, on DEADLOCK, or when the round cap is hit, defaulting to three rounds.
@@ -296,6 +322,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The stop logic at the step that acts on it and the single owner of the round default once C042 retires. The one recorded run (docs/archive/backlog-2026-Q3.md:32, 2026-07-31) converged in two rounds under this cap.
+- passage: Stop on CONVERGED, on DEADLOCK, or at the round cap, default three.
 
 ### C032
 - key: Present the facilitator's synthesis to the operator: the converged recommendation with its evidence and trade-offs, plus any unresolved fork stated prominently as the operator's decision with each option's optimization.
@@ -304,6 +331,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: Operator-decision gate: the design fork is the operator's, the doctrine's own example of a decision no seat makes; C039's value-trade-off restatement folds here.
+- passage: Present the facilitator's synthesis: any converged recommendation with its evidence and trade-offs, and prominently any unresolved fork, as my decision with what each option optimizes for.
 
 ### C033
 - key: When the council deadlocked or hit the cap, say so and show the standing positions rather than papering over it.
@@ -315,6 +343,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: Stays as the delivery act and absorbs C040's fixed return string "unresolved - standing positions follow", so the deadlock delivery is stated once where it is performed. Lands at line 40 (section 40's close) as the proposal's sentence word for word, "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus.", its semicolon kept as ruling A066 spelled it.
 - proposed: (via A066) Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
 - baseline-test: yes
+- passage: If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus.
 
 ### C034
 - key: Record the operator's decision and its rationale in the plan doc per the kit.
@@ -323,6 +352,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: Already the pointer form ("per the kit") at the doctrine's decision-record rule, which owns the dated form and the memory destination.
+- passage: Record my decision and its rationale in the plan doc, per the doctrine's Surface decisions in batches bullet.
 
 ### C035
 - key: Let the council inform the call and never make it; the operator decides.
@@ -331,6 +361,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install; 1d9c467 2026-08-15 leaned on it as the council's discriminator from the ruling consult.
 - verdict: keep
 - reason: The council's mandate limit and the gate the skill exists for; the consult rules, the council informs, and the consult plan wrote that distinction into this skill's description on purpose.
+- passage: The council informs the call; it never makes it.
 
 ### C036
 - key: Keep round one blind so divergence is captured before any cross-talk.
@@ -360,6 +391,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: The classification clause restates C005 and C023; the soft-convergence flag is the one clause stated nowhere else in this document and folds into step 3 (C023), so the orchestrator refuses a synthesis that counted soft agreement. Lands at section 40's close as the two sentences on line 32 recorded under C023, with item 3 of the defenses block gone and line 16 reduced to the seat definition under C005.
 - proposed: (via A011) Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
 - baseline-test: yes
+- passage: It classes each resolved point as evidence-resolved or capitulation. It flags a member that caved without citing why as soft convergence rather than agreement.
 
 ### C039
 - key: Escalate genuine value trade-offs to the operator and never auto-resolve them.
@@ -382,6 +414,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: Restates C033 and fixes the return string; the string folds into C033 at the delivery step and this list entry goes. The facilitator charter carries the seat-side bar on manufacturing convergence. Lands at section 40's close as the deadlock sentence on line 40 recorded under C033, with item 5 of the defenses block gone.
 - proposed: (via A066) Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
 - baseline-test: yes
+- passage: If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus.
 
 ### C041
 - key: Require every load-bearing claim to cite evidence the member actually read, and give ungrounded assertions no weight.
@@ -393,6 +426,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - reason: Restates C021's evidence bar, which the doctrine states for every session and the member charter states for the seat; the no-weight clause folds into C021 and this list entry goes. Lands at section 40's close as the closing sentence of line 28 recorded under C021, with item 6 of the defenses block gone.
 - proposed: (via A042) Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
 - baseline-test: yes
+- passage: An ungrounded assertion carries no weight.
 
 ### C042
 - key: Default the envelope to three seats and a maximum of three cross-examination rounds, with all members read-only.
@@ -424,6 +458,7 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: keep
 - reason: The only statement that a cut, cap or decline lands mid-run and is honored; brainstorming covers only the offer-time decline. Becomes the whole cost-envelope section.
+- passage: I can cut the roster, cap rounds, or decline at any point.
 
 ### C045
 - key: Run the design council on stable Claude Code, not on the experimental agent-teams harness.
@@ -432,3 +467,5 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install, which re-expressed the Converge protocol in the kit's own subagent dispatch idiom.
 - verdict: keep
 - reason: No finding; a present-tense property of the mechanism that sits with the MIT attribution the Provenance section must keep.
+- passage: It runs on stable Claude Code without the experimental agent-teams harness.
+- flag: weak-reason

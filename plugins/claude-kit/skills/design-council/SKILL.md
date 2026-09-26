@@ -5,44 +5,42 @@ description: "Convene a read-only, multi-lens design council to pressure-test co
 
 # Design Council
 
-Structured, evidence-grounded convergence for a design fork. Several lenses take independent positions, then argue them through a neutral facilitator until each disagreement is either resolved with evidence or handed to me as a clean choice. The point is to add design-stage adversariality - the kit reviews implementations from several angles and approaches from two, the blind read and the plan review - without replacing the conversation with me or my decision.
-
-The failure mode this is built against is **false convergence**: models are agreeable by default and will "agree" by capitulation if you let them. Every rule below exists to keep genuine disagreement visible until evidence - not politeness - settles it.
+Lenses argue a design fork through a neutral facilitator. Evidence settles each disagreement, never capitulation, or the disagreement reaches me as a clean choice.
 
 ## Roles
 
-- **Orchestrator** - the main session running this skill. Holds my context and intent. Frames the fork, dispatches agents, carries text between rounds, and presents the result to me. The orchestrator does not judge convergence and is not a council member.
-- **Council members** - read-only `council-member` agents, one per lens. Research the real repo/data, take positions, engage each other across rounds.
+- **Orchestrator** - the main session running this skill. It frames the fork, dispatches agents, carries text between rounds, and presents the result to me. The orchestrator does not judge convergence and is not a council member.
+- **Council members** - read-only `council-member` agents, one per lens. They research the real repo and data, take positions, and engage each other across rounds.
 - **Facilitator** - one read-only `design-facilitator` agent, neutral, separate from the orchestrator.
 
-## 0. Opt-in check
+## 0. Opt-in Check
 
-Before dispatching anything, confirm I opted in - via the brainstorming offer or a direct request.
+Before dispatching anything, confirm I opted in, via the brainstorming offer or a direct request.
 
-## 1. Frame (orchestrator + me)
+## 1. Frame
 
-State the decision as an **outcome** (what is true when it is done) plus the 2–N candidate approaches on the table. Outcome framing widens the debate - "profile reads return under 50ms and don't hit the DB when cached" makes the council weigh caching against query optimization; "add a Redis cache" pre-commits the argument. Pick the lens roster (default three): performance, maintainability/architecture, risk-security (reads `docs/security-model.md` if present). Swap a lens to fit the fork - a data-model lens on a schema decision, an opposite-approach steelman when one option is the obvious favorite. Name the cost to me (seats × round cap) and proceed on my yes.
+State the decision as an **outcome**, what is true when done, plus the 2–N candidate approaches. "Profile reads return under 50ms and skip the DB when cached" lets the council weigh caching against query optimization, while "add a Redis cache" pre-commits the argument. The default lenses are performance, maintainability/architecture, and risk-security, which reads `docs/security-model.md` if present. Swap a lens to fit the fork, such as a data-model lens on a schema decision, or an opposite-approach steelman when one option is the obvious favorite. Name the cost to me as seats × round cap, and proceed on my yes.
 
-## 2. Round 1 - blind independent positions
+## 2. Blind First Round
 
-Dispatch each member separately and in parallel. Each brief contains, verbatim (members inherit nothing): the outcome, the candidate approaches, that member's lens, the repo paths/data worth reading, and the read-only constraint. Members must not see each other's briefs or outputs this round. Each returns a position grounded in evidence it actually read (file:line, schema, real data), plus its strongest objection to each alternative. An ungrounded assertion carries no weight.
+Dispatch each member separately and in parallel. Each brief carries verbatim the outcome, the approaches, that member's lens, the repo paths and data worth reading, and the read-only constraint. Members inherit nothing else, and they must not see each other's briefs or outputs this round. Each returns a position grounded in evidence it actually read, plus its strongest objection to each alternative. An ungrounded assertion carries no weight.
 
-## 3. Facilitator pass
+## 3. Facilitator Pass
 
-Hand the facilitator all member positions. It returns: the map of agreement, the live disagreements (attributed), the crux of each (the factual or value question that would settle it), and a status - CONVERGED, ANOTHER_ROUND (with a specific targeted question per member), or DEADLOCK. It classes each resolved point as evidence-resolved or capitulation. It flags a member that caved without citing why as soft convergence rather than agreement. Convergence after one round is rare and suspect; treat an instant CONVERGED as a prompt to check it wasn't just three correlated models agreeing.
+Hand the facilitator all member positions. It returns the agreement map, the attributed live disagreements, each one's crux as the factual or value question that would settle it, and a status: CONVERGED, ANOTHER_ROUND with a targeted question per member, or DEADLOCK. It classes each resolved point as evidence-resolved or capitulation. It flags a member that caved without citing why as soft convergence rather than agreement. Treat a CONVERGED after one round as suspect, and check it is not just correlated models agreeing.
 
-## 4. Cross-examination rounds (until the facilitator stops)
+## 4. Cross-examination Rounds
 
-For each ANOTHER_ROUND, re-dispatch the named members. A re-dispatched member is a fresh agent handed the full transcript. Each cross-exam brief carries: the member's own prior position, the other positions, and the facilitator's targeted question for it. Each member must engage the strongest objection aimed at it - concede, rebut with evidence, or revise - and report what it conceded versus held. Then run another facilitator pass. Stop on CONVERGED or DEADLOCK, or when the round cap (default three) is hit.
+On ANOTHER_ROUND, re-dispatch the named members. A re-dispatched member is a fresh agent handed the full transcript. Its brief carries its own prior position, the other positions, and the facilitator's question for it. It must engage the strongest objection aimed at it by conceding, rebutting with evidence, or revising, and report what it conceded versus held. Then run another facilitator pass. Stop on CONVERGED, on DEADLOCK, or at the round cap, default three.
 
-## 5. Deliver to me
+## 5. Synthesis and Decision
 
-Present the facilitator's synthesis: the converged recommendation (if any) with the evidence and trade-offs behind it, and - prominently, never buried - any unresolved fork, framed as my decision with the options and what each optimizes for. If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus. I decide; record the decision and its rationale in the plan doc per the kit. The council informs the call; it never makes it.
+Present the facilitator's synthesis: any converged recommendation with its evidence and trade-offs, and prominently any unresolved fork, as my decision with what each option optimizes for. If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus. Record my decision and its rationale in the plan doc, per the doctrine's Surface decisions in batches bullet. The council informs the call; it never makes it.
 
-## Cost envelope
+## Cost Envelope
 
 I can cut the roster, cap rounds, or decline at any point.
 
 ## Provenance
 
-The blind-then-converge protocol is adapted from the *Converge* concept in DheerG/swarms (MIT). No code was copied; the mechanism is re-expressed in this kit's idioms - read-only subagent dispatch, doer≠reviewer separation, evidence-grounded claims, and a plan-doc decision record - and runs on stable Claude Code without the experimental agent-teams harness.
+The blind-then-converge protocol is adapted from the *Converge* concept in DheerG/swarms (MIT), with no code copied. It runs on stable Claude Code without the experimental agent-teams harness.
