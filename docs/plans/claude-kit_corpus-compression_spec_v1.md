@@ -1,6 +1,6 @@
 # The rule corpus is compressed to half its words, each rule re-expressed from its ledger with its meaning kept, one document per pull request
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR, one PR per section
 Created: 2026-09-25
 
@@ -267,3 +267,12 @@ Read the 49 caps' sum with the size tool, record it and the misses, install the 
 - `docs/plans/claude-kit_lean-kit_program_v1.md`, whose decisions 1, 2, 3 and 6 bind every section.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-26
+Section 1 is on branch `corpus-compression-s1`, PR #131, ready with auto-merge armed; its Chapter 1 lives on that branch and reaches this one at merge.
+Section 2 stage: blocked at the bake-off. The first drafter wave (run wf_10244f9b-6e7) failed before dispatch: the Workflow runtime reported agent type `claude-kit:corpus-drafter` not found, since this session's installed plugin (cache 032ef32cc207) predates section 1's charter. Nothing ran and nothing was spent.
+Done on this branch, not yet reviewed: six proposed probes under `test/probes/` (dispatched-agent-quiet-past-its-window, intake-gaps-in-a-handed-spec, source-down-with-a-neighbor-number, one-red-test-in-a-green-run, lane-choice-after-a-merge-touching-hooks, reviewers-under-a-conditional-dispatch-line); the Before-you-send line in all three copies; the dated ruling paragraph in all 23 ledger preambles. The moment map and the bake-off brief sit under `.kit/scratch/corpus-compression/` in the `.kit/wt-corpus-s2` worktree (doctrine-moments.md, bake-brief.md, bake-fable-args.json, bake-opus-args.json).
+Live dispatches: none.
+Gate baseline on this branch: the targeted lane (size-ratchet, doctrine-parity, output-style-parity, ledger-preamble-parity, probe-set) read 318 of 318, exit 0, on SCOTT-CLAUDE at 2026-09-26T01:20Z over origin/main ff34f619 plus these edits.
+Rulings adopted since the last boundary: none.
+Next action: once PR #131 merges, run `claude plugin update`, start a fresh session, merge origin/main into this branch, re-take the capacity reading, and launch the fable-low bake-off wave from `tools/corpus-compression/workflow.mjs` with bake-fable-args.json, then the opus-medium wave, recording the meter before and after each.

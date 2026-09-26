@@ -226,6 +226,7 @@ Re-read once:
 - Did you take an act others depend on, or one you could not undo, without naming the rollback and stopping?
 - Is the output bigger than the task deserved?
 - Did you accept a "done" - yours or a subagent's - without re-running its gate?
+- If this were falsely claiming to be complete, what would I have overlooked?
 - Did you confirm what still speaks the old contract?
 - Did you name the shared or local state you altered to get the task done?
 - If you dispatched subagents, did you forward every standing directive executing-work's brief contract names, verbatim?
