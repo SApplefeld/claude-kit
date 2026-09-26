@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the kit's branch-hygiene procedure: it tells a session how to sweep local branches and worktrees left over after Branch-and-PR efforts, and how to recover branches whose commits never reached the trunk. It owns three moments: deciding which local branches and Claude Code worktrees may be auto-deleted (the safe set and the protected set), running the reap-and-report procedure itself, and recovering a stranded post-merge branch onto a fresh recovery branch with a new PR before any delete. It also owns the optional remote-side companion setting. A session loads it as a `named-trigger`: the frontmatter says to use it when cleaning up leftover branches or worktrees, or when the SessionStart nudge flags reapable or stranded branches, with triggers listed for branch cleanup, reaping or pruning merged branches, recovering stranded post-merge commits, and worktree cleanup.
 
-Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `47e74f8f` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Sweep only branches and worktrees whose work has already landed, and leave everything else untouched.

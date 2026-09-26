@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the procedure for convening a read-only, multi-lens "design council" that pressure-tests competing approaches at a genuine architecture fork, built specifically against false convergence (models agreeing by capitulation rather than by evidence). It owns the moments of framing a design fork as an outcome plus candidate approaches, picking and dispatching the lens roster, running the blind first round, running the neutral facilitator's convergence verdict, running cross-examination rounds up to a cap, and delivering the synthesis and any unresolved fork to the operator for decision; it also owns the opt-in and cost-envelope gate for that spend. Its load class is `named-trigger`: the description states it is offered by the brainstorming skill when a decision is material and hard to reverse, and is directly invocable when the operator asks to convene the council, pressure-test an approach, or get multiple angles on a design before building, and it explicitly does not govern code review, non-code judgment calls, or a session stuck mid-execution.
 
-Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `6128340d` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Do not let the orchestrator judge convergence or act as a council member.

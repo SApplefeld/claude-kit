@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the operator's personal C# house style: it defines how C# source is laid out, commented, named, and organized, what the antipatterns are, and what must be true before C# work is called complete. It owns the moments of writing or modifying any C# code (services, handlers, helpers, MediatR notifications, models, DI registration, refactors), the moment of choosing between this style and a repository's own conventions or formatter contract, and the moment of outlining a large C# file to find one thing in it rather than reading it whole. Its load class is `named-trigger`: the frontmatter says to use it whenever writing or modifying any C# code, and to trigger on any C# work even when style is not named.
 
-Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below).
+Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `b524a1ca` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Load and apply this style whenever you write or modify any C# code, even when style is not mentioned.

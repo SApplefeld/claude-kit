@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the operator's personal T-SQL house style: the deployment idioms, layout rules, comment conventions, antipatterns, and a completion checklist for SQL work, plus a procedure exemplar and a recipe for outlining a large SQL file. It owns the moments in which a session writes or modifies any SQL (stored procedures, tables, functions, indexes, install or deployment scripts, ad-hoc queries), the moment a session decides whether a repository's own contract overrides the house style, the moment a session opens a large SQL file to find one thing, and the moment a session declares SQL work complete. Its frontmatter says to use it whenever writing or modifying any SQL, even when style is not named, so the load class is `named-trigger`: it is loaded before the act of writing or changing SQL rather than at session start or at every plan run.
 
-Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below).
+Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `0c092893` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Load and apply this T-SQL style before writing or modifying any SQL of any kind.

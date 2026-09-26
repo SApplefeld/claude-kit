@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the kit's root-cause debugging discipline: it defines a five-phase gated workflow (classify, reproduce, investigate, hypothesize and test, fix the root cause) plus an escalation rule for repeated failed fixes. It owns the moments where a session is investigating a bug, a failure, unexpected behavior, a failing test, or a production incident, and specifically the moment before any fix is proposed; it also owns the decision point after two failed fix attempts, where it directs a consult and a stop-and-report. Its load class is `named-trigger`: the frontmatter says to use it whenever investigating a bug or failure and BEFORE proposing any fix, naming triggers such as 'bug', 'broken', 'failing', 'why is this happening', error reports, and any situation where a previous fix attempt did not work, with the sole carve-out that it is skipped for trivial fixes whose cause is directly visible.
 
-Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `d0d590ec` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags, and A003 below is the classify-first step that section added.
 
 ### C001
 - key: Load and follow this debugging discipline whenever investigating a bug, failure, unexpected behavior, failing test, or incident, before proposing any fix.

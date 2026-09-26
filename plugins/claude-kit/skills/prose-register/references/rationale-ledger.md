@@ -1473,7 +1473,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 
 This document is the `prose-register` skill body: the recipe for applying the doctrine's structure bullets and checking them, the scaling that decides how much of the register a piece takes, the routing of a `Voice:` value to its reference, and the pointer at the tells catalog. It owns the moments of writing or reviewing any prose for a reader beyond a single passage and of any piece that names a voice, and it keeps out the rule (the doctrine's), the sentence bars (writing-skills') and the review procedure (the prose-reviewer charter's). Load class: named-trigger, per its description.
 
-Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec_v1.md` (`P` entries below).
+Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec_v1.md` (`P` entries below). Redrafted on 2026-09-26 by section 9 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `41e70e7b` with its fix round at `5288cfb5`, so every live entry's `passage:` line quotes the text at `5288cfb5` and the `flag:` lines record that pass's flags.
 
 ### P001
 - key: Hold the recipe, the scaling, the voice references and the tells catalog in this skill, and keep out the rule, the sentence bars and the review procedure, each owned elsewhere.
