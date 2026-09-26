@@ -1988,7 +1988,7 @@ test('SubagentStart matches agent: alone, on a payload carrying no other subject
 test('a dispatch of a read-only judgment seat receives no pointer, where a gate and an implementer do', () => {
     for (const type of ['blind-reviewer', 'adversarial-reviewer', 'security-reviewer',
         'performance-reviewer', 'consultant', 'blind-reader', 'prose-reviewer', 'council-member',
-        'design-facilitator', 'plan-reviewer', 'scope-adjudicator']) {
+        'design-facilitator', 'plan-reviewer', 'scope-adjudicator', 'corpus-drafter']) {
         const store = makeStore();
         try {
             writeRecord(store, 'seat-lore.md', { triggers: 'agent:' + type });

@@ -99,15 +99,15 @@ function denyAll(agentType, cases) {
     for (const [c, reason] of cases) assertDenied(agentType, c, reason);
 }
 
-test('all eleven judgment agents resolve to the strict class, namespaced or bare', () => {
+test('all twelve read-only agents resolve to the strict class, namespaced or bare', () => {
     for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'performance-reviewer',
         'council-member', 'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer',
-        'plan-reviewer', 'scope-adjudicator',
+        'plan-reviewer', 'scope-adjudicator', 'corpus-drafter',
         'claude-kit:adversarial-reviewer',
         'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
         'claude-kit:council-member', 'claude-kit:design-facilitator', 'claude-kit:consultant',
         'claude-kit:blind-reader', 'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer',
-        'claude-kit:scope-adjudicator']) {
+        'claude-kit:scope-adjudicator', 'claude-kit:corpus-drafter']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
 });
@@ -920,7 +920,7 @@ test('cp reads its destination from -t when the invocation carries one', () => {
 test('the governed agents are granted no file-writing tool', () => {
     for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer',
         'performance-reviewer', 'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
-        'blind-reader', 'prose-reviewer', 'plan-reviewer', 'scope-adjudicator']) {
+        'blind-reader', 'prose-reviewer', 'plan-reviewer', 'scope-adjudicator', 'corpus-drafter']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);

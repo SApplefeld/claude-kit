@@ -467,7 +467,7 @@ function strictSeatsFrom(libText) {
     return m[1].split('|');
 }
 
-const DENY_LIST_TITLE = 'all eleven judgment agents resolve to the strict class, namespaced or bare';
+const DENY_LIST_TITLE = 'all twelve read-only agents resolve to the strict class, namespaced or bare';
 const CONTAINING_NAME_TITLE = 'a type that merely contains a judgment agent name is not governed';
 const NO_WRITE_TOOL_TITLE = 'the governed agents are granted no file-writing tool';
 const EFFORT_PIN_TITLE = 'the reviewers, the consultant and the scope adjudicator pin the effort the skills cite as their frontmatter default';
