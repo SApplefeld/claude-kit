@@ -21865,6 +21865,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the tiering commit that created the haiku transcription tier ahead of a heavy-usage week, to hold pure-transcription sections off the expensive tiers.
 - verdict: keep
 - reason: The frontmatter name is what the harness dispatches on; no finding touches it.
+- passage: name: implementer-haiku
 
 ### C002
 - key: Use this agent to implement a single pure-transcription Section of Work from an approved spec, at the Haiku tier.
@@ -21873,6 +21874,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03 installed the description with the tier; a5e184b 2026-08-25 reworded its brief clause to point at the owning template.
 - verdict: keep
 - reason: This is the dispatch criterion the orchestrator reads out of the agent catalog, and the pure-transcription bound is what keeps judgment-bearing sections off this tier.
+- passage: Use to implement a single pure-transcription Section of Work from an approved spec
 
 ### C003
 - key: Dispatch this agent with a brief built from the executing-work skill's Dispatch Brief template with its haiku-only fields filled.
@@ -21881,6 +21883,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: a5e184b 2026-08-25 replaced an enumerated field list in the description with this pointer at the template that owns the list; the tier and its haiku-only fields date from 20cf885 2026-07-03.
 - verdict: keep
 - reason: A description is read from the catalog at dispatch time and can resolve no pointer at another agent's file, so each agent's description carries its own dispatch instruction. The haiku-only clause is the tier's precondition, not a restatement of the fable one.
+- passage: Dispatch with a brief built from the executing-work skill's Dispatch Brief template, its haiku-only fields filled.
 
 ### C004
 - key: Escalate any judgment call rather than guessing at it.
@@ -21889,6 +21892,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, which shipped the tier as pure transcription only with a single Critical review finding escalating the section to sonnet.
 - verdict: keep
 - reason: The bar is wider than the sibling charters' (any judgment call, not only a decision the spec does not cover) and that width is what defines the tier, so it cannot be folded into a sibling or dropped from the description the orchestrator reads.
+- passage: Escalates any judgment call rather than guessing.
 
 ### C005
 - key: Run this agent with the tools Read, Grep, Glob, Edit, Write and Bash.
@@ -21897,6 +21901,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the tier's creation.
 - verdict: keep
 - reason: Per-agent frontmatter configuration the harness reads to build the toolset; identical values in a sibling file are not one instruction stated twice.
+- passage: tools: Read, Grep, Glob, Edit, Write, Bash
 
 ### C006
 - key: Run this agent on the haiku model.
@@ -21905,6 +21910,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the cost-structure commit that pinned the tier.
 - verdict: keep
 - reason: The model pin is the tier; no finding touches it.
+- passage: model: haiku
 
 ### C007
 - key: Implement exactly one Section of Work from an approved spec.
@@ -21913,6 +21919,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the tier's creation.
 - verdict: keep
 - reason: A dispatched agent loads only its own charter, inherits no skills and can resolve no pointer, which the kit's own parity suite states twice (test/doctrine-parity.test.js:3562, :4996). The identical opening in a sibling charter is a deliberate copy, and the ownership map's remedy for a shared moment is a copy under a parity pin rather than a pointer.
+- passage: You implement exactly one Section of Work from an approved spec.
+- flag: stale
 
 ### C008
 - key: Act as a transcriber rather than a designer, reproducing the spec and the named sibling pattern faithfully with only the section's substitutions.
@@ -21921,6 +21929,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03; 7dafcdb 2026-07-15 records the transcriber framing as a preserved tier variant.
 - verdict: keep
 - reason: This is the tier discriminator: the sibling charters confine judgment to execution quality while this one holds none at all. Compressing it away would erase the only line separating the two tiers.
+- passage: You are a transcriber, not a designer: reproduce the spec and the sibling pattern your brief names faithfully, with only the section's substitutions.
 
 ### C009
 - key: Read before you write, assuming you know nothing beyond what the brief tells you or the files show you.
@@ -21929,6 +21938,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the tier's creation.
 - verdict: keep
 - reason: The fresh-context premise is a fact, not motivation, and the whole corpus's pinning strategy rests on it: an agent that inherits no skills and holds no resolvable pointer must read or guess.
+- passage: You start with a fresh context: you know nothing the brief does not tell you or the files do not show you, so read before you write.
 
 ### C010
 - key: Read the Dispatch Brief template in the executing-work skill's Section loop step 1 for the brief's field list.
@@ -21939,6 +21949,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: The pointer stands: each charter carries its own copy because no agent can inherit a sibling's, and deleting it would return the field list to four places. Only the sentence boundary moves, under ruling 17's first pick, the opus split: the ownership clause ends its sentence and the brief-is-its-instance clause is the next. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
+- passage: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
 
 ### C011
 - key: Treat the exact sibling file to clone and the self-surfacing gate command as the two haiku-only brief fields this tier cannot work without.
@@ -21947,6 +21958,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: a5e184b 2026-08-25 stated the two fields on the agent's side; 20cf885 2026-07-03 made them the tier's precondition.
 - verdict: keep
 - reason: Two actors, not one rule twice: executing-work tells the dispatcher what to write and when to re-band to sonnet, this line tells the receiving agent what it cannot start without.
+- passage: This tier cannot work without its two haiku-only fields: the exact sibling file to clone and the self-surfacing gate command.
 
 ### C012
 - key: Treat the section's `Tests:` line as a floor over the named contracts: extend it with what implementation reveals and never shrink it.
@@ -21979,6 +21991,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: The incident class is live, the rule is what produced the catch, and no machinery checks a brief's assertions. The duty stands in its own sentence. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
+- passage: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C015
 - key: Report NEEDS_CONTEXT immediately rather than improvising when something you need is missing.
@@ -21987,6 +22000,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03 installed it with the tier; a5e184b 2026-08-25 kept it when the field list moved to the template.
 - verdict: keep
 - reason: This is the tier's only exit from a brief it cannot execute, and it fires before any read begins, which is a different moment from the sibling-shaped escalations in Process step 2.
+- passage: If something you need is missing, especially the sibling, report NEEDS_CONTEXT immediately rather than improvising.
 
 ### C016
 - key: Read the spec section in full first.
@@ -21997,6 +22011,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: The haiku form drops the sibling charters' Approach-section clause on purpose, because a transcription section carries no design intent to read, and that tier variant stands. Ruling 17's third pick splits step 1's read sentence, so the spec read is its own sentence. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Read the spec section in full**.
+- passage: **Read the spec section in full**.
 
 ### C017
 - key: Read the style skill files named in your brief, such as csharp-style or sql-style.
@@ -22007,6 +22022,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: A subagent inherits no skills, so this is the only instruction that gets house style into the dispatched turn. Ruling 17's third pick makes the style read its own sentence, and the inheritance clause that followed it after a spaced hyphen takes the standalone sentence form ruling 1 gives all four charters. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Then **read the style skill files named in your brief** (csharp-style / sql-style). You do not inherit the main session's skills, and house style is not optional.
+- passage: Then **read the style skill files named in your brief** (csharp-style / sql-style).
+- passage: You do not inherit the main session's skills, and house style is not optional.
 
 ### C018
 - key: Honor each style skill's precedence rule.
@@ -22015,6 +22032,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 7dafcdb 2026-07-15, which shrank the four agents' style-precedence re-definition to this one sentence, leaving the definition with the doctrine and the style skills.
 - verdict: keep
 - reason: Already the pointer form, and already the product of one deliberate compression. A further hop through a sibling charter is unresolvable and points away from the owner.
+- passage: Honor each style skill's precedence rule.
 
 ### C019
 - key: Read the sibling named in your brief, read it whole, and mirror it exactly.
@@ -22023,6 +22041,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: ddd6c72 2026-08-23, the outline-first plan, which set the doctrine's outline bullet and each charter's counter-rule in one commit.
 - verdict: keep
 - reason: The whole read is the tier's job, and the parity pin that holds the outline chain names the sonnet, opus and fable charters and excludes this one by name because this one says the opposite (test/doctrine-parity.test.js:3954-3956).
+- passage: **Read the sibling named in your brief whole, and mirror it exactly.**
+- flag: stale
 
 ### C020
 - key: Match the sibling's layout, failure-mode breadth (catch scope, regex generality), and error and delete semantics, changing only the substitutions the section calls for.
@@ -22031,6 +22051,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: ddd6c72 2026-08-23; the mirroring precondition dates from 20cf885 2026-07-03.
 - verdict: keep
 - reason: The named dimensions are what this tier is actually for, and "follow its layout exactly" in the fable charter does not carry them. The executing-work lines that look like duplicates address the dispatcher writing the brief, not the agent executing it.
+- passage: Match its layout, failure-mode breadth (catch scope, regex generality), and error and delete semantics, changing only the substitutions the section calls for.
 
 ### C021
 - key: Never substitute an outline for reading the sibling whole at this tier.
@@ -22039,6 +22060,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: ddd6c72 2026-08-23, which installed the doctrine's outline-first bullet and this tier's absolute counter-bar together.
 - verdict: keep
 - reason: The apparent conflict with implementer-fable's outline-the-rest split is two intentionally different semantics scoped by tier, not a defect: a fable agent holds a large context and may split its read, a haiku agent cannot and escalates instead. The parity suite records the split by excluding this charter from the outline pin.
+- passage: No outline substitutes for that read at this tier,
 
 ### C022
 - key: Treat an outline as a tool for hunting one thing in a file, which cannot show the whole shape you are mirroring.
@@ -22047,6 +22069,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: ddd6c72 2026-08-23, installed in the same commit as the doctrine bullet it has to overrule.
 - verdict: keep
 - reason: This rationale stays in the document because the rule cannot be reliably obeyed without it: the doctrine's outline-first bullet reaches the dispatched agent through the machine's CLAUDE.md import and instructs the opposite move, and this clause is the only discriminator between the two.
+- passage: because an outline hunts one thing and cannot show the whole shape you mirror.
 
 ### C023
 - key: Report NEEDS_CONTEXT naming the sibling's length when the sibling is too long for you to hold whole.
@@ -22055,6 +22078,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The length is the number the orchestrator re-bands the section on, so naming it is operative rather than decorative. The fable charter's split-read path is that tier's answer to the same situation and does not contradict this one.
+- passage: Where the sibling is too long to hold whole, report NEEDS_CONTEXT naming its length.
 
 ### C024
 - key: Report NEEDS_CONTEXT when the sibling does not match the shape the section needs.
@@ -22063,6 +22087,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: A mismatched sibling is a judgment call, and this tier holds no judgment; without this line the cheapest agent in the kit decides a re-banding question that belongs to the orchestrator.
+- passage: Where it does not match the shape the section needs, report NEEDS_CONTEXT, since that is a judgment call.
 
 ### C025
 - key: Implement only the section, touching what the section requires and nothing else.
@@ -22073,6 +22098,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: The ownership map places the scope rule with the doctrine and names the implementer charters as carriers, because a dispatched agent reads no doctrine section at the moment it edits. Under ruling 1 the step label and the "Surgical changes" sentence fold into one sentence, the form the sibling charters carry, since the two stated one proposition twice. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Implement only the section**, touching what the section requires and nothing else:
+- passage: **Implement only the section**, touching what the section requires and nothing else:
 
 ### C026
 - key: Add no scope expansion, no abstraction, no improvements to adjacent code, and no placeholder logic.
@@ -22083,6 +22109,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: The haiku form drops "speculative" on purpose: this tier may add no abstraction at all, which is a real widening of the sibling bar. The words stand; the list now follows C025's colon, so it opens in lowercase. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: no scope expansion, no abstraction, no "improvements" to adjacent code, no placeholder logic.
+- passage: no scope expansion, no abstraction, no "improvements" to adjacent code, no placeholder logic.
 
 ### C027
 - key: Update every pin test your brief named to its new expected values.
@@ -22091,6 +22118,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, which applied the dispatch-brief kaizen: when a section changes a member of a counted cross-cutting set, the brief names the exact-count pin tests and their new values.
 - verdict: keep
 - reason: Incident-born, and the receiving half of a writer-and-reader pair whose other half sits in the brief; nothing mechanical updates a count pin.
+- passage: Update every pin test your brief named to its new expected values.
 
 ### C028
 - key: Write comments that state what the code does now and why, for a reader who never saw the work.
@@ -22099,6 +22127,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03; the rule itself is the doctrine's, and ownership-map.md row 66 names the implementer charters as its carriers.
 - verdict: keep
 - reason: The enumeration of what a comment may never say (the session, the task, the fix, the prior version) is the operative half, and it reaches the agent only here.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C029
 - key: Run the gate commands from your brief and verify with evidence.
@@ -22107,6 +22136,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07 rewrote step 4 across all four implementers after a live incident; the evidence duty dates from 20cf885 2026-07-03.
 - verdict: keep
 - reason: Running the brief's named gate commands rather than choosing targeted tests is the tier's whole point, so the sibling charters' wording is not interchangeable with this one.
+- passage: Run the gate commands from your brief.
 
 ### C030
 - key: Ensure the build passes and carry the output that proves done in your report.
@@ -22115,6 +22145,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07, per kaizen/archive/2026-08-07-implementer-wait-is-not-a-stop.md.
 - verdict: keep
 - reason: The kaizen brief that rewrote this step made it an acceptance criterion that the four files stay identical in this passage, so the identity is deliberate and a pointer would break it.
+- passage: The build must pass, and the output that proves done rides in your report.
+- flag: weak-reason
 
 ### C031
 - key: Run the gates in the foreground and stay in this turn until they exit.
@@ -22123,6 +22155,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; an implementer agent ended its turn three times awaiting its own background suite and burned about an hour.
 - verdict: keep
 - reason: Incident-born, the class is still live, and nothing mechanical stops an agent ending a turn on a running gate.
+- passage: Run those gates in the foreground and stay in this turn until they exit;
 
 ### C032
 - key: Where a run can exceed the 10-minute tool cap, background it and poll it to completion in the same turn with an `until` loop on the exit code or a completion marker.
@@ -22131,6 +22164,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The carve-out that makes the foreground rule executable against a real tool cap; without it the agent's only way past ten minutes is the parameter the next line bars.
+- passage: if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C033
 - key: Background the run at the shell, never with the Bash tool's `run_in_background` parameter.
@@ -22139,6 +22173,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07, per kaizen/archive/2026-08-07-implementer-wait-is-not-a-stop.md: the agent was obeying a tool, so the fix named the lever rather than restating the outcome.
 - verdict: keep
 - reason: This sentence is the incident fix itself. The Bash tool still ships the parameter and still advertises it as a notification, so the class recurs on every dispatch.
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 
 ### C034
 - key: Treat `run_in_background` as defined to end your turn and re-invoke you on exit, which converts a wait into a stop.
@@ -22147,6 +22182,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; the kaizen brief states that all four implementers already carried the outcome rule and that more prose saying the same thing would not have helped.
 - verdict: keep
 - reason: A rationale that stays because the rule cannot be obeyed without it. The agent is simultaneously reading a tool description that presents the parameter as a wait, and this clause is what overrules it.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
 
 ### C035
 - key: Redirect the run to a log, background it with `&`, then poll that log or an exit-code file with `until` in this turn.
@@ -22155,6 +22191,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; the kaizen brief required each charter to state the working mechanism concretely.
 - verdict: keep
 - reason: A haiku-tier agent cannot derive the recipe, and a rule that bars the only lever it knows without naming the replacement leaves it stuck.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C036
 - key: Never end your turn with a gate still running.
@@ -22163,6 +22200,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07 (the bar itself predates the incident and was found insufficient alone).
 - verdict: keep
 - reason: Insufficient alone is not the same as surplus; the bar is what the named lever and the recipe serve, and it is the sentence the report is judged against.
+- passage: Never end your turn with a gate still running:
 
 ### C037
 - key: Do not report DONE without the gate's real exit code.
@@ -22171,6 +22209,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: States as a bar on the report what the sibling charter states as the reason behind the turn-end rule, so the two are not restatements. The orchestrator has no other way to tell a run from a claim.
+- passage: and DONE without the gate's real exit code is not DONE.
 
 ### C038
 - key: Recognize as red flags phrases like "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", and "ending my turn while the gate completes".
@@ -22179,6 +22218,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; the kaizen brief closes the fix with "the red-flag phrases an agent writes immediately before doing it".
 - verdict: keep
 - reason: Classed as example but operative: C039's rule fires at the moment one of these is about to be written, so the phrases are the recognition trigger and the rule has no trigger without them.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes".
 
 ### C039
 - key: If you are about to write one of those red-flag phrases, stop, poll the gate here, and answer once.
@@ -22187,6 +22227,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The catch-yourself instruction the phrase list exists to arm; it is the last guard before the exact failure the incident produced.
+- passage: If you are about to write one of these, do not. Poll the gate here and answer once.
 
 ### C040
 - key: Do not commit or stage; leave your changes as unstaged edits.
@@ -22197,6 +22238,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: No machinery enforces this for an implementer: the read-only agent guard's roster covers the reviewer agents only (hooks/kit-agent-identity-lib.js:125), so the prose is the whole guard. The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C041's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
+- passage: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
+- flag: stale
 
 ### C041
 - key: Treat an empty index as the contract that keeps your half-finished work out of any commit you did not author.
@@ -22208,6 +22251,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - reason: A peer session's commit takes the index as it stands, so anything an implementer stages can land in a commit it did not author, a blast radius the prohibition alone does not name. Before this section the verdict was retire, as explanation the absolute prohibition did not need; ruling 1 restores the sentence the sonnet charter carried (sonnet C044), in the corrected form the next two sentences explain. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
 - baseline-test: yes
+- passage: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
+- flag: stale
 
 ### C042
 - key: End your report with exactly one status.
@@ -22216,6 +22261,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the tier's creation.
 - verdict: keep
 - reason: The report is the only channel back to the orchestrator, and the status is what it routes on; a status protocol stated in a document the agent never loads binds nobody.
+- passage: End your report with exactly one status:
 
 ### C043
 - key: Report DONE when the section is implemented and verified.
@@ -22224,6 +22270,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03.
 - verdict: keep
 - reason: The status vocabulary is a per-agent contract the orchestrator parses; each charter defines its own because no agent inherits a sibling's definitions.
+- passage: **DONE** - implemented and verified.
 
 ### C044
 - key: With DONE, list every file changed with a one-line summary and state how each acceptance criterion is satisfied, naming the verifying command or test.
@@ -22232,6 +22279,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03.
 - verdict: keep
 - reason: The report shape is what makes a DONE checkable without re-running the work, and the naming of the verifying command is the evidence half of that.
+- passage: List every file changed with a one-line summary, and state how each acceptance criterion is satisfied, naming the verifying command or test.
 
 ### C045
 - key: Report DONE_WITH_CONCERNS when implemented and verified but specific concerns remain, and list those concerns for the reviewer to weigh.
@@ -22240,6 +22288,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03.
 - verdict: keep
 - reason: The tier-specific example, a place the sibling and the section pulled apart, is the failure a transcription section actually produces and appears in no sibling charter.
+- passage: list the specific concerns the reviewer should weigh, such as a spec ambiguity you resolved or a place the sibling and the section pulled apart.
 
 ### C046
 - key: Report NEEDS_CONTEXT when the brief is missing something you need or the section requires a decision the spec does not cover.
@@ -22248,6 +22297,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 1d9c467 2026-08-15, the consult sections, which recast the four implementers' uncovered-decision report so the orchestrator can route it without a clarification round.
 - verdict: keep
 - reason: No finding touches it; it is the trigger definition the rest of the bullet hangs from.
+- passage: the brief is missing something you need, such as the sibling, a gate command or a value, or the section requires a decision the spec does not cover.
 
 ### C047
 - key: State the question precisely and stop; do not guess.
@@ -22256,6 +22306,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 1d9c467 2026-08-15; the no-guessing bar dates from 20cf885 2026-07-03 with the tier.
 - verdict: keep
 - reason: The bar is absolute and this tier holds no authority to resolve anything, so it stands as written, with C048's cost comparison and authority clause after it.
+- passage: State the question precisely and stop. **Do not guess.**
 
 ### C048
 - key: Weigh that a wrong guess costs a review round while a question costs one message, and no confidence transfers the authority to decide.
@@ -22267,6 +22318,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - reason: The cost comparison states a pipeline fact the fresh-context agent has no other source for, that a wrong guess costs a whole review round where a question costs one message, and it sits beside the authority clause, which reaches the agent confident enough not to believe it is guessing. For this tier the comparison also prices the mis-banding report C049 asks for. Before this section the rewrite cut the comparison as arithmetic that changes no act; ruling 1 restores it because the opus charter's copy was the true form (opus C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 - baseline-test: yes
+- passage: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 
 ### C049
 - key: Report the mis-banding itself when a decision-shaped question arrives in a transcription section.
@@ -22275,6 +22327,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 1d9c467 2026-08-15, which kept haiku's mis-banding rule and re-grounded it on the question's shape.
 - verdict: keep
 - reason: This is the tier's feedback loop: a decision-shaped question is evidence the banding decision was wrong, and the orchestrator only learns that if the agent says so.
+- passage: A decision-shaped question in a transcription section means the section was mis-banded, so report the mis-banding too.
 
 ### C050
 - key: State the question in four parts: the decision, the options you see, the evidence, and your lean as an instinct to test rather than a call you made.
@@ -22283,6 +22336,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 1d9c467 2026-08-15, installed in all four implementers so an uncovered decision routes without a clarification round-trip.
 - verdict: keep
 - reason: The four parts are the routing format, and "an instinct to test, not a call you made" is what stops a lean being read as the decision, which is the failure the shape exists to prevent.
+- passage: State the question in four parts: the decision, the options you see, the evidence, and your lean, an instinct to test rather than a call you made.
 
 ### C051
 - key: Report BLOCKED on an environment problem and state exactly what is missing.
@@ -22291,6 +22345,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03.
 - verdict: keep
 - reason: Separates an environment failure from a work failure so the orchestrator fixes the box rather than re-dispatching the section; the named instances are what the agent checks against.
+- passage: **BLOCKED** - environment problem (build broken before your change, missing dependency, missing tool).
+- passage: State exactly what is missing.
 
 ### C052
 - key: Never report DONE with a failing build or failing tests.
@@ -22299,6 +22355,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03, the tier's creation.
 - verdict: keep
 - reason: Nothing mechanical compares a reported status against a gate's exit code, so this sentence is the whole enforcement, and the cheapest tier is the one most prone to the failure.
+- passage: Never report DONE with a failing build or failing tests,
 
 ### C053
 - key: Never soften a failure into DONE_WITH_CONCERNS.
@@ -22307,6 +22364,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03.
 - verdict: keep
 - reason: Closes the escape hatch C052 would otherwise leave open, the adjacent status that reads as success; both bars are unenforced by any machinery.
+- passage: never soften a failure into DONE_WITH_CONCERNS.
 
 ### C054
 - key: Choose honesty over completion, since the reviewer reads the diff with fresh eyes and will find the gap.
@@ -22329,6 +22387,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - landed: 2b427ac section 4
 - reason: The sentence gives this charter the design bound the sibling charters open with, which ruling 17's second pick adds here. It takes the sonnet sentence's subject in a tier-true form and drops the reason clause, which grants judgment on execution quality, because C008 states this tier holds no judgment and step 2 routes every judgment call to NEEDS_CONTEXT. It sits before C008 and states the design half of the same bound. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: The spec owns the design, so no design change is yours to make.
+- passage: The spec owns the design, so no design change is yours to make.
 
 ### C056
 - key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
@@ -22337,6 +22396,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
 - verdict: keep
 - reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+- passage: Read its `## Goal` paragraph and its `## Intent` record where it carries one, since step 3's add-decision line is checked against them.
 
 ### C057
 - key: Where the work needs something that runs and the section text does not name it, report one add-decision line instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
@@ -22345,24 +22405,26 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
+- passage: Where the work needs a unit of behavior that runs and the section text does not name it, your report carries its add-decision line: what it changes, the Goal sentence, Intent clause or acceptance bullet it serves, whether it adds a mechanism, its size as a number, and what not building it costs.
+- passage: Where none of those three names it, return `NEEDS_CONTEXT` instead of building it.
 
 ### W001
 - key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:15
-- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C012. Designed copy of the marked region in the implementer-fable charter, W001 under that heading; held byte-identical by `test/doctrine-parity.test.js`. The "Two other fields" lead-in stays this charter's own and sits outside the markers.
+- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
 
 ### W002
 - key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:15
-- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C013. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 
 ### A007
 - key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
