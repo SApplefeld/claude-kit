@@ -44,7 +44,7 @@ Your `docs/` writes pass `docs-write-guard`, a PreToolUse hook that admits a mai
 
    An only-claim takes a third pass, since a second member joining falsifies it, not a change in the count. Hunt `only`, `sole`, `single`, `unique`, and the "the one X" spelling. The number-word pass lands on that "one" but reads it as a quantity rather than sole possession.
 
-   A denial takes a fourth pass. Hunt `never`, `nothing`, and each claim's own negation spelled out. Read every hit whose sentence asserts an absolute rather than a typical case. A new spelling of either class earns its own pass the same way.
+   A denial takes a fourth pass. Hunt `never`, `nothing`, and each claim's own negation spelled out. Read every hit whose sentence asserts an absolute rather than a typical case. The first two passes hunt counted or positional claims, and the third and fourth hunt absolute or exclusive claims. A new spelling of either class earns its own pass the same way.
 
    A pass keyed on a structural pattern over the class's shape, or on a class you enumerated completely, reports `clean` or its drift. A pass keyed on spellings you listed, over a class you can neither enumerate nor express as a pattern, reports `named members swept, class not`. That value is never a softer `clean`. It reports that the sweep stopped at your own list, which a `clean` would hide.
 
@@ -58,8 +58,8 @@ DOCS UPDATED:
 
 CLAIMS SWEPT: (REQUIRED - one line per claim swept, whatever its disposition, never only the falsified ones)
 - "<the claim as the library states it>" - searched: <terms> - <clean | drift in [Dn] | named members swept, class not>
-- counted or ordinal claim: searched: <digits/number-words/ordinals across the curated docs, plus set name + the same terms where the set is named>
-- absolute or exclusive claim: searched: <only/sole/single/unique/"the one" for an only-claim, plus never/nothing/the claim's own negation (e.g. "no session can") for a never-claim>
+- counted or ordinal claim: "<the claim>" - searched: <digits/number-words/ordinals across the curated docs, plus set name + the same terms where the set is named> - <clean | drift in [Dn] | named members swept, class not>
+- absolute or exclusive claim: "<the claim>" - searched: <only/sole/single/unique/"the one" for an only-claim, plus never/nothing/the claim's own negation (e.g. "no session can") for a never-claim> - <clean | drift in [Dn] | named members swept, class not>
 
 CLAIMS SWEPT: NONE  (only when you literally swept no claim, never folding in a `clean` or `named members swept, class not` line)
 

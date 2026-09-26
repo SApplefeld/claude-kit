@@ -33,7 +33,7 @@ If you mutate live state anyway, stop and say so rather than quietly repairing i
 ```
 BUILD: PASS | FAIL (command + relevant output lines)
 TESTS: PASS | FAIL - <passed>/<failed>/<skipped> (failing test names + first error line each)
-CONTENTION LANE: PASS | FAIL - <passed>/<failed>/<skipped> (as TESTS) | NONE DEFINED (what the brief said)
+CONTENTION LANE: PASS | FAIL - <passed>/<failed>/<skipped> (failing names + first error each) | NONE DEFINED (what the brief said)
 
 CRITERIA:
 [PASS|FAIL|UNVERIFIABLE] <criterion> - evidence: <one line; for UNVERIFIABLE, the reason plus its kind: environment or operator-only>

@@ -12437,13 +12437,13 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - passage: Where the doctrine, the ownership map or `skills/writing-skills/SKILL.md` is missing or unreadable from where you sit, say so and skip the surplus hunt entirely. Never substitute your own recollection of their bars.
 
 ### A008
-- key: When checking register and voice, judge each heading's topic, effect and plain words, and check it for at most five words, no period and no leading article.
+- key: When checking register and voice, judge each heading's topic, effect and plain words, check it for at most five words, no period and no leading article with the label-colon-value form allowed, and rate a case deviation Minor at most.
 - class: rule
 - source: plugins/claude-kit/agents/prose-reviewer.md:39
-- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 10, 2026-09-26, Decisions item 8's clause for the prose reviewer, declared growth of about twenty words.
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 10, 2026-09-26, Decisions item 8's clause for the prose reviewer, declared growth of about twenty words, landed at 53 words once review round 1 added the label-colon-value allowance and item 10's case severity.
 - verdict: keep
-- reason: The doctrine's heading bullet owns the rule; this clause names what the reviewer judges and what it checks mechanically, because the charter named headings nowhere and a dispatched reviewer inherits no doctrine text it is not pointed at. Plan item 8 records the operator's ruling on the traits and the bound.
-- passage: Judge that each heading names the topic a reader opens the section to check, names the effect rather than the part, and uses plain words. Check that it has at most five words, no period and no leading article.
+- reason: The doctrine's heading bullet owns the rule; this clause names what the reviewer judges and what it checks mechanically, because the charter named headings nowhere and the doctrine bullet states the rule without the checklist a reviewer runs against it. Plan items 8 and 10 record the operator's ruling on the traits and the bound.
+- passage: Judge that each heading names the topic a reader opens the section to check, names the effect rather than the part, and uses plain words. Check that it has at most five words, no period and no leading article, with the label-colon-value form allowed. Rate a deviation in heading case Minor at most.
 
 ## plugins/claude-kit/agents/adversarial-reviewer.md
 
@@ -12899,7 +12899,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: 6b7b384 2026-08-29, the round where a fixture stopped being evidence.
 - verdict: keep
 - reason: A copy pinned by a parity test keeps its copy: test/doctrine-parity.test.js:4855 holds the class sentence on three surfaces and the diagnosis sentence on both charters, and the round that produced them found the charters and the skill bounding the class differently.
-- passage: citing an artifact this effort authored as evidence of what a contract the effort does not own requires is a defect
+- passage: citing an artifact this effort authored as evidence of a contract the effort does not own is a defect
 - flag: stale
 
 ### C050
@@ -13635,7 +13635,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: f26619c 2026-09-08, the review-loop provenance plan's section 2, after a Major admitted to a fix round on severity alone turned a reviewer's request for a new mechanism into an unreviewed design; 6983398 2026-09-10 reworded the line with this sentence untouched.
 - verdict: keep
 - reason: The trace field is honest only if the reviewer cites the amended target, and no machinery checks which text a reviewer read.
-- passage: Cite that line over the spec file.
+- passage: Cite that line over the spec file when the two differ.
 
 ### T006
 - key: Treat a by-path read of the spec as returning the unamended text.
@@ -14629,7 +14629,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Kept as a sentence of its own. This is the clause that closes the four passes with their class rather than leaving them a finite list, which is the defect mode that section is named for.
-- passage: A new spelling of either class earns its own pass the same way.
+- passage: The first two passes hunt counted or positional claims, and the third and fourth hunt absolute or exclusive claims. A new spelling of either class earns its own pass the same way.
 
 ### C066
 - key: Name every claim you swept in the `CLAIMS SWEPT` block, whatever its disposition.
@@ -14778,7 +14778,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: A report field, not a second instruction to run the passes; deleting it loses what the report must show.
-- passage: - counted or ordinal claim: searched: <digits/number-words/ordinals across the curated docs, plus set name + the same terms where the set is named>
+- passage: - counted or ordinal claim: "<the claim>" - searched: <digits/number-words/ordinals across the curated docs, plus set name + the same terms where the set is named> - <clean | drift in [Dn] | named members swept, class not>
 
 ### C081
 - key: For an absolute or exclusive claim, record the searched terms as only/sole/single/unique/"the one", plus never/nothing/the claim's own negation for a never-claim.
@@ -14787,7 +14787,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28 for the spellings; 1d3197b 2026-08-29 for the line.
 - verdict: keep
 - reason: As C080, for the exclusivity class.
-- passage: - absolute or exclusive claim: searched: <only/sole/single/unique/"the one" for an only-claim, plus never/nothing/the claim's own negation (e.g. "no session can") for a never-claim>
+- passage: - absolute or exclusive claim: "<the claim>" - searched: <only/sole/single/unique/"the one" for an only-claim, plus never/nothing/the claim's own negation (e.g. "no session can") for a never-claim> - <clean | drift in [Dn] | named members swept, class not>
 
 ### C082
 - key: Write `CLAIMS SWEPT: NONE` only when you literally swept no claim at all, and never fold a `clean` or `named members swept, class not` result into it.
@@ -16130,7 +16130,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - provenance: b3ed504 2026-09-08, the charter's input contract, whose review rounds closed Majors that were all defects in that contract; reworded around at 6983398 2026-09-10 by the provenance plan's finishing rounds, which spliced the quoted-text clause into the same sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The three inputs and their two delivery forms are the contract executing-work and finishing-work dispatch on without restating it; the bullet split ruled at T006 to T008 leaves this sentence's content untouched.
-- passage: The plan's `## Goal` paragraph, its `## Intent` record where the plan carries one, every section's acceptance bullets, and its `## Out of Scope` list, quoted in the brief or given by path.
+- passage: The plan's `## Goal` paragraph, its `## Intent` record where the plan carries one, every section's acceptance bullets, and its `## Out of Scope` list, quoted in the brief or given by path with those sections named.
 
 ### T002
 - key: Where the brief quotes those sections, rule against the quoted text itself.
@@ -16207,7 +16207,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: Content unchanged; promoted to its own sentence in the bullet split, being the premise of the exclusion-governs precedence at T039. Lands as its own sentence, "Its negative half is as binding as its positive half.", split from the goal-path sentence at its comma. Section 2 of the goal-fit plan later extended that landed sentence, which now names the Intent record's not-done clauses and refused alternatives beside the `## Out of Scope` list.
 - proposed: Promote to its own sentence in the bullet split, content unchanged.
 - baseline-test: yes
-- passage: The negative half binds as hard as the positive: `## Out of Scope` with the Intent record's not-done clauses and refused alternatives.
+- passage: Its negative half binds as hard as the positive: `## Out of Scope` with the Intent record's not-done clauses and refused alternatives.
 
 ### T009
 - key: On the single-finding and design-stop shapes take provenance as the base ref plus the fix commits, or as fix-round capture paths sitting under `.kit/`.
@@ -16665,7 +16665,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - verdict: keep
 - reason: The record carries the operator's post-ship rulings by its own definition, and input 2 forbids a prior ruling on the question, so without this reading the charter both requires the judge to read a ruling and requires it to refuse the brief carrying one. The reading is the charter's own rather than a new carve-out: the frontmatter description has glossed the forbidden inputs as "no lean, no prior consult and no fix narrative" since `b3ed504`, and C042's kept why records input 2 as guarding against the framing that colored the question and the design story the session itself produced. An operator ruling made at design time is neither. The six inputs are therefore unchanged, as section 1's acceptance requires, and the statement sits on the list's lead and on the record-admission bullet rather than inside any of the six.
 - passage: A post-ship ruling reads on whichever half its words fall in, widening what is asked for or what is kept out.
-- passage: An operator ruling recorded in the `## Intent` record is part of the what, not this input.
+- passage: An operator ruling recorded in the `## Intent` record is part of the what, not this input, whatever question it bears on.
 
 ### T056
 - key: Name the relevance shape in the description: an advisory finding's relevance to the project's threat model or stated deployment, ruled into one of three buckets of its own (confirm, refuse, ask).
@@ -17015,7 +17015,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reader.md`).
 - verdict: rewrite
 - landed: 98b3f27 section 11
 - reason: Restated in the unpacked sequence with its bound intact. This is the one prohibition here the guard does not enforce, so it must keep the sentence saying so. Lands as "never run builds" in the sequence C022 records, with the kept sentence "the no-build instruction above stands on your discipline" after it, so "above" resolves.
-- passage: The read-only guard leaves builds and test runs open, so the no-build rule rests on your discipline.
+- passage: It denies write-shaped commands and leaves builds and test runs open, so the no-build rule rests on your discipline.
 
 ### C025
 - key: Treat the guard's open door to builds and test runs as its shape rather than permission, since your run contends with the orchestrator's suite over a shared binary.
@@ -17024,7 +17024,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reader.md`).
 - provenance: a5fce80 2026-08-18, which put both agents in the guard's strict class and recorded what that class leaves open.
 - verdict: keep
 - reason: The guard demonstrably permits builds and test runs, so without this sentence the permission reads as authorization; no machinery can withdraw a licence the machinery itself grants.
-- passage: Where the repository has one shared test binary or build output, your run would contend with the orchestrator's suite.
+- passage: Where the repository has one shared test binary or build output, your run would contend with the orchestrator's suite and block until it lets go.
 
 ### C026
 - key: When a command is denied, report the need in your final message instead of routing around the denial.
@@ -17034,7 +17034,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reader.md`).
 - verdict: rewrite
 - landed: 98b3f27 section 11
 - reason: Restated in the unpacked sequence, unchanged; this form names where the report rides, which the sibling charters do not. Lands as "When a command is denied, report the need in your final message instead of routing around it, since a denial is the guard working.", directly after the prohibitions.
-- passage: Report a denied command's need in your final message rather than routing around it.
+- passage: Report a denied command's need in your final message rather than routing around it, since a denial is the guard working.
 
 ### C027
 - key: Set your reach from the `Reader:` line, deciding by whether the persona holds this repository rather than by its job title.
@@ -17092,7 +17092,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reader.md`).
 - verdict: rewrite
 - landed: 98b3f27 section 11
 - reason: The bound stays whole with its carve-out; only the paragraph's density changes. It is the bar that keeps a repository-holding persona blind, so nothing in an unpacking may soften "whatever a document points at". Lands unchanged, its carve-out and "whatever a document points at" intact.
-- passage: Never open `docs/`, a spec, a plan, or a commit message on your own initiative, whatever a document points at, since the intent story lives there. A document you were handed is your subject wherever it lives.
+- passage: Never open `docs/`, a spec, a plan, or a commit message on your own initiative, whatever a document points at, since the intent story lives there. A document you were handed is your subject wherever it lives, and reading it, or grepping within it, is never the initiative this bars.
 
 ### C032
 - key: Confirm only that a step's referent exists, and never carry out what the step says to do.
@@ -17746,7 +17746,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 830ff28 2026-06-17 genericized the section from "these projects use" one vendor database to a conditional on the project, keeping the model's fingerprint so a reviewer can recognize it in a schema.
 - verdict: keep
 - reason: The surrounding definition (EXECUTE-only principal, RESTRICTED role with explicit DENYs, WITH EXECUTE AS) is what the schema confirmation is performed against, so the paragraph stays whole (A047; also A006, A007, A042, A044).
-- passage: Apply this section only where the project's docs/security-model.md or schema confirms a procedure-only data-access model. There the application's connection principal can EXECUTE a controlled set of procedures and nothing else, in some vendor databases through a RESTRICTED role with explicit DENYs over PUBLIC grants and WITH EXECUTE AS impersonation.
+- passage: Apply this section only where the project's docs/security-model.md or schema confirms a procedure-only data-access model. There the application's connection principal can EXECUTE a controlled set of procedures and nothing else. Some vendor databases enforce it through a RESTRICTED role with explicit DENYs over PUBLIC grants and WITH EXECUTE AS impersonation.
 
 ### C030
 - key: Require every procedure granted to the application principal to strongly type its parameters, validate at entry, and expose only the operation it names.
@@ -19274,7 +19274,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 86461d1 2026-08-07, after all three code reviewers said never run builds and then said the hook leaves builds deliberately open, which read as permission.
 - verdict: keep
 - reason: It bounds the rule rather than explaining it: it marks which half of the read-only contract nothing enforces, and without it a permitted command reads as a permitted act. That is the exact incident, and it recurs on every dispatch.
-- passage: A kit hook denies write-shaped commands but leaves builds and test runs open, so the no-build rule rests on you. On a shared test binary or build output, your run contends with the orchestrator's suite.
+- passage: A kit hook denies write-shaped commands but leaves builds and test runs open, so the no-build rule rests on you. On a shared test binary or build output, your run contends with the orchestrator's suite and blocks until it lets go.
 - flag: weak-reason
 
 ### C026
@@ -20364,7 +20364,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the order and the distillation are C015's.
 - verdict: keep
 - reason: The order runs what, why, how. The Intent is read before the Approach so the seat holds what the operator asked for and refused before it reads the design that answers it, which is what the one-sentence distillation is written from.
-- passage: 1. Read `## Goal`, then `## Intent` for what the operator asked for and refused, then `## Approach`, then `## Decisions` where present, then `## Assumptions`. Stop when you can state in one sentence what must be true of the tree when the plan is done.
+- passage: 1. Read `## Goal`, then `## Intent` for what the operator asked for, what done does not need, and what was refused, then `## Approach`, then `## Decisions` where present, then `## Assumptions`. Stop when you can state in one sentence what must be true of the tree when the plan is done.
 
 ### C071
 - key: Treat the Goal paragraph together with the `## Intent` record as the statement of intent you hold, and the Goal alone where the plan carries no record.
@@ -20669,7 +20669,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: ddd6c72 2026-08-23, whose consult found that language-scoped knowledge cannot live in a language-agnostic surface, so the anchors moved to csharp-style and sql-style.
 - verdict: keep
 - reason: This is the far end of the two-ended pin: the bullet routes, the routed-to sections exist, and the charters still carry their route. Deleting it breaks the chain from the charter end.
-- passage: outline it first from the Outlining heading of the style skills your brief names.
+- passage: outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C027
 - key: For a language no style skill covers, grep that language's declaration and section markers with line numbers, then read the range they name.
@@ -20706,7 +20706,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: ddd6c72 2026-08-23, the second of the two things an outline cannot do, both of which fail quietly.
 - verdict: keep
 - reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline rule would waste the read; this is a carve-out on C025 and stays with it.
-- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name instead of outlining.
+- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name where you have it, instead of outlining.
 
 ### C031
 - key: Implement only the section, touching what the section requires and nothing else.
@@ -21337,7 +21337,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, the outline-first plan; pinned at both ends so the doctrine bullet and the surfaces that defer to it cannot drift apart.
 - verdict: keep
 - reason: A copy pinned by a parity test keeps its copy: test/doctrine-parity.test.js asserts this file still carries the phrase "hunting for one thing in a file past roughly 1,000 lines", matched on the clause rather than the bare word. Deleting or rewording it turns that lane red.
-- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first from the Outlining heading of the style skills your brief names.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C026
 - key: For outlining anchors, read the Outlining heading in the style skills named in your brief.
@@ -21346,7 +21346,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, whose consult concluded that language-scoped knowledge cannot live in a language-agnostic surface, so the anchors went to csharp-style and sql-style and this line routes to them.
 - verdict: keep
 - reason: Already the pointer form the ownership map prescribes; the owner is the style skills.
-- passage: outline it first from the Outlining heading of the style skills your brief names.
+- passage: outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C027
 - key: For a language no named style skill covers, grep that language's declaration and section markers with line numbers, then read the range they name.
@@ -21373,7 +21373,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline rule has to be excepted here or it wastes the read.
-- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name instead of outlining.
+- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name where you have it, instead of outlining.
 
 ### C030
 - key: Implement only the section, touching what the section requires and nothing else.
@@ -21949,7 +21949,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: This exact phrase is what test/doctrine-parity.test.js:3954 reads in this file. Reword it and the pin reds; the pin exists because a deletion at either end of the chain is otherwise invisible.
-- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first from the Outlining heading of the style skills your brief names.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C023
 - key: Use the outlining anchors under the Outlining heading of the style skills named in your brief when outlining a file in their language.
@@ -21958,7 +21958,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23, which ruled that language-scoped knowledge cannot live in a language-agnostic surface and moved the anchors into csharp-style and sql-style.
 - verdict: keep
 - reason: A pointer that resolves, because the brief names the style skills' file paths; it is the routing half of the decision that kept a weaker re-derived pattern set out of the doctrine.
-- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first from the Outlining heading of the style skills your brief names.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C024
 - key: For a language no named style skill covers, grep that language's declaration and section markers with line numbers, then read the range they name.
@@ -21985,7 +21985,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline is worthless there; the `<auto-generated>` marker is the recognizer that makes the rule actionable.
-- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name instead of outlining.
+- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name where you have it, instead of outlining.
 
 ### C027
 - key: Implement only the section, touching what it requires and nothing else.
@@ -23349,7 +23349,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`). Amended on 202
 - provenance: cceff11 2026-08-31, the carrier-gap section that added the line.
 - verdict: keep
 - reason: test/doctrine-parity.test.js asserts this line's presence, its failure message saying the agent running the handoff gate would otherwise have nowhere to report the lane and the omission would read as a clean pass.
-- passage: CONTENTION LANE: PASS | FAIL - <passed>/<failed>/<skipped> (as TESTS) | NONE DEFINED (what the brief said)
+- passage: CONTENTION LANE: PASS | FAIL - <passed>/<failed>/<skipped> (failing names + first error each) | NONE DEFINED (what the brief said)
 
 ### C046
 - key: Report a `CRITERIA:` section listing each criterion tagged PASS, FAIL or UNVERIFIABLE with one line of evidence, and for UNVERIFIABLE the reason plus its kind.
@@ -23658,7 +23658,7 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`). Amended by `doc
 - provenance: 94e4ae5 2026-08-15, the same mandate bullet.
 - verdict: keep
 - reason: This is what keeps the escalation small: without the ruling-down step the whole tangle reaches the operator, which is the cost the consult exists to avoid.
-- passage: Rule a mixed question down to its small real fork and send up only that, apart from your ruling.
+- passage: Rule a mixed question down to its small real fork. Send up only that fork, cleanly separated from what you ruled.
 - flag: weak-reason
 
 ### C025
@@ -24126,7 +24126,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: d99a2b2 2026-07-24 installed "a kit hook enforces this mechanically" across the five judgment agents; aec7d7f 2026-07-25 corrected it to the no-write half after the finishing reviews found the sentence overclaimed, since the host paragraph forbids builds and the hook deliberately allows them.
 - verdict: keep
 - reason: It reads as rationale but it is the correction of a documented wrong reading, and it is what stops the agent inferring that anything the hook permits is permitted; the guard at plugins/claude-kit/hooks/readonly-agent-guard.js does leave dotnet build, dotnet test and node --test open, so the prose and the machinery agree and both are needed.
-- passage: A kit hook denies write-shaped shell commands and leaves builds and test runs open, so what it allows is not thereby allowed.
+- passage: A kit hook denies write-shaped shell commands and leaves builds and test runs open. An open build is still forbidden to you.
 
 ### C012
 - key: Treat a command denial as the guard working, and report the need in your final message instead of routing around it.

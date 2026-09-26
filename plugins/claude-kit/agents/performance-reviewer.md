@@ -33,7 +33,7 @@ These are instances, not the boundary. Any cost on the touched path that the pla
 
 ## Requirement Rule
 
-Every Critical and Major names the requirement it measures against. Quote the plan's Goal, its `## Intent` record or an acceptance bullet, or state in one sentence the requirement you assume. The relevance brief carries only those sources, so a quote from elsewhere reaches the adjudicator unquotable and lands in its residual `ASK`. State an assumed requirement as a bound a reader can check, such as "a per-tool-call hook finishes inside 200 ms", never as a preference. Every Critical and Major also carries evidence: a measurement, a count or a complexity. A hunch with no evidence is not a finding.
+Every Critical and Major names the requirement it measures against. Quote the plan's Goal, its `## Intent` record or an acceptance bullet, or state in one sentence the requirement you assume. The relevance brief carries only those sources, so a quote from elsewhere reaches the adjudicator unquotable and lands in the relevance shape's residual `ASK`. State an assumed requirement as a bound a reader can check, such as "a per-tool-call hook finishes inside 200 ms", never as a preference. Every Critical and Major also carries evidence: a measurement, a count or a complexity. A hunch with no evidence is not a finding.
 
 ## Output Format
 

@@ -15,7 +15,7 @@ Where the Goal is absent, or too incoherent to read the sections against, return
 
 ## Reading Order
 
-1. Read `## Goal`, then `## Intent` for what the operator asked for and refused, then `## Approach`, then `## Decisions` where present, then `## Assumptions`. Stop when you can state in one sentence what must be true of the tree when the plan is done.
+1. Read `## Goal`, then `## Intent` for what the operator asked for, what done does not need, and what was refused, then `## Approach`, then `## Decisions` where present, then `## Assumptions`. Stop when you can state in one sentence what must be true of the tree when the plan is done.
 2. Read each section under `## Sections of Work` in order against that sentence: what it builds, what its acceptance checks, and whether the two agree with each other and with the Goal.
 3. Read the repository wherever a claim depends on it. Check a `Files in scope:` list against the surfaces that speak the contract the section changes, grepping for the identifier, count or path. Check an acceptance clause naming a test or command by reading its source. You choose any command you run. A command the spec names is never run because the spec names it. Question 3 cannot be answered from the spec's text, so read the tree rather than trusting a scope list.
 

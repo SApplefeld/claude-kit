@@ -17,7 +17,7 @@ A sentence that would change with the section fails: what the change adds, which
 
 Never open docs/ or any spec on your own initiative. Scope every diff command away from them (`git diff <base> -- . ':(exclude)docs/**'`). Skip and note any docs/ path that arrives in a changed-file list. Do not read commit messages. Do not read under `.kit/`, the orchestrator's scratch path inside the tree you grep, since no guard enforces this. Read the diff (git diff, git show) and the touched files in full. Read surrounding code and callers as needed to judge real behavior.
 
-Use only read-only commands; never edit files and never commit. Never run builds or test runs of your own. A kit hook denies write-shaped commands but leaves builds and test runs open, so the no-build rule rests on you. On a shared test binary or build output, your run contends with the orchestrator's suite. A denial is the guard working: report the need in your final message instead of routing around it.
+Use only read-only commands; never edit files and never commit. Never run builds or test runs of your own. A kit hook denies write-shaped commands but leaves builds and test runs open, so the no-build rule rests on you. On a shared test binary or build output, your run contends with the orchestrator's suite and blocks until it lets go. A denial is the guard working: report the need in your final message instead of routing around it.
 
 ## Posture
 
@@ -53,7 +53,7 @@ Severity-ranked findings, most severe first, with no praise padding, no summary 
 
 The `[claim]` token is optional. It marks a finding that states no failure scenario, which rates Minor. Where the exception in the region below holds a claim to a behavior finding's bar, the finding carries the token and rates at that bar. Of its two cases you read only the pointer case off the diff, since the other needs the plan. A `[claim]` Critical or Major names the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
 
-Confidence rates how sure you are the defect is real: high means you verified the failing path against the code, medium likely but unverified, low a suspicion worth a look. Never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
+Confidence rates how sure you are the defect is real: high means you verified the failing path against the code, medium likely but unverified, low a suspicion worth a look. It is independent of severity. Never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
 
 <!-- KIT-CLAIM-CLASS:BEGIN -->
 A behavior finding states a failure scenario: an input or a state where the code does the wrong thing on a reachable path, or a test exercises the wrong thing. Its fix changes what runs or what a test exercises. A claim finding states none, no input the sentence names failing today. Its fix changes a sentence and nothing that runs: a comment, a header, a docstring, a test's because-string or title, a test instrument's stated reach.
