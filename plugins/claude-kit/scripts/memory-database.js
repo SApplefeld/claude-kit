@@ -1032,6 +1032,24 @@ const SEARCH_SCHEMA_VERSION = 3;
 // scan that does not ask names no such parameter, and is served on any host.
 const NEAREST_ARCHIVED_SCHEMA_VERSION = 4;
 
+// The schema version whose mem.usp_Search takes @p_Segment and @p_Tag, and the
+// floor a search asking for either stands down below.
+//
+// Both parameters narrow the population the search ranks, so a lower host,
+// which has neither and refuses a batch naming one, is never sent a scoped
+// call: an answer over every visible row handed back in its place is the
+// fleet's records under a caller's own-segment question, which is exactly
+// what the cut exists to prevent. A search asking for neither names neither
+// parameter and is served on any host at SEARCH_SCHEMA_VERSION or later.
+const SCOPED_SEARCH_SCHEMA_VERSION = 6;
+
+// The widths mem.usp_Search declares @p_Segment and @p_Tag at. The batch
+// declares its variables at the same widths, and a longer value would be cut
+// there silently and then match a different segment or tag, so queryHost
+// refuses one before anything is sent.
+const SEARCH_SEGMENT_CAP = 400;
+const SEARCH_TAG_CAP = 200;
+
 // The interval a cosine distance can occupy, which is what a distance crossing
 // this boundary is held to. Two vectors' cosine similarity lies in [-1, 1], so
 // the distance the server computes lies in [0, 2]. A value outside it is not a
@@ -1081,34 +1099,56 @@ function probeHost(config, options) {
 // string this function derives rather than from the caller's own number, and the
 // archived flag is the literal 1 this function chooses when `includeArchived` is
 // exactly true, never a value the caller supplied. The model identity takes
-// textLiteral, the screen the config read already held it to.
+// textLiteral, the screen the config read already held it to. A search's
+// segment and tag ride the payload beside the text, since a segment may run to
+// SEARCH_SEGMENT_CAP characters of any script and textLiteral takes neither.
 //
 // The flag is named only where it is asked for. Its default is 0, so leaving it
 // out asks the same question, and a host below NEAREST_ARCHIVED_SCHEMA_VERSION
 // has no such parameter and refuses a call that names it: a nearest scan that
-// does not ask keeps a batch every host with the procedure answers.
-function queryBatch(procedure, vector, text, limit, model, includeArchived) {
+// does not ask keeps a batch every host with the procedure answers. A search's
+// segment and tag follow the same rule: each is in the payload, declared and
+// named only where `scope` carries it as a non-empty string, so a search naming
+// neither is the batch a host at SEARCH_SCHEMA_VERSION answers.
+function queryBatch(procedure, vector, text, limit, model, includeArchived, scope) {
     const modelLiteral = textLiteral('@Model', model);
     if (modelLiteral === null) return null;
     const bounded = Math.max(1, Math.min(QUERY_LIMIT_MAX, Math.floor(limit)));
+    const asked = (value) => procedure === 'usp_Search' && typeof value === 'string' && value !== '';
+    const segment = scope && asked(scope.segment) ? scope.segment : null;
+    const tag = scope && asked(scope.tag) ? scope.tag : null;
+    const payload = { vector, text: queryHead(text) };
+    if (segment !== null) payload.segment = segment;
+    if (tag !== null) payload.tag = tag;
     const argumentList = procedure === 'usp_Nearest'
         ? '@p_Vector = @QueryVector, @p_Limit = @Limit, @p_ModelIdentity = @Model'
             + (includeArchived === true ? ', @p_IncludeArchived = 1' : '')
         : '@p_QueryText = @QueryText, @p_QueryVector = @QueryVector,'
-            + ' @p_Limit = @Limit, @p_ModelIdentity = @Model';
-    return [
+            + ' @p_Limit = @Limit, @p_ModelIdentity = @Model'
+            + (segment !== null ? ', @p_Segment = @Segment' : '')
+            + (tag !== null ? ', @p_Tag = @Tag' : '');
+    const lines = [
         ';SET NOCOUNT ON',
-        payloadLiteral('@Query', { vector, text: queryHead(text) }),
+        payloadLiteral('@Query', payload),
         ';DECLARE @QueryVector VECTOR(' + EMBED_VECTOR_DIMENSIONS
             + ') = CAST(JSON_QUERY(@Query, \'$.vector\') AS VECTOR('
             + EMBED_VECTOR_DIMENSIONS + '))',
-        ';DECLARE @QueryText NVARCHAR(' + QUERY_TEXT_CAP + ') = JSON_VALUE(@Query, \'$.text\')',
+        ';DECLARE @QueryText NVARCHAR(' + QUERY_TEXT_CAP + ') = JSON_VALUE(@Query, \'$.text\')'
+    ];
+    if (segment !== null) {
+        lines.push(';DECLARE @Segment NVARCHAR(' + SEARCH_SEGMENT_CAP + ') = JSON_VALUE(@Query, \'$.segment\')');
+    }
+    if (tag !== null) {
+        lines.push(';DECLARE @Tag NVARCHAR(' + SEARCH_TAG_CAP + ') = JSON_VALUE(@Query, \'$.tag\')');
+    }
+    lines.push(
         ';DECLARE @Limit INT = ' + String(bounded),
         modelLiteral,
         ';DECLARE @Answer TABLE ( [Json] NVARCHAR(MAX) NULL )',
         ';INSERT INTO @Answer ( [Json] ) EXEC mem.' + procedure + ' ' + argumentList,
         ';SELECT \'' + RESULT_TAG + '\' + COALESCE([Json], \'null\') FROM @Answer'
-    ].join('\n');
+    );
+    return lines.join('\n');
 }
 
 // The rows of a query answer, as the array the procedure's own FOR JSON built.
@@ -1205,7 +1245,10 @@ function rankOf(value) {
 // answers: the hybrid search for a query a person typed, the nearest scan for a
 // record whose own text is the query. `includeArchived`, exactly true, asks the
 // nearest scan to rank archived records beside live ones; it means nothing to
-// the hybrid search, which serves them already.
+// the hybrid search, which serves them already. `segment` and `tag`, each a
+// non-empty string, ask the hybrid search to rank only that project segment's
+// records, or only records carrying that tag; an empty string or any other
+// value asks for neither, and the nearest scan takes neither.
 //
 // EVERY VECTOR THAT REACHES THE HOST IS ONE THE HOST'S OWN EMBEDDER MADE. The
 // local index's model is a different model at 384 dimensions, and its vectors
@@ -1239,6 +1282,26 @@ async function queryHost(options) {
         .filter((t) => typeof t === 'string' && t.trim() !== '');
     if (texts.length === 0) return { ok: true, lists: [] };
     const limit = Number.isInteger(opts.limit) && opts.limit > 0 ? opts.limit : 10;
+
+    // The scope a search asks for, each part null where it is not asked. A
+    // value past the width the procedure declares would be cut in the batch's
+    // own declaration and then match a different segment or tag than the one
+    // asked for, so it is refused here, before the probe, with nothing sent.
+    const scopedValue = (value) => (mode === 'search' && typeof value === 'string' && value !== ''
+        ? value : null);
+    const scope = { segment: scopedValue(opts.segment), tag: scopedValue(opts.tag) };
+    const scoped = scope.segment !== null || scope.tag !== null;
+    for (const [what, value, cap] of [['segment', scope.segment, SEARCH_SEGMENT_CAP],
+        ['tag', scope.tag, SEARCH_TAG_CAP]]) {
+        if (value !== null && value.length > cap) {
+            return {
+                ok: false,
+                standDown: 'refused',
+                detail: 'the search ' + what + ' runs to ' + value.length + ' characters where the'
+                    + ' shared search reads at most ' + cap + ', so no query was sent'
+            };
+        }
+    }
 
     // The run's one deadline and the two questions every call below asks of it,
     // publish's own shape: whether the call may start at all, and what clock it
@@ -1291,6 +1354,16 @@ async function queryHost(options) {
                 detail: 'the memory database reports ' + found + ' where the shared search needs'
                     + ' version ' + SEARCH_SCHEMA_VERSION + ', whose rows carry the distance this'
                     + ' client ranks on; re-run Install-MemoryDatabase.ps1 against the host'
+            };
+        }
+        if (scoped && hostSchema < SCOPED_SEARCH_SCHEMA_VERSION) {
+            return {
+                ok: false,
+                standDown: 'schema',
+                detail: 'the memory database reports schema version ' + hostSchema + ' where the'
+                    + ' shared search scoped to a segment or a tag needs version '
+                    + SCOPED_SEARCH_SCHEMA_VERSION + ', whose search takes @p_Segment and @p_Tag;'
+                    + ' re-run Install-MemoryDatabase.ps1 against the host'
             };
         }
     }
@@ -1351,7 +1424,7 @@ async function queryHost(options) {
         const callMs = budgetFor(config.timeoutMs, SQLCMD_FLOOR_MS);
         if (callMs === null) return spent('a ' + procedure + ' call');
         const batch = queryBatch(procedure, vectors[at], texts[at], limit, modelIdentity(config),
-            includeArchived);
+            includeArchived, scope);
         if (batch === null) {
             return {
                 ok: false,
@@ -2551,7 +2624,13 @@ function collectRecords() {
             segment,
             name: entry.name,
             fileKey,
-            description: descriptions.get(entry.name + '.md') || '',
+            // The index line wins where it holds text; an empty index line
+            // counts the same as no line, and only then does the record's
+            // own frontmatter speak for it, through the one fallback helper
+            // memq.js exports, so this walk and listMemories share one parse
+            // rule for the field even though this walk reads the whole file
+            // and listMemories reads a bounded head.
+            description: descriptions.get(entry.name + '.md') || memqLib().frontmatterDescription(body) || '',
             body,
             bodyHash: indexLib().hashOf(body),
             fileModified: fileModifiedAt(mtime),
@@ -3369,6 +3448,9 @@ module.exports = {
     REQUIRED_SCHEMA_VERSION,
     SEARCH_SCHEMA_VERSION,
     NEAREST_ARCHIVED_SCHEMA_VERSION,
+    SCOPED_SEARCH_SCHEMA_VERSION,
+    SEARCH_SEGMENT_CAP,
+    SEARCH_TAG_CAP,
     PAYLOAD_PIECE_CHARS,
     PAYLOAD_PIECES_PER_BUDGET,
     PAYLOAD_FUNDED_CHARS,

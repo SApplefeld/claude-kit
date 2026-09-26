@@ -120,7 +120,13 @@ $ErrorActionPreference = 'Stop'
 # fields, since its procedure reads no such keys, and the drain then removes
 # the row from the queue. A lower host also refuses `memq jev-calibration` with the
 # server's own words naming the procedure it lacks.
-$script:SchemaVersion = 5
+#
+# Version 6 is where mem.usp_Search takes @p_Segment and @p_Tag, which narrow
+# the visible set to one project segment and to one tag before any candidate
+# list ranks it, and never widen it. A lower host has no such parameters and
+# refuses a call that names them. A search naming neither is served on any
+# version that carries the procedure.
+$script:SchemaVersion = 6
 
 # The five logins the Security scripts create, each with the role it joins
 # and the sandbox it publishes for. The logins file carries these three

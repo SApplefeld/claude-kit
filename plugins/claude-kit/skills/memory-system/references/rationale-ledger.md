@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating manual for the kit memory store's extension layer: the file-per-fact memories plus an outcome journal, used-tracking, tags, a decay lifecycle, a shared project-type tier, an operator tier, and the `memq` CLI that reaches all of them. It owns the moments where a session touches that store beyond reading a plain memory file: recalling the whole store at effort start or a seat takeover, reporting what the store recorded during a session, logging an action outcome, stamping a memory applied, tagging, running or reading the decay pass, pinning against decay, writing or repairing or deleting a shared-tier record, recording file anchors and recognition triggers on a record, and interpreting a refusal when a memory write is denied. It also owns how `memq` resolves which store answers from a given working directory, which verbs stand down on a network share, and how each verb's output and exit status must be read. Load class: `named-trigger` - the frontmatter description says to use it when working with the store beyond plain memory files and lists the specific verbs, fields and error states that trigger it, so it is loaded before one of those acts rather than at session start or at every plan run.
 
-Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 (`skills.memory-system.c2.md`); lines 147-208 (`skills.memory-system.c3.md`); lines 209-255 (`skills.memory-system.c4.md`); lines 256-316 (`skills.memory-system.c5.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`T` entries below, their source lines read at that pass's fix rounds 1 and 2).
+Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 (`skills.memory-system.c2.md`); lines 147-208 (`skills.memory-system.c3.md`); lines 209-255 (`skills.memory-system.c4.md`); lines 256-316 (`skills.memory-system.c5.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`T` entries below, their source lines read at that pass's fix rounds 1 and 2). Amended on 2026-09-25 by `docs/plans/claude-kit_persona-memory-port_spec_v1.md` sections 3, 5 and 6 (`D` entries below).
 
 ### c1.C001
 - key: Load this skill before any work on the kit memory store that goes beyond plain memory files.
@@ -2973,10 +2973,10 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The owner of the rotation rule; the trigger section and the project-tier paragraph point at it, and a secret in a synced store recurs (A065 to A067).
 
 ### c3.C033
-- key: Expect twelve shapes to get no grant on the unattended vector: `delete-type`, `delete-operator`, `--update` with a body, `--body-file`, `--type=<type>`, `--trigger` on either add verb, `--supersedes`, `find`, `--rollup`, `anchor`, `triggers` and `--drop-malformed`.
+- key: Expect seventeen shapes to get no grant on the unattended vector: `delete-type`, `delete-operator`, `forget`, `--update` with a body, `--body-file`, `--type=<type>`, `--trigger` on either add verb, `--supersedes`, `find`, `--rollup`, `anchor`, `triggers`, `--drop-malformed`, `db-sync`, `db-promote`, `db-curate` and `jev-calibration`.
 - class: mechanic
-- source: plugins/claude-kit/skills/memory-system/SKILL.md:166
-- provenance: 752dbce 2026-08-22 made the grant hook the enforcement point with six shapes; b5c0a98, c0a1388, 0d1e610, 2b6e936 and 9b1180b 2026-09-03 grew the list to twelve, each addition a reviewer-found reach.
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:216, "Seventeen shapes get no grant there"
+- provenance: 752dbce 2026-08-22 made the grant hook the enforcement point with six shapes; b5c0a98, c0a1388, 0d1e610, 2b6e936 and 9b1180b 2026-09-03 grew the list to twelve, each addition a reviewer-found reach; the persona-memory-port plan's section 5 added `forget`, the project-tier delete, and its section 6 named the four database verbs the hook already withheld, which the paragraph had left out, so the count reads seventeen as `docs/security-model.md` counts it.
 - verdict: rewrite
 - landed: d2c43f1 section 22
 - reason: The list stays because a withheld shape on that vector is silence rather than a refusal, so the list is what a worker can consult; the per-shape reasons move here, since hooks/memq-grant.js:43-73 and 501-651 carry every one of them and test/memq-grant.test.js pins each shape (A068 to A070).
@@ -2984,10 +2984,10 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - baseline-test: yes
 
 ### c3.C034
-- key: Use only the granted rest on that vector: `recall`, `get`, `log`, `touch`, `recent`, `unstamped`, both write verbs, `decay-scan`, `decay-done`, the description-only `--update`, and `decay-prune` with its archive flags and their `--confirm-shared`.
+- key: Use only the granted rest on that vector: `recall`, `judged`, `get`, `log`, `touch`, `recent`, `unstamped`, `put`, both shared-tier write verbs, `decay-scan`, `decay-done`, the description-only `--update`, and `decay-prune` with its archive flags and their `--confirm-shared`.
 - class: mechanic
-- source: plugins/claude-kit/skills/memory-system/SKILL.md:166
-- provenance: 752dbce 2026-08-22, the grant's allowlist stated in prose; hooks/memq-grant.js:295 is the list itself.
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:218, "What stays granted is the rest"
+- provenance: 752dbce 2026-08-22, the grant's allowlist stated in prose; `GRANTED_VERBS` in hooks/memq-grant.js is the list itself; the persona-memory-port plan added `judged` and `put` (D003, D004).
 - verdict: keep
 - reason: The granted set survives inside c3.C033's rewrite for the same reason the withheld set does: silence tells a worker nothing (A071 to A073).
 
@@ -3505,12 +3505,12 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The remedy list needs the verb; line 38 states reachability as `get`'s note and is not a copy (A178 to A180).
 
 ### c3.C091
-- key: Remove a project-tier record by hand: unlink the file, take out its `MEMORY.md` index line, and unlink any `<name>.md.bak` and `<name>.md.tmp.<pid>` beside it.
+- key: Remove a project-tier record with `memq forget <name> --confirm`, which takes its `MEMORY.md` index line, its retired copy and archive index line, its usage stamps and any `<name>.md.bak` and `<name>.md.tmp.<pid>` beside it in one locked operation.
 - class: rule
-- source: plugins/claude-kit/skills/memory-system/SKILL.md:203
-- provenance: 0d1e610 2026-08-30, the project tier's hand delete, widened to the two copies a rewrite can leave.
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:261
+- provenance: 0d1e610 2026-08-30, the project tier's hand delete, widened to the two copies a rewrite can leave; respelled by the persona-memory-port plan's section 5, which gave the project tier the `forget` verb.
 - verdict: keep
-- reason: No verb performs any step of it (A181, A182).
+- reason: `cmdForget` (`scripts/memq.js`) runs the shared tiers' own removal, `deleteSharedRecord`, over the working project's memory directory, so every step the hand move listed is now the verb's, under the tier lock, and the stamps and archive lines the hand move left behind go with it. The passage names the two copy shapes because no listing, reader or later rewrite ever touches either, which is why a removal has to sweep them (A181, A182).
 
 ### c3.C092
 - key: Expect the record's read and applied stamps to stay in `usage.jsonl` whatever you do, since no project-tier path drops one record's stamps.
@@ -5935,7 +5935,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:313
 - provenance: ae2c70a 2026-08-22, the whole-file read against the shipped CLI.
 - verdict: keep
-- reason: No finding. There is no bulk prune path: the shared-tier delete verbs remove single lines and the project tier has no delete verb, so the growth is only ever bounded by hand.
+- reason: No finding. There is no bulk prune path: the delete verbs, `forget` for the project tier and `delete-type` and `delete-operator` for the shared ones, remove single lines, so the growth is only ever bounded by hand.
 
 ### c5.C104
 - key: Keep a project at an identical path across machines, since a project tier resolves only there and there is no mapping layer.
@@ -6206,3 +6206,57 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: c5881f9 2026-09-13, batch 2 ruling 13 of the corpus rewrite's rulings, given because sessions spent a decision ask on a sync the operator had already granted where the paragraph left the question unsaid; landed by the corpus-rewrite follow-up plan's section 3, and recorded here at that plan's finishing pass, fix rounds 1 and 2.
 - verdict: keep
 - reason: The store is private and made to sync, so the paragraph opens by stating the grant before it states the hand paths, and a session reading it meets the permission before the mechanics. The grant names its owner, the doctrine's closed list, so this skill states where the permission sits rather than conferring it. The last sentence bounds it: the doctor's `-Fix` consent (c2.C048), the PASS-or-FIXED gate and its FAIL stop (c2.C049) and the leak probe all stand under it. `docs/security-model.md`'s credential paragraph records what taking either hand path unasked costs.
+
+### D001
+- key: Expect a record's `MEMORY.md` index line description to win over its frontmatter `description:` line wherever the index line holds text, and expect a record with no index line, or an empty one, to rank, publish and be judged on that frontmatter value instead, left out of the `MEMORY.md` block session start prints but ranked in the session-start fleet block like any other record on a machine with the memory database.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:148
+- passage: **A record's `MEMORY.md` index line wins over its frontmatter `description:` line wherever it holds text.** With no index line, or an empty one, the record ranks, publishes and is judged on that frontmatter value instead. The `MEMORY.md` block session start prints leaves such a record out. On a machine with the memory database, the session-start fleet block ranks its published row like any other record.
+- provenance: the persona-memory-port plan's section 3, landed so an unindexed distillate the port writes still ranks, publishes and is judged on its own description.
+- verdict: keep
+- reason: `listMemories` and `collectRecords` (`scripts/memq.js`, `scripts/memory-database.js`) both fall back to the frontmatter `description:` only where the index holds no text for the file, through the one helper `frontmatterDescription` exports. The `MEMORY.md` block session start prints (`hooks/memory-session.js`'s `projectMemoryBlock`) reads the raw index file and nothing else, so it leaves an unindexed record unnamed. The session-start fleet block is a different surface, reached through `memq.fleetMemoryBlock` and `fleetMemoryLine`, and it ranks whatever row the host holds for a published record, index line or not, since a publish already carries the frontmatter description through `collectRecords`.
+
+### D002
+- key: Remove a project-tier record outright with `memq forget <name> --confirm`, and read its last stdout line for what the memory database will do with the record's row.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:43
+- passage: `memq forget <name> --confirm` | Remove a project-tier record outright from the working project's store, in one locked operation. The record, its retired copy, both index lines, its usage stamps and every copy of its text beside it leave together, and the index and usage backups after them. Without the flag it refuses, having changed nothing. A name only the declared type tier or the operator tier holds is refused naming `delete-type` or `delete-operator`. It ends with one stdout line on the memory database's row for the record. Where the machine has no memory database config, the store root is redirected, or an unpinned store root is spelled as a network share, no sync runs and the row stays until a publish runs from this machine's default store. Otherwise it spawns `db-sync`, and the row retires at that publish unless its summary reports it held back. Where this was the store's last record, the row instead retires at the first publish after another record is written. No grant under the engine store signals (the unattended-vector paragraph owns the rule).
+- provenance: the persona-memory-port plan's section 5, landed so a removal the operator orders by name takes every local copy and index line with it and says what the host does with the row.
+- verdict: keep
+- reason: The flag is `--confirm` rather than `--confirm-shared` because a project-tier removal has no reach across projects. The host line has three forms because the publisher (`scripts/memory-database.js`, `publish`) names a project row removed only when its walk read that row's store and found no file for it: a store the walk reads empty, or a walk that could not read some tier, holds every removal back. `cmdForget` spawns `db-sync` only where `db-sync` itself would publish, a config file present and the store root the machine's default, so the line never promises a publish that cannot run. The store counts as empty when neither the live directory nor `archive/` holds a record file, the walk's own test, since a retired record is published too.
+
+### D003
+- key: Spawn `memq judged --situation "<text>"` for the judged fleet block's lines over the working project's own records, cut to its segment and optionally one tag, and read stderr for why it printed nothing.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:33
+- passage: `memq judged --situation "<text>" [--tag t] [--limit <n>]` | The judged fleet block's lines over this project's own records, for a caller that spawns memq and frames the lines itself. The search is cut to the working project's segment, a store pin included, and to one tag where `--tag` names one, before the thirty candidates are chosen. Stdout is only the lines the judge chose, at most ten and fewer under `--limit`, and never the vector-order fallback. Every reason for printing nothing puts at least one line on stderr and exits 0, a missing Jev config and a host below schema version 6 among them; only an argument error exits non-zero. Records what it judged as `recall`'s block does, and says on stderr when the shell carries no session id. The memory database layer section owns the block. Granted under the engine store signals.
+- provenance: the persona-memory-port plan's section 2 built the verb and section 6 wrote its row, so a persona plugin that spawns memq reads its own memories and never another project's private records.
+- verdict: keep
+- reason: The cut rides `mem.usp_Search`'s `@p_Segment` and `@p_Tag`, applied where the procedure fills its visible set, because a filter over the thirty rows the procedure already chose answers empty for a small store among a large fleet's. The verb withholds the vector-order fallback, since a caller asking for a judged ranking must not receive an unjudged one under the same name, and it exits 0 on every empty answer as `recall` does, so a caller tells a stand-down from nothing-cleared by stderr alone. It is granted on the unattended vector because it writes nothing but the shown record, `recall`'s own class.
+
+### D004
+- key: Write an unindexed project-tier record with `memq put <name> "<description>"`, which files it where memq resolves the store and writes no `MEMORY.md` line.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:42
+- passage: `memq put <name> "<description>" (--body "..."\|--body-file <path>) [--tag t]... [--author <a>]` | Write one project-tier record, with no `MEMORY.md` line, into the store memq resolves for the working directory, a store pin, a worktree's main checkout and a transcript filing included. Inside a run it lands in that run's pending tier, `memory/pending/<run-id>/`, carrying the run's provenance lines, since promotion into the project tier is the engine's adjudication, and a promoted record takes whatever index treatment the engine applies. The record takes add-type's layout, its frontmatter carrying `description:` and `created:`, with inline `tags:` where `--tag` is given and `author:` where `--author` is given. It ranks, publishes and is judged on that frontmatter description, and it stays out of the index block session start prints until someone adds its index line by hand. A record in a run's pending tier is none of those until the engine promotes it, since the store walk every reader and the publish share leaves `pending/` out. A name the project tier holds live or retired, or the run's pending tier holds, is refused with exit 1 and a stderr line opening `memq: '<name>' already exists`. There is no `--update` and no neighbours block. The name, tag and body refusals are add-type's. One stdout line names the path written. Granted under the engine store signals, save `--body-file`, which is withheld there as it is for add-type.
+- provenance: the persona-memory-port plan's section 4 built the verb and section 6 wrote its row, on the operator's ruling of 2026-09-25 that the persona's distillates stay out of session start's opening text.
+- verdict: keep
+- reason: A caller that spawns memq cannot reproduce the resolver's legs, a store pin, a worktree's main checkout and a transcript filing, so a path it derived itself files records where no reader looks. The index is what session start prints, so a record written without a line ranks and publishes on its frontmatter description (D001) while staying out of every session's opening text. The caller owns its names, which is why a duplicate is refused rather than updated and why there is no neighbours block.
+
+### D005
+- key: Read `memq judged` as the fleet block's judged lines for a spawning caller, not as a digest a session reads at effort start.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:59, the paragraph's closing sentence
+- passage: `memq judged` prints the fleet block's judged lines alone, cut to the working project's own segment, for a caller that spawns memq, so a session reading the store still starts from the digest.
+- provenance: the persona-memory-port plan's section 6, beside the verb's table row (D003).
+- verdict: keep
+- reason: The Recall section tells a session to read the whole digest rather than search first, and a verb whose name sounds like recall invites a session to reach for it there. The sentence places it: it shows only what the judge chose over one project's segment, which is too narrow for a session's own ranking of the store.
+
+### D006
+- key: Write an indexed project-tier record with the Write tool and an unindexed one with `memq put`, and run `memq find` in the words of the fact before either.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:350, the frontmatter guard section's opening sentences
+- passage: A project-tier memory arrives through the Write tool or through `memq put`, and the two write different records. The Write tool writes the indexed record, whose `MEMORY.md` line you write beside it and which session start then prints. `memq put` writes the unindexed one, which ranks and publishes on its frontmatter description and stays out of session start's opening text. None of the refusals the shared-tier verbs apply runs over a Write, and neither path prints their neighbours block. So run `memq find` in the words of the fact before either write.
+- provenance: the persona-memory-port plan's section 6, which rewrote the opening that named the Write tool as the project tier's only door once `memq put` became a second one (D004).
+- verdict: keep
+- reason: The two doors write different records, one that session start prints and one it leaves out, so the paragraph names both by what they write. Neither runs the neighbours block the shared-tier verbs print, so the advice to search first covers both.

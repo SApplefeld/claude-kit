@@ -676,6 +676,319 @@ test('find output is byte-stable across runs and sorted by a total order, not en
     }
 });
 
+test('a record with no index line ranks and reads on its frontmatter description; one with both keeps the index text', () => {
+    const store = makeStore();
+    try {
+        // fb-note carries no MEMORY.md line at all, so its listing must fall
+        // back to the frontmatter value. idx-note carries both, and its
+        // frontmatter description must never surface anywhere a reader sees.
+        // quoted-note's top-level line is the harness serializer's own shape
+        // for an ambiguous scalar, one matching quote pair; block-note's is
+        // a bare block-scalar indicator with no text of its own, which is
+        // not a description to read at all.
+        writeMemoryFile(store, 'fb-note.md',
+            '---\ndescription: frontmatter description text\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'idx-note.md',
+            '---\ndescription: should never appear\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [Idx note](idx-note.md) — index line description text\n');
+        writeMemoryFile(store, 'quoted-note.md',
+            '---\ndescription: "Gotcha: foo"\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'block-note.md',
+            '---\ndescription: >-\n---\n# Body\n\nbody\n');
+
+        const found = run(store, ['find', 'note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout,
+            'block-note  []  \n'
+            + 'fb-note  []  frontmatter description text\n'
+            + 'idx-note  []  index line description text\n'
+            + 'quoted-note  []  Gotcha: foo\n'
+            + REMINDER + '\n');
+        assert.ok(!found.stdout.includes('should never appear'),
+            'the index line wins over the frontmatter description for a record carrying both');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /project {2}fb-note {2}.*frontmatter description text\n/);
+        assert.match(recall.stdout, /project {2}idx-note {2}.*index line description text\n/);
+        assert.ok(!recall.stdout.includes('should never appear'),
+            'recall\'s project block keeps the index line over the frontmatter description too');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Three records, one store, one find spawn: an index line whose description
+// text is empty counts as no line, so the frontmatter value still speaks for
+// empty-idx-note; a description landing in the harness's own metadata: map,
+// exactly where Claude Code rewrites a hand-written top-level frontmatter
+// block, is taken by the fallback the same as a top-level value, for
+// rewritten-note; and a frontmatter block that never closes reads as no
+// description at all, the same absence readIndexDescriptions gives, for
+// unclosed-note, whose own frontmatter text never reaches the line printed
+// for it.
+test('the description fallback over an empty index line, the harness metadata: map, and an unclosed block', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'empty-idx-note.md',
+            '---\ndescription: frontmatter carries this one\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [Empty idx](empty-idx-note.md) — \n');
+        writeMemoryFile(store, 'rewritten-note.md',
+            harnessShaped(['description: under the harness map'], '# Body\n\nbody\n'));
+        writeMemoryFile(store, 'unclosed-note.md',
+            '---\ndescription: never-reached-marker\n# Body with no closing fence\n\nbody\n');
+
+        const found = run(store, ['find', 'note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout,
+            'empty-idx-note  []  frontmatter carries this one\n'
+            + 'rewritten-note  []  under the harness map\n'
+            + 'unclosed-note  []  \n'
+            + REMINDER + '\n',
+            'the unclosed block\'s own marker text never reaches its line');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Every path under a directory, sorted, for the cases whose acceptance is that
+// a refused command wrote nothing anywhere under the store root.
+function treeListing(dir) {
+    return fs.readdirSync(dir, { recursive: true }).map(String).sort();
+}
+
+// put writes one record into the directory memq resolves for the working
+// project and never writes MEMORY.md, so the record stays out of a session's
+// opening text and is found through its frontmatter description. One store
+// carries the whole account: the first write into a tier with no index, a
+// second beside an index the verb must leave byte for byte, the duplicate
+// refusal on a live name and on a name held only in the archive, and the
+// listing that reads both records back on their frontmatter descriptions.
+test('put writes an unindexed record where memq resolves the store and never writes the index', () => {
+    const store = makeStore();
+    try {
+        const given = '"Gotcha": a lead quote, a # hash';
+        const before = new Date().toISOString().slice(0, 10);
+        const first = run(store, ['put', 'put-note', given, '--body', 'the body\nsecond line',
+            '--tag', 'persona', '--tag', 'x.y', '--author', 'sess-1']);
+        const after = new Date().toISOString().slice(0, 10);
+        assert.strictEqual(first.status, 0, first.stderr);
+        const notePath = path.join(store.memDir, 'put-note.md');
+        const expected = (day) => '---\n'
+            + 'description: \'"Gotcha": a lead quote, a # hash\'\n'
+            + 'tags: persona, x.y\n'
+            + 'created: ' + day + '\n'
+            + 'author: sess-1\n'
+            + '---\n# put-note\n\nthe body\nsecond line\n';
+        const text = fs.readFileSync(notePath, 'utf8');
+        assert.ok(text === expected(before) || text === expected(after), JSON.stringify(text));
+        assert.strictEqual(memq.frontmatterDescription(text), given,
+            'the quoted description reads back as given');
+        // One stdout line naming the path, which lands under the store root in
+        // this project's own segment. The line is matched on its tail because
+        // the channel elides a home directory wherever the temp root sits in one.
+        const lines = first.stdout.split('\n');
+        assert.deepStrictEqual(lines.slice(1), [''], 'stdout is one line');
+        assert.ok(lines[0].endsWith(path.join(path.basename(path.dirname(store.memDir)),
+            'memory', 'put-note.md')), JSON.stringify(first.stdout));
+        assert.ok(lines[0].includes(path.basename(store.root)), JSON.stringify(first.stdout));
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'MEMORY.md')),
+            'the tier\'s first record writes no index, so an absent MEMORY.md stays absent');
+
+        // Beside an index that exists, the index is left byte for byte. The
+        // padded description is trimmed, the shape the fallback reads back.
+        const indexBytes = Buffer.from('# Memory Index\n\n- [Other](other-note.md) - an indexed record\n');
+        fs.writeFileSync(path.join(store.memDir, 'MEMORY.md'), indexBytes);
+        const second = run(store, ['put', 'padded-note', '  padded description  ', '--body', 'b']);
+        assert.strictEqual(second.status, 0, second.stderr);
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'MEMORY.md')).equals(indexBytes),
+            'MEMORY.md is byte-identical after the write');
+        const padded = fs.readFileSync(path.join(store.memDir, 'padded-note.md'), 'utf8');
+        assert.match(padded, /^---\ndescription: padded description\ncreated: \d{4}-\d{2}-\d{2}\n---\n# padded-note\n\nb\n$/,
+            'no tags and no author were given, so neither line is written');
+
+        // The same name again: exit 1, one stderr line with the duplicate
+        // opening, and nothing written anywhere under the store.
+        const listing = treeListing(store.root);
+        const again = run(store, ['put', 'put-note', 'another description', '--body', 'other']);
+        assert.strictEqual(again.status, 1);
+        assert.strictEqual(again.stdout, '');
+        assert.match(again.stderr, /^memq: 'put-note' already exists[^\n]*\n$/);
+        assert.strictEqual(fs.readFileSync(notePath, 'utf8'), text, 'the existing record is untouched');
+        assert.deepStrictEqual(treeListing(store.root), listing);
+
+        // A name held only in the archive is refused the same way.
+        fs.mkdirSync(path.join(store.memDir, 'archive'));
+        fs.writeFileSync(path.join(store.memDir, 'archive', 'retired-note.md'), '# retired-note\n\nold\n');
+        const archivedListing = treeListing(store.root);
+        const retired = run(store, ['put', 'retired-note', 'a new description', '--body', 'new']);
+        assert.strictEqual(retired.status, 1);
+        assert.match(retired.stderr, /^memq: 'retired-note' already exists[^\n]*retired under archive\/[^\n]*\n$/);
+        assert.deepStrictEqual(treeListing(store.root), archivedListing);
+
+        // Both records read back through listMemories on their frontmatter
+        // descriptions, with no index line for either.
+        const found = run(store, ['find', 'note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.match(found.stdout, /^padded-note {2}\[\] {2}padded description\n/m);
+        assert.match(found.stdout, /^put-note {2}\[persona,x\.y\] {2}Gotcha: a lead quote, a # hash {2}\(author:sess-1\)\n/m);
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'MEMORY.md')).equals(indexBytes),
+            'MEMORY.md is still the bytes it held');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Each refusal is named by its own rule's message, and none of them writes
+// anything anywhere under the store root, the tier directory included.
+test('put refuses a bad name, a bad tag, a multi-line description and a wrong body shape, writing nothing', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'kept.md'), '# kept\n\nbody\n');
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'a body in a file', 'utf8');
+        const listing = treeListing(store.root);
+        const cases = [
+            [['put', 'bad name', 'd', '--body', 'b'], /^memq: name must be characters from/],
+            [['put', 'x/../y', 'd', '--body', 'b'], /^memq: name must be characters from/],
+            [['put', 'MEMORY', 'd', '--body', 'b'], /^memq: name must be characters from/],
+            [['put', 'n', 'd', '--body', 'b', '--tag', 'a,b'], /^memq: tag must be characters from/],
+            [['put', 'n', 'd', '--body', 'b', '--tag', 'a b'], /^memq: tag must be characters from/],
+            [['put', 'n', 'line one\nline two', '--body', 'b'], /^memq: the description is one line/],
+            [['put', 'n', 'line one\rline two', '--body', 'b'], /^memq: the description is one line/],
+            [['put', 'n', '   ', '--body', 'b'], /^memq: the description holds no text/],
+            [['put', 'n', 'd', '--body', 'b', '--body-file', bodyFile],
+                /^memq: --body and --body-file are two ways to give one body/],
+            [['put', 'n', 'd'], /^memq: put needs a body/],
+            [['put', 'n', 'd', '--body', '  '], /^memq: the body holds no text/],
+            [['put', 'n', 'd', '--body', 'b', '--author', 'two words'], /^memq: author must be characters from/],
+            [['put', 'n', 'd', '--body', 'b', '--author', 'a', '--author', 'b'], /^memq: --author is given once/],
+            [['put', 'n', 'd', '--body', 'b', '--update'], /^memq: unknown option --update/],
+            [['put', 'n', '|', '--body', 'b'], /^memq: the description cannot be written so that it reads back/],
+            // The suite's children carry the engine store signals, so the file
+            // channel meets add-type's refusal of it there.
+            [['put', 'n', 'd', '--body-file', bodyFile], /^memq: --body-file reads a path the caller names/]
+        ];
+        for (const [args, rule] of cases) {
+            const res = run(store, args);
+            assert.notStrictEqual(res.status, 0, JSON.stringify(args));
+            assert.match(res.stderr, rule, JSON.stringify(args));
+            assert.strictEqual(res.stdout, '', JSON.stringify(args));
+            assert.deepStrictEqual(treeListing(store.root), listing, 'nothing written: ' + JSON.stringify(args));
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A description is bounded by what every head reader reads, not by the
+// summary cap: the frontmatter block has to fit inside FRONTMATTER_READ_CAP
+// bytes of UTF-8, or a reader sees it unclosed and the description as empty.
+// The over-bound value is 21,850 three-byte characters, inside the record's
+// character cap and past the block's byte bound, so only the byte rule can
+// be what refuses it.
+test('put bounds a description by the frontmatter read cap in bytes, not by the summary cap', () => {
+    const store = makeStore();
+    try {
+        const long = 'a description past the summary cap, ' + 'x'.repeat(85);
+        assert.strictEqual(long.length, 121);
+        const wrote = run(store, ['put', 'long-note', long, '--body', 'b']);
+        assert.strictEqual(wrote.status, 0, wrote.stderr);
+        assert.strictEqual(memq.frontmatterDescription(
+            fs.readFileSync(path.join(store.memDir, 'long-note.md'), 'utf8')), long,
+        'the record carries the whole description');
+        // find prints it under the display cap every description line takes.
+        const found = run(store, ['find', 'long-note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.ok(found.stdout.startsWith('long-note  []  ' + long.slice(0, 120) + '\n'),
+            JSON.stringify(found.stdout));
+
+        const wide = '€'.repeat(21850);
+        assert.ok(wide.length < 65536 && Buffer.byteLength(wide, 'utf8') > 65536,
+            'the character count fits where the byte count does not');
+        const listing = treeListing(store.root);
+        const refused = run(store, ['put', 'wide-note', wide, '--body', 'b']);
+        assert.strictEqual(refused.status, 1);
+        assert.match(refused.stderr, /^memq: the frontmatter block is \d+ bytes of UTF-8; the bound is 65536/);
+        assert.strictEqual(refused.stdout, '');
+        assert.deepStrictEqual(treeListing(store.root), listing, 'nothing written');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The file channel, which the suite's usual children cannot reach because
+// they carry the engine store signals. A home-redirected store drops both, as
+// the add verbs' own file-channel cases do.
+test('put reads a body from --body-file without the store signals, and refuses a blank one', (t) => {
+    const home = makeHomeStore();
+    try {
+        if (!homeRedirected(home)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(home.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'a body composed in an editor.\nAcross two lines.', 'utf8');
+        const res = runHome(home, ['put', 'file-note', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const written = fs.readFileSync(path.join(homeMemDir(home), 'file-note.md'), 'utf8');
+        assert.match(written, /^---\ndescription: a description\ncreated: \d{4}-\d{2}-\d{2}\n---\n# file-note\n\na body composed in an editor\.\nAcross two lines\.\n$/);
+
+        const blankFile = path.join(home.proj, 'blank.txt');
+        fs.writeFileSync(blankFile, ' \n\n', 'utf8');
+        const listing = treeListing(home.root);
+        const blank = runHome(home, ['put', 'blank-note', 'a description', '--body-file', blankFile]);
+        assert.strictEqual(blank.status, 1);
+        assert.match(blank.stderr, /^memq: the body holds no text/);
+        assert.deepStrictEqual(treeListing(home.root), listing, 'nothing written');
+    } finally {
+        rmHomeStore(home);
+    }
+});
+
+// The quoting rule put writes a description under, read back through the
+// reader the listing and the publisher share. A value either comes back
+// exactly as given or the writer answers null, which put turns into a refusal;
+// what may never happen is a value written that reads back as something else.
+test('a description written by descriptionScalar reads back through frontmatterDescription exactly', () => {
+    const read = (scalar) => memq.frontmatterDescription('---\ndescription: ' + scalar + '\n---\n# n\n\nb\n');
+    assert.strictEqual(memq.descriptionScalar('plain words'), 'plain words', 'a plain value stays bare');
+    const values = [
+        'plain words', '"double" lead', '\'single\' lead', '"wrapped whole"', '\'wrapped whole\'',
+        '| not a block', '> folded lead', 'key: value', 'text #not-a-comment', 'ends with a colon:',
+        '- dash lead', '# hash lead', '@ at lead', 'it\'s: fine', 'a\\b: slash'
+    ];
+    for (const v of values) {
+        const scalar = memq.descriptionScalar(v);
+        assert.notStrictEqual(scalar, null, JSON.stringify(v));
+        assert.strictEqual(read(scalar), v, JSON.stringify(v) + ' written as ' + JSON.stringify(scalar));
+    }
+    for (const v of ['|', '>-', '"both" and \'kinds\'', '\'single\' and a \\ backslash: x']) {
+        assert.strictEqual(memq.descriptionScalar(v), null, JSON.stringify(v));
+    }
+    // A bare scalar YAML reads as a boolean, a null or a number comes back
+    // from the harness's re-serialization as that type, so each is quoted
+    // rather than left bare, and still reads back as given here.
+    const typed = ['true', 'False', 'NULL', 'yes', 'No', 'on', 'OFF', 'y', 'N', '~',
+        '123', '1e3', '0x1f', '.5', '-1', '+2', '-.5', '2026-09-25', '7 habits',
+        '.inf', '-.Inf', '.NaN'];
+    for (const v of typed) {
+        const scalar = memq.descriptionScalar(v);
+        assert.ok(scalar === '\'' + v + '\'', JSON.stringify(v) + ' is quoted: ' + JSON.stringify(scalar));
+        assert.strictEqual(read(scalar), v, JSON.stringify(v));
+    }
+    // Words that merely open with one of those spellings stay bare.
+    for (const v of ['yesterday', 'note', 'tilde~', 'version one']) {
+        assert.strictEqual(memq.descriptionScalar(v), v, JSON.stringify(v));
+    }
+    // The tag grammar the three create verbs share: the frontmatter reader's
+    // separators are refused, so a tag written reads back as one tag.
+    for (const t of ['persona', 'x.y', 'a_b-c']) assert.ok(memq.isRecordTag(t), t);
+    for (const t of ['', 'a,b', 'a b', 'a\tb', 'x'.repeat(41), 'a/b']) {
+        assert.ok(!memq.isRecordTag(t), JSON.stringify(t));
+    }
+});
+
 test('find scope flags restrict to one tier; the default spans both', () => {
     const store = makeStore();
     try {
@@ -2041,10 +2354,14 @@ const FIXTURE_SESSION_ID = '00000000-0000-4000-8000-000000000000';
 
 // The variant most records on a real machine carry: the same column-0
 // metadata: map, with the record's own name at the top level, a description:
-// beside it, and a type: among the harness's keys. Nothing in the reader tests
-// for any of those, which is what this fixture exists to keep true: the
-// promotion is the map's doing, so a harness that adds a key or fills a
-// different one changes nothing here.
+// beside it, and a type: among the harness's keys. The reader tests for none
+// of the name, the type, or the harness's own keys, which is what this
+// fixture exists to keep true for tags and pinned: the promotion is the map's
+// doing, so a harness that adds a key or fills a different one changes
+// nothing for either field. The top-level description: is not in that set:
+// it is what the description fallback reads for a record carrying no index
+// line, so this fixture's own description line is live text a reader acts on
+// rather than an ignored key.
 function harnessNamed(name, fields, body) {
     return '---\nname: ' + name + '\ndescription: a record the harness named\nmetadata:\n'
         + fields.map((f) => '  ' + f + '\n').join('')
@@ -3642,6 +3959,28 @@ test('log stands down for an unpinned network working directory and writes nothi
     }
 });
 
+test('put stands down for an unpinned network working directory and writes nothing; '
+    + 'the same command from an ordinary local cwd writes the record', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const args = ['put', 'net-note', 'a description', '--body', 'b'];
+        const res = runFrom(store, localUncPath(store.proj), args, {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network share,'
+            + ' so its project memory directory was not resolved; nothing was written\n');
+        assert.ok(!fs.existsSync(path.join(store.root, 'projects')), 'no tier was resolved or minted');
+
+        // The control: only cwd's shape differs, so the refusal above is the
+        // predicate speaking rather than the verb going quiet on its own.
+        const local = run(store, args);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.ok(fs.existsSync(path.join(store.memDir, 'net-note.md')), 'the local control wrote');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('find stands the whole verb down for an unpinned network working directory, both the '
     + 'project-tier lexical block and the semantic ranking; the same search from an ordinary '
     + 'local cwd answers from the journal', NETWORK_SKIP, () => {
@@ -3823,11 +4162,12 @@ test('decay-done stands down for an unpinned network working directory and write
 // root, which is why a verb that wants no root is on this list all the same.
 // `db-sync` is the one member that resolves no path from the working directory
 // at all, its store coming from the environment and the home directory. It is
-// gated with the rest because it is the only verb that spawns a client tool,
-// and a child process inherits its parent's working directory, so a publish
-// started on an unreachable share carries that share into every spawn it makes.
+// gated with the rest because it is the verb that spawns a client tool, run by
+// hand or spawned by `forget`, and a child process inherits its parent's
+// working directory, so a publish started on an unreachable share carries that
+// share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'fourteen doors that publish or resolve a store from cwd', () => {
+    + 'seventeen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -3853,8 +4193,9 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
         'cmdAnchor', 'cmdDbPromote', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
-        'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
-    ], 'the stand-down check gates exactly these fourteen verbs, no more, no fewer: '
+        'cmdForget', 'cmdGet', 'cmdJudged', 'cmdLog', 'cmdPut', 'cmdRecall', 'cmdRecent', 'cmdTouch',
+        'cmdTriggers', 'cmdUnstamped'
+    ], 'the stand-down check gates exactly these seventeen verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 
@@ -4820,15 +5161,18 @@ test('a blank line inside the map neither ends it nor is read as a field', () =>
     }
 });
 
-test('the harness variant that names the record reads exactly as the empty-name one does', () => {
+test('the harness variant that names the record reads its tags and pin exactly as the empty-name one does; the description differs', () => {
     const store = makeStore();
     try {
         const d400 = daysAgo(400);
         // Most records on a real machine are this variant: a populated name:,
         // a top-level description:, and a type: among the harness's own keys.
-        // The reader tests for none of them, and this fixture is what keeps
-        // that true, so a harness that adds a key or fills a different one is
-        // caught here rather than by a store that quietly stops matching.
+        // The reader tests for none of the name, the type, or the harness's
+        // own keys, so a harness that adds a key or fills a different one is
+        // caught here rather than by a store that quietly stops matching
+        // tags and pinned:. The top-level description: is live text the
+        // fallback reads, so this variant's find line differs from the
+        // empty-name control on that one field.
         writeMemoryFile(store, 'named-variant.md',
             harnessNamed('named-variant', ['tags: gotcha, convention', 'pinned: 2026-07-01'],
                 '# n\n'));
@@ -4841,7 +5185,10 @@ test('the harness variant that names the record reads exactly as the empty-name 
 
         const tagged = run(store, ['find', 'variant', '--tag', 'convention', '--memories']);
         assert.strictEqual(tagged.status, 0, tagged.stderr);
-        assert.strictEqual(tagged.stdout, 'named-variant  [gotcha,convention]  \n' + REMINDER + '\n',
+        // named-variant carries no MEMORY.md line, so its top-level
+        // description: is what the fallback shows here.
+        assert.strictEqual(tagged.stdout,
+            'named-variant  [gotcha,convention]  a record the harness named\n' + REMINDER + '\n',
             'the author\'s tags are read out of the map whatever sits beside them in it');
 
         const scan = run(store, ['decay-scan']);
@@ -8463,6 +8810,56 @@ test('add-type records the run that authored a shared-tier memory, and writes no
     }
 });
 
+// put inside a run lands in the run's pending tier with the run's provenance
+// lines, because promotion into the project tier is the engine's
+// adjudication. Its duplicate refusal spans the pending tier and the project
+// tier both, so a pending record can never be promoted onto a name the
+// project tier already holds, and a refused command mints no pending tier.
+test('put inside a run writes to the pending tier with provenance and refuses a name either tier holds', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'live-note.md'), '# live-note\n\nbody\n');
+        const indexBytes = Buffer.from('# Memory Index\n\n- [Live](live-note.md) - a live record\n');
+        fs.writeFileSync(path.join(store.memDir, 'MEMORY.md'), indexBytes);
+        const tierBefore = fs.readdirSync(store.memDir).sort();
+
+        const res = runIn(store, 'r1', ['put', 'run-note', 'a run description', '--body', 'b',
+            '--author', 'sess-1']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const notePath = path.join(pendingDirPath(store, 'r1'), 'run-note.md');
+        assert.match(fs.readFileSync(notePath, 'utf8'),
+            /^---\ndescription: a run description\ncreated: \d{4}-\d{2}-\d{2}\nauthor: sess-1\nrun: r1\nwritten: \d{4}-\d{2}-\d{2}\n---\n# run-note\n\nb\n$/);
+        assert.deepStrictEqual(fs.readdirSync(store.memDir).sort(), [...tierBefore, 'pending'].sort(),
+            'the project tier gains no file, only the pending directory');
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'MEMORY.md')).equals(indexBytes),
+            'MEMORY.md is byte-identical after the write');
+        const lines = res.stdout.split('\n');
+        assert.deepStrictEqual(lines.slice(1), [''], 'stdout is one line');
+        assert.ok(lines[0].endsWith(path.join('memory', 'pending', 'r1', 'run-note.md')),
+            JSON.stringify(res.stdout));
+
+        // The same name again under the run: refused, nothing written.
+        const listing = treeListing(store.root);
+        const again = runIn(store, 'r1', ['put', 'run-note', 'another description', '--body', 'o']);
+        assert.strictEqual(again.status, 1);
+        assert.strictEqual(again.stdout, '');
+        assert.match(again.stderr, /^memq: 'run-note' already exists[^\n]*\n$/);
+        assert.deepStrictEqual(treeListing(store.root), listing);
+
+        // A name the project tier holds live is refused under a run too, and
+        // the refused command mints no pending directory for its run.
+        const live = runIn(store, 'r2', ['put', 'live-note', 'a shadowing description', '--body', 'o']);
+        assert.strictEqual(live.status, 1);
+        assert.strictEqual(live.stdout, '');
+        assert.match(live.stderr, /^memq: 'live-note' already exists[^\n]*\n$/);
+        assert.ok(!fs.existsSync(pendingDirPath(store, 'r2')), 'a refused put mints no pending tier');
+        assert.deepStrictEqual(treeListing(store.root), listing);
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('the pending tier keeps the write shape: concurrent run-private appends, no lock, no rewrite', async () => {
     const store = makeStore();
     try {
@@ -8598,6 +8995,30 @@ function localUncPathAvailable() {
 function projectDirNames(store) {
     return fs.readdirSync(path.join(store.root, 'projects')).sort();
 }
+
+// put files its record where memq resolves the working project, so under a
+// pin it lands in the pinned segment's directory. A caller that derived the
+// directory from its own working directory's spelling would file the record
+// where no reader and no publish looks, which is the failure this pins.
+test('put under a store pin writes into the pinned segment, not a directory named for the cwd', () => {
+    const store = makeStore();
+    try {
+        const res = run(store, ['put', 'pinned-note', 'a pinned description', '--body', 'b'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const written = path.join(pinnedMemDir(store, PIN), 'pinned-note.md');
+        assert.ok(fs.existsSync(written), 'the record is in the pinned segment\'s memory directory');
+        assert.deepStrictEqual(projectDirNames(store), [PIN],
+            'no directory derived from the cwd\'s own name was made');
+        assert.ok(!fs.existsSync(store.memDir), 'the cwd-derived memory directory does not exist');
+        assert.ok(res.stdout.endsWith(path.join('projects', PIN, 'memory', 'pinned-note.md') + '\n'),
+            'stdout names the path written: ' + JSON.stringify(res.stdout));
+        assert.ok(!fs.existsSync(path.join(pinnedMemDir(store, PIN), 'MEMORY.md')),
+            'the pinned tier gains no index');
+    } finally {
+        rmStore(store);
+    }
+});
 
 test('a tier with no records makes no not-checked claim about the records it lacks', () => {
     const store = makeStore();
@@ -12190,6 +12611,344 @@ test('a delete stopped partway is completed by re-running it, and strands nothin
         assert.strictEqual(finished.stdout, 'deleted stopped in the operator tier'
             + ' (record, index lines 0, archive index lines 0, usage stamps 0)\n');
         assert.ok(!fs.existsSync(path.join(dir, 'stopped.md')));
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// `forget` ends by spawning `memq db-sync` detached where a publish could run,
+// and that spawn answers nothing, so the cases below read the spawn request
+// itself. child_process.spawn is replaced in the memq child by a preload that
+// records each call's file, arguments and the options that carry its
+// protections, and hands back the two members memq uses. No publish runs.
+let forgetRecorderSerial = 0;
+function forgetSpawnRecorder(dir) {
+    forgetRecorderSerial += 1;
+    const log = path.join(dir, 'forget-spawns-' + forgetRecorderSerial + '.jsonl');
+    const shim = path.join(dir, 'forget-record-spawn-' + forgetRecorderSerial + '.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fsm = require('fs');",
+        "const cp = require('child_process');",
+        'const log = ' + JSON.stringify(log) + ';',
+        'cp.spawn = function (file, args, options) {',
+        '    const o = options || {};',
+        '    fsm.appendFileSync(log, JSON.stringify({ file: file, args: args || [],',
+        '        detached: o.detached, stdio: o.stdio, windowsHide: o.windowsHide, cwd: o.cwd,',
+        '        nodeOptions: Object.keys(o.env || {}).some(function (k) {',
+        "            return /^NODE_OPTIONS$/i.test(k); }) }) + '\\n');",
+        '    return { on: function () {}, unref: function () {} };',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return {
+        extra: { NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' },
+        spawns() {
+            let raw = '';
+            try { raw = fs.readFileSync(log, 'utf8'); } catch { return []; }
+            return raw.split('\n').filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
+        }
+    };
+}
+
+// The client config a publish reads, at a home's .claude root: Windows
+// authentication, so no password is written, and an address nothing listens
+// on, so nothing here could publish even if a spawn were real.
+function writeFixtureDbConfig(claudeRoot) {
+    fs.mkdirSync(claudeRoot, { recursive: true });
+    fs.writeFileSync(path.join(claudeRoot, 'kit-memory-db.json'), JSON.stringify({
+        server: '127.0.0.1,1', database: 'KitMemoryUnreachable', windowsAuth: true,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    }) + '\n', 'utf8');
+}
+
+// Every file under a directory with its bytes, and every directory, keyed by
+// relative path, for a byte comparison of a whole store before and after.
+function storeBytes(root) {
+    const out = {};
+    const walk = (dir) => {
+        let entries = [];
+        try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries) {
+            const full = path.join(dir, e.name);
+            const rel = path.relative(root, full);
+            if (e.isDirectory()) {
+                out[rel + path.sep] = '';
+                walk(full);
+            } else {
+                out[rel] = fs.readFileSync(full).toString('base64');
+            }
+        }
+    };
+    walk(root);
+    return out;
+}
+
+// forget's host-row line, pinned by its distinguishing tail rather than as a
+// whole sentence: a line opening `memq:` that carries the record's quoted
+// name and the one tail its case prints, with the other two cases' tails
+// absent from the text.
+const FORGET_STAYS = 'stays until a publish';
+const FORGET_UNLESS = 'retires at that publish';
+const FORGET_HELD = 'retires at the first publish';
+function assertForgetHostLine(text, name, tail) {
+    const quoted = '\'' + name + '\'';
+    const line = text.split('\n').find((l) => l.startsWith('memq:')
+        && l.includes(quoted) && l.includes(tail));
+    assert.ok(line !== undefined, 'a memq: line for ' + quoted + ' carrying "' + tail + '": '
+        + JSON.stringify(text));
+    for (const other of [FORGET_STAYS, FORGET_UNLESS, FORGET_HELD]) {
+        if (other !== tail) {
+            assert.ok(!text.includes(other), '"' + other + '" is absent: ' + JSON.stringify(text));
+        }
+    }
+}
+
+test('forget removes a project record, its copies, both index lines and its stamps, but only once confirmed', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const memDir = homeMemDir(store);
+        const archDir = path.join(memDir, 'archive');
+        fs.mkdirSync(archDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), '# Memory Index\n\n'
+            + '- [p-fact](p-fact.md) - the doomed one\n- [keeper](keeper.md) - stays\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'p-fact.md'), '# p-fact\n\nlive body\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'p-fact.md.bak'), '# p-fact\n\nold body\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'p-fact.md.tmp.4321'), '# p-fact\n\nstranded\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'keeper.md'), '# keeper\n\nkept body\n', 'utf8');
+        fs.writeFileSync(path.join(archDir, 'MEMORY.md'), '# Archived Memory Index\n\n'
+            + '- [p-fact](p-fact.md) - the retired copy\n', 'utf8');
+        fs.writeFileSync(path.join(archDir, 'p-fact.md'), '# p-fact\n\narchived body\n', 'utf8');
+        const ts = new Date().toISOString();
+        fs.writeFileSync(path.join(memDir, 'usage.jsonl'), [
+            { ts, file: 'p-fact.md', kind: 'read' }, { ts, file: 'p-fact.md', kind: 'applied' },
+            { ts, file: 'keeper.md', kind: 'read' }
+        ].map((s) => JSON.stringify(s) + '\n').join(''), 'utf8');
+        // The three backups the removal sweeps whoever wrote them, left here
+        // by an earlier pass that is not this one.
+        for (const doc of [path.join(memDir, 'MEMORY.md'), path.join(archDir, 'MEMORY.md'),
+            path.join(memDir, 'usage.jsonl')]) {
+            fs.copyFileSync(doc, doc + '.bak');
+        }
+        const recorder = forgetSpawnRecorder(store.proj);
+
+        // Unconfirmed: what would leave is named, and not one byte of the
+        // store moves, the lock file included.
+        const before = storeBytes(store.root);
+        const unconfirmed = runHome(store, ['forget', 'p-fact'], recorder.extra);
+        assert.strictEqual(unconfirmed.status, 1, unconfirmed.stderr);
+        assert.strictEqual(unconfirmed.stdout, '');
+        assert.match(unconfirmed.stderr,
+            /forget would remove the record and its archived copy under archive\/ of 'p-fact'/);
+        assert.match(unconfirmed.stderr, /re-run with --confirm to proceed \(nothing deleted\)/);
+        assert.deepStrictEqual(storeBytes(store.root), before, 'an unconfirmed forget changes nothing');
+
+        // Confirmed, with no client config on this machine: every artifact of
+        // the name goes, the survivor stays, and no sync is spawned.
+        const res = runHome(store, ['forget', 'p-fact', '--confirm'], recorder.extra);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const lines = res.stdout.split('\n');
+        assert.strictEqual(lines[0], 'deleted p-fact in the project tier (record and archived copy,'
+            + ' index lines 1, archive index lines 1, usage stamps 2, copies removed 2)');
+        assertForgetHostLine(lines[1], 'p-fact', FORGET_STAYS);
+        assert.strictEqual(lines.length, 3, 'the removal line, the host line, and nothing else');
+        for (const gone of ['p-fact.md', 'p-fact.md.bak', 'p-fact.md.tmp.4321', 'MEMORY.md.bak',
+            'usage.jsonl.bak', path.join('archive', 'p-fact.md'), path.join('archive', 'MEMORY.md.bak')]) {
+            assert.ok(!fs.existsSync(path.join(memDir, gone)), gone + ' is gone');
+        }
+        assert.strictEqual(fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8'),
+            '# Memory Index\n\n- [keeper](keeper.md) - stays\n');
+        assert.ok(!fs.readFileSync(path.join(archDir, 'MEMORY.md'), 'utf8').includes('p-fact'),
+            'the archive index line is gone');
+        assert.deepStrictEqual(fs.readFileSync(path.join(memDir, 'usage.jsonl'), 'utf8')
+            .split('\n').filter((l) => l.trim() !== '').map((l) => JSON.parse(l).file), ['keeper.md']);
+        assert.ok(fs.existsSync(path.join(memDir, 'keeper.md')), 'the survivor stays');
+        assert.deepStrictEqual(recorder.spawns(), [], 'no config file, so no sync was spawned');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('forget spawns a detached db-sync on the default store and says when the host row retires', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        writeFixtureDbConfig(store.root);
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(path.join(memDir, 'archive'), { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'a-fact.md'), '# a-fact\n\na\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'b-fact.md'), '# b-fact\n\nb\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'archive', 'z-fact.md'), '# z-fact\n\nz\n', 'utf8');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const hostLine = (name) => {
+            const res = runHome(store, ['forget', name, '--confirm'], recorder.extra);
+            assert.strictEqual(res.status, 0, res.stderr);
+            assert.match(res.stdout, new RegExp('^deleted ' + name + ' in the project tier'));
+            return res.stdout.split('\n')[1];
+        };
+
+        // Records remain, so the removal retires at the spawned publish.
+        const first = hostLine('a-fact');
+        assertForgetHostLine(first, 'a-fact', FORGET_UNLESS);
+        // A retired record is a record the publish walk reads, so a store
+        // holding only an archived copy does not walk empty.
+        assertForgetHostLine(hostLine('b-fact'), 'b-fact', FORGET_UNLESS);
+        // The last record: the walk reads the store empty and holds the
+        // removal back, and the sync is spawned all the same.
+        const last = hostLine('z-fact');
+        assertForgetHostLine(last, 'z-fact', FORGET_HELD);
+
+        const spawns = recorder.spawns();
+        assert.strictEqual(spawns.length, 3, 'one spawn per removal: ' + JSON.stringify(spawns));
+        for (const s of spawns) {
+            assert.strictEqual(s.file, process.execPath, 'node itself, with no shell between');
+            assert.deepStrictEqual(s.args, [MEMQ, 'db-sync']);
+            assert.strictEqual(s.detached, true);
+            assert.strictEqual(s.stdio, 'ignore');
+            assert.strictEqual(s.windowsHide, true);
+            assert.strictEqual(path.resolve(s.cwd), path.resolve(store.root),
+                'the child runs at the store root, not the caller\'s directory');
+            assert.strictEqual(s.nodeOptions, false, 'NODE_OPTIONS does not reach the child');
+        }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('forget under a redirected store root spawns no sync and says the host row stays', () => {
+    const store = makeStore();
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-forget-home-'));
+    try {
+        // A config is present in the home the child reads, so the only thing
+        // standing the spawn down is the store root, which KIT_MEMORY_ROOT has
+        // moved off that home.
+        writeFixtureDbConfig(path.join(home, '.claude'));
+        writeMemoryFile(store, 'r-fact.md', '# r-fact\n\nr\n');
+        writeMemoryFile(store, 'other.md', '# other\n\no\n');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const res = run(store, ['forget', 'r-fact', '--confirm'],
+            { HOME: home, USERPROFILE: home, ...recorder.extra });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^deleted r-fact in the project tier \(record,/);
+        assertForgetHostLine(res.stdout, 'r-fact', FORGET_STAYS);
+        assert.doesNotMatch(res.stdout, /db-sync spawned/);
+        assert.deepStrictEqual(recorder.spawns(), [], 'a redirected root spawns no sync');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'r-fact.md')));
+    } finally {
+        rmStore(store);
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+test('forget under a store pin removes from the pinned segment and spawns no sync off the default root', () => {
+    const store = makeStore();
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-forget-pin-'));
+    try {
+        // A config in the home the child reads, so what stands the spawn down
+        // is the root the store signals moved, not a missing config.
+        writeFixtureDbConfig(path.join(home, '.claude'));
+        const pinned = pinnedMemDir(store, PIN);
+        fs.mkdirSync(pinned, { recursive: true });
+        fs.writeFileSync(path.join(pinned, 'MEMORY.md'),
+            '# Memory Index\n\n- [p-note](p-note.md) - pinned\n', 'utf8');
+        fs.writeFileSync(path.join(pinned, 'p-note.md'), '# p-note\n\np\n', 'utf8');
+        fs.writeFileSync(path.join(pinned, 'other.md'), '# other\n\no\n', 'utf8');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const res = run(store, ['forget', 'p-note', '--confirm'],
+            { KIT_MEMORY_PROJECT: PIN, HOME: home, USERPROFILE: home, ...recorder.extra });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^deleted p-note in the project tier \(record, index lines 1,/);
+        assertForgetHostLine(res.stdout, 'p-note', FORGET_STAYS);
+        assert.ok(!fs.existsSync(path.join(pinned, 'p-note.md')), 'the record left the pinned segment');
+        assert.ok(fs.existsSync(path.join(pinned, 'other.md')), 'the pinned segment keeps the rest');
+        assert.ok(!fs.existsSync(store.memDir), 'no cwd-derived directory was touched');
+        assert.deepStrictEqual(recorder.spawns(), [], 'no spawn off the default root');
+    } finally {
+        rmStore(store);
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+test('forget refuses a name another tier holds, a non-record path, a ghost and a bad name', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        writeFixtureDbConfig(store.root);
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), 'Project-Type: ptype\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'keeper.md'), '# keeper\n\nk\n', 'utf8');
+        assert.strictEqual(runHome(store, ['add-type', 'ptype', 't-fact', 'type words']).status, 0);
+        assert.strictEqual(runHome(store, ['add-operator', 'o-fact', 'operator words']).status, 0);
+        const recorder = forgetSpawnRecorder(store.proj);
+        const before = storeBytes(store.root);
+
+        // A name only the declared type tier holds names that tier's verb,
+        // and one only the operator tier holds names that tier's.
+        for (const consent of [[], ['--confirm']]) {
+            const typed = runHome(store, ['forget', 't-fact'].concat(consent), recorder.extra);
+            assert.strictEqual(typed.status, 1, typed.stdout);
+            assert.match(typed.stderr, /'t-fact' is not in the project tier; type 'ptype' holds it/);
+            assert.match(typed.stderr, /`delete-type ptype t-fact --confirm-shared` removes it there/);
+            assert.strictEqual(typed.stdout, '');
+            const op = runHome(store, ['forget', 'o-fact'].concat(consent), recorder.extra);
+            assert.strictEqual(op.status, 1, op.stdout);
+            assert.match(op.stderr, /`delete-operator o-fact --confirm-shared` removes it there/);
+            // A name no tier holds, with and without consent.
+            const ghost = runHome(store, ['forget', 'ghost'].concat(consent), recorder.extra);
+            assert.strictEqual(ghost.status, 1);
+            assert.match(ghost.stderr, /no memory file named 'ghost' in the project tier/);
+            assert.ok(!/\n\s+at /.test(ghost.stderr), 'a named refusal, not a stack trace');
+            assert.strictEqual(ghost.stdout, '');
+        }
+        // A name outside the grammar is an argument error before the lock.
+        const traversal = runHome(store, ['forget', '../escape', '--confirm'], recorder.extra);
+        assert.strictEqual(traversal.status, 1);
+        assert.match(traversal.stderr, /name must be characters from \[A-Za-z0-9_\.-\]/);
+        assert.deepStrictEqual(storeBytes(store.root), before, 'no refusal removed anything');
+
+        // A path at the name that is not a plain file is refused for what it
+        // is. A link where the host allows one, a directory where it does not.
+        let planted = 'a symbolic link';
+        try {
+            fs.symlinkSync(path.join(memDir, 'keeper.md'), path.join(memDir, 'odd.md'), 'file');
+        } catch {
+            planted = 'a directory';
+            fs.mkdirSync(path.join(memDir, 'odd.md'));
+        }
+        const odd = runHome(store, ['forget', 'odd', '--confirm'], recorder.extra);
+        assert.strictEqual(odd.status, 1, planted + ': ' + odd.stdout);
+        assert.match(odd.stderr, /'odd' in the project tier is (a symbolic link|a directory), so delete will not act on it/);
+        assert.ok(fs.existsSync(path.join(memDir, 'keeper.md')), 'the link target survives');
+
+        // A backup whose record is gone is swept under consent, reported, and
+        // still exits nonzero, with no host line for a removal that was not one.
+        fs.writeFileSync(path.join(memDir, 'stray.md.bak'), '# stray\n\nold\n', 'utf8');
+        const swept = runHome(store, ['forget', 'stray', '--confirm'], recorder.extra);
+        assert.strictEqual(swept.status, 1);
+        assert.match(swept.stderr, /removed a stray stray\.md\.bak in the project tier/);
+        assert.strictEqual(swept.stdout, '');
+        assert.ok(!fs.existsSync(path.join(memDir, 'stray.md.bak')));
+
+        // A name the type tier holds whose line the project's own index still
+        // carries is the project's to clear: the unconfirmed run names the
+        // line and the flag, and the confirmed one sweeps it, leaving the type
+        // tier's record where it is.
+        assert.strictEqual(runHome(store, ['add-type', 'ptype', 's-fact', 'type words']).status, 0);
+        fs.appendFileSync(path.join(memDir, 'MEMORY.md'), '- [s-fact](s-fact.md) - a stale line\n');
+        const staleAsk = runHome(store, ['forget', 's-fact'], recorder.extra);
+        assert.strictEqual(staleAsk.status, 1);
+        assert.match(staleAsk.stderr, /an index still lists that name.*re-run with --confirm$/m);
+        assert.doesNotMatch(staleAsk.stderr, /delete-type/);
+        const stale = runHome(store, ['forget', 's-fact', '--confirm'], recorder.extra);
+        assert.strictEqual(stale.status, 1, 'there was still no project record to delete');
+        assert.match(stale.stderr, /swept what was left under that name \(index lines 1,/);
+        assert.doesNotMatch(stale.stderr, /delete-type/);
+        assert.ok(!fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8').includes('s-fact.md'),
+            'the stale project index line is gone');
+        assert.ok(fs.existsSync(path.join(typeDirPath(store, 'ptype'), 's-fact.md')),
+            'the type tier keeps its record');
+        assert.deepStrictEqual(recorder.spawns(), [], 'no refusal spawns a sync');
     } finally {
         rmHomeStore(store);
     }
@@ -31760,12 +32519,17 @@ test('a ranking nobody is left to read makes no host call after the abort', asyn
     assert.match(dropped.fleetNote, /abandoned before it answered/);
 });
 
-test('a tag-filtered find takes the local index and says so, since the shared index holds no tags', async () => {
+test('a tag-filtered find takes the local index by design and says so', async () => {
     const fake = fleetDeps([]);
     const channel = await memq.semanticChannel('anything', 'sql', new Set(), false,
         { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
     assert.deepStrictEqual(fake.seen.calls, [], 'no host call is made at all');
-    assert.match(channel.fleetNote, /holds no tags/);
+    // The reader's tokens rather than the sentence: the local index, by design,
+    // and never the retired reason that the host holds no tags.
+    assert.match(channel.fleetNote, /^memq: /);
+    assert.match(channel.fleetNote, /own index/);
+    assert.match(channel.fleetNote, /by design/);
+    assert.doesNotMatch(channel.fleetNote, /holds no tags/);
     assert.strictEqual(channel.notes[0], channel.fleetNote, 'the note leads the local answer');
 });
 
@@ -32980,30 +33744,38 @@ function jevQueryPreload(dir, rows) {
 }
 
 // A stage-1 stand-in that also writes the texts it was asked to query to
-// `captureFile`, for the one test that reads what the search actually sent
-// rather than only what it served back.
-function jevQueryPreloadCapturing(dir, rows) {
+// `captureFile`, and the segment and tag it was asked to scope them to to
+// `scopeFile`, for the cases that read what the search actually sent rather
+// than only what it served back. `answer`, where given, is the stand-down the
+// client answers in place of the rows.
+function jevQueryPreloadCapturing(dir, rows, answer) {
     const shim = path.join(dir, 'jev-query-shim-capture.js');
     const captureFile = path.join(dir, 'jev-query-capture.json');
+    const scopeFile = path.join(dir, 'jev-query-scope.json');
     fs.writeFileSync(shim, [
         "'use strict';",
         "const fs = require('fs');",
         "const Module = require('module');",
         'const realLoad = Module._load;',
         'const rows = ' + JSON.stringify(rows) + ';',
+        'const answer = ' + JSON.stringify(answer === undefined ? null : answer) + ';',
         'const captureFile = ' + JSON.stringify(captureFile) + ';',
+        'const scopeFile = ' + JSON.stringify(scopeFile) + ';',
         'Module._load = function (request) {',
         '    const loaded = realLoad.apply(Module, arguments);',
         "    if (String(request).endsWith('memory-database.js') && loaded && typeof loaded === 'object') {",
         '        loaded.queryHost = async (opts) => {',
         '            fs.writeFileSync(captureFile, JSON.stringify(opts.texts));',
-        '            return { ok: true, lists: opts.texts.map(() => rows) };',
+        '            fs.writeFileSync(scopeFile, JSON.stringify({ segment: opts.segment === undefined ? null : opts.segment,',
+        '                tag: opts.tag === undefined ? null : opts.tag,',
+        '                budgetMs: opts.budgetMs === undefined ? null : opts.budgetMs }));',
+        '            return answer !== null ? answer : { ok: true, lists: opts.texts.map(() => rows) };',
         '        };',
         '    }',
         '    return loaded;',
         '};'
     ].join('\n') + '\n', 'utf8');
-    return { arg: '--require "' + shim.replace(/\\/g, '/') + '"', captureFile };
+    return { arg: '--require "' + shim.replace(/\\/g, '/') + '"', captureFile, scopeFile };
 }
 
 function startJevServer(scores) {
@@ -33235,6 +34007,247 @@ test('recall --situation says the situation went unused where a redirected store
     } finally {
         rmStore(store);
         fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+// ------------------------------------------------------------ memq judged --
+//
+// The judged block over the working project's own segment, for a caller that
+// spawns memq: stdout carries the judge's chosen lines and nothing else, and
+// every reason there are none goes to stderr with exit 0. The harness is
+// recall's judged one: a home-redirected store, stage 1 answered by the
+// capturing preload and the judge by the stand-in server.
+
+// The fleet memory lines memq prints for the given rows, composed in process
+// through memq's own line and hit shapes, so the assertion reads the form
+// rather than restating it.
+function judgedLinesFor(rows) {
+    return rows.map((r) => memq.fleetMemoryLine(memq.fleetHit(r, os.hostname())));
+}
+
+// A home-redirected store ready for the judged block: the database config, a
+// project tier and, where `endpoint` is given, a Jev config naming it.
+function judgedHomeStore(store, endpoint) {
+    recallHomeStore(store);
+    if (endpoint !== undefined) {
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'),
+            JSON.stringify({ endpoint, model: 'jev-test' }), 'utf8');
+    }
+}
+
+test('memq judged prints the judged lines alone, scoped to the working segment, and records them under the session', async (t) => {
+    const store = makeHomeStore();
+    const server = await startJevServer({ 'record-one': 0.9, 'record-two': 0.95 });
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, server.url);
+        const rows = ['record-zero', 'record-one', 'record-two'].map((n) => fleetRow(n, 'operator'));
+        const { arg: preload, scopeFile } = jevQueryPreloadCapturing(store.proj, rows);
+        const env = { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION, TYPESAFE_API_KEY: JEV_PLANTED_KEY };
+        const res = await runHomeServed(store, ['judged', '--situation', 'SITMARK the persona situation'], env);
+        assert.strictEqual(res.status, 0, res.stderr);
+        // Every stdout line is a judged record's line and nothing frames them:
+        // the judge's order, highest first, and the unchosen record absent.
+        assert.strictEqual(res.stdout, judgedLinesFor([rows[2], rows[1]]).join('\n') + '\n', res.stdout);
+        assert.strictEqual(res.stderr, '', 'a judged answer with a session id says nothing more');
+        // The search was cut to the working project's segment, the one the
+        // store keys this directory's records by, and to no tag, under the
+        // session-start block's two-second clock rather than the client's own
+        // query budget.
+        assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: null, budgetMs: memq.FLEET_BUDGET_MS });
+        assert.strictEqual(server.requests.length, 1);
+        assert.strictEqual(server.requests[0].body.state, 'SITMARK the persona situation');
+        // One shown entry per judged record, keyed to the session.
+        const shownFile = path.join(store.proj, '.kit', 'jev-shown.json');
+        const entries = JSON.parse(fs.readFileSync(shownFile, 'utf8'));
+        assert.deepStrictEqual(entries.map((e) => [e.name, e.session, e.shown]),
+            [['record-zero', JEV_SESSION, false], ['record-one', JEV_SESSION, true], ['record-two', JEV_SESSION, true]]);
+
+        // --tag sends the tag beside the segment, and --limit bounds the lines.
+        const tagged = await runHomeServed(store, ['judged', '--situation', 'SITMARK again', '--tag', 'persona-x',
+            '--limit', '1'], env);
+        assert.strictEqual(tagged.status, 0, tagged.stderr);
+        assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: 'persona-x', budgetMs: memq.FLEET_BUDGET_MS });
+        assert.strictEqual(tagged.stdout, judgedLinesFor([rows[2]]).join('\n') + '\n', tagged.stdout);
+
+        // A limit past the block's ceiling is clamped rather than refused.
+        const wide = await runHomeServed(store, ['judged', '--situation', 'SITMARK wide', '--limit', '99'], env);
+        assert.strictEqual(wide.status, 0, wide.stderr);
+        assert.strictEqual(wide.stdout.split('\n').filter((l) => l !== '').length, 2, wide.stdout);
+
+        // A shell with no session id still gets the lines, records nothing and
+        // says so, since the block itself is silent about that omission.
+        const before = fs.readFileSync(shownFile, 'utf8');
+        const anonymous = await runHomeServed(store, ['judged', '--situation', 'SITMARK anon'],
+            { ...env, CLAUDE_CODE_SESSION_ID: '' });
+        assert.strictEqual(anonymous.status, 0, anonymous.stderr);
+        assert.strictEqual(anonymous.stdout, judgedLinesFor([rows[2], rows[1]]).join('\n') + '\n');
+        assert.match(anonymous.stderr, /^memq: what the judge read was not recorded \(no session id\)/m, anonymous.stderr);
+        assert.strictEqual(fs.readFileSync(shownFile, 'utf8'), before, 'no entry was added');
+    } finally {
+        await server.close();
+        rmHomeStore(store);
+    }
+});
+
+test('memq judged never prints the unjudged ranking the block falls back to when the judge fails', async (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // An endpoint nothing answers on, so the judge stands down and the
+        // block falls back to the vector order.
+        judgedHomeStore(store, 'http://127.0.0.1:1');
+        const rows = ['record-zero', 'record-one'].map((n) => fleetRow(n, 'operator'));
+        const { arg: preload } = jevQueryPreloadCapturing(store.proj, rows);
+        const env = { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION, TYPESAFE_API_KEY: JEV_PLANTED_KEY };
+        // The control: recall under the same judge failure prints the fallback
+        // lines, so the block does have an unjudged ranking to hand out.
+        const control = await runHomeServed(store, ['recall', '--situation', 'SITMARK control'], env);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.ok(control.stdout.includes(judgedLinesFor([rows[0]])[0]),
+            'test setup: the fallback carries lines: ' + control.stdout);
+        assert.match(control.stdout, /nearest this project's recent work|fleet judge was unavailable/, control.stdout);
+
+        const res = await runHomeServed(store, ['judged', '--situation', 'SITMARK the persona situation'], env);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '', 'no unjudged line under the judged name');
+        // Stderr says the judge did not answer, and never carries the block's
+        // fallback sentence, which describes vector-order lines as following.
+        assert.strictEqual(res.stderr.split('\n').filter((l) => l !== '').length, 1, res.stderr);
+        assert.match(res.stderr, /judge did not answer/);
+        assert.doesNotMatch(res.stderr, /nearest this project's recent work|fleet judge was unavailable|nearest by vector/);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('memq judged says a judged empty answer went unrecorded without a session id, and a no-candidate answer does not', async (t) => {
+    const store = makeHomeStore();
+    // Every candidate scored below the first floor, so the judge reads the
+    // thirty and chooses none.
+    const server = await startJevServer({});
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, server.url);
+        const jevJudge = require('../plugins/claude-kit/scripts/jev-judge.js');
+        const judged = jevQueryPreloadCapturing(store.proj, [fleetRow('record-zero', 'operator')]);
+        const env = { NODE_OPTIONS: judged.arg, CLAUDE_CODE_SESSION_ID: '', TYPESAFE_API_KEY: JEV_PLANTED_KEY };
+        const empty = await runHomeServed(store, ['judged', '--situation', 'SITMARK empty'], env);
+        assert.strictEqual(empty.status, 0, empty.stderr);
+        assert.strictEqual(empty.stdout, '');
+        assert.strictEqual(server.requests.length, 1, 'test setup: the judge read the candidates');
+        const said = empty.stderr.split('\n').filter((l) => l !== '');
+        assert.deepStrictEqual(said.length, 2, empty.stderr);
+        assert.strictEqual(said[0], 'memq: ' + jevJudge.NO_RECORD_LINE);
+        assert.match(said[1], /not recorded \(no session id\)/);
+
+        // No fleet-tier candidate at all: the judge read nothing, so there is
+        // nothing that went unrecorded.
+        const none = jevQueryPreloadCapturing(store.proj, [fleetRow('a-pending-record', 'pending')]);
+        const nothing = await runHomeServed(store, ['judged', '--situation', 'SITMARK none'],
+            { ...env, NODE_OPTIONS: none.arg });
+        assert.strictEqual(nothing.status, 0, nothing.stderr);
+        assert.strictEqual(nothing.stdout, '');
+        assert.strictEqual(server.requests.length, 1, 'the judge was not asked');
+        assert.strictEqual(nothing.stderr, 'memq: ' + jevJudge.NO_CANDIDATE_LINE + '\n');
+    } finally {
+        await server.close();
+        rmHomeStore(store);
+    }
+});
+
+test('memq judged prints nothing and says why where the host stood down, no judge is configured, or no database is', async (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, 'http://127.0.0.1:1');
+        const rows = [fleetRow('record-zero', 'operator')];
+        // A host that stood down: the client's own sentence on stderr.
+        const down = jevQueryPreloadCapturing(store.proj, rows,
+            { ok: false, standDown: 'unreachable', detail: 'STANDMARK no host answered' });
+        const stood = runHome(store, ['judged', '--situation', 'SITMARK'],
+            { NODE_OPTIONS: down.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(stood.status, 0, stood.stderr);
+        assert.strictEqual(stood.stdout, '');
+        assert.match(stood.stderr, /^memq: the judged block did not run \(the memory database did not answer: STANDMARK no host answered\)$/m,
+            stood.stderr);
+        assert.ok(fs.existsSync(down.scopeFile), 'test setup: the host was asked');
+        fs.rmSync(down.scopeFile);
+
+        // No Jev config: the host is never asked and nothing unjudged is served.
+        fs.rmSync(path.join(store.root, 'kit-jev.json'));
+        const served = jevQueryPreloadCapturing(store.proj, rows);
+        const nojudge = runHome(store, ['judged', '--situation', 'SITMARK'],
+            { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(nojudge.status, 0, nojudge.stderr);
+        assert.strictEqual(nojudge.stdout, '');
+        assert.match(nojudge.stderr, /^memq: the judged block needs the judge/m, nojudge.stderr);
+        assert.ok(!fs.existsSync(served.scopeFile), 'the host was never asked');
+
+        // No database config, with a Jev config beside the absent one.
+        fs.rmSync(path.join(store.root, 'kit-memory-db.json'));
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const nodb = runHome(store, ['judged', '--situation', 'SITMARK'],
+            { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(nodb.status, 0, nodb.stderr);
+        assert.strictEqual(nodb.stdout, '');
+        assert.match(nodb.stderr, /^memq: no memory database is configured on this machine/m, nodb.stderr);
+        assert.ok(!fs.existsSync(served.scopeFile), 'the host was never asked');
+    } finally {
+        rmHomeStore(store);
+    }
+    // A redirected store root with both configs in the home directory.
+    const pinned = makeStore();
+    const home = homeWithDatabaseConfig();
+    try {
+        writeMemoryFile(pinned, 'MEMORY.md', '# Project memory\n');
+        fs.writeFileSync(path.join(home, '.claude', 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const res = run(pinned, ['judged', '--situation', 'SITMARK'], atHome(home));
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr, /^memq: the judged block did not run \(this process is pointed at a store root/m, res.stderr);
+    } finally {
+        rmStore(pinned);
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+test('memq judged refuses a bad argument with a nonzero exit before any host call', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, 'http://127.0.0.1:1');
+        const served = jevQueryPreloadCapturing(store.proj, [fleetRow('record-zero', 'operator')]);
+        const cases = [
+            [['judged'], /judged needs --situation/],
+            [['judged', '--situation'], /--situation needs a value/],
+            [['judged', '--situation', '   '], /judged needs --situation/],
+            [['judged', '--situation', 'x', '--bogus', 'y'], /judged takes only --situation, --tag and --limit/],
+            [['judged', 'x'], /judged takes only/],
+            [['judged', '--situation', 'x', '--situation', 'y'], /judged takes --situation once/],
+            [['judged', '--situation', 'x', '--tag', 'a,b'], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--tag', 'a b'], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--tag', 't'.repeat(dbClient.SEARCH_TAG_CAP + 1)], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--tag', ''], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--limit', '2.5'], /--limit takes a whole number of at least 1/],
+            [['judged', '--situation', 'x', '--limit', 'ten'], /--limit takes a whole number of at least 1/],
+            [['judged', '--situation', 'x', '--limit', '0'], /--limit takes a whole number of at least 1/],
+            [['judged', '--situation', 'x', '--limit', '-3'], /--limit takes a whole number of at least 1/]
+        ];
+        for (const [args, said] of cases) {
+            const res = runHome(store, args, { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+            assert.notStrictEqual(res.status, 0, JSON.stringify(args) + ': ' + res.stderr);
+            assert.match(res.stderr, said, JSON.stringify(args));
+            assert.match(res.stderr, /usage: memq/, JSON.stringify(args));
+            assert.strictEqual(res.stdout, '', JSON.stringify(args));
+            assert.ok(!fs.existsSync(served.scopeFile), 'no host call for ' + JSON.stringify(args));
+        }
+    } finally {
+        rmHomeStore(store);
     }
 });
 

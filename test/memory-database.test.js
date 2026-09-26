@@ -12,7 +12,11 @@
 // way to prove the property the queue exists for: the local write happens and
 // the stamp is still not lost when the host does not answer.
 //
-// No case here reaches a network, a real SQL Server or a real embedding server.
+// No case here reaches a network, a real SQL Server or a real embedding server,
+// with one exception: the scoped search case at the end of this file runs
+// against the real host, and only under KIT_MEMORY_DB_LIVE=1. Presence of the
+// operator's real config never enables it: the environment variable is the
+// only switch.
 // The one config field this file never writes is the password: every fixture
 // config uses Windows authentication, and where the password's handling is the
 // subject the client's own source is read instead.
@@ -41,6 +45,7 @@ const mi = require(path.join(SCRIPTS, 'memory-index.js'));
 // sentence through on its way to the host.
 const { scrub, homeElisionsKnown } = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
     'hooks', 'kit-compact-lib.js'));
+const LIVE = process.env.KIT_MEMORY_DB_LIVE === '1';
 
 // ------------------------------------------------------------- the fixtures --
 
@@ -3602,6 +3607,40 @@ test('a second walk reads the index again rather than the first walk\'s copy', (
     }
 });
 
+// The publisher's own fallback: an unindexed record's batch row carries its
+// frontmatter description, and one carrying both an index line and a
+// frontmatter description carries the index line's text, exactly as
+// memq.js's listMemories reads the same pair.
+test('collectRecords falls back to the frontmatter description with no index line, and keeps the index text when both are present', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        // No MEMORY.md at all: the walk's index map holds no line for this
+        // file, so the batch row has to come from the record's own text.
+        fs.writeFileSync(path.join(store.memDir, 'fb-record.md'),
+            '---\ndescription: frontmatter description text\n---\n# Body\n\nbody\n', 'utf8');
+        writeRecord(store.memDir, 'idx-record',
+            '---\ndescription: should never appear\n---\n# Body\n\nbody\n', 'index line description text');
+        // quoted-record's top-level line is the harness serializer's own
+        // shape for an ambiguous scalar, one matching quote pair; block-
+        // record's is a bare block-scalar indicator with no text of its
+        // own, which the fallback reads as no description at all.
+        fs.writeFileSync(path.join(store.memDir, 'quoted-record.md'),
+            '---\ndescription: "Gotcha: foo"\n---\n# Body\n\nbody\n', 'utf8');
+        fs.writeFileSync(path.join(store.memDir, 'block-record.md'),
+            '---\ndescription: >-\n---\n# Body\n\nbody\n', 'utf8');
+
+        const walk = db.collectRecords();
+        const byName = new Map(walk.records.map((r) => [r.name, r]));
+        assert.strictEqual(byName.get('fb-record').description, 'frontmatter description text');
+        assert.strictEqual(byName.get('idx-record').description, 'index line description text');
+        assert.strictEqual(byName.get('quoted-record').description, 'Gotcha: foo');
+        assert.strictEqual(byName.get('block-record').description, '');
+    } finally {
+        rmStore(store);
+    }
+});
+
 // ONE FILE'S CLOCK CANNOT BE ALLOWED TO STOP EVERY PUBLISH. The record's
 // modification time is read from the filesystem and sent as a DATETIMEOFFSET,
 // and mem.usp_UpsertRecords throws over the whole batch when it cannot read the
@@ -4503,6 +4542,22 @@ test('mem.usp_Search carries its candidate lists\' own distance out rather than 
         'the returned JSON names the distance the fused lists carried');
 });
 
+test('the client\'s scope caps are the widths mem.usp_Search declares @p_Segment and @p_Tag at', () => {
+    // The client refuses a segment or tag past these caps because a longer one
+    // is cut in the batch's declaration and then matches a different segment or
+    // tag. That refusal is only true while the caps equal the procedure's own
+    // parameter widths, so this pin ties the two sides together: a procedure
+    // that narrows either parameter reds here rather than truncating silently.
+    const sql = fs.readFileSync(path.join(PROCEDURES_DIR, '100-usp_Search.sql'), 'utf8');
+    const width = (name) => {
+        const found = new RegExp('@' + name + '\\s+NVARCHAR\\((\\d+)\\)', 'i').exec(sql);
+        assert.ok(found !== null, 'mem.usp_Search declares @' + name + ' as an NVARCHAR');
+        return Number(found[1]);
+    };
+    assert.strictEqual(width('p_Segment'), db.SEARCH_SEGMENT_CAP);
+    assert.strictEqual(width('p_Tag'), db.SEARCH_TAG_CAP);
+});
+
 test('a hybrid row the lexical lists alone found survives with no similarity of its own', async () => {
     // The row mem.usp_Search returns for a record its full-text lists matched
     // and neither vector list ranked: every field but the distance. Dropping it
@@ -4612,6 +4667,125 @@ test('a host below the search schema version serves no search, and its nearest s
     assert.strictEqual(answered.ok, true, JSON.stringify(answered));
     assert.deepStrictEqual(nearest.calls.map((c) => c.procedure), ['usp_Health', 'usp_Nearest']);
     assert.strictEqual(answered.lists[0][0].score, 0.75);
+});
+
+test('a host below the scoped search version serves no scoped search, and an unscoped one still answers', async () => {
+    // A version 5 host has mem.usp_Search without @p_Segment and @p_Tag. An
+    // unscoped answer handed back to a caller that asked for one project's
+    // records would be the whole fleet's under that caller's question, so a
+    // scoped search stands down by name before anything is embedded.
+    const below = db.SCOPED_SEARCH_SCHEMA_VERSION - 1;
+    for (const scope of [{ segment: 'D--proj' }, { tag: 'sql' }, { segment: 'D--proj', tag: 'sql' }]) {
+        const old = fakeQueryHost({ schemaVersion: below });
+        const refused = await db.queryHost(Object.assign({
+            mode: 'search',
+            texts: ['a query'],
+            limit: 10,
+            config: config(),
+            deps: { runBatch: old.runBatch, embedBatch: old.embedBatch }
+        }, scope));
+        assert.strictEqual(refused.ok, false, JSON.stringify(scope));
+        assert.strictEqual(refused.standDown, 'schema', JSON.stringify(scope));
+        assert.deepStrictEqual(old.calls.map((c) => c.procedure), ['usp_Health'],
+            'the gate stands ahead of the embedding call: ' + JSON.stringify(scope));
+        assert.deepStrictEqual(old.embedCalls, []);
+        const said = db.standDownText(refused);
+        assert.match(said, new RegExp('reports schema version ' + below + ' where'));
+        assert.match(said, new RegExp('needs version ' + db.SCOPED_SEARCH_SCHEMA_VERSION));
+        assert.match(said, /Install-MemoryDatabase\.ps1/);
+    }
+
+    // The control, withheld from the loop above: the same version 5 host
+    // serves the search that asks for neither, with neither parameter named.
+    const unscoped = fakeQueryHost({ schemaVersion: below, rows: [{ name: 'a-record', tier: 'operator', distance: 0.2 }] });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        segment: '',
+        tag: '',
+        deps: { runBatch: unscoped.runBatch, embedBatch: unscoped.embedBatch }
+    });
+    assert.strictEqual(answered.ok, true, JSON.stringify(answered));
+    const search = unscoped.calls.filter((c) => c.procedure === 'usp_Search');
+    assert.strictEqual(search.length, 1);
+    assert.ok(!/@p_Segment|@p_Tag/.test(search[0].arguments), search[0].arguments);
+
+    // And a version 6 host is sent the scope it was asked for.
+    const current = fakeQueryHost({ schemaVersion: db.SCOPED_SEARCH_SCHEMA_VERSION });
+    const scoped = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        segment: 'D--proj',
+        tag: 'sql',
+        deps: { runBatch: current.runBatch, embedBatch: current.embedBatch }
+    });
+    assert.strictEqual(scoped.ok, true, JSON.stringify(scoped));
+    const sent = current.calls.filter((c) => c.procedure === 'usp_Search')[0];
+    assert.match(sent.arguments, /@p_Segment = @Segment, @p_Tag = @Tag$/);
+    assert.strictEqual(sent.payload.segment, 'D--proj');
+    assert.strictEqual(sent.payload.tag, 'sql');
+
+    // The nearest scan takes no scope, so a scope handed to one neither gates
+    // it nor reaches its batch.
+    const nearest = fakeQueryHost({ schemaVersion: below, rows: [{ name: 'n', tier: 'operator', distance: 0.25 }] });
+    const near = await db.queryHost({
+        mode: 'nearest',
+        texts: ['a record'],
+        limit: 3,
+        config: config(),
+        segment: 'D--proj',
+        tag: 'sql',
+        deps: { runBatch: nearest.runBatch, embedBatch: nearest.embedBatch }
+    });
+    assert.strictEqual(near.ok, true, JSON.stringify(near));
+    const nearCall = nearest.calls.filter((c) => c.procedure === 'usp_Nearest')[0];
+    assert.ok(!/@p_Segment|@p_Tag/.test(nearCall.arguments), nearCall.arguments);
+});
+
+test('a segment or tag wider than the procedure declares is refused before the probe, and nothing is sent', async () => {
+    // The batch declares each at the procedure's own width, so a longer value
+    // would be cut there and then match a different segment or tag.
+    const cases = [
+        { segment: 'x'.repeat(db.SEARCH_SEGMENT_CAP + 1), cap: db.SEARCH_SEGMENT_CAP, what: 'segment' },
+        { tag: 't'.repeat(db.SEARCH_TAG_CAP + 1), cap: db.SEARCH_TAG_CAP, what: 'tag' }
+    ];
+    for (const c of cases) {
+        const host = fakeQueryHost({ schemaVersion: db.SCOPED_SEARCH_SCHEMA_VERSION });
+        const refused = await db.queryHost({
+            mode: 'search',
+            texts: ['a query'],
+            limit: 10,
+            config: config(),
+            segment: c.segment,
+            tag: c.tag,
+            deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+        });
+        assert.strictEqual(refused.ok, false, c.what);
+        assert.strictEqual(refused.standDown, 'refused', c.what);
+        assert.deepStrictEqual(host.calls, [], 'not even the probe: ' + c.what);
+        assert.deepStrictEqual(host.embedCalls, [], c.what);
+        const said = db.standDownText(refused);
+        assert.match(said, new RegExp('search ' + c.what + ' runs to ' + (c.cap + 1)
+            + ' characters where the shared search reads at most ' + c.cap));
+    }
+    // The control: a value at the cap is sent.
+    const host = fakeQueryHost({ schemaVersion: db.SCOPED_SEARCH_SCHEMA_VERSION });
+    const atCap = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        segment: 'x'.repeat(db.SEARCH_SEGMENT_CAP),
+        tag: 't'.repeat(db.SEARCH_TAG_CAP),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(atCap.ok, true, JSON.stringify(atCap));
+    assert.strictEqual(host.calls.filter((c) => c.procedure === 'usp_Search')[0].payload.segment.length,
+        db.SEARCH_SEGMENT_CAP);
 });
 
 test('a distance outside the interval a cosine occupies is a malformed row, not a similarity', async () => {
@@ -4833,6 +5007,65 @@ test('a caller own text and limit never reach the batch as anything but a payloa
         new RegExp(';DECLARE @Limit INT = ' + db.QUERY_LIMIT_MAX + '$', 'm'));
     assert.match(db.queryBatch('usp_Search', [1], 'q', -4, 'test-model'),
         /;DECLARE @Limit INT = 1$/m);
+});
+
+// The search batch as the client composed it before a search could be scoped,
+// written out whole. A host at version 3, 4 or 5 has no @p_Segment or @p_Tag and
+// refuses a batch naming either, so a call asking for neither must still be
+// this batch byte for byte: any drift in it is a stand-down on every such host
+// for a caller that never asked for a scope.
+const UNSCOPED_SEARCH_BATCH = [
+    ';SET NOCOUNT ON',
+    ';DECLARE @Query NVARCHAR(MAX) = N\'\'',
+    ';SET @Query = @Query + N\'{"vector":[0.5,0.25],"text":"what it\'\'s \\u2014 about"}\'',
+    ';DECLARE @QueryVector VECTOR(1024) = CAST(JSON_QUERY(@Query, \'$.vector\') AS VECTOR(1024))',
+    ';DECLARE @QueryText NVARCHAR(4000) = JSON_VALUE(@Query, \'$.text\')',
+    ';DECLARE @Limit INT = 7',
+    ';DECLARE @Model NVARCHAR(200) = N\'test-model\'',
+    ';DECLARE @Answer TABLE ( [Json] NVARCHAR(MAX) NULL )',
+    ';INSERT INTO @Answer ( [Json] ) EXEC mem.usp_Search @p_QueryText = @QueryText,'
+        + ' @p_QueryVector = @QueryVector, @p_Limit = @Limit, @p_ModelIdentity = @Model',
+    ';SELECT \'kitdb-json=\' + COALESCE([Json], \'null\') FROM @Answer'
+].join('\n');
+
+test('a search names @p_Segment and @p_Tag only where it asks for them, and asking for neither is today\'s batch', () => {
+    const text = 'what it\'s — about';
+    // Neither asked, in every spelling a caller can leave one out with: no
+    // scope at all, empty strings, and values that are not strings.
+    for (const scope of [undefined, {}, { segment: '', tag: '' }, { segment: null, tag: 7 }]) {
+        assert.strictEqual(db.queryBatch('usp_Search', [0.5, 0.25], text, 7, 'test-model', false, scope),
+            UNSCOPED_SEARCH_BATCH, 'unscoped with ' + JSON.stringify(scope));
+    }
+
+    // A segment alone: carried in the payload, declared at the procedure's own
+    // width and named, and no tag anywhere. The segment holds a quote, a
+    // variable reference and a non-ASCII character, the three hazards the
+    // payload answers, so it reaches the server as written and the batch
+    // stays pure ASCII with nothing for sqlcmd to substitute.
+    const segment = 'D--proj-été-it\'s-$(HOME)';
+    const segmented = db.queryBatch('usp_Search', [1], 'q', 5, 'test-model', false, { segment });
+    assert.match(segmented, /EXEC mem\.usp_Search .*, @p_Segment = @Segment$/m);
+    assert.match(segmented, /^;DECLARE @Segment NVARCHAR\(400\) = JSON_VALUE\(@Query, '\$\.segment'\)$/m);
+    assert.ok(!/@p_Tag|@Tag\b/.test(segmented), 'a segment alone names no tag: ' + segmented);
+    assert.strictEqual(payloadOf(segmented, '@Query').segment, segment);
+    assert.ok(!('tag' in payloadOf(segmented, '@Query')), 'and the payload carries none');
+    assert.ok(!/[^\x00-\x7E]/.test(segmented) && !segmented.includes('$('),
+        'the segment reaches the batch only through the escaped payload');
+
+    // A tag alone, the same way round.
+    const tagged = db.queryBatch('usp_Search', [1], 'q', 5, 'test-model', false, { tag: 'sql' });
+    assert.match(tagged, /EXEC mem\.usp_Search .*, @p_Tag = @Tag$/m);
+    assert.match(tagged, /^;DECLARE @Tag NVARCHAR\(200\) = JSON_VALUE\(@Query, '\$\.tag'\)$/m);
+    assert.ok(!/@p_Segment|@Segment\b/.test(tagged), 'a tag alone names no segment: ' + tagged);
+    assert.strictEqual(payloadOf(tagged, '@Query').tag, 'sql');
+
+    // Both, each named once.
+    const both = db.queryBatch('usp_Search', [1], 'q', 5, 'test-model', false, { segment: 'D--proj', tag: 'sql' });
+    assert.match(both, /, @p_Segment = @Segment, @p_Tag = @Tag$/m);
+
+    // The nearest scan takes neither, whatever it is handed.
+    const nearest = db.queryBatch('usp_Nearest', [1], 'q', 5, 'test-model', false, { segment: 'D--proj', tag: 'sql' });
+    assert.ok(!/segment|@Tag\b|@p_Tag/i.test(nearest), 'the nearest scan names no scope: ' + nearest);
 });
 
 test('a query text past what the procedure reads is cut before it is sent', () => {
@@ -5220,3 +5453,150 @@ test('the health reading counts the queue at the store root it is given and neve
         fs.rmSync(dir, { recursive: true, force: true });
     }
 });
+
+// The segment and tag cut on the real host, seeded through the real client.
+// Two project segments named for a fresh run id publish as two segments of
+// this machine's one sandbox, beside one operator-tier record that lands shared,
+// all from one temp store root. The search then runs through the client's own
+// transport four ways. A publish from a temp root names nothing outside it as
+// removed, since a store the walk did not find is held back.
+//
+// The publisher never names a shared row removed, so nothing the kit runs
+// retires the operator record once it lands: it is visible fleet-wide and stays
+// until a curator retires it. It therefore carries one fixed name across every
+// run, and each run updates that one host row in place with its own query word
+// rather than adding a fleet-visible row per run. The update lands only where
+// the file is newer than the host row: a machine whose clock is behind the last
+// writer's gets skippedOlder for it, and the case fails on the publish count.
+// The private rows are what a run leaves behind: they stay on the host under
+// their run-id segments, and the case prints them so the operator can retire
+// them by curation. A fresh run id and query word per run keep a leftover row
+// out of every later run's assertions.
+//
+// The publish also writes a clean PublishRun row for this sandbox, so the
+// doctor's last-clean-publish reading reads fresh for up to seven days after a
+// live run, even where the machine's real store has not published in that time.
+//
+// The publisher sends every record's tags as a JSON array, an empty one where a
+// record has none, so the untagged records here reach the host as [] rather
+// than as NULL. The NULL and object forms are seeded directly in the
+// installer's live lane, which is where they can be written.
+test('live host: a scoped search keeps its own segment and tag and drops the rest',
+    { skip: !LIVE && 'KIT_MEMORY_DB_LIVE=1 is not set, so no case reaches the real memory database' }, async (t) => {
+        const loaded = db.loadConfig();
+        if (!loaded.ok) {
+            t.skip('no usable memory database config at ' + loaded.path + ' (' + loaded.reason + ')');
+            return;
+        }
+        const config = loaded.config;
+        const runId = require('crypto').randomBytes(4).toString('hex');
+        const letters = (count) => Array.from(require('crypto').randomBytes(count),
+            (b) => String.fromCharCode(97 + (b % 26))).join('');
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-root-' + runId + '-'));
+        // Short printable ASCII by construction, inside the 200 characters the
+        // client writes a text parameter into a batch as.
+        const segA = 'scope-a-' + runId;
+        const segB = 'scope-b-' + runId;
+        const before = {
+            root: process.env.KIT_MEMORY_ROOT,
+            allow: process.env.KIT_MEMORY_ROOT_ALLOW_DATA,
+            project: process.env.KIT_MEMORY_PROJECT
+        };
+        let published = false;
+        const names = {
+            aTagged: 'scope-a-tagged-' + runId,
+            aPlain: 'scope-a-plain-' + runId,
+            bTagged: 'scope-b-tagged-' + runId,
+            bPlain: 'scope-b-plain-' + runId,
+            shared: 'kit-live-scoped-search-fixture'
+        };
+        try {
+            const health = db.hostHealth({ config, storeRoot: root });
+            assert.ok(health.ok, 'the live host must answer its health read: ' + JSON.stringify(health));
+            const version = Number(health.health.schemaVersion);
+            if (!(Number.isFinite(version) && version >= db.SCOPED_SEARCH_SCHEMA_VERSION)) {
+                t.skip('the memory database reports schema version ' + health.health.schemaVersion
+                    + ' where this case needs version ' + db.SCOPED_SEARCH_SCHEMA_VERSION
+                    + '; run Install-MemoryDatabase.ps1 against the host first');
+                return;
+            }
+
+            // Every description carries one word no other record holds, so the
+            // lexical list answers these five rows and nothing else anywhere.
+            const word = 'scopeword' + letters(8);
+            const tag = 'scopetag' + letters(8);
+            const tagged = (title) => '---\ntags: ' + tag + '\n---\n# ' + title + '\n\na body\n';
+            const plain = (title) => '# ' + title + '\n\na body\n';
+            const memA = path.join(root, 'projects', segA, 'memory');
+            const memB = path.join(root, 'projects', segB, 'memory');
+            writeRecord(memA, names.aTagged, tagged('a tagged'), word + ' a tagged');
+            writeRecord(memA, names.aPlain, plain('a plain'), word + ' a plain');
+            writeRecord(memB, names.bTagged, tagged('b tagged'), word + ' b tagged');
+            writeRecord(memB, names.bPlain, plain('b plain'), word + ' b plain');
+            writeRecord(path.join(root, 'memory-operator'), names.shared, plain('shared'), word + ' shared');
+
+            process.env.KIT_MEMORY_ROOT = root;
+            process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+            delete process.env.KIT_MEMORY_PROJECT;
+            published = true;
+            const result = await db.publish({ config });
+            assert.strictEqual(result.ok, true, JSON.stringify(result));
+            // Four private rows are new every run; the fixed-name shared row is
+            // new on the host's first run and updated in place on every later one.
+            assert.ok(result.summary.added >= 4 && result.summary.added + result.summary.changed === 5,
+                JSON.stringify(result.summary));
+
+            const search = (scope) => {
+                const run = db.callProcedure(config, 'usp_Search',
+                    Object.assign({ '@p_QueryText': word, '@p_Limit': '50' }, scope));
+                assert.ok(run.ok, 'the scoped search failed: ' + JSON.stringify(run));
+                const rows = Array.isArray(run.rows[0]) ? run.rows[0] : [];
+                return rows.map((r) => r.name).sort();
+            };
+            const expect = (...keys) => keys.map((k) => names[k]).sort();
+
+            // The full-text index populates asynchronously, so the unscoped
+            // answer is awaited until it holds all five, bounded and loud.
+            const deadline = Date.now() + 120000;
+            let none = [];
+            for (;;) {
+                none = search({});
+                if (none.length >= 5) break;
+                if (Date.now() > deadline) {
+                    assert.fail('the full-text index did not serve the five fixture rows within 120 s: '
+                        + JSON.stringify(none));
+                }
+                Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+            }
+
+            // No segment: both stores' rows and the shared row. This answer is
+            // the control for every absence below.
+            assert.deepStrictEqual(none, expect('aTagged', 'aPlain', 'bTagged', 'bPlain', 'shared'),
+                'the unscoped search answers both segments and the shared row');
+            // The first segment: its own two rows, neither of the second's and
+            // not the shared row.
+            assert.deepStrictEqual(search({ '@p_Segment': segA }), expect('aTagged', 'aPlain'),
+                'the first segment answers its own rows alone');
+            // The first segment and the tag: its tagged row alone, the untagged
+            // one dropped.
+            assert.deepStrictEqual(search({ '@p_Segment': segA, '@p_Tag': tag }), expect('aTagged'),
+                'the first segment with the tag answers its tagged row alone');
+            // The tag alone: the tagged rows of both segments, and neither
+            // untagged row nor the untagged shared one.
+            assert.deepStrictEqual(search({ '@p_Tag': tag }), expect('aTagged', 'bTagged'),
+                'the tag alone answers the tagged rows of both segments');
+        } finally {
+            for (const [name, value] of [['KIT_MEMORY_ROOT', before.root],
+                ['KIT_MEMORY_ROOT_ALLOW_DATA', before.allow], ['KIT_MEMORY_PROJECT', before.project]]) {
+                if (value === undefined) delete process.env[name];
+                else process.env[name] = value;
+            }
+            if (published) {
+                t.diagnostic('left on the host: private project rows under segments ' + segA + ' and ' + segB
+                    + '; the shared operator record ' + names.shared + ' is one fixed-name row updated in place,'
+                    + ' visible fleet-wide until a curator retires it; this run also wrote a clean publish run for'
+                    + ' this sandbox, so the doctor reads a fresh last publish for up to seven days');
+            }
+            try { fs.rmSync(root, { recursive: true, force: true }); } catch { /* a temp directory left behind never fails a case */ }
+        }
+    });
