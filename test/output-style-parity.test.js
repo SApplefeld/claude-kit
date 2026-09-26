@@ -58,7 +58,7 @@ const CORE_LEADS = [
     '- **Close with the board when plans are pending, and never assume I remember a plan.**',
 ];
 
-const SEND_HEADER = '## Before you send';
+const SEND_HEADER = '## Before You Send';
 
 // The complete set of keys the style's frontmatter declares.
 const PINNED_KEYS = [
@@ -149,7 +149,7 @@ function coreRegionLines() {
     return lines.slice(begins[0] + 1, ends[0]);
 }
 
-// The whole tail of a body from its '## Before you send' header, normalized so
+// The whole tail of a body from its '## Before You Send' header, normalized so
 // the doctrine's end-of-file and the style's end-of-region compare cleanly.
 function sendSegment(lines, label) {
     const at = lines.reduce((acc, l, i) => (l === SEND_HEADER ? acc.concat(i) : acc), []);
@@ -225,7 +225,7 @@ test('the Before-you-send segment is identical in all three copies', () => {
     assert.strictEqual(fromStyle, fromSkill,
         'the style\'s Before-you-send section has drifted from the skill; the '
         + 'skill is the source, so sync the style to it. This comparison runs '
-        + 'from the header to end of body, which rides on Before you send being '
+        + 'from the header to end of body, which rides on Before You Send being '
         + 'the doctrine\'s last section: a section appended after it in the '
         + 'doctrine fails here, and the fix is a deliberate call on where the '
         + 'core\'s boundary now sits, not a widening of this segment');
@@ -235,7 +235,7 @@ test('the Before-you-send segment is identical in all three copies', () => {
 // sitting in the region, so the region's contents are pinned as a closed set:
 // the core bullets in order, then the Before-you-send section, then nothing
 // but blank lines.
-test('the core region holds the core bullets then Before you send, in order and nothing else', () => {
+test('the core region holds the core bullets then Before You Send, in order and nothing else', () => {
     const region = coreRegionLines();
     const headerAt = region.indexOf(SEND_HEADER);
     assert.ok(headerAt >= 0,
