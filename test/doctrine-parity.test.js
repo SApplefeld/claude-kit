@@ -1970,8 +1970,8 @@ test('the peer-sessions bullet is present once in each copy', () => {
     // here rather than in a pin of its own because it is the same defect
     // class against the same file.
     const body = fs.readFileSync(target, 'utf8');
-    for (const heading of [/^## The messaging surface$/m,
-        /^## The sanctioned patterns$/m, /^## Etiquette$/m, /^## Naming$/m]) {
+    for (const heading of [/^## Messaging Surface$/m,
+        /^## Sanctioned Patterns$/m, /^## Etiquette$/m, /^## Naming$/m]) {
         assert.match(body, heading, 'the peer-sessions bullet defers to the '
             + 'skill\'s contracts, sanctioned patterns, and etiquette, and the '
             + 'coordinator skill separately defers to its Naming section, so '
@@ -6067,7 +6067,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
     // section from the entry's own shape.
     const contract = sliceBetween(role,
         'The writer rule is per file rather than one rule over the three',
-        '## The registry entry',
+        '## Registry Entry',
         "the role skill's directory-contract writer rule");
     assert.ok(contract.includes('three writers and no more'),
         "the role skill's directory contract no longer closes the registry"
@@ -6155,9 +6155,9 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
     // fence added after this section; a fence added between the heading and
     // the entry block would be parsed instead, and what catches that is the
     // line-count check below rather than the bound.
-    const headingAt = role.indexOf('## The registry entry');
+    const headingAt = role.indexOf('## Registry Entry');
     assert.notStrictEqual(headingAt, -1, 'the role skill no longer carries a'
-        + ' `## The registry entry` heading, so the fenced block this pin'
+        + ' `## Registry Entry` heading, so the fenced block this pin'
         + ' reads the field set from cannot be located');
     const sectionEnd = role.indexOf('\n## ', headingAt + 1);
     const section = role.slice(headingAt,
