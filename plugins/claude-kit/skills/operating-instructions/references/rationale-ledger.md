@@ -3190,6 +3190,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - proposed: Fold this finding into A001's pointer; do not land a compressed restatement that keeps the rule in two places.
 - proposed: The map carries a pointer at the doctrine's bullet in place of the restatement.
 - baseline-test: yes
+- passage: This map serves the doctrine's "One owner per moment, and the map names it" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root), which states the rule whole.
 
 ### C002
 - key: In any document that is not the owner, point at the owner or copy the owner's text whole under a parity pin or build step.
@@ -3202,6 +3203,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - proposed: Retired into A001's pointer with C001, since the two sentences are one passage.
 - proposed: Same pointer as A001.
 - baseline-test: yes
+- passage: This map serves the doctrine's "One owner per moment, and the map names it" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root), which states the rule whole.
 
 ### C003
 - key: Treat a document carrying part of a rule it does not own as a defect this map exists to expose.
@@ -3220,6 +3222,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01 (the seed's c591c49 only reworked the paragraph; `git log -S` on "the moment is the situation a session is in" reaches the install).
 - verdict: keep
 - reason: No finding. This is how the table is read at all; without it the third column reads as a second owner.
+- passage: Reading a row: the moment is the situation a session is in, and the owner is the document whose text is the rule there. The third column names surfaces that point at the owner or carry a pinned copy.
 
 ### C005
 - key: Read a hook, script, or test named in the owner column as the mechanical enforcement of a rule the named prose owns.
@@ -3228,6 +3231,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: c591c49 2026-09-08, the size-budget-as-ledger commit, which added the first owner-column entry naming a script and a test (`scripts/kit-size.js`, `test/size-ratchet.test.js`).
 - verdict: keep
 - reason: The named machinery enforces its own rules but performs no reading of this map, so nothing supersedes the sentence. Without it an owner column naming a hook reads as prose ownership sitting in a hook.
+- passage: A hook, script or test in the owner column enforces a rule the named prose owns.
 
 ### C006
 - key: Change a row only when ownership moves, and land that row change in the same change as the prose that moves.
@@ -3239,6 +3243,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - reason: The rule stays; only the sentence shape changes, since the paragraph's first sentence chains the rule and its bound. Keep the "operator's ruling" clause attached to the third instruction, because it is the bound on the gate C008 carries. Lands at landed line 9 (section 47's close) as 'How to amend: a row changes when ownership moves. The move lands in the same change as the prose that moves.', the paragraph's one chained sentence split at its 'and'; the ruling A008 lands through it. The paragraph carried three sentences at the extraction commit, one per instruction, so C007's and C008's sentences stand unchanged; as authored, this reason's opener said the paragraph chains three instructions into one sentence, corrected in place at section 47's close.
 - proposed: Split the passage into one sentence per instruction, keeping "because assigning an owner is the operator's ruling" attached to the third.
 - baseline-test: yes
+- passage: Amending: a row changes when ownership moves. The move lands in the same change as the prose that moves.
 
 ### C007
 - key: Add its rows to this map when you add a new skill.
@@ -3248,6 +3253,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: rewrite
 - landed: 62b0290 section 47
 - reason: The rule is unchanged and still needed (the park skill's row was missing until 286ed41 added it); it moves into its own sentence in the split of the amendment paragraph. Lands at landed line 9 (section 47's close) with no text change: 'A new skill adds its rows.' was already its own sentence at the extraction commit (see C006).
+- passage: A new skill adds its rows.
+- flag: weak-reason
 
 ### C008
 - key: Put a moment governed by two documents with no stated precedence under "Unowned or contested", never silently into one owner's column.
@@ -3257,6 +3264,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: rewrite
 - landed: 62b0290 section 47
 - reason: Incident-born, unsuperseded, and the gate it carries is an operator-decision rather than loop maintenance, so it survives the gate review. Only the sentence shape changes, and the "because assigning an owner is the operator's ruling" clause stays with it. Lands at landed line 9 (section 47's close) with no text change: the sentence already stood alone with its operator's-ruling clause attached (see C006).
+- passage: A moment two documents govern with no stated precedence goes under Unowned or contested, never silently into one owner's column, because assigning an owner is the operator's ruling.
 
 ### C009
 - key: Read the `brainstorming` skill for a design conversation on a new feature or non-trivial change, covering the scope check, the questions asked, and the spec written.
@@ -3265,6 +3273,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01, one of about forty moments the map grouped by lifecycle when it replaced scattered "the X skill owns Y" sentences.
 - verdict: keep
 - reason: No finding. The row is the lookup entry for a moment `brainstorming` owns.
+- passage: | Designing a feature or non-trivial change: scope check, questions, spec | `brainstorming` |
 
 ### C010
 - key: Read the `brainstorming` skill for which model tier executes a section and for the tier bands.
@@ -3273,6 +3282,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01, shipped with the map's intake-and-design section.
 - verdict: keep
 - reason: The doctrine's fan-out bullet names the same owner, which is two pointers at one owner rather than a split rule; `brainstorming` holds the bands.
+- passage: | A section's model tier, and the tier bands | `brainstorming` |
 
 ### C011
 - key: Read the `brainstorming` skill for the scout sweep that derives a section's files in scope.
@@ -3281,6 +3291,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row records the split with `executing-work`, which points at it.
+- passage: | The scout sweep deriving a section's files in scope when a design changes a contract or shared surface | `brainstorming` | `executing-work` |
 
 ### C012
 - key: Read the `brainstorming` skill, step 10 plan review, for reading a spec against its own Goal before arming and adjudicating what that read returns, the `[unrefusable-frame]` question among them.
@@ -3289,6 +3300,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: ead49db 2026-09-08, the commit that added the plan-reviewer charter and its dispatch at brainstorming step 10; the row landed with it; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19, which added that question to the charter's closed set.
 - verdict: keep
 - reason: No finding. The row is current with the agent it names. The new question is named because it judges the `## Intent` record rather than the sections, so a reader who met the record's row above would otherwise not know the plan review is where a record that refuses nothing is caught.
+- passage: | Reading a spec against its Goal before arming, and adjudicating the result, the `[unrefusable-frame]` question on the `## Intent` record included | `brainstorming` (step 10, plan review) |
 
 ### C013
 - key: Read the `design-council` skill for pressure-testing a hard-to-reverse architecture fork by several lenses.
@@ -3297,6 +3309,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | A hard-to-reverse architecture fork tested by several lenses | `design-council` |
+- flag: weak-reason
 
 ### C014
 - key: Read the `cold` skill for a verdict on a decision whose framing carries the operator's own preference.
@@ -3308,6 +3322,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row re-homes to the doctrine bullet that states the bar (c1.C062).
 - proposed: "| A verdict on a decision whose framing carries the operator's own preference | doctrine (Match my precision) | none |"
+- passage: | A verdict on a decision framed with the operator's own preference | doctrine (Match my precision) | none |
 
 ### C015
 - key: Read the doctrine's "Enumerate the gaps at intake" section for what a prompt, brief, spec, or handoff does not state and how each gap is routed.
@@ -3316,6 +3331,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. One of the rows whose owner is the doctrine itself, which is what makes the map more than a skill index.
+- passage: | What an intake does not state, and how each gap is routed | doctrine (Enumerate the gaps at intake) |
 
 ### C016
 - key: Read the `curating-docs` skill for a plan doc's name, format, `Status` lifecycle, admissible `Commit Model` values, and the `docs/` taxonomy.
@@ -3324,6 +3340,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The row names the right owner: the naming rule lives at `curating-docs/references/templates.md:45` and the header contract at that skill's SKILL.md:67-68. The doctrine's line 74 carries a copy in part, which is a finding on the doctrine rather than on this row. Section 1's rewrite of the doctrine at a2ca9e5 closed the finding this reason's last sentence records: the doctrine's plan-doc bullet now sends a reader to the curating-docs templates for the name rather than carrying the form (section 47's close).
+- passage: | A plan doc's name, format, `Status` lifecycle and admissible `Commit Model` values, and the `docs/` taxonomy | `curating-docs` |
 
 ### C017
 - key: Read the `curating-docs` skill for archiving a completed plan, pruning the backlog, and refreshing indexes and cross-references.
@@ -3332,6 +3349,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The owner states the archive timing itself ("Archive in the same close-out that finished the work", curating-docs SKILL.md:36), so the doctrine's sentence agrees rather than competes.
+- passage: | Archiving a plan, pruning the backlog, refreshing indexes and cross-references | `curating-docs` |
 
 ### C018
 - key: Read the `executing-work` skill for the section loop: implement, verify, review, Chapter, and the completion contract that keeps it running.
@@ -3340,6 +3358,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | The section loop (implement, verify, review, Chapter) and its completion contract | `executing-work` |
+- flag: weak-reason
 
 ### C019
 - key: Read the `executing-work` skill for a dispatch brief's fields, which are standing and which conditional, and the standing directives forwarded verbatim.
@@ -3348,6 +3368,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: Two pointers at one owner; neither the map nor the doctrine states a brief field.
+- passage: | A dispatch brief's standing and conditional fields, and the directives forwarded verbatim | `executing-work` |
 
 ### C020
 - key: Read the `executing-work` skill for scout banding, the scout return contract, and what a scout may and may not do.
@@ -3356,6 +3377,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: Same owner as the doctrine's clause names; no rule text sits in either pointer.
+- passage: | Scouts: banding, return contract, and limits | `executing-work` |
 
 ### C021
 - key: Read the `executing-work` skill for a section's review roster: the four code lenses in two tiers, the document pair an `Audience:` line summons, the reviewer-model rule, and the effort table.
@@ -3364,6 +3386,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01 installed the row; e00d1e3 2026-09-05 reworded it when the Opus cap was retired and per-lens effort moved into the reviewer frontmatter; docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20 re-keyed it onto the two tiers.
 - verdict: keep
 - reason: No finding, and the row has already been carried through one ownership-relevant change, which is the amendment rule working.
+- passage: | A section's review roster: four code lenses in correctness and advisory tiers, the `Audience:` document pair, the reviewer-model rule, the effort table |
 
 ### C022
 - key: Read the `executing-work` skill for a section's `Standing Brief Amendments` block and its re-read at every section open.
@@ -3372,6 +3395,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | A section's `Standing Brief Amendments` block and its re-read at each section open | `executing-work` |
+- flag: weak-reason
 
 ### C023
 - key: Read the `executing-work` skill's routing for which surfaces a subagent may write, and that `docs/` belongs to the curator and the main session alone.
@@ -3380,6 +3405,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row names `hooks/docs-write-guard.js` as the enforcement beside the prose owner, which is the pattern C005 exists to make readable.
+- passage: | Which surfaces a subagent may write; `docs/` is the curator's and main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` |
 
 ### C024
 - key: Read the `executing-work` skill for killing or replacing a dispatched agent for a reason other than a stall.
@@ -3388,6 +3414,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The doctrine states the rule about which windows such a kill waits out and names this owner; the row carries the routing alone, so nothing is split.
+- passage: | Killing or replacing a dispatched agent for a reason other than a stall | `executing-work` |
 
 ### C025
 - key: Read the `finishing-work` skill's "Unavailability is the gate failing to run at full strength" for a dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, and the windows per dispatch shape.
@@ -3407,6 +3434,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 52b0fe8 section 6
 - reason: The row also names `hooks/kit-compact-gate.js`, which is the enforcement the doctrine's clause does not mention, so the row carries more than a duplicate pointer. The owner cell names executing-work's step 8, whose bold lead reads "Open the compaction checkpoint.", the step that opens the checkpoint once the Chapter is appended and the section's commit model has been honored.
 - proposed: `executing-work` (step 8, opening the compaction checkpoint)
+- passage: | The chapter checkpoint letting a leashed run compact at a section boundary | `executing-work` (step 8, opening the compaction checkpoint) |
 
 ### C027
 - key: Read the `consult` skill for the consult triggers and mechanics at a reasoning dead end or a decision the spec does not cover.
@@ -3415,6 +3443,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The doctrine's clause carries the standing expectation (expected, not optional, no per-session ask) and this row carries the routing; different content, one owner.
+- passage: | Consult triggers and mechanics at a dead end or a decision the spec does not cover | `consult` |
 
 ### C028
 - key: Read the `responding-to-review` skill for weighing a review finding or an operator correction before acting on it.
@@ -3423,6 +3452,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | Weighing a review finding or operator correction before acting on it | `responding-to-review` |
+- flag: weak-reason
 
 ### C029
 - key: Read the `systematic-debugging` skill for root-causing a failure before proposing a fix.
@@ -3431,6 +3462,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | Root-causing a failure before proposing a fix | `systematic-debugging` |
+- flag: weak-reason
 
 ### C030
 - key: Read the `testing-discipline` skill for whether a change earns a test, what retires an existing one, the shape it takes, the cost it spawns, the lane mechanics, and the red protocol.
@@ -3439,6 +3472,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01 installed the row; 70b1f73 2026-09-04 added the retire-a-test subject in the same commit that gave the skill its five retire classes.
 - verdict: keep
 - reason: Four scattered doctrine pointers fold into this one row, which is the map earning its keep rather than duplicating them. Its split with the lane row below is deliberate: which lane a gate moment takes is the doctrine's, how a lane runs is the skill's.
+- passage: | Whether a change earns a test, which tests retire, test shape and spawned cost, lane mechanics, the red protocol | `testing-discipline` |
 
 ### C031
 - key: Read the doctrine's "After each step, run the lane the moment calls for" for which lane each gate moment takes and how the delta is reported against its baseline.
@@ -3447,6 +3481,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The apparent two-owner routing with C030 is two questions, not one: this row answers "which lane now and what do I report", the row above answers "how does a lane work and what retires a test".
+- passage: | Which lane each gate moment takes, and reporting the delta against its baseline | doctrine (After each step, run the lane the moment calls for) |
 
 ### C032
 - key: Read the `role` skill's claim protocol for starting a heavy process on a shared machine: the poll, the claim, and the box budget.
@@ -3465,6 +3500,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row records the doctrine as owner of the principle and the style skills as owners of the recipes.
+- passage: | The outline principle for hunting one thing in a large file | doctrine (When you are hunting for something in a large file) |
 
 ### C034
 - key: Read the `csharp-style` and `sql-style` skills for C# and T-SQL house style and the outline recipes for each.
@@ -3473,6 +3509,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The doctrine's outline bullet points at the same two skills; both are pointers at the owner of the recipes.
+- passage: | C# and T-SQL house style and their outline recipes | `csharp-style`, `sql-style` |
 
 ### C035
 - key: Read the `scott-writing-style` skill for a document written in the operator's voice.
@@ -3499,6 +3536,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01; the moment cell rewritten 2026-09-13 under ruling 4 of the corpus rewrite's rulings batch.
 - verdict: keep
 - reason: The row points at the owner and states no part of the rule. Its moment names the three acts finishing-work performs at the close, opening the pull request where none is open, marking it ready and arming auto-merge, the arm stated flat because the owner arms with no precondition, so a reader of the map can tell which skill's step to open, and the pointer column names `curating-docs`, whose Commit Model row restates the same shape. The row stands uncontested.
+- passage: | The pull request at finishing: opened if none is open, marked ready, auto-merge armed, integrated per commit model at the close | `finishing-work` |
 
 ### C038
 - key: Read `finishing-work` and `branch-hygiene` for the strand-check on a record that lives only on a frozen PR branch.
@@ -3507,6 +3545,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01; the moment cell rewritten 2026-09-13 under rulings 27 and 8 of the corpus rewrite's rulings batch.
 - verdict: keep
 - reason: One of the few rows with two owners named deliberately, both skills carrying the check at their own end. The moment reads "merged PR branch", because the freeze binds a merged branch rather than an open one, and it names invoking the reap of the plan's own merged branch and clean worktree once the strand-check runs clean, at finishing-work's close. The owner column splits the two owners' shares so the row beneath it (C039) is not read as a second owner of the same moment: finishing-work owns the check at the close and the reap's invocation with its three routes, branch-hygiene owns the check at session start and the reap's mechanics.
+- passage: | A record only on a merged PR branch: the strand-check, and invoking the reap of the plan's merged branch and clean worktree once it runs clean |
 
 ### C039
 - key: Read the `branch-hygiene` skill for reaping merged branches, recovering stranded commits, and what may be deleted without asking.
@@ -3515,6 +3554,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row names `hooks/branch-reaper-nudge.js` as the surface that raises the moment.
+- passage: | Reaping merged branches, recovering stranded commits, deleting without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
 
 ### C040
 - key: Read the `memory-system` skill for what the store recorded during the effort, the after-query, decay, and the applied-stamp ledger.
@@ -3523,6 +3563,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | The store's record of the effort, the after-query, decay, the applied-stamp ledger | `memory-system` |
+- flag: weak-reason
 
 ### C041
 - key: Read the doctrine's "Name the rollback and stop for a yes" and "Which text governs" for whether this session may commit or push at all and what form an authorization takes.
@@ -3533,6 +3575,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 52b0fe8 section 6
 - reason: No finding, and this row is load-bearing: it is where a session that met a stop on a charter or the output style learns which document actually decides. The pointer column names executing-work's step 7, whose bold lead reads "Apply the commit model", the step that carries out the commit-model authorization the doctrine's bullet governs.
 - proposed: `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist
+- passage: | Whether this session may commit or push, and the form an authorization takes | doctrine (Name the rollback and stop for a yes; Which Text Governs) | `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist |
 
 ### C042
 - key: Read the `curating-docs` skill for the admissible `Commit Model` header values and the parked state an unknown value produces.
@@ -3541,6 +3584,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The apparent conflict with the doctrine's ask-before-pushing rule is two subjects: the skill states what the machine does with an unrecognized value (the run parks without dispatching), the doctrine states what the session does about its own push authority.
+- passage: | `Commit Model` header values, and the parked state an unknown value produces | `curating-docs` |
 
 ### C043
 - key: Read the `executing-work` skill for where in the section loop the commit and the push land under each commit model.
@@ -3549,6 +3593,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The doctrine's authorization bullet leans on this split explicitly: the skill says where a push lands, the header says whether it is authorized.
+- passage: | Where in the section loop the commit and the push land under each commit model | `executing-work` |
 
 ### C044
 - key: Read the doctrine's "Stay in scope" and "On a checkout another session may commit to" for staging on a shared checkout: stage only your files, read the staged list, hold the index window narrow.
@@ -3557,6 +3602,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | Staging on a shared checkout: only your files, read the staged list, keep the index window narrow |
+- flag: weak-reason
 
 ### C045
 - key: Read the doctrine's "A commit title is the index line" and "Write commit messages via `git commit -F`" for the commit message's three layers and the `-F <file>` write.
@@ -3565,6 +3612,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | The commit message's three layers and the `-F <file>` write |
+- flag: weak-reason
 
 ### C046
 - key: Read the `memory-system` skill for the memory store's own commits and pushes: the sync path, the allowlist, and the lock.
@@ -3573,6 +3622,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | The memory store's own commits and pushes: sync path, allowlist, lock | `memory-system` |
+- flag: weak-reason
 
 ### C047
 - key: Read the `peer-sessions` skill for reading the roster, messaging a peer session, and acting on a message one sent.
@@ -3582,6 +3633,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: rewrite
 - landed: 6a900e7f section 5
 - reason: The row's `kit-goal` pointer now names the chain handoff that carries a plan's approval rather than one that arms a plan, since only the operator's typed `/kit-goal` arms a leash (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, section 5). Both this row and the doctrine's peer bullet point at `peer-sessions` over the same three acts, and that skill owns the contracts.
+- passage: | Reading the roster, messaging a peer, acting on a peer's message: whose word it is, what it directs without the operator, what still goes to the operator | `peer-sessions` |
 
 ### C048
 - key: Read `peer-sessions` for the trace a citing session performs on a `## Dispatch Authorization` section, and `kit-goal` for that section's format.
@@ -3590,6 +3642,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row splits one moment across two owners on purpose, the trace and the format being different questions.
+- passage: | A `## Dispatch Authorization` section's standing, and a citing session's trace | `peer-sessions` (the trace) and `kit-goal` (the section's format) |
 
 ### C049
 - key: Read the `peer-sessions` skill for a peer handing a leashed session work: never, information only.
@@ -3598,6 +3651,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | A peer handing a leashed session work: only by plan artifact, traced grant or chain handoff, never the message alone | `peer-sessions` |
+- flag: weak-reason
 
 ### C050
 - key: Read the `role` skill for taking a seat with `/role`, the registry entry, and the coordinator-directory contract.
@@ -3606,6 +3661,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` |
+- flag: weak-reason
 
 ### C051
 - key: Read the `role` skill for a standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill.
@@ -3614,6 +3671,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01, written alongside the doctrine's statement that a positional grant governs only its assigned scope, so a record cannot widen a skill.
 - verdict: keep
 - reason: No finding, and the row is what keeps the standing-grant rail readable from one place when a session meets a grant on a record rather than at its owner.
+- passage: | A standing operational grant: the rail, its on-switch record, its exclusions, each grant's owning skill | `role` |
 
 ### C052
 - key: Read the `coordinator` skill for the machine coordinator's runbook, the board, and every bar on what a board line may carry.
@@ -3622,6 +3680,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | The machine coordinator's runbook, the board, and every bar on a board line | `coordinator` |
+- flag: weak-reason
 
 ### C053
 - key: Read the `coordinator` skill's seat git standing for a seat running git in the memory store, where a read of the store's own history is routed rather than performed.
@@ -3632,6 +3692,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 52b0fe8 section 6
 - reason: No finding, and this row is the worked example of C069: a contested moment leaves that section only once the ruling has landed and the losing text is current. The owner cell names the coordinator skill's ledger section, spelled `## The ledger`, whose sentence reads "The seat may run git in the store exactly as any other session on this machine may, and reading the store's own configuration and history is work it routes rather than performs."
 - proposed: `coordinator` (the ledger section, on a seat running git in the store)
+- passage: | A seat running git in the memory store: as any session may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) |
+- flag: stale
 
 ### C054
 - key: Read the `standing-watch` skill for a repeating watch over a live system: the tick order, the ledger, and the wake prompt.
@@ -3640,6 +3702,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | A repeating watch over a live system: tick order, ledger, wake prompt | `standing-watch` |
+- flag: weak-reason
 
 ### C055
 - key: Read the `recap` skill for reporting where a long-running session stands without disturbing it.
@@ -3648,6 +3712,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- flag: stale
 
 ### C056
 - key: Read the `park` skill for parking a session at its next safe point with everything durable committed and a resume path recorded.
@@ -3659,6 +3724,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: The row is the worked example of C007: a new skill without rows is a hole the parity pin catches. Recap retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row's pointer at it leaves; the `landed:` line above records that strip. Park retires under the same plan's section 2, whose Decision 2 cuts the drain rather than re-homing it, so the row's owner is executing-work's `WAITING:` stop shape, `executing-work` leaves the pointer column as the owner, the resume-path clause leaves with the drain, and `hooks/session-start.js` leaves with the handoff inventory it read.
 - proposed: "| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed | `executing-work` (the `WAITING:` stop shape) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |"
+- passage: | Parking a session at its next safe point when the operator or a relayed drain window asks, everything durable committed | `executing-work` (the `WAITING:` stop shape) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |
 
 ### C057
 - key: Read the `kit-goal` skill for arming a completion leash, the canonical condition, and the Stop hook that enforces it.
@@ -3667,6 +3733,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row names `hooks/kit-goal-stop.js` beside the prose owner.
+- passage: | Arming a completion leash, the canonical condition, and its enforcing Stop hook | `kit-goal` | `executing-work`, `peer-sessions`, `hooks/kit-goal-stop.js` |
 
 ### C058
 - key: Read the doctrine's "Dispatch is requested standing" for dispatching this session's own subagents and the standing request that covers it.
@@ -3675,6 +3742,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row's own third column says the skills state where and how "never wider", which is the authorization-scope rule applied to this moment.
+- passage: | Dispatching this session's own subagents, and the standing request covering it | doctrine (Dispatch is requested standing) | `executing-work`, `finishing-work`, `consult` (where and how, never wider) |
 
 ### C059
 - key: Read the `memory-system` skill for recall, the outcome journal, applied stamps, tags, decay, the shared tiers, `memq`, and the four remedies for a record gone bad.
@@ -3683,6 +3751,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: Both this row and the doctrine's extension-layer bullet point at `memory-system`; the enumeration is what makes the moment findable from the map alone.
+- passage: | Recall, outcome journal, applied stamps, tags, decay, shared tiers, `memq`, and the four remedies for a bad record | `memory-system` |
 
 ### C060
 - key: Read the `memory-system` skill for project-tier memory frontmatter.
@@ -3691,6 +3760,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. `hooks/memory-frontmatter-guard.js` enforces the shape; the row records that the prose rule is still the skill's.
+- passage: | Project-tier memory frontmatter | `memory-system`, enforced by `hooks/memory-frontmatter-guard.js` |
 
 ### C061
 - key: Read the `kaizen` skill for capturing kit friction, the capture bar, the weekly pass, and briefs.
@@ -3699,6 +3769,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01 installed the row; docs/backlog.md 2026-09-13, batch 2 ruling 26 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 5, put the landing rule in the moment and `writing-skills` in the pointer column.
 - verdict: keep
 - reason: The row names `kaizen` as the one owner of capturing kit friction, the capture bar, the adjudication pass, how an accepted lesson lands (the owning passage rewritten with the lesson in mind, never appended to) and briefs; the kaizen skill's disposition step states the landing rule whole and the row carries its lead alone, as a lookup table does. The pointer column sends a reader to four surfaces that point at `kaizen` and carry no part of the bar: the doctrine's capture bullet, `coordinator` and `role` for the standing adjudication authority, and `writing-skills`, whose "What a sentence has to earn" section points at the landing rule from where the sentence bars live.
+- passage: | Capturing kit friction: the bar, the adjudication pass, how an accepted lesson lands (the owning passage rewritten, never appended to), briefs | `kaizen` |
+- flag: stale
 
 ### C062
 - key: Read the `kit-doctor` skill for validating and repairing the machine's kit install.
@@ -3707,6 +3779,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | Validating and repairing the machine's kit install | `kit-doctor` |
+- flag: weak-reason
 
 ### C063
 - key: Read the `writing-skills` skill for writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and for proving a wording change moves behavior.
@@ -3715,6 +3789,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01 installed the row; 33b2c7a 2026-09-05 repointed it when the describing surfaces were swept onto their owners after a retire class was amended in one carrier and left standing in another; docs/backlog.md 2026-09-13, batch 2 ruling 26 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 5, put the exclusion in the moment cell.
 - verdict: keep
 - reason: The row carries the whole moment, writing or amending any curated prose the kit ships and proving a wording change moves behavior, which is what a lookup table is for; the doctrine's sentence-shape clause is a slice of that moment and points at the same owner. The moment cell excludes one neighbouring question, how an accepted lesson lands in that prose, and names `kaizen` as its owner in the row above, so a reader is sent to the owner of the landing rather than reading the bars as the whole of it.
+- passage: | Writing or amending any curated prose the kit ships, a skill, charter or the output style, and proving a wording change moves behavior (landing an accepted lesson is `kaizen`'s, above) | `writing-skills` |
 
 ### C064
 - key: Read the `writing-skills` skill's "The size budget is a ledger rather than a ceiling" for a file growing and who moves its cap.
@@ -3723,6 +3798,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: c591c49 2026-09-08, which added the row when the operator ruled mid-run that the size ratchet was meant to encourage cutting and never to forbid adding.
 - verdict: keep
 - reason: No finding. The row names both enforcing surfaces (`scripts/kit-size.js` and the repository-root `test/size-ratchet.test.js`) and is explicit that the test sits outside the plugin root, which is the detail a session would otherwise search for.
+- passage: | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` |
 
 ### C065
 - key: Read the doctrine's "Craft and communication" and "Write every decision ask to the client-briefing register" for the communication register: decision asks, the close-out status, and the board recap.
@@ -3731,6 +3807,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The third column marks the output style as a pinned copy of the register core, which is the parity-pin case C002 admits.
+- passage: | The prose register: all session prose, in three layers, the decision ask, close-out status and board recap included |
 
 ### C066
 - key: Read the doctrine's "Environment and tooling discipline" for shell encoding, background-run markers, readiness waits, and the harness's isolation screen.
@@ -3739,6 +3816,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
+- passage: | Shell encoding, background-run markers, readiness waits, the harness's isolation screen | doctrine (Environment and Tooling Discipline) |
+- flag: weak-reason
 
 ### C067
 - key: When you meet a moment listed as unowned or contested, declare the reading you take under the intake gap check.
@@ -3750,6 +3829,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - reason: The rule holds and the map is its owner, the doctrine carrying only the declare clause as a pointer. Only the sentence shape changes: the paragraph's middle sentence chains three acts and their justification, and the split keeps every act and the operator's-ruling clause. Lands at landed line 101 (section 47's close) as 'A session that meets one declares the reading it takes under the intake gap check. It reports the gap in its close-out. It does not resolve the contest by editing either document, since the assignment is the operator's ruling.', the middle sentence split into its three acts; the ruling A053 lands through it.
 - proposed: Split into one sentence per act, keeping "since the assignment is the operator's ruling" with the no-editing instruction.
 - baseline-test: yes
+- passage: A session that meets one declares the reading it takes under the intake gap check.
 
 ### C068
 - key: Report the gap in your close-out and do not resolve the contest by editing either document.
@@ -3759,6 +3839,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: rewrite
 - landed: 62b0290 section 47
 - reason: Both halves survive: the close-out route is the doctrine's declared-assumption rule applied here, and the no-editing bar is an operator-decision gate this document owns and the doctrine does not carry. Only the sentence shape changes. Lands at landed line 101 (section 47's close) inside C067's split: the report act and the no-editing bar each stand as their own sentence.
+- passage: It reports the gap in its close-out. It does not resolve the contest by editing either document, since the assignment is the operator's ruling.
 
 ### C069
 - key: Remove a row from the unowned-or-contested section only once the ruling lands and the losing text is brought current.
@@ -3768,6 +3849,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: rewrite
 - landed: 62b0290 section 47
 - reason: The rule survives with its gate intact, classed as an operator-decision rather than loop maintenance, because removing a row records a ruling only the operator makes. Only the sentence shape changes. Lands at landed line 101 (section 47's close) with no text change: the row-leaves sentence already stood alone.
+- passage: A row leaves this section when the ruling lands and the losing text is brought current.
 
 ### C070
 - key: Treat when a pull request opens under Branch-and-PR and who opens it as contested; declare your reading and report the gap.
@@ -3805,6 +3887,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01, one of the five contested moments listed with the map.
 - verdict: keep
 - reason: No finding. Note for whoever revisits it: the doctrine's ranking places the operator's live word above a plan header, so a session asked in the room to commit without pushing has an answer even though no header value carries one; the row's currency was not traced further here.
+- passage: | A commit model that commits locally and never pushes | No such value exists; Review-Only forbids the commit as well as the push, so a session asked to commit without pushing has no header to stand on |
 
 ### C074
 - key: Apply this six-tier precedence order (harness, live word, positional grant, doctrine, owning skill, other surfaces) when two surfaces disagree.
@@ -3817,24 +3900,25 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - proposed: Keep the pointer at "Which text governs" and the sentence about what the map answers; drop the six-tier restatement.
 - proposed: The map's line 5 becomes the pointer plus its own "which skill owns the moment" sentence.
 - baseline-test: yes
+- passage: The doctrine's "Which Text Governs" section states the ranking. The map answers the one question it leaves open: which skill owns the moment.
 
 ### C075
 - key: Read the `brainstorming` skill for a plan's `## Intent` record: its parts, its register, its byte bound, who writes it and where a ruling made after the spec ships lands.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:16
-- passage: | A plan's `## Intent` record: its parts, the register it takes, its byte bound, who writes it and where a ruling made after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) | `curating-docs`, `executing-work`, `finishing-work`, `consult`, the `plan-reviewer`, `scope-adjudicator`, `consultant`, `adversarial-reviewer` and `security-reviewer` charters, `docs/architecture.md`, `docs/security-model.md` |
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; sections 1 to 3 installed the record at brainstorming step 9 and pointed six surfaces at it, and the map carried no row for the moment.
 - verdict: keep
 - reason: The record is read by more seats than any other part of a spec bar the Goal, so the map's job of naming one owner is exactly what a reader meeting it on a charter needs. The owner column names step 9 and the freeze paragraph together because the write and the later ruling are one moment split across two of brainstorming's own passages, and a reader sent to the skill without the second would find no home for a ruling made after approval.
+- passage: | A plan's `## Intent` record: parts, register, byte bound, author, and where a ruling after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) |
 
 ### C076
 - key: Read the `executing-work` skill for the add-decision written before a section or a fix is built, and for the design stop it fires.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:31
-- passage: | The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult` |
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; section 3 installed the add-decision at step 1's open and step 4 and re-keyed the design stop onto it, and the map carried no row for either.
 - verdict: keep
 - reason: The moment is the one this plan's Goal turns on, and it fires at four surfaces that each state only their own half: the doctrine's minimum-code bullet, the implementer's status protocol, the fix round and the judge's brief. One owner column sends all four to the step that states the line's five parts and the stop's conditions whole. The stop rides in the same row as the line rather than its own, since the line is its trigger and a reader who finds one without the other has half a rule.
+- passage: | The add-decision written before building, and the design stop it fires when no Goal sentence, Intent clause or acceptance bullet names its mechanism | `executing-work` (step 1's open and step 4) |
 
 ### T001
 - key: For the whole-effort finishing pass, read `finishing-work` as the governing document.
@@ -3843,6 +3927,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01 installed the row with the map; 6983398 2026-09-10, the review-loop provenance plan's finishing pass, added the goal read to the row's enumeration one commit after 55c5abc 2026-09-09 inserted that read as step 4 of `finishing-work`.
 - verdict: keep
 - reason: The row points at the owner and states no part of the rule; `finishing-work` SKILL.md:58 carries the goal read whole, so the widened enumeration is current with the owner. A session changing this row changes the lookup only, and the goal read's own rule moves only with `finishing-work`.
+- passage: | The finishing pass: QA, finishing reviews, goal read, docs curation, memory close, drift routing, close-out | `finishing-work` |
+- flag: stale
 
 ### T002
 - key: Read `branch-hygiene`'s Hard rules for deleting a stranded branch once its commits are recovered, the one `git branch -D` licensed outside the merged set.
@@ -3851,6 +3937,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: docs/backlog.md 2026-09-13, batch 2 ruling 21 part A of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 2; the moment had sat under Unowned or contested since 5cd8f22 2026-09-01 (C072).
 - verdict: keep
 - reason: The row names the owner and the two conditions by count only; `branch-hygiene` SKILL.md:40 states them whole and test/doctrine-parity.test.js pins that sentence. The pointer column names `finishing-work`, whose strand-check sends stranded commits to branch-hygiene for recovery.
+- passage: | Deleting a stranded branch after recovery: the one `git branch -D` outside the merged set, on two conditions | `branch-hygiene` (Hard Rules) | `finishing-work` (the strand-check's recovery pointer) |
 
 ### T003
 - key: Read the doctrine's Disagree-up-front bullet for pushback carrying no new fact, the one re-check of the evidence before the read is restated or downgraded.
@@ -3862,78 +3949,79 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
+- passage: | Pushback with no new fact, a bare "are you sure?": the one re-check before the read is restated or downgraded | doctrine (Disagree up front) | none |
 
 ### W001
 - key: Read the `finishing-work` skill's "Unavailability is the gate failing to run at full strength" for a dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:39
-- passage: | A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
 - provenance: 5cd8f22 2026-09-01; amended by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
 - verdict: keep
 - reason: The hallmark is evaluated at wakes, since a session awaiting a dispatch ends its turn. Naming the wakes in the row keeps the timer rule with the skill that owns the windows it is armed for.
+- passage: | A quiet dispatched agent: probe, wedge hallmark, cadence, the wakes it is evaluated at, windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) |
 
 ### W002
 - key: Read the `executing-work` skill's dispatch row and step 1's leash bullet for awaiting a background dispatch: the `WAITING:` turn end or the synchronous call.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:38
-- passage: | Awaiting a background dispatch: the `WAITING:` turn end or the synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) | doctrine (No completion notification is not a stall signal), `kit-goal` |
 - provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
 - verdict: keep
 - reason: Three documents speak to the wait: the doctrine's bullet, kit-goal's clause (c) and executing-work's contract. The row names executing-work as the one that states the choice whole.
+- passage: | Awaiting a background dispatch: `WAITING:` turn end or synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) |
 
 ### C077
 - key: Read the `executing-work` skill for the review-round backstop: the bound, the ladder a continue buys, and the classes that never freeze with it.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:35
-- passage: | The review-round backstop: the bound at which a section whose loop is still open stops on the BLOCKED path, the ladder a continue buys, and the classes that never freeze with it | `executing-work` (
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
 - verdict: keep
 - reason: The map named no owner for the backstop at all, while four surfaces state parts of it: the skill's own paragraph, the doctrine's pause bullet, `kit-goal`'s stop mechanics and `docs/architecture.md`. A moment with no row is the gap the map's own intake check tells a session to declare rather than fill, and this plan's section 1 rewrote the frozen-class list the backstop carries, so the row was owed by the edit that changed it.
+- passage: | The review-round backstop: the bound where an open loop stops BLOCKED, the ladder a continue buys, and the classes that never freeze | `executing-work` (step 4's backstop paragraph, which owns both of the ladder's numbers) |
 
 ### C078
 - key: Read the `executing-work` skill for whether a fix delta owes a review round of its own: the sufficient triggers and the below-bar judgment under them.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:36
-- passage: | Whether a fix delta owes a review round of its own: the sufficient triggers and the below-bar judgment under them | `executing-work` (step 4's fix-delta bar for the triggers, step 3's trivial-sectio
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
 - verdict: keep
 - reason: The bar sits in step 4 and its below-bar judgment sits in step 3, so a reader who finds one has not found the rule, and the map named neither. This plan's section 1 deleted the bar's third trigger and the claim-class amendment landed its prose-only clause, which is two independent edits to a rule no row pointed at.
+- passage: | Whether a fix delta owes its own review round: the triggers and the below-bar judgment | `executing-work` (step 4's fix-delta bar for the triggers, step 3's trivial-section clause for the below-bar judgment, which that bar defers to) |
 
 ### C079
 - key: Read the `executing-work` skill for what a security Critical must cite from a project's `## Threat model` section and what citing it buys; the section's own shape and the lens's conduct under an absent model are the charter's, one row below.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:37
-- passage: | What a Critical of the security lens must cite from a project's `## Threat model` section, and what citing it buys a finding | `executing-work` (step 4's advisory paragraph) | `security-reviewer` (carries the `threat:` field on every Critical), `scope-adjudicator` (the relevance ruling that confirms or refuses the citation), `docs/security-model.md` (copies the blocking rule whole under its own `## Threat model` heading), `README.md`, `docs/README.md`, `docs/architecture.md` (all three point) |
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20; narrowed in place at that plan's finishing pass 2026-09-21, which split the moment's other half out to C080 below.
 - verdict: keep
 - reason: The operator ruled this moment to `executing-work` on 2026-09-20, in those words: "Executing work should own it. That's the overall session coordinator deciding if the concerns are worth doing." The rule is read when a coordinating session decides whether a security concern is worth acting on, which is that skill's moment rather than a reviewing agent's. The row sat under `## Unowned or contested` until the ruling landed, because the `security-reviewer` charter was the only surface stating the shape whole and the doctrine's ranking puts a charter at the rank that restates and never owns.
+- passage: | What a security Critical must cite from a project's `## Threat model`, and what citing buys | `executing-work` (step 4's advisory paragraph) |
 
 ### C080
 - key: Read the `security-reviewer` charter for the `## Threat model` section's four required parts and for what the security lens does where a project has written none.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:38
-- passage: | The `## Threat model` section's own four required parts, and what the security lens does where a project has written none | `security-reviewer` (its threat-model and absent-model paragraphs) | `executing-work` (step 4's advisory paragraph reads `threat: absent` as a citation and points here for the shape), `docs/security-model.md` (carries the kit's own model in that shape) |
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20, split out of C079 at that plan's finishing pass 2026-09-21 on an adversarial Major.
 - verdict: keep
 - reason: The doctrine's one-owner rule requires the owning document to state its moment whole. Executing-work's advisory paragraph states the blocking rule and what a citation buys a finding, and states neither the section's four required parts nor the lens's conduct under an absent model. Both of those live only in the charter. One row naming executing-work as owner of all four claims therefore sent a reader to a document holding half of them, which is the failure the one-owner rule exists to prevent. Splitting the moment gives each half an owner that states it whole, and the two rows point at each other so neither half is reachable only by knowing it was split.
+- passage: | The `## Threat model` section's four required parts, and the security lens's conduct where none exists | `security-reviewer` (its threat-model and absent-model paragraphs) |
 
 ### C081
 - key: Read the `brainstorming` skill, step 10 Jev coverage check, for where the check runs, what the author does with its ranking and the closing line the handoff recap records.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:20
-- passage: | The Jev coverage check over a spec in the self-review: where it runs, what the author does with the ranking, the closing line the handoff recap records and its by-hand not-run form, and that no score reaches the blind reader or the plan reviewer | `brainstorming` (step 10, the coverage check) | `docs/architecture.md`'s restatement of step 10, `docs/security-model.md` for what the tool sends |
 - provenance: docs/plans/claude-kit_jev-coverage-check_spec_v1.md section 3 2026-09-21, on the precedent of the plan review's row (C012).
 - verdict: keep
 - reason: The check is a new moment inside step 10, and the step's other named reads each have a row, so a reader looking for where the recap's `jev coverage:` line is governed would otherwise find no owner. The row names the two documents that restate the moment, so a later change to the step reaches them.
+- passage: | The Jev coverage check in self-review: where it runs, the author's use of the ranking, the recap's closing line and its by-hand not-run form, and no score reaching the blind reader or plan reviewer | `brainstorming` (step 10, the coverage check) |
 
 ### P001
 - key: Read the `prose-register` skill for the recipe, the scaling and the voice layer of a document written for a named reader, the doctrine owning the register rule itself.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:54
-- passage: | A document for a named reader, in any voice | doctrine for the register's rule, and `prose-register` for the recipe, the scaling and the voice layer, as the prose register row below states | `prose-reviewer` charter |
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill; the row dates to 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: The moment widened from a document in the operator's voice to a document for any named reader, because the register governs whatever the voice. The owner column names the same split the prose register row states later in the map, so one moment reads with one owner per layer rather than with two owners disagreeing.
+- passage: | A document for a named reader, in any voice | doctrine for the register's rule, and `prose-register` for the recipe, the scaling and the voice layer, as the prose register row below states | `prose-reviewer` charter |
 
 ## plugins/claude-kit/output-styles/kit.md
 
