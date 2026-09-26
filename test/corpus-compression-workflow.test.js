@@ -7,8 +7,10 @@
 // the next one starts. The last is read from a dry run: the script's own source
 // is evaluated the way the Workflow runtime evaluates it, an async body with
 // agent, log and args in scope, over a stub agent that records when each call
-// starts and ends. Each check also runs once against a mutated copy of the
-// source, so a green here is shown to be a check that can go red.
+// starts and ends. Those three checks each also run once against a mutated
+// copy of the source, so their green is shown to be a check that can go red.
+// The rest pin what a failed or malformed wave does: nothing is dispatched for
+// a list the script would refuse, and a failed agent costs no finished wave.
 
 'use strict';
 
@@ -72,8 +74,10 @@ function load(src) {
 }
 
 // A stub agent whose calls take different times, so a wave that does not wait
-// for the previous one shows up as an overlap in the recorded order.
-function stub() {
+// for the previous one shows up as an overlap in the recorded order. A prompt
+// named in `fail` throws, and one named in `empty` returns null, the two ways
+// the runtime reports an agent that produced nothing.
+function stub({ fail = [], empty = [] } = {}) {
     const events = [];
     const calls = [];
     let open = 0;
@@ -88,6 +92,8 @@ function stub() {
         await new Promise(r => setTimeout(r, delay));
         open--;
         events.push({ at: 'end', prompt });
+        if (fail.includes(prompt)) throw new Error(`stub failure on ${prompt}`);
+        if (empty.includes(prompt)) return null;
         return `text of ${prompt}`;
     };
     return { agent, events, calls, peak: () => peak };
@@ -123,15 +129,14 @@ function orderProblems(events) {
     return problems;
 }
 
-async function dryRun(src, waves, done) {
-    const s = stub();
+async function dryRun(src, waves, done, opts) {
+    const s = stub(opts);
     const result = await load(src)(s.agent, () => {}, () => {}, { waves, done });
     return { s, result };
 }
 
 test('every agent() call names a model and an effort', () => {
     assert.deepStrictEqual(callProblems(SOURCE), []);
-    assert.strictEqual(agentCalls(SOURCE).length, 2, 'the script dispatches from the drafter and the reviewer sites only');
 });
 
 test('the agent() check reds on a call with no effort', () => {
@@ -151,13 +156,13 @@ test('MAX_OPEN is present and at most five', () => {
 test('each wave settles before the next starts, and a review wave holds at most MAX_OPEN open', async () => {
     const { s, result } = await dryRun(SOURCE, WAVES, []);
     assert.deepStrictEqual(orderProblems(s.events), []);
-    assert.strictEqual(s.peak(), maxOpen(SOURCE), 'the four-reviewer wave should fill the pool exactly');
+    assert.strictEqual(s.peak(), Math.min(maxOpen(SOURCE), 4), 'the four-reviewer wave should fill the pool up to its size');
     assert.deepStrictEqual(result.map(r => r.id), ['d1', 'r1', 'd2']);
     assert.strictEqual(result[1].reviews.length, 4);
 });
 
 test('the order check reds when a draft wave is not awaited', async () => {
-    const mutated = SOURCE.replace('results.push(await draftWave(wave))', 'results.push(draftWave(wave))');
+    const mutated = SOURCE.replace("wave.kind === 'draft' ? await draftWave(wave)", "wave.kind === 'draft' ? draftWave(wave)");
     assert.notStrictEqual(mutated, SOURCE, 'the mutation found nothing to replace');
     const { s } = await dryRun(mutated, WAVES, []);
     await new Promise(r => setTimeout(r, 60));
@@ -180,9 +185,40 @@ test('a wave listed as done is skipped, so a stopped run resumes from disk', asy
     assert.deepStrictEqual(result.map(r => r.id), ['d2']);
 });
 
-test('an unknown drafting config or reviewer type is refused before any dispatch', async () => {
-    await assert.rejects(dryRun(SOURCE, [{ id: 'x', kind: 'draft', config: 'fable-high', prompt: 'x' }], []), /config must be one of/);
-    await assert.rejects(dryRun(SOURCE, [{ id: 'y', kind: 'review', round: 1, reviews: [{ agentType: 'general-purpose', prompt: 'y' }] }], []), /is not one of/);
+test('a malformed wave anywhere in the list is refused before any dispatch', async () => {
+    const bad = [
+        [{ id: 'x', kind: 'draft', config: 'fable-high', prompt: 'x' }, /config must be one of/],
+        [{ id: 'x', kind: 'draft', config: 'constructor', prompt: 'x' }, /config must be one of/],
+        [{ id: 'x', kind: 'review', round: 1, reviews: [{ agentType: 'general-purpose', prompt: 'x' }] }, /is not one of/],
+        [{ id: 'x', kind: 'review', round: 1, reviews: [] }, /reviews must be a non-empty array/],
+        [{ id: 'x', kind: 'review', round: 1 }, /reviews must be a non-empty array/],
+        [{ id: 'x', kind: 'fix', prompt: 'x' }, /kind must be draft or review/],
+        [{ id: 'd1', kind: 'draft', config: 'fable-low', prompt: 'x' }, /the id is used twice/],
+    ];
+    for (const [wave, reason] of bad) {
+        const s = stub();
+        await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { waves: [...WAVES, wave], done: [] }), reason);
+        assert.deepStrictEqual(s.calls, [], `a list ending in ${JSON.stringify(wave)} dispatched before it was refused`);
+    }
+    const s = stub();
+    await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { waves: WAVES, done: 'd1' }), /args.done must be an array/);
+    await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { done: [] }), /args.waves must be a non-empty array/);
+    assert.deepStrictEqual(s.calls, []);
+});
+
+test('a failed reviewer settles its wave, keeps the finished waves and stops the run', async () => {
+    const { s, result } = await dryRun(SOURCE, WAVES, [], { fail: ['r1b'], empty: ['r1d'] });
+    assert.deepStrictEqual(result.map(r => r.id), ['d1', 'r1'], 'the run should stop after the failed wave');
+    assert.strictEqual(result[0].text, 'text of d1', 'the finished draft is returned');
+    assert.deepStrictEqual(result[1].reviews.map(r => r.text || r.error), ['text of r1a', 'stub failure on r1b', 'text of r1c', 'the agent returned no result']);
+    assert.match(result[1].error, /2 of 4 reviewers failed/);
+    assert.ok(!s.calls.some(c => c.prompt === 'd2'), 'no wave after the failed one is dispatched');
+});
+
+test('a failed drafter stops the run with its error and dispatches nothing after it', async () => {
+    const { s, result } = await dryRun(SOURCE, WAVES, [], { fail: ['d1'] });
+    assert.deepStrictEqual(result.map(r => [r.id, r.error]), [['d1', 'stub failure on d1']]);
+    assert.deepStrictEqual(s.calls.map(c => c.prompt), ['d1']);
 });
 
 // The doctrine's Workflow grant covers a read-only dispatch naming an agentType

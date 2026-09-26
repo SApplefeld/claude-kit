@@ -9,14 +9,18 @@ export const meta = {
 }
 
 // The corpus-compression plan's one dispatch path. It runs under the Workflow
-// tool by scriptPath, and these constants are the only places a model, an
-// effort or a pool size is written. test/corpus-compression-workflow.test.js
-// fails where an agent() call lacks a model or an effort, or where MAX_OPEN
-// exceeds five.
+// tool by scriptPath, which evaluates this file as an async body with agent,
+// log, phase and args in scope, so the top-level return below is the run's
+// result. These constants are the only places a model, an effort or a pool
+// size is written. test/corpus-compression-workflow.test.js fails where an
+// agent() call lacks a model or an effort, or where MAX_OPEN exceeds five.
 //
-// Waves run in order, each settling before the next starts. Within a review
-// wave the pool holds at most MAX_OPEN agents open, whatever the harness's own
-// per-workflow clamp would admit. The script never writes a file: every agent
+// Every wave is validated before the first dispatch. Waves then run in order,
+// each settling before the next starts, and within a review wave the pool
+// holds at most MAX_OPEN agents open, whatever the harness's own per-workflow
+// clamp would admit. A failed agent becomes an error entry rather than a
+// throw, so its wave still settles, the run stops after that wave, and every
+// wave that finished is returned. The script never writes a file: every agent
 // it dispatches is read-only and returns text, and the main thread writes
 // what it keeps.
 //
@@ -45,6 +49,39 @@ const REVIEWERS = [
   'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
 ]
 
+function validate(waves, done) {
+  if (!Array.isArray(waves) || waves.length === 0) throw new Error('args.waves must be a non-empty array')
+  if (!Array.isArray(done)) throw new Error('args.done must be an array of wave ids')
+  const ids = new Set()
+  for (const wave of waves) {
+    if (typeof wave.id !== 'string' || wave.id === '') throw new Error('every wave needs a non-empty string id')
+    if (ids.has(wave.id)) throw new Error(`wave ${wave.id}: the id is used twice`)
+    ids.add(wave.id)
+    if (wave.kind === 'draft') {
+      if (typeof wave.config !== 'string' || !Object.hasOwn(DRAFT_MODEL, wave.config)) {
+        throw new Error(`wave ${wave.id}: config must be one of ${Object.keys(DRAFT_MODEL).join(', ')}`)
+      }
+    } else if (wave.kind === 'review') {
+      if (!Array.isArray(wave.reviews) || wave.reviews.length === 0) throw new Error(`wave ${wave.id}: reviews must be a non-empty array`)
+      for (const r of wave.reviews) {
+        if (!REVIEWERS.includes(r.agentType)) throw new Error(`wave ${wave.id}: reviewer ${r.agentType} is not one of ${REVIEWERS.join(', ')}`)
+      }
+    } else {
+      throw new Error(`wave ${wave.id}: kind must be draft or review`)
+    }
+  }
+}
+
+// An agent's outcome as data: its text, or the reason it produced none.
+async function settle(call) {
+  try {
+    const text = await call()
+    return text === null || text === undefined ? { error: 'the agent returned no result' } : { text }
+  } catch (e) {
+    return { error: String((e && e.message) || e) }
+  }
+}
+
 async function pool(thunks, size) {
   const results = new Array(thunks.length)
   let next = 0
@@ -59,41 +96,43 @@ async function pool(thunks, size) {
 }
 
 async function draftWave(wave) {
-  if (!(wave.config in DRAFT_MODEL)) throw new Error(`wave ${wave.id}: config must be one of ${Object.keys(DRAFT_MODEL).join(', ')}`)
-  const text = await agent(wave.prompt, {
+  const outcome = await settle(() => agent(wave.prompt, {
     label: `draft:${wave.id}`,
     phase: 'Draft',
     agentType: DRAFTER,
     model: DRAFT_MODEL[wave.config],
     effort: DRAFT_EFFORT[wave.config],
-  })
-  return { id: wave.id, kind: 'draft', config: wave.config, text }
+  }))
+  return { id: wave.id, kind: 'draft', config: wave.config, ...outcome }
 }
 
 async function reviewWave(wave) {
-  for (const r of wave.reviews) {
-    if (!REVIEWERS.includes(r.agentType)) throw new Error(`wave ${wave.id}: reviewer ${r.agentType} is not one of ${REVIEWERS.join(', ')}`)
-  }
-  const texts = await pool(wave.reviews.map((r, i) => () => agent(r.prompt, {
+  const outcomes = await pool(wave.reviews.map((r, i) => () => settle(() => agent(r.prompt, {
     label: `review:${wave.id}:${i + 1}`,
     phase: 'Review',
     agentType: r.agentType,
     model: REVIEW_MODEL,
     effort: REVIEW_EFFORT,
-  })), MAX_OPEN)
-  return { id: wave.id, kind: 'review', round: wave.round, reviews: wave.reviews.map((r, i) => ({ agentType: r.agentType, text: texts[i] })) }
+  }))), MAX_OPEN)
+  const reviews = wave.reviews.map((r, i) => ({ agentType: r.agentType, ...outcomes[i] }))
+  const failed = reviews.filter(r => r.error).length
+  return { id: wave.id, kind: 'review', round: wave.round, reviews, ...(failed ? { error: `${failed} of ${reviews.length} reviewers failed` } : {}) }
 }
 
 async function run(waves, done) {
+  validate(waves, done)
   const results = []
   for (const wave of waves) {
     if (done.includes(wave.id)) {
       log(`skip ${wave.id}: its artifact is on disk`)
       continue
     }
-    if (wave.kind === 'draft') results.push(await draftWave(wave))
-    else if (wave.kind === 'review') results.push(await reviewWave(wave))
-    else throw new Error(`wave ${wave.id}: kind must be draft or review`)
+    const result = wave.kind === 'draft' ? await draftWave(wave) : await reviewWave(wave)
+    results.push(result)
+    if (result.error) {
+      log(`stop after ${wave.id}: ${result.error}`)
+      break
+    }
   }
   return results
 }

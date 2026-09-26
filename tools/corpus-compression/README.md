@@ -6,11 +6,11 @@
 
 The script's constants are the only places a model, an effort or a pool size is written:
 
-| Constant | Value | What it sets |
-|---|---|---|
-| `MAX_OPEN` | 3 | the most agents a review wave holds open |
-| `REVIEW_MODEL`, `REVIEW_EFFORT` | `fable`, `low` | every reviewer |
-| `DRAFT_MODEL`, `DRAFT_EFFORT` | keyed by config | the drafter, per the config a wave names |
+| Constant | What it sets |
+|---|---|
+| `MAX_OPEN` | the most agents a review wave holds open, at most five |
+| `REVIEW_MODEL`, `REVIEW_EFFORT` | every reviewer |
+| `DRAFT_MODEL`, `DRAFT_EFFORT` | the drafter, keyed by the config a wave names |
 
 The two drafting configs are `opus-medium` and `fable-low`, the pair the pilot's bake-off compares. Waves run in order, and each settles before the next starts. `test/corpus-compression-workflow.test.js` fails where an `agent()` call lacks a model or an effort, where `MAX_OPEN` exceeds five, or where a wave starts before the previous one settles.
 
@@ -31,6 +31,8 @@ Pass the waves as `args`:
 }
 ```
 
-The main thread writes every prompt. A blind reviewer's prompt is authored as its own literal and shares nothing with a sighted one. A review wave may name only the reviewer types in `REVIEWERS`, each governed by the read-only guard. The drafter is `claude-kit:corpus-drafter`, also read-only.
+Every wave is checked before the first dispatch, so a malformed list dispatches nothing. The main thread writes every prompt, and authors a blind reviewer's prompt as its own literal sharing nothing with a sighted one. The script cannot check that, since prompts arrive in `args`. A review wave may name only the reviewer types in `REVIEWERS`, each governed by the read-only guard. The drafter is `claude-kit:corpus-drafter`, also read-only.
 
-The script returns each wave's text and writes nothing. The main thread saves what it keeps under `.kit/scratch/corpus-compression/`. A Workflow script cannot read the disk, so on a resume the main thread lists in `done` the id of every wave whose artifact it already saved, and the script skips those waves.
+The Workflow tool evaluates the file as an async body with `agent`, `log`, `phase` and `args` in scope, and the top-level `return` is the run's result.
+
+The script returns each wave's text and writes nothing. A failed agent comes back as an error entry in its wave; the run stops after that wave and still returns every wave that finished. Where the whole run is killed, each finished agent's text is in the run's `journal.jsonl`, under the `result` field of its line. The main thread saves what it keeps under `.kit/scratch/corpus-compression/`. A Workflow script cannot read the disk, so on a resume the main thread lists in `done` the id of every wave whose artifact it already saved, and the script skips those waves.
