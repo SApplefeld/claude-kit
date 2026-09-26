@@ -440,7 +440,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - proposed: Add to the live-word tier a pointer naming the coordinator skill as the owner of the closed list of warranted channels.
 - proposed: The fourth tier reads "this doctrine, for principles and for the scope of the authorizations it states itself", leaving a standing grant's surfaces to its owning skill as the third tier already says.
 - baseline-test: yes
-- passage: Highest first: the harness's own instructions, such as its system prompt, tool descriptions and injected lines, which this doctrine may satisfy and never discounts. Second, my live word to this session on a warranted channel, for what it names. The coordinator skill owns the closed list of warranted channels. Third, a positional grant, for exactly the scope this doctrine or its owning skill assigns: a plan header's Commit Model for that plan, a plan's Dispatch Authorization section, a standing-grant record under the role skill's rail for the mechanism its owning skill states, or the arming act for the plan it arms. Fourth, this doctrine, for principles and the authorizations it states itself. Fifth, the skill owning the moment, for its mechanics, where the doctrine's words on a mechanic are only a pointer or copy. Last, every other surface, such as a charter, a brief or the output style, which restates, narrows or points and never widens or contradicts.
+- passage: Highest first: the harness's own instructions, such as its system prompt, tool descriptions and injected lines, which this doctrine may satisfy and never discounts. Second, my live word to this session on a warranted channel, for what it names. The coordinator skill owns the closed list of warranted channels. Third, a positional grant, for exactly the scope this doctrine or its owning skill assigns. The positional forms are a plan header's Commit Model for that plan, a plan's Dispatch Authorization section, a standing-grant record under the role skill's rail for the mechanism its owning skill states, and the arming act for the plan it arms. Fourth, this doctrine, for principles and the authorizations it states itself. Fifth, the skill owning the moment, for its mechanics, where the doctrine's words on a mechanic are only a pointer or copy. Last, every other surface, such as a charter, a brief or the output style, which restates, narrows or points and never widens or contradicts.
 
 ### c1.C045
 - key: When a lower surface contradicts a higher one, follow the higher surface now and send the contradiction to the kaizen inbox.
@@ -574,7 +574,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - proposed: One statement of the material-decision ask at line 58; line 52 points; line 72's sentence goes.
 - proposed: (via A012) C057 gives way: line 52 names the true blocker and points at executing-work's closed blocker set for the members, so a member added to the set is never silently excluded by the doctrine.
 - baseline-test: yes
-- passage: Interrupt me only for a member of the closed blocker set in `skills/executing-work/SKILL.md` under the kit plugin root, which excludes capacity.
+- passage: Interrupt me only for a member of the closed blocker set in `skills/executing-work/SKILL.md` under the kit plugin root. Capacity is never on that set.
 
 ### c1.C058
 - key: Never surface capacity or context pressure as a stop; work through it.
@@ -583,7 +583,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 4d80091 2026-08-01, the leash commit that refused a capacity-shaped BLOCKED release after sessions ended turns on "I'm at my context limit" mid-run.
 - verdict: keep
 - reason: The incident was a session rationalizing a stop, so the rule has to sit where the reasoning happens and survive compaction; kit-goal-stop.js only refuses a capacity-shaped BLOCKED on a leashed run, leaving an unleashed session with nothing but this sentence in the way (A018, A020). The sentence is unchanged at HEAD (A152).
-- passage: Interrupt me only for a member of the closed blocker set in `skills/executing-work/SKILL.md` under the kit plugin root, which excludes capacity.
+- passage: Interrupt me only for a member of the closed blocker set in `skills/executing-work/SKILL.md` under the kit plugin root. Capacity is never on that set.
 
 ### c1.C059
 - key: Consume all of the operator's front-loaded context before proposing anything.
@@ -1319,7 +1319,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: no provenance found (first present at b9c7f85 2026-06-14, whose message narrates no incident).
 - verdict: keep
 - reason: A fixture older than the work makes a green suspect and nothing mechanical dates a fixture against a change; memory-system's epoch rule is the machine-figure instance.
-- passage: Confirm the base commit, and by its mtime that no fixture or baseline you trust is older than your work.
+- passage: Confirm the base commit and the mtime of any fixture or baseline you trust, since one older than your work makes a green suspect.
 
 ### c1.C131
 - key: After a fix, run the targeted lane: the changed files' tests plus any whole-tree pin whose subject those files are.
@@ -1342,7 +1342,8 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: Every phrase is pinned in test/doctrine-parity.test.js and stays; the one real contention is the kaizen note push, which 3380bf2 deliberately exempted from the gate (one inbox line no test takes as a subject, pushed from a repo holding no lanes), so the owner of the moments states that exemption or kaizen points at this bullet as the rule it narrows. finishing-work's discharge of a second run over an unchanged tree is the owner's refinement, not a conflict. Placement picked by the rewrite: the exemption lands in the gate bullet as one sentence ("A kaizen note push, one commit carrying one inbox line, is exempt on the bound the kaizen skill states."), the gate bullet being the owner of the moments; kaizen SKILL.md already carries the exemption and its bound and names the pre-push gate as the rule it narrows, so no kaizen edit is owed.
 - proposed: Keep every pinned phrase; add the one-line note-push exemption to the gate bullet or have kaizen's paragraph point at the gate bullet as the rule it narrows; the rewrite plan picks the placement.
 - baseline-test: yes
-- passage: The whole gate runs at finishing, before the plan's handoff, and before a push only where that push lands on a trunk consumers install from directly with no CI gating the merge. It runs at finishing even where downstream CI exists. ... A kaizen note push is exempt on the bound the kaizen skill states.
+- passage: The whole gate runs at finishing, before the plan's handoff, and before a push only where that push lands on a trunk consumers install from directly with no CI gating the merge. It runs at finishing even where downstream CI exists.
+- passage: A kaizen note push is exempt on the bound the kaizen skill states.
 
 ### c1.C133
 - key: Take the targeted lane at section close and in fix rounds, whatever the delta touched.
@@ -1405,7 +1406,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: efcfa16 2026-08-27: splitting the gate into lanes left the baseline unscoped, so a targeted run could be diffed against a whole-gate baseline and reported as no regressions.
 - verdict: keep
 - reason: The ownership map gives the doctrine how the delta is reported, the same-lane phrase is pinned, and the two worked strings are the form.
-- passage: Report a delta against a baseline recorded on that same lane: "baseline 2 failing {a,b} → still 2 failing {a,b}," or "now 3: +c, I caused it."
+- passage: Report a delta against a baseline recorded on that same lane: "baseline 2 failing {a,b} → still 2 failing {a,b}."
 
 ### c1.C140
 - key: Take a whole-gate baseline before claiming no regressions across the suite.
@@ -1950,7 +1951,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: At execution the doctrine and executing-work agree that the loop's gate-spanning window is the declared kind, but this sentence is an absolute in the same paragraph that declares that window, and executing-work has to argue the reconciliation. State in its own sentence that the never-clause reaches a window that could close and that the loop's declared window is the exception beside it; Review-Only's parked stage is not a window at all, since that session never commits.
 - proposed: State the never-clause's scope in its own sentence: it reaches a window that could close, and the loop's declared window is the named exception it sits beside.
 - baseline-test: yes
-- passage: Never leave one that could close open across a long-running step or an unbounded wait.
+- passage: Never leave one that could close open across a long-running step or an unbounded wait. A stage a commit model parks by design, as Review-Only does, is the deliverable rather than a window, and rests as long as the review takes.
 
 ### c2.C042
 - key: Read `git diff --cached --name-only` over the whole index first, and name no path in your commit that carries a stage you did not author.
@@ -1959,7 +1960,8 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 6b7b384 2026-08-29, review-and-record section 8: the peer's half became a precondition on the file set after the first draft's pathspec carve-out was shown, by experiment, to drop a resting stage.
 - verdict: keep
 - reason: The peer-side clause exists nowhere else (executing-work:356 carries only the target-match check and cites the doctrine as owner); the three unavailable-form cases are the three ways the first draft went wrong.
-- passage: read `git diff --cached --name-only` over the whole index ... Name no path carrying a stage you did not author.
+- passage: read `git diff --cached --name-only` over the whole index as its own step
+- passage: Your commit names no path carrying a stage you did not author, since a pathspec commit drops what was staged at the paths it names.
 
 ### c2.C043
 - key: On an overlap, or where neither commit form is available, hold and message the other session instead of committing.
@@ -2033,7 +2035,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: f8c0649 2026-06-10, the INIT consolidation of the operator's working pattern. goal-fit section 3 2026-09-19 sharpened the bullet in place, on the operator's 2026-09-18 framing that not building must be a live option and that the doctrine gains no new bullet for it.
 - verdict: keep
 - reason: The subject is what the session writes, so "it" is the session's own code and adjacent code stays under the scope bullet; the 200-to-50 clause is the operator's house phrase for the minimum rule. The implement-or-ask gate on the same line is an operator-decision ask at a spec gap, not a per-cycle permission.
-- passage: Weigh not building it first, and write no mechanism, fallback or guard that no requirement names. No speculative abstractions, no configurability ... If 200 lines could be 50, rewrite it.
+- passage: Weigh not building it first, and write no mechanism, fallback or guard that no requirement names. No speculative abstractions, no configurability, and no placeholder logic: implement it or ask. If 200 lines could be 50, rewrite it.
 
 ### c2.C051
 - key: Write no placeholder logic; implement it or ask for clarification.
@@ -2063,7 +2065,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: Every clause is pinned by name in test/doctrine-parity.test.js (the test 'the authorization bullet keeps its default, its override set, and its bounds in each copy') and none retires. The bullet as landed on 2026-09-13 states the class as a two-part consequence test, an act reaching a surface someone other than the operator and the session depends on or one the session could not undo with the tools it holds, with a closed list of eleven never-gated channels in place of the opening enumeration; a force push is stated as never on that list and always inside the test; the old catch-all's shared, global and native state is kept inside the first part by one sentence naming another session as someone other than the operator and the session, so a write to state outside the working tree that other sessions read meets the first part; the rollback line admits that no undo exists for a part-two act. The push contentions the readers raised are answered by the bullet's default sentence ('Commit and push are the default'), and the deletes and PR opens the skills perform ride their recorded model, which the exemption sentence states rides with the commit and the push on the list or off it. The enumeration pin is retired and replaced by three pins, on the test, the never-gated list and the other-remote sentence, with a force-push pin and a shared-state pin beside them; the deploy-yes pin is recased to the sentence's new position; every other pre-reframe pin stands; and the checklist line takes the test in one line. The enumeration's `pnpm patch` and live-draft members are not restated: the test decides each such act on the surface it reaches and on whether the session can undo it, so neither is named as gated or as ungated here, and the drop is reported to the operator at the section's Chapter.
 - proposed: State the class as the two-part test with its either-part quantifier and the never-gated channels as a closed list in place of the opening enumeration; state a force push as always inside the test; name another session as someone other than the operator and the session in one sentence; keep every pre-reframe bound verbatim in its own sentence, and re-anchor the parity pins to the new sentences.
 - baseline-test: yes
-- passage: The class is a two-part test, and an act meeting either part is inside it. It reaches a surface someone other than you and me depends on, or it is one you could not undo with the tools you hold. Another session, or any party reading state outside your working tree, is someone other than you and me. So a write to state other sessions read reaches a surface the first part names. Inside the test, name the undo in one line, or say none exists. Then wait for explicit confirmation unless already told to proceed. The test never gates these channels, and the list is closed: [eleven members, verbatim] ... A channel this list does not name takes the test. A force push is never on the list and is always inside the test, whatever branch it lands on.
+- passage: The class is a two-part test, and an act meeting either part is inside it. It reaches a surface someone other than you and me depends on, or it is one you could not undo with the tools you hold. Another session, or any party reading state outside your working tree, is someone other than you and me. So a write to state other sessions read reaches a surface the first part names. Inside the test, name the undo in one line, or say none exists. Then wait for explicit confirmation unless already told to proceed. The test never gates these channels, and the list is closed: a commit, a push to the working branch, opening or updating a pull request in the working repository, marking it ready, arming auto-merge, a message to me, a peer message, a kaizen note, a memory write, a plan doc edit, and the memory store's own sync. A channel this list does not name takes the test. A force push is never on the list and is always inside the test, whatever branch it lands on.
 
 ### c2.C054
 - key: Read the operational surface a standing grant reaches off the skill governing the act, at the act, never off the grant record.
@@ -2101,7 +2103,8 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: rewrite
 - landed: 881eb41 section 1
 - reason: Blast-radius gate, kept whole: no hook refuses a deploy, a force push or a push to another remote, and each is pinned. The other-remote push sits inside the two-part test with the memory store's own sync excepted by name, per ruling 13 of 2026-09-13: the store exists to share memories across machines and back them up, the operator neither diffs nor manages it, and any session may sync it at any time with no go-ahead, so the case 4c6787c closed is re-opened on purpose for that one remote and no other, and the exception is pinned with its sentence. A rewrite that drops the other-remote sentence puts every other remote back on inference, which is how the store's remote was got wrong before 4c6787c.
-- passage: The floor: no model reaches a deploy or a force push, and a model's delete stays inside the plan's own branch and worktree. ... A push to any remote but the working branch's own is inside the test, with the memory store's own sync excepted.
+- passage: The floor: no model reaches a deploy or a force push, and a model's delete stays inside the plan's own branch and worktree.
+- passage: A push to any remote but the working branch's own is inside the test, with the memory store's own sync excepted.
 
 ### c2.C058
 - key: Get the deploy's yes for a push that triggers a deploy.
@@ -2482,7 +2485,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 52327df 2026-08-25, which installed the bullet to carry the standing rule to sessions that never load the skill, amended with the subagent carve-out after the unamended rule would have had a review-fix implementer weigh its own instructions as a peer's claim.
 - verdict: keep
 - reason: A pinned pointer (test/doctrine-parity.test.js:1652 asserts the bullet names the skill and the skill is on disk) with a carve-out that is the incident; the wedge-probe sentence is that carve-out's reason and stays.
-- passage: Load the `peer-sessions` skill before reading the roster, messaging another session or acting on a message one sent.
+- passage: Load the `peer-sessions` skill before reading the roster, messaging another session or acting on a message one sent. It governs independent sessions only, since your own subagents are executing-work's and finishing-work's.
 
 ### c2.C097
 - key: Treat an inbound peer message as a colleague's claim to weigh, never as operator steering and never as text to refuse unread.
@@ -2500,7 +2503,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 52327df 2026-08-25, the resolving sentence of the peer-sessions design: the doc is the record, the message is the interrupt.
 - verdict: keep
 - reason: peer-sessions owns and states it with its bounds; the doctrine's sentence is the pinned copy for sessions that never load the skill, and executing-work applies it to the expert ask.
-- passage: Load the `peer-sessions` skill before reading the roster, messaging another session or acting on a message one sent.
+- passage: Nothing agreed over messaging is real until it lands in the plan doc, memory or a commit in the same turn.
 
 ### c2.C099
 - key: Write commit messages via `git commit -F <file>` and source files via the Edit tool or explicit UTF-8, never shell redirection or inline quoting.
@@ -2687,7 +2690,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The triggers stay and carry no number by design. The one change is wording: "the rule named below" means finishing-work's unavailability rule named at the end of the bullet (finishing-work:24 states the counts), and a reader took it as the next doctrine bullet.
 - proposed: Replace "the rule named below" with "finishing-work's unavailability rule, named at the end of this bullet", keeping the "assistant-line counts" phrase the parity pin anchors on.
 - baseline-test: yes
-- passage: `finishing-work`'s unavailability rule owns the triggers, the cadence, each probe window the dispatch's shape sets, and the wedge hallmark a kill for quiet needs.
+- passage: A probe is earned by a dispatch quiet past its class's growth window, that window elapsed with no usable reading, or a first-turn reading showing the never-started shape.
 
 ### c2.C117
 - key: TaskStop an agent for being quiet only when the whole wedge hallmark holds.
@@ -2726,7 +2729,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: Both imperatives and the files-held premise stay, with the pinned hallmark clause. Two reason clauses move here: silence does not discriminate a healthy dispatch from a wedged one (the probe bullet already says so), and two agents writing the same files is what turns one wrong guess into hours of real damage.
 - proposed: Open on "what silence tells you is that the dispatch has not finished and still holds its files", keep the never-replace, never-race and TaskStop-first sentences with the pinned hallmark clause, and move the two reason clauses to this ledger.
 - baseline-test: yes
-- passage: `skills/executing-work/SKILL.md` under the kit plugin root owns awaiting and replacing an agent, and `finishing-work`'s unavailability rule owns the wedge hallmark.
+- passage: Silence means the dispatch has not finished and still holds its files, so it never licenses a replacement or a rival agent racing into those files.
 
 ### c2.C121
 - key: When a decision change or a failed attempt requires replacing an agent, TaskStop it explicitly before dispatching the successor.
@@ -3081,7 +3084,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 1, on the kaizen note of 2026-09-13 in `kaizen/notes-NEO-CLAUDE.md`: a session with a background dispatch in flight blocked in a wait call, which held inbound messages until the operator cancelled the wait.
 - verdict: keep
 - reason: The always-on copy of the rule executing-work's dispatch row owns, for a session that never loads that skill. It sits inside the no-completion-notification bullet, so the parity pin still finds one bullet per lead and the bullet still names `finishing-work`.
-- passage: `skills/executing-work/SKILL.md` under the kit plugin root owns awaiting and replacing an agent, and `finishing-work`'s unavailability rule owns the wedge hallmark.
+- passage: For an in-flight background dispatch, end the turn on a `WAITING:` lead rather than blocking in a wait call.
 
 ### P001
 - key: Write every piece of prose in one register whoever reads it, in three layers each owned once: the sentence layer is the plain-prose bullet, the structure layer is the bullets that follow, and the voice layer is the `prose-register` skill's with the recipe.
@@ -3108,7 +3111,8 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
 - verdict: keep
 - reason: Replaces the word-count sizing of sections the operator's voice skill carried. Headings placed by lookup need and columns phrased as the reader's question are two of the four moves the accepted rewrite in the ASR-CLAUDE kaizen note of 2026-09-17 drew on that no rule stated.
-- passage: A heading names the topic a reader opens the section to check, never the event the section reports, so the headings read together as a table of contents. ... A table's column headings are the reader's questions. A piece too small to search carries no headings.
+- passage: A heading names the topic a reader opens the section to check, never the event the section reports, so the headings read together as a table of contents.
+- passage: A table's column headings are the reader's questions. A piece too small to search carries no headings.
 
 ### P004
 - key: State a rule and then its reason as separate sentences, the rule leading in bold where the passage is a catalog a reader scans and plain where it carries an argument, with the reason never inside the rule's own clause.
@@ -3162,7 +3166,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md, Decisions item 8, the operator's ruling of 2026-09-26 relayed by the assistant persona with the five traits confirmed in the operator's own words, merged to main in pull requests 133 and 134; items 9 and 10 set the case.
 - verdict: keep
 - reason: Session-written headings arrived as the section's thesis sentence ending in a period, because the answer-first bullet puts the thesis first and the heading bullet set no bound, so the thesis climbed into the heading. The prose-register ledger's C018 and C066 had carried the operator's own noun-phrase rule and five-word ceiling, and the bound went missing when they retired into this bullet. Plan item 8 records the operator's hand rewrite of seven pull request headings as the source of the five traits.
-- passage: It names the effect, what the thing does or why the section matters, rather than the part of the system. It uses plain words an outsider reads. It is shaped like a title: no article, no period, usually two or three words and never more than five, with the label-colon-value form allowed. A recurring section takes a standard name across pieces. The section's thesis is the first sentence under the heading. A commit title is a sentence by its own rule and is not a heading.
+- passage: It names the effect, what the thing does or why the section matters, rather than the part of the system. It uses plain words an outsider reads. It is shaped like a title: no article, no period, usually two or three words and never more than five, with the label-colon-value form allowed. A recurring section takes a standard name across pieces, and the section carrying the piece's own change takes its own topic name. The section's thesis is the first sentence under the heading. A commit title is a sentence by its own rule and is not a heading.
 
 ## home/claude-kit-doctrine.md
 
