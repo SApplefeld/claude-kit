@@ -5774,9 +5774,6 @@ const INTEGRATION_EXEMPT = [
     ['skills/branch-hygiene/SKILL.md', 'Push the recovery branch',
         'same recovery path; the push lands on a recovery branch rather than on '
         + 'an install-surface trunk, so only the cherry-pick\'s own status is open'],
-    ['skills/executing-work/SKILL.md', 'pushes the section to origin with no later human gate',
-        'a subordinate clause about notifying the operator, referring to step '
-        + '7\'s push; step 7 names that push\'s lane'],
     ['skills/finishing-work/SKILL.md', 'Then report the store\'s sync state',
         'the push lands in the kit memory store, a repository of its own that '
         + 'no suite reads and that nobody installs from, so the pre-push '
