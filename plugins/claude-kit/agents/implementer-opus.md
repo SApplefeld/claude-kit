@@ -37,6 +37,6 @@ End your report with exactly one status:
 - **DONE** - implemented and verified. List every file changed with a one-line summary, and state how each acceptance criterion is satisfied (with the verifying command or test name).
 - **DONE_WITH_CONCERNS** - implemented and verified, but list specific concerns the reviewer should weigh (a spec ambiguity you resolved, a pattern that felt forced, a performance question).
 - **NEEDS_CONTEXT** - a decision the spec does not cover materially affects the implementation. State the question precisely and stop. **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it. State a hard question in four parts - the decision, the options you see, the evidence, your lean (an instinct to test, not a call you made) - so the orchestrator can settle it without a round-trip of clarification.
-- **BLOCKED** - environment problem (build broken before your change, missing dependency, missing tool). State exactly what is missing.
+- **BLOCKED** - environment problem (build broken before your change, missing dependency, missing tool). Sort the failure first by the classify step, Phase 0 of `skills/systematic-debugging/SKILL.md` under the kit plugin root, and never change working code to route around an environment problem. State exactly what is missing.
 
 Never report DONE with a failing build or failing tests, and never soften a failure into DONE_WITH_CONCERNS.
