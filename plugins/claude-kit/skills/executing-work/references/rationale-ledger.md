@@ -21251,6 +21251,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11, the commit that created the tiered subagent roster so cheaper models could take well-scoped sections while review stayed high.
 - verdict: keep
 - reason: The frontmatter name is the harness's dispatch key; changing it breaks every skill and hook that names this agent type.
+- passage: name: implementer-sonnet
 
 ### C002
 - key: Take dispatch only to implement a single well-defined, mechanical or well-bounded Section of Work from an approved spec, escalating ambiguity rather than guessing.
@@ -21259,6 +21260,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: a5e184b 2026-08-25, the kaizen review round that replaced the description's transcribed brief-field list with a pointer at the executing-work Dispatch Brief template, after a neighbouring round found transcribed field lists silently falsifying the surfaces that count them.
 - verdict: keep
 - reason: The description is what the dispatching session reads when choosing a tier, and it now points at the template rather than copying its fields, which is the shape that stopped drifting.
+- passage: description: "Scoped implementation agent, Sonnet tier. Use to implement a single well-defined Section of Work from an approved spec when the section is mechanical or well-bounded - clear contract, an existing sibling pattern to mimic, low integration risk. Dispatch with a brief built from the executing-work skill's Dispatch Brief template. Escalates ambiguity rather than guessing.
 
 ### C003
 - key: Work using only the Read, Grep, Glob, Edit, Write and Bash tools.
@@ -21267,6 +21269,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11, the tiered-roster commit.
 - verdict: keep
 - reason: A per-agent tool grant the harness reads, not an instruction stated twice; implementer-fable's identical line governs a different agent and neither can stand in for the other.
+- passage: tools: Read, Grep, Glob, Edit, Write, Bash
 
 ### C004
 - key: Run on the Sonnet model.
@@ -21275,6 +21278,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11, the tiered-roster commit.
 - verdict: keep
 - reason: The pin is what makes this charter the Sonnet tier; without it the agent inherits whatever the session runs and the tier bands mean nothing.
+- passage: model: sonnet
 
 ### C005
 - key: Run at medium reasoning effort.
@@ -21283,6 +21287,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: d156f46 2026-07-31, the backlog sweep that set an effort dial per agent (medium here, no field on haiku and fable, which inherit).
 - verdict: keep
 - reason: Set per agent in a commit that assigned a different value or no value to each of ten agents; sonnet and opus sharing `medium` is a coincidence of those independent calls, not a restatement.
+- passage: effort: medium
 
 ### C006
 - key: Implement exactly one Section of Work from the approved spec, and nothing beyond it.
@@ -21291,6 +21296,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11, carried forward at 830ff28 2026-06-17 with the completion contract and delegation economics.
 - verdict: keep
 - reason: The scope bar the whole charter rests on; the rewrite at C007 folds a neighbouring sentence but leaves this one untouched.
+- passage: You implement exactly one Section of Work from an approved spec.
 
 ### C007
 - key: Do not change the design; spend your judgment on execution quality only.
@@ -21300,6 +21306,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - verdict: rewrite
 - landed: a7afa0d section 16
 - reason: "You are not the architect - the spec is" and "Your judgment is for execution quality, not design changes" state one proposition twice, so the two fold into one sentence. The fold is safe because the proposition survives whole; the fresh-context sentence beside them is not part of it and stays. Lands as "The spec owns the design, so spend your judgment on execution quality rather than on design changes.", one sentence of 17 words stating the proposition once, "owns the design" standing where the architect metaphor stood, with the scope sentence before it and the fresh-context sentence after it word for word.
+- passage: The spec owns the design, so spend your judgment on execution quality rather than on design changes.
 
 ### C008
 - key: Read the relevant files before writing any code.
@@ -21308,6 +21315,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11.
 - verdict: keep
 - reason: The fresh-context sentence that carries this rule is the premise of the charter, and the corpus's own parity suite names the same property as the reason a copy exists here at all: a dispatched implementer inherits no skills and holds no pointer it could resolve.
+- passage: You start with a fresh context: you know nothing the brief does not tell you or the files do not show you, so read before you write.
 
 ### C009
 - key: Read the Dispatch Brief template in the executing-work skill's Section loop, step 1, at `skills/executing-work/SKILL.md` under the kit plugin root, for the brief's field list.
@@ -21318,6 +21326,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: The pointer is the one-owner rule already satisfied: the template owns the field list and each charter points at it for the agent that holds no other text. Only the sentence boundary moves, under ruling 17's first pick, the opus split: the ownership clause ends its sentence and the brief-is-its-instance clause is the next. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
+- passage: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
 
 ### C010
 - key: Treat the section's `Tests:` line as a floor over the named contracts: extend it with what implementation reveals and never shrink it.
@@ -21351,6 +21360,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: The rule is exactly what the a5e184b round proved pays for itself, and it stands in its own sentence. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
+- passage: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C013
 - key: Report NEEDS_CONTEXT immediately instead of improvising when something you need is missing.
@@ -21359,6 +21369,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11, carried through the brief-paragraph rewrites at a5e184b 2026-08-25 and 8cdb3f5 2026-09-04.
 - verdict: keep
 - reason: The escalation reflex for a missing input; it already sits in its own sentence and the split around it leaves it untouched.
+- passage: If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising.
 
 ### C014
 - key: Read the spec section in full, including the spec's Approach section for design intent.
@@ -21367,6 +21378,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 7dafcdb 2026-07-15, the kit-stabilization section that re-pinned the four implementer charters to the Dispatch Brief template's field names.
 - verdict: keep
 - reason: Step 1's read order; unchanged by the restoration of the inheritance clause beside it (C016).
+- passage: 1. **Read the spec section in full**, including the Approach section of the spec for design intent.
 
 ### C015
 - key: Read the style skill files named in your brief (csharp-style / sql-style) before writing code.
@@ -21377,6 +21389,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: a7afa0d section 16
 - reason: A dispatched agent loads no skills, so this read is the only way house style reaches the code it writes; the reason stands beside it as C016's sentence. Rewrite rather than keep: the step's split replaces the spaced hyphen that introduced C016's clause, so the sentence closes on a full stop after "(csharp-style / sql-style)" and every word stays; the proposal below is the landed sentence.
 - proposed: Then **read the style skill files named in your brief** (csharp-style / sql-style).
+- passage: Then **read the style skill files named in your brief** (csharp-style / sql-style).
 
 ### C016
 - key: Treat the style skills as mandatory reading because a dispatched agent does not inherit the main session's skills.
@@ -21388,6 +21401,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - reason: An agent that believes it inherited the session's skills reads C015's order to read the style files as already satisfied, so the order is not reliably obeyed without this sentence, which is the only place the charter denies that inheritance. Before this section the verdict was retire; ruling 1 restores the sentence to the sonnet and fable charters in the form the haiku and opus charters carry. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: You do not inherit the main session's skills, and house style is not optional.
 - baseline-test: yes
+- passage: You do not inherit the main session's skills, and house style is not optional.
 
 ### C017
 - key: Honor the precedence rule stated inside each style skill you read.
@@ -21396,6 +21410,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 7dafcdb 2026-07-15, which shrank a re-definition of style precedence in all four charters to this single deferring line, the definition belonging to the doctrine and the style skills.
 - verdict: keep
 - reason: Already the compressed pointer form; the compression this passage was asked for was performed in 2026-07 and this is its result.
+- passage: Honor each style skill's precedence rule.
+- flag: weak-reason
 
 ### C018
 - key: Read the files in scope and their nearest siblings.
@@ -21404,6 +21420,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23, the outline-first plan, whose review ran the planned outline patterns against the corpus and found three of four families failed, and which shipped a two-ended parity pin proven red-then-green against a deletion at each end.
 - verdict: keep
 - reason: The whole step is incident-born and mechanically pinned: test/doctrine-parity.test.js names implementer-sonnet.md by path and matches on "hunting for one thing in a file past roughly 1,000 lines". A rewrite that touches that phrase reds the suite, and a rewrite that drops the clone, anchors or uncovered-language clauses is loss rather than compression.
+- passage: 2. **Read the files in scope and their nearest siblings.**
 
 ### C019
 - key: Find a sibling that solves a similar shape and follow its layout exactly.
@@ -21412,6 +21429,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The self-similarity of the codebases is what makes a Sonnet-tier implementer reliable; without a named sibling to mirror, the tier's low-integration-risk premise fails.
+- passage: The codebases are highly self-similar: find a sibling that solves a similar shape and follow its layout exactly.
 
 ### C020
 - key: Read a sibling you are cloning in full rather than outlining it.
@@ -21420,6 +21438,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The carve-out that stops the outline rule from swallowing the clone case; ddd6c72's own standing lesson is that a rule and its carve-out travel whole or not at all.
+- passage: Read a sibling you are cloning whole rather than outlining it, because you are mirroring its failure-mode breadth, not looking one thing up.
 
 ### C021
 - key: For a cloned sibling running to many thousands of lines, read whole the member or object you are cloning and outline the rest of the file around it.
@@ -21428,6 +21447,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The resolution of the two rules colliding on one file; delete it and an agent facing a 4,000-line sibling has two instructions and no way to choose.
+- passage: Where it runs to many thousands of lines, read the member you clone whole and outline the rest.
 
 ### C022
 - key: Outline a file before reading it when you are hunting for one thing in a file past roughly 1,000 lines.
@@ -21436,6 +21456,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: This exact phrase is what test/doctrine-parity.test.js:3954 reads in this file. Reword it and the pin reds; the pin exists because a deletion at either end of the chain is otherwise invisible.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first from the Outlining heading of the style skills your brief names.
 
 ### C023
 - key: Use the outlining anchors under the Outlining heading of the style skills named in your brief when outlining a file in their language.
@@ -21444,6 +21465,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23, which ruled that language-scoped knowledge cannot live in a language-agnostic surface and moved the anchors into csharp-style and sql-style.
 - verdict: keep
 - reason: A pointer that resolves, because the brief names the style skills' file paths; it is the routing half of the decision that kept a weaker re-derived pattern set out of the doctrine.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first from the Outlining heading of the style skills your brief names.
 
 ### C024
 - key: For a language no named style skill covers, grep that language's declaration and section markers with line numbers, then read the range they name.
@@ -21452,6 +21474,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23, which shipped no JS or TS anchors at all because the kit has no house style with standing to own them.
 - verdict: keep
 - reason: The fallback for every language the kit ships no style skill for; without it an agent outside C# and T-SQL has an outline rule and no method.
+- passage: For a language none covers, grep its declaration and section markers with line numbers, then read the range they name.
 
 ### C025
 - key: Search the whole file for a helper before writing one on the grounds that none exists.
@@ -21460,6 +21483,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: An outline never proves a symbol absent, and this is the duty that stops the outline rule from generating duplicate helpers; it fails silently when dropped.
+- passage: An outline never proves a symbol absent, so search the whole file before writing a helper you think is missing.
 
 ### C026
 - key: Grep for a member by name instead of outlining when the file is generated and you know the member's name.
@@ -21468,6 +21492,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline is worthless there; the `<auto-generated>` marker is the recognizer that makes the rule actionable.
+- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name instead of outlining.
 
 ### C027
 - key: Implement only the section, touching what it requires and nothing else.
@@ -21479,6 +21504,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - reason: "Implement only the section." and "Surgical changes - touch what the section requires and nothing else." were one proposition and folded into one sentence. Under ruling 1 the four charters take one spelling, "what the section requires" rather than "what it requires", with C028's four prohibitions after a colon rather than a full stop. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Implement only the section**, touching what the section requires and nothing else:
 - baseline-test: yes
+- passage: 3. **Implement only the section**, touching what the section requires and nothing else:
 
 ### C028
 - key: Do not expand scope, add speculative abstraction, improve adjacent code, or write placeholder logic.
@@ -21489,6 +21515,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: Four named failure shapes, not a restatement of the scope bar: each is a way an agent stays inside the section's files while leaving the section's scope. The words stand; the list now follows C027's colon, so it opens in lowercase. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.
+- passage: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.
 
 ### C029
 - key: Write every comment as a statement of current state: what the code does now and why, for a reader who never saw the work.
@@ -21499,6 +21526,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: The inline copy is a recorded decision: the agent holds neither the doctrine nor a skill, and "for a reader who never saw the work" is the operative test. Ruling 17's fourth pick drops the trailing parenthetical "(change-narrative goes in the commit message, not the code)" from every charter that carried it, the part of the sentence the fable ledger's C034 found no reason protecting; the exclusion list stands whole. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C030
 - key: Make the build pass.
@@ -21507,6 +21535,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02, the in-turn gate commit; the verification step was extended at 86461d1 2026-08-07.
 - verdict: keep
 - reason: The floor of step 4's evidence contract; everything else in the step is about carrying its result back.
+- passage: The build must pass.
 
 ### C031
 - key: Run the targeted tests and capture the command output that proves the work is done.
@@ -21515,6 +21544,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02.
 - verdict: keep
 - reason: The orchestrator accepts or rejects on this output alone; a claim of passing without it is exactly the report 4d1bc30 was written to stop.
+- passage: Run the targeted tests, and carry the output that proves done in any claim of passing.
 
 ### C032
 - key: Run the gates in the foreground and stay in this turn until they exit.
@@ -21523,6 +21553,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02: in a long autonomous run a qa-verifier backgrounded a long suite, ended its turn mid-gate and returned a report with no result, and the orchestrator had to nudge it and re-run.
 - verdict: keep
 - reason: Live incident class with no machinery behind it. 4d1bc30 states outright why the rule lives in the charter rather than the brief: subagents inherit the catalog, not the doctrine, and a brief is written fresh every dispatch. The wording was baseline-tested against a deliberately slow fake suite, old wording reproducing the strand and new wording holding.
+- passage: Run those gates in the foreground and stay in this turn until they exit; if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C033
 - key: For a run that may exceed the 10-minute tool cap, redirect it to a log, background it with `&`, and poll the log or an exit-code file with an `until` loop in this same turn.
@@ -21531,6 +21562,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07, which named the shell-plus-poll pattern as the right lever after an agent reached for the wrong one.
 - verdict: keep
 - reason: The escape hatch that makes C032 obeyable on a long suite; without a stated alternative the foreground rule forces the very turn-end it bars.
+- passage: Run those gates in the foreground and stay in this turn until they exit; if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C034
 - key: Never background a gate with the Bash tool's `run_in_background` parameter; background it at the shell instead.
@@ -21539,6 +21572,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07, the kaizen note recording that all four implementers already barred ending a turn on a running gate and one stranded anyway, because it was obeying the tool.
 - verdict: keep
 - reason: No hook screens this parameter, so the sentence is the whole guard. Grep of plugins/claude-kit/hooks/ finds no reference to `run_in_background` anywhere.
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 
 ### C035
 - key: Avoid `run_in_background` because it is defined to end your turn and re-invoke you when the command exits, converting a wait into a stop.
@@ -21547,6 +21581,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: This is the rationale that was the fix, not decoration on it. The bare prohibition was already in all four charters when the strand happened; naming what the parameter does is what turns a rule the agent reads into a lever it recognizes, and removing it restores the state that failed.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
 
 ### C036
 - key: Never end your turn with a gate still running.
@@ -21555,6 +21590,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02, the stranded-gate incident.
 - verdict: keep
 - reason: The rule the whole verification step exists for; a wait is not a stop, and nothing mechanical distinguishes the two for the orchestrator reading the report.
+- passage: Never end your turn with a gate still running: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C037
 - key: Treat DONE without the gate's real exit code as not DONE, because your final message is your only channel back to the orchestrator.
@@ -21563,6 +21599,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02.
 - verdict: keep
 - reason: The incident's own diagnosis, written into the charter by the commit that fixed it. The failure mode is an agent believing it can report later, which a bare "never end your turn" does not reach, and the wording carrying this clause is the one that passed the baseline test.
+- passage: Never end your turn with a gate still running: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C038
 - key: Treat phrases like "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", or "ending my turn while the gate completes" as red flags that you are about to end the turn early.
@@ -21571,6 +21608,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07, which added the controller's red-flag phrasing to the step after prose alone had failed to hold an agent in-turn.
 - verdict: keep
 - reason: A recognizer, not an example set: it fires at the moment of composition, which is the only moment left before the turn ends. One carrier across the four charters is not enough, because no agent reads another's charter.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes".
 
 ### C039
 - key: If you are about to write one of those red-flag sentences, do not: poll the gate here and answer once.
@@ -21579,6 +21617,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The act the recognizer triggers; separating the list from the act leaves each half inert.
+- passage: If you are about to write one of these, do not. Poll the gate here and answer once.
 
 ### C040
 - key: Settle the test question your brief set: where the change earned a durable test, leave one and show it passing.
@@ -21587,6 +21626,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: Closes the loop opened by the brief's `Tests:` field; the watch-it-fail-first qualifier is what makes the test prove it tests the right thing.
+- passage: If the change earned a durable test, leave one and show it passing, watching it fail first where practical.
 
 ### C041
 - key: Where the change genuinely did not earn a durable test, say so and give the reason.
@@ -21595,6 +21635,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The carve-out beside C040; without it silence and a considered no-test decision look identical in the report.
+- passage: If it did not, say so and why.
 
 ### C042
 - key: Do not make a temporary repro script the home for new behavior; it is for debugging a fix only.
@@ -21603,6 +21644,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: Closes the cheap escape from C040: a repro script satisfies "I tested it" and leaves nothing durable behind.
+- passage: A temporary repro script is for debugging a fix, never the home for new behavior.
 
 ### C043
 - key: Do not commit or stage anything; leave your changes as unstaged edits.
@@ -21613,6 +21655,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: Prose is the entire guard: readonly-agent-guard.js governs only the read-only agent classes, and its own suite asserts that `git commit -m x` is allowed for claude-kit:implementer-sonnet (test/readonly-agent-guard.test.js:697-702). The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C044's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
+- passage: 5. **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 
 ### C044
 - key: Keep the index empty as a contract, because it keeps your half-finished work out of any commit you did not author.
@@ -21623,6 +21666,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: Incident-born, and it names a blast radius the prohibition alone does not reach: the harm of a stray stage lands in someone else's commit, and the shared-checkout incident class is live. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
+- passage: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
+- flag: stale
 
 ### C045
 - key: End your report with exactly one status.
@@ -21631,6 +21676,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 9e124f7 2026-06-11.
 - verdict: keep
 - reason: The status vocabulary is the machine-readable contract between this agent and the session that dispatched it; it has to be stated where this agent reads it.
+- passage: End your report with exactly one status:
 
 ### C046
 - key: Report DONE only when the work is implemented and verified, listing every file changed with a one-line summary.
@@ -21639,6 +21685,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 830ff28 2026-06-17, the fork-improvements and session-mining round that installed the completion contract.
 - verdict: keep
 - reason: The file list is what the orchestrator stages from; without it the scope check has nothing to read.
+- passage: - **DONE** - implemented and verified. List every file changed with a one-line summary, and state how each acceptance criterion is satisfied, naming the verifying command or test.
 
 ### C047
 - key: With DONE, state how each acceptance criterion is satisfied, naming the verifying command or test.
@@ -21647,6 +21694,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: Binds the report to the spec's own acceptance criteria one by one, which is what stops a general claim of done from standing in for an unmet criterion. No sweep raised a finding against it.
+- passage: - **DONE** - implemented and verified. List every file changed with a one-line summary, and state how each acceptance criterion is satisfied, naming the verifying command or test.
 
 ### C048
 - key: Report DONE_WITH_CONCERNS when the work is implemented and verified but carries specific concerns, and list those concerns for the reviewer to weigh.
@@ -21655,6 +21703,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: The status that lets an agent finish and still flag a resolved ambiguity, which is what keeps a forced pattern out of the silent-success bucket.
+- passage: - **DONE_WITH_CONCERNS** - implemented and verified, but list the specific concerns the reviewer should weigh, such as a spec ambiguity you resolved, a pattern that felt forced, or a performance question.
 
 ### C049
 - key: Report NEEDS_CONTEXT when a decision the spec does not cover materially affects the implementation: state the question precisely and stop.
@@ -21663,6 +21712,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 1d9c467 2026-08-15, the consult plan's section reaching into the four implementer charters.
 - verdict: keep
 - reason: The halt is the point: a question asked while building has already committed to an answer.
+- passage: - **NEEDS_CONTEXT** - a decision the spec does not cover materially affects the implementation. State the question precisely and stop.
 
 ### C050
 - key: Do not guess at an uncovered decision.
@@ -21671,6 +21721,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 1d9c467 2026-08-15.
 - verdict: keep
 - reason: The prohibition stands as written, with the cost comparison and the authority clause beside it (C051).
+- passage: **Do not guess.**
 
 ### C051
 - key: Ask rather than guess because a wrong guess costs a review round while a question costs one message, and confidence never transfers the authority to decide.
@@ -21682,6 +21733,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - reason: The cost comparison states a pipeline fact the fresh-context agent has no other source for, that a wrong guess costs a whole review round where a question costs one message, and it sits beside the authority clause, which reaches the agent confident enough not to believe it is guessing. Before this section the rewrite retired the comparison as an economics argument C050 is obeyable without; ruling 1 restores it because the opus charter's copy was the true form (opus C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 - baseline-test: yes
+- passage: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 
 ### C052
 - key: State a hard question in four parts: the decision, the options you see, the evidence, and your lean.
@@ -21690,6 +21742,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 1d9c467 2026-08-15, which gave all four implementers the consult-shaped question so the orchestrator can settle it without a round-trip of clarification.
 - verdict: keep
 - reason: The four parts are what make a NEEDS_CONTEXT answerable in one message, and the "instinct to test, not a call you made" qualifier is what stops a lean from reading as a decision already taken.
+- passage: State a hard question in four parts: the decision, the options you see, the evidence, and your lean, an instinct to test rather than a call you made.
 
 ### C053
 - key: Report BLOCKED for an environment problem and state exactly what is missing.
@@ -21698,6 +21751,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: Separates a broken environment from a design gap, which route to different fixes; the named examples are what keep an agent from filing a build it broke itself as BLOCKED.
+- passage: - **BLOCKED** - environment problem (build broken before your change, missing dependency, missing tool).
+- passage: State exactly what is missing.
 
 ### C054
 - key: Never report DONE with a failing build or failing tests.
@@ -21706,6 +21761,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: The honesty gate on the status vocabulary, with no mechanical enforcement anywhere: the orchestrator reads the status before it reads the diff.
+- passage: Never report DONE with a failing build or failing tests, and never soften a failure into DONE_WITH_CONCERNS.
 
 ### C055
 - key: Never soften a failure into DONE_WITH_CONCERNS.
@@ -21714,6 +21770,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: Closes the near-miss escape from C054; without it a failing gate can be reported as a concern and still read as complete.
+- passage: Never report DONE with a failing build or failing tests, and never soften a failure into DONE_WITH_CONCERNS.
 
 ### C056
 - key: Choose honesty over completion, because the reviewer reads the diff with fresh eyes and the gap will be found.
@@ -21735,6 +21792,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Update every pin test your brief named to its new expected values.
+- passage: Update every pin test your brief named to its new expected values.
 
 ### C058
 - key: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
@@ -21745,6 +21803,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: The sentence is conditional on a section that needs coordination across files, so it is true at every tier that can meet that condition, this one included. 7dafcdb preserved it deliberately as an opus and fable variant, and ruling 1's one-text rule overrides that variant, because the sentence is conditional and true at the sonnet tier. The haiku charter stays without it, its transcriber framing being the tier difference. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
+- passage: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
 
 ### C059
 - key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
@@ -21753,6 +21812,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
 - verdict: keep
 - reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+- passage: Read its `## Goal` paragraph and its `## Intent` record where it carries one, since step 3's add-decision line is checked against them.
 
 ### C060
 - key: Where the work needs a unit of behavior that runs and the section text does not name it, carry the add-decision line in your report instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
@@ -21761,24 +21821,27 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
+- passage: Where the work needs a unit of behavior that runs and the section text does not name it, your report carries its add-decision line: what it changes, the Goal sentence, Intent clause or acceptance bullet it serves, whether it adds a mechanism, its size as a number, and what not building it costs.
+- passage: Where none of those three names it, return `NEEDS_CONTEXT` instead of building it.
 
 ### W001
 - key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:16
-- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C010. Designed copy of the marked region in the implementer-fable charter, W001 under that heading; held byte-identical by `test/doctrine-parity.test.js`.
+- passage: The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals.
+- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
 
 ### W002
 - key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:16
-- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C011. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 
 ### A006
 - key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
