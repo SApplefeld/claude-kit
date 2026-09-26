@@ -2048,7 +2048,7 @@ test('the coordinator skill is tracked and carries what it is pointed at for', (
     // peer-sessions prices the status round at "no oftener than the
     // coordinator's heartbeat cadence, which that skill states". The seat's
     // paced wake is a reconciliation timer every 4 hours, stated once in the
-    // cold-start opening above the "## The four functions" heading. No other
+    // cold-start opening above the "## Four Functions" heading. No other
     // assertion here pins that figure: the function leads above pin other
     // paragraphs outright, and the path assertion above matches the opening
     // among several occurrences, so it stays green off the ledger's own
@@ -2127,7 +2127,7 @@ test('the coordinator\'s stated cadence is the role-boundary marker\'s own age b
 test('the coordinator holds four functions, kaizen among them, and no surface still states three', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
-    assert.ok(body.includes('## The four functions'),
+    assert.ok(body.includes('## Four Functions'),
         'the coordinator skill\'s enumeration heading no longer states the set '
         + 'at four; the heading and the closed-set sentence are two surfaces '
         + 'of one count and must move together');

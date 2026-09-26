@@ -217,7 +217,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: fb0f194 2026-08-28 and cbf923c 2026-08-28, a registry write or a claim write creates the machine's directory with no board and no coordinator involved, so the gate keys on the file and never the directory.
 - verdict: keep
 - reason: A bound a session needs to read the directory correctly; it survives the compression (A022).
-- passage: A directory with no `board.md` is an ordinary state and concludes nothing, since a `/role` takeover's registry write creates the directory without a board.
+- passage: A directory with no `board.md` is an ordinary state and concludes nothing, since a `/role` takeover's registry write creates the directory without a board, which is why the operator gate keys on the file and never on the directory.
 
 ### c1.C021
 - key: On a cold start that finds no board, report the state to the operator and hold under the no-board rule until they answer.
@@ -1002,7 +1002,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - landed: fe0f812 section 23
 - reason: The closed channel list and a blast-radius gate (A131 to A133); the artifact-route exclusion's reason moves here: a window is live intent an artifact cannot carry to a busy session in time, and a plan section naming one is a record of a window rather than the operator declaring one now. Flipped from keep to rewrite at section 23's close: c1.C095's rewrite moved the throughput argument to the ledger and this entry's own reason moved the artifact-route reason, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: It opens on the operator's word over two of the three warranted channels the closed list below names, their keyboard in the seat's own session or the account-allowlisted relay thread, and on nothing else: the third channel that list carries, an artifact-borne authorization, opens no window; never on a peer's message, which carries no authority whatever seat sent it, never on a staleness reading the seat took for itself, and never on the seat's own initiative.
-- passage: It opens only on the operator's word at their keyboard in the seat's own session or on the account-allowlisted relay thread, two of the three warranted channels the closed list below names. Nothing else opens one: not the third channel, an artifact-borne authorization, not a peer's message whatever seat sent it, not a staleness reading the seat took, and not the seat's own initiative.
+- passage: It opens only on the operator's word at their keyboard in the seat's own session or on the account-allowlisted relay thread, two of the three warranted channels the closed list below names. The third channel, an artifact-borne authorization, does not open one. Nor does a peer's message whatever seat sent it, a staleness reading the seat took, or the seat's own initiative.
 
 ### c1.C098
 - key: Write the window to the board before sending anything, as the seat's own commitment line carrying that the window is open, since when, and a pointer to the channel the operator's word arrived on, and none of their words.
@@ -1054,7 +1054,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, the bars applied at this producer.
 - verdict: keep
 - reason: A point-of-use application of the bars (A069), naming the plugin-root path as the one this line is most likely to leak.
-- passage: It takes the board's two line bars: no absolute path, a plugin-root path embedding the OS username among them, and none of the operator's words.
+- passage: It takes the board's two line bars: no absolute path, a plugin-root path embedding the OS username among them, and none of the operator's words, the request stated in the seat's own words rather than quoted.
 
 ### c1.C103
 - key: Compose no drain procedure of your own; the park skill states the steps, the constraint a leashed session's stop line meets, and the bounds on what a park may do.
@@ -1725,7 +1725,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28.
 - verdict: keep
 - reason: The act gated is deleting a peer's file, so every reading the predicate cannot cleanly take runs never-destroy: a broken field would otherwise prune on a fat-fingered write, no staleness is computable against a future moment, and a stamp not past `Started:` is the absent case wearing a leftover value. Those reasons live here now (A049).
-- passage: So does every stamp the predicate cannot cleanly read, because the act it gates deletes a peer's file. An unparseable stamp is unknown, since reading a broken field as old would prune on a typo. So is a stamp in the future, against which no staleness is computable. So is a stamp not past `Started:`, which is the absent case wearing a leftover value.
+- passage: Every stamp the predicate cannot cleanly read also reads as unknown, because the act it gates deletes a peer's file. An unparseable stamp is unknown, since reading a broken field as old would prune on a typo. So is a stamp in the future, against which no staleness is computable. So is a stamp not past `Started:`, which is the absent case wearing a leftover value.
 
 ### c2.C038
 - key: Never prune an unknown entry; let it ride the board as unknown and leave a claim its session holds to the claim protocol.
@@ -2113,7 +2113,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: rewrite
 - landed: f99fa14e finishing
 - reason: The ask survives and its channel narrows: only the operator's typed `/kit-goal` in the interactive session that will run the plan arms a leash, so a relay message or an artifact no longer can (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, found by its finishing docs curation). Arming is the dispatch-authority rail itself; the gate is blast-radius and stays (A113).
-- passage: It asks the operator to arm a plan by typing `/kit-goal` in the session that will run it, since a relay message or an artifact cannot arm a leash, and an unarmed plan runs unleashed.
+- passage: It asks the operator to arm a plan only by typing `/kit-goal` in the interactive session that will run it, since a relay message or an artifact cannot arm a leash, and an unarmed plan runs unleashed.
 
 ### c2.C076
 - key: Hand artifact-authorized plans per dispatch-authority, the kit-goal skill owning the authorization section and peer-sessions owning the receiver's trace, scope and reply states.
@@ -2852,8 +2852,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: The chassis rule is pointed at rather than copied, and the override paragraph's two-way misfiling cost analysis is what standing-watch requires beside an override that replaces its kinds (its line 32), with both doubt forks pinned by test/doctrine-parity.test.js.
 - passage: Everything else standing-watch says about a ledger holds unchanged: standing and situational content kept apart, supersede in place, and every situational line carrying the time of its evidence and the command that re-derives it.
-- passage: A re-derivable line filed as one-record costs a stale duplicate beside the fact the pass re-derives fresh.
-- passage: A commitment filed as re-derivable costs the commitment.
 - flag: stale
 
 ### c3.C053
@@ -2925,6 +2923,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: A re-derivable line filed one-record costs a stale duplicate the fresh fact exposes; a commitment filed re-derivable is dropped or held with nothing to tell the pass it was ever a commitment. The cost statement beside it is chassis-required and pinned.
 - passage: Doubt between those two kinds, for a line the test admits, falls to the one-record kind, because that misfiling is the cheaper one.
+- passage: A re-derivable line filed as one-record costs a stale duplicate beside the fact the pass re-derives fresh.
+- passage: A commitment filed as re-derivable costs the commitment.
 
 ### c3.C060
 - key: Write a durable lesson as a memory-store record in the same pass that produced it, and never also as a board line.
@@ -4001,6 +4001,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: Pinned at test/doctrine-parity.test.js:3160-3164; naming a version authoritative settles the seat's own collision, and reading store history is work line 81 routes rather than performs. The read-half phrases sit at test/doctrine-parity.test.js:3151-3156 at the landing (cited :3160-3164).
 - passage: Restoring the committed version or blessing the one on disk is a change to the board, which the freeze forbids while the contest stands.
+- passage: Reading the pre-contest version out of the store's history changes no board at all and is a run any session may make.
+- flag: stale
 
 ### c4.C078
 - key: Carry in the routing message the time the contest was observed, the evidence time of the last pass line this seat wrote, and the uncommitted window.
@@ -4048,6 +4050,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: The provenance control of the authority model, a blast-radius gate; line 29's substance bar permits exactly this pointer, so the contention is not real (A104).
 - passage: The deciding session never takes a decision from the board, which carries no operator words.
+- flag: stale
 
 ### c4.C083
 - key: Have the recording artifact name the date and the artifact holding the operator's words, or the warranted channel where the decision arrived with no artifact, and never quote the operator's words.
