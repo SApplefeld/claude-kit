@@ -17349,6 +17349,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding. The name is the dispatch handle executing-work, finishing-work and the read-only guard's strict class all key on.
+- passage: name: security-reviewer
 
 ### C002
 - key: Dispatch this reviewer proactively whenever a work section touches input handling, authentication or authorization, SQL construction, secrets or configuration, shell or process execution, or external boundaries.
@@ -17360,6 +17361,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - reason: executing-work owns the section review roster per the ownership map and its trigger sentence (its step 3) carries eight members to this six; the charter's copy has drifted, so it becomes a pointer at the owner or a whole copy (A001, A002). The description carries a pointer at executing-work's review step rather than a copy, since the doctrine's one-owner rule admits a whole copy only under a parity pin or a build step and no test pins this description; the owner's sentence sits in that skill's step 3, opening "If the section touched input handling".
 - proposed: (via A001) Replace the description's six-member trigger list with a pointer at executing-work's review step, or copy the owner's eight-member sentence whole; the summary of what the agent is and returns stays.
 - baseline-test: yes
+- passage: Use PROACTIVELY when a work section touches a surface the executing-work skill's review step names as this reviewer's trigger
+- flag: stale
 
 ### C003
 - key: Review the full changeset during finishing-work every time.
@@ -17368,6 +17371,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT for the always-at-finishing clause; 0e47170 2026-07-15 (stabilization plan) added the all-prose waiver pointer.
 - verdict: keep
 - reason: finishing-work step 2 owns the dispatch and the waiver, and the clause already names finishing-work as the waiver's owner and matches it; it is the summary with its pointer in place (A003, A004, A005).
+- passage: and always over the full changeset during finishing-work, except the all-prose changeset waiver finishing-work defines.
 
 ### C004
 - key: Cover non-.NET surfaces (JS/Node hooks, shell, CLI tooling, infrastructure) with the same seriousness as .NET code.
@@ -17376,6 +17380,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d17ac8c 2026-06-28: the charter's C#/SQL framing made it self-limit and left the kit's own hooks, shell and setup scripts unreviewed.
 - verdict: keep
 - reason: Incident-born and still possible on every kit change; the description's statement is the dispatcher-facing summary of the body's non-.NET bullet (A004).
+- passage: Covers non-.NET surfaces too (JS/Node hooks, shell, CLI tooling, infrastructure).
 
 ### C005
 - key: Verify the procedure-only data-access architecture.
@@ -17384,6 +17389,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 830ff28 2026-06-17 genericized the charter away from one vendor database and made the verification conditional on the project using the model.
 - verdict: keep
 - reason: A summary of the body's applicability rule at line 22, installed with it; a frontmatter field cannot point at a body section (A006, A007).
+- passage: verifies the procedure-only data-access architecture where the project uses it
+- flag: stale
 
 ### C006
 - key: Return findings ranked by severity and mapped to OWASP categories, with SOC 2 tags where relevant.
@@ -17392,6 +17399,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The OWASP and SOC 2 mapping is this lens's own contract and only the ranking half coincides with the adversarial charter; the description summarizes the output format the body owns (A008, A009, A010).
+- passage: returns severity-ranked findings mapped to OWASP categories with SOC 2 tags where relevant.
 
 ### C007
 - key: Use only the Read, Grep, Glob and Bash tools.
@@ -17400,6 +17408,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: A `tools:` line is this agent's own privilege grant; identical lists in sibling charters are separate grants, and readonly-agent-guard.js enforces the strict class by agent name (A011, A012).
+- passage: tools: Read, Grep, Glob, Bash
 
 ### C008
 - key: Run this agent at medium reasoning effort.
@@ -17408,6 +17417,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: e00d1e3 2026-09-05 (reviewer-fable-uncap plan) set the value by lens, the security lens chasing boundaries beyond the diff; 4caabee 2026-08-11 had first pinned an effort here because the gate drifted with the session's setting.
 - verdict: keep
 - reason: The frontmatter value is the default a Fable Agent-tool dispatch inherits; every higher effort the skills name is a per-call Workflow override, and test/readonly-agent-guard.test.js:910 pins medium as what the skills cite (A013, A014, A015).
+- passage: effort: medium
+- flag: stale
 
 ### C009
 - key: Review what the code actually does, not what the implementer believes it does.
@@ -17416,6 +17427,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: A charter is the whole instruction set a fresh-context agent loads alone, so the sentence is a copy across charters by construction and cannot become a pointer; a parity pin on the claim-class precedent is the tightening (A016, A017, A018).
+- passage: Fresh context is deliberate: you review what the code does, not what the implementer believes it does.
 
 ### C010
 - key: Never edit any file.
@@ -17424,6 +17436,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT for the sentence; d99a2b2 2026-07-24 (readonly-agent-guard plan) restated the contract as hook-enforced across every judgment agent.
 - verdict: keep
 - reason: The read-only contract lives as a copy in each judgment charter because each is loaded alone, with readonly-agent-guard.js enforcing the write half by name (A019, A020).
+- passage: Read-only: never edit files.
 
 ### C011
 - key: Use Bash only for read-only inspection such as git diff, dotnet list package --vulnerable, npm or pnpm audit, and grep-style searches.
@@ -17432,6 +17445,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT; d17ac8c 2026-06-28 added npm/pnpm audit with the non-.NET coverage.
 - verdict: keep
 - reason: The enumeration names the dependency-audit commands this lens alone is told to run, and the hook enforces only the no-write half (builds and test runs stay open by construction), so the instruction is not superseded (A021, A022, A023).
+- passage: Use Bash only for read-only inspection: git diff, dotnet list package --vulnerable, npm or pnpm audit, grep-style searches.
 
 ### C012
 - key: Expect a kit hook to deny write-shaped shell commands while leaving builds and test runs open.
@@ -17440,6 +17454,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d99a2b2 2026-07-24 installed the hook sentence; aec7d7f 2026-07-25 narrowed it to "the no-write half" because the charters forbade builds the hook allows.
 - verdict: keep
 - reason: The sentence bounds the rule by naming the half the hook does not enforce; without it a permitted build reads as a permitted act (A024, A025, A026).
+- passage: A kit hook denies write-shaped commands but leaves builds and test runs open.
 
 ### C013
 - key: Treat the hook's open build and test path as the guard's shape rather than permission, since your own run contends with the orchestrator's suite where the repo has one shared test binary or build output.
@@ -17448,6 +17463,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 86461d1 2026-08-07, kaizen brief 2026-08-07-shared-resource-review-overlap: a Release suite held the shared DLLs and blocked a reviewer's own run for six minutes, and the "builds open" sentence read as permission.
 - verdict: keep
 - reason: The incident recurs on any repo with one test binary and no hook denies a reviewer's build; the brief's acceptance was that no charter forbids builds and then describes them as open unreconciled, which this sentence is (A027, A028, A029).
+- passage: That opening is the guard's shape, not a licence, and where the repo shares one test binary or build output, a run of yours contends with the orchestrator's suite.
 
 ### C014
 - key: When a shell command is denied, report the need in your final message instead of routing around the denial.
@@ -17456,6 +17472,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d99a2b2 2026-07-24 (readonly-agent-guard plan): a denial is the guard working rather than an obstacle to route around.
 - verdict: keep
 - reason: Installed in every judgment charter as one change so no agent routes around the guard; a copy per charter is the contract's shape (A030, A031).
+- passage: A denial is the guard working: report the need in your final message instead of routing around it.
 
 ### C015
 - key: Take as input a base git ref or changed-file list, plus the spec path when available.
@@ -17464,6 +17481,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Survives verbatim at HEAD line 12; the merge at d9540ad added f26619c's `Trace target:` sentences beside it without touching this one (A032).
+- passage: A base git ref or changed-file list, and the spec path if available.
+- flag: stale
 
 ### C016
 - key: Judge the code against the amended contract when the brief carries an `Amendments in effect:` line.
@@ -17499,6 +17518,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: a5fce80 2026-08-18 (document-review-battery plan): an outward-facing document voids the prose waiver and the security reviewer sweeps it against the spec's disclosure list.
 - verdict: keep
 - reason: No finding. The sweep is the only lens that reads a deliverable document for leaks, and no hook or test performs it.
+- passage: Sweep every document in scope for each item on the brief's `Disclosure:` list, as a name, identifier, path, internal state or paraphrase.
 
 ### C020
 - key: Report each disclosure hit as Critical and quote the passage.
@@ -17507,6 +17527,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: a5fce80 2026-08-18 (document-review-battery plan), landed with C019.
 - verdict: keep
 - reason: No finding. The severity and the quoted passage are what let the orchestrator act on a hit without re-reading the document.
+- passage: Report each hit as Critical with the passage quoted.
 
 ### C021
 - key: Count a reworded leak as disclosing as much as a quoted one.
@@ -17526,6 +17547,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: A distinct use of the model document from C029's applicability read; the passage changes only by dropping C028's four words (A042, A043, A044).
+- passage: Before reviewing code, check for a documented security model (docs/security-model.md or similar).
 
 ### C023
 - key: Verify the code against the documented security model as the standard.
@@ -17534,6 +17556,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Cited only by the compress group A043, which keeps every rule on the line as written.
+- passage: If present, it is the standard you verify against.
 
 ### C024
 - key: Do not re-litigate risks the security model documents as accepted.
@@ -17542,6 +17565,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Cited only by the compress group A043, which keeps every rule on the line as written.
+- passage: Do not re-litigate its accepted risks, but verify their preconditions still hold on every pass.
 
 ### C025
 - key: Verify on every pass that each accepted risk's preconditions still hold, and report an eroded precondition as Critical.
@@ -17560,6 +17584,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: A how rather than a why: it names the catalog checks for the one accepted-risk shape the section's own bullets (lines 33 and 36) keep returning to, and the precondition rule is not obeyed as precisely without them (A045).
+- passage: Where TRUSTWORTHY is accepted on the precondition of no assemblies and controlled db_owner membership, check sys.assemblies references and role grants in the changeset.
+- flag: stale
 
 ### C027
 - key: Recommend writing a security model document where none exists and the project has a non-obvious access architecture.
@@ -17568,6 +17594,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Cited only by the compress group A043, which keeps the rule and drops only its four-word justification (C028).
+- passage: The finishing pass, not this review, asks the operator to write the model.
+- flag: stale
 
 ### C028
 - key: Expect auditors to ask for the security model document.
@@ -17587,6 +17615,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 830ff28 2026-06-17 genericized the section from "these projects use" one vendor database to a conditional on the project, keeping the model's fingerprint so a reviewer can recognize it in a schema.
 - verdict: keep
 - reason: The surrounding definition (EXECUTE-only principal, RESTRICTED role with explicit DENYs, WITH EXECUTE AS) is what the schema confirmation is performed against, so the paragraph stays whole (A047; also A006, A007, A042, A044).
+- passage: Apply this section only where the project's docs/security-model.md or schema confirms a procedure-only data-access model. There the application's connection principal can EXECUTE a controlled set of procedures and nothing else, in some vendor databases through a RESTRICTED role with explicit DENYs over PUBLIC grants and WITH EXECUTE AS impersonation.
 
 ### C030
 - key: Require every procedure granted to the application principal to strongly type its parameters, validate at entry, and expose only the operation it names.
@@ -17595,6 +17624,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The rule sits inside the first named architecture invariant, which line 67's Critical definition keys on; the bullet stays whole (A048).
+- passage: Each proc must strongly type its parameters, validate at entry, and expose only the operation it names.
+- flag: stale
 
 ### C031
 - key: Treat every procedure granted to the application principal as external attack surface, because the proc layer is the API.
@@ -17603,6 +17634,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: One of the two numbered architecture invariants that C083 rates Critical against ("breaks an architecture invariant above"); the severity rule cannot be applied without the invariant it names (A049).
+- passage: **Every procedure granted to the application principal is external attack surface.** The proc layer is the API.
 
 ### C032
 - key: Treat injection that reaches inside a procedure as executing with elevated permissions, since the architecture moves the blast radius rather than removing it.
@@ -17611,6 +17643,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The second named architecture invariant, on the same ground as C031, and the reason dynamic SQL inside an impersonating procedure rates Critical rather than lower (A050).
+- passage: Injection that reaches inside a procedure runs with elevated permissions, since the architecture moves the blast radius rather than removing it.
 
 ### C033
 - key: Flag dynamic SQL inside a WITH EXECUTE AS procedure, including string-concatenated EXEC and string-built WHERE or ORDER BY fragments, as Critical by default.
@@ -17619,6 +17652,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: A narrower scope than C035's general bar (impersonating procedures, with a severity), and no hook or test reads T-SQL for dynamic SQL, so the rule and its "not code smells" severity framing stay (A051, A052, A053).
+- passage: **Dynamic SQL inside a WITH EXECUTE AS procedure is Critical by default.** String-concatenated EXEC and string-built WHERE or ORDER BY fragments are privilege-escalation vectors here, not code smells.
 
 ### C034
 - key: Where dynamic SQL is genuinely unavoidable, require sp_executesql with typed parameters and a justifying comment.
@@ -17627,6 +17661,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Cited only by the compress group A052, which keeps the bullet as written.
+- passage: Unavoidable dynamic SQL uses sp_executesql with typed parameters and a justifying comment.
 
 ### C035
 - key: Never accept concatenation of any caller-influenced value into SQL.
@@ -17635,6 +17670,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The general bar that C033 (procedures) and C039 (application code) each apply with a severity; removing it leaves the severities without their rule (A054, A055; also A051, A053).
+- passage: Concatenating any caller-influenced value is never acceptable.
 
 ### C036
 - key: Flag any procedure that accepts a table, column or schema name as a parameter, regardless of its current callers.
@@ -17643,6 +17679,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The bullet's middle sentence is the only place the document defines an identifier-name parameter, so the three fragments stay together (A056).
+- passage: **No identifier-name parameters.** A proc that accepts a table, column or schema name as a parameter turns the permission gate into a pass-through. Flag it regardless of current callers.
 
 ### C037
 - key: Treat an identifier-name parameter as turning the permission gate into a pass-through.
@@ -17651,6 +17688,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The sentence carries the rule's definition (a table, column, or schema name) as well as its reason; without it the bullet names no parameter kind to flag (A057).
+- passage: A proc that accepts a table, column or schema name as a parameter turns the permission gate into a pass-through.
 
 ### C038
 - key: Report inline SQL in application code (SqlCommand with CommandType.Text beyond a bare EXEC, EF FromSqlRaw or ExecuteSqlRaw, Dapper inline text) as Major even when parameterized.
@@ -17659,6 +17697,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding. The Major-even-when-parameterized rating is what the doctrine's procedure-only default rests on, and no analyzer in the kit enforces it.
+- passage: SqlCommand with CommandType.Text beyond a bare EXEC, EF FromSqlRaw/ExecuteSqlRaw, or Dapper with inline text is Major even when parameterized, since it presumes table access the principal should not have.
 
 ### C039
 - key: Report inline SQL as Critical when any user-influenced value is concatenated into the text.
@@ -17667,6 +17706,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The application-code severity for the construct C035 bars; a prohibition and a severity are two claims (A054, A055).
+- passage: It is Critical if any user-influenced value is concatenated into the text.
 
 ### C040
 - key: Flag database objects created in dbo instead of the controlled schema.
@@ -17675,6 +17715,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding. Deployment-script hygiene no hook or test reads.
+- passage: Flag objects created in dbo rather than the controlled schema
 
 ### C041
 - key: Flag GRANTs beyond EXECUTE to application-facing roles and any GRANT to PUBLIC.
@@ -17683,6 +17724,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding. The EXECUTE-only grant is the invariant the whole section verifies.
+- passage: GRANTs beyond EXECUTE to application-facing roles, any GRANT to PUBLIC
 
 ### C042
 - key: Flag changes to role membership, especially db_owner.
@@ -17691,6 +17733,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding. Its db_owner emphasis is the escalation path the TRUSTWORTHY instance in C026 checks for, which is why that instance stays.
+- passage: and role membership changes. Watch db_owner most, the escalation path under TRUSTWORTHY.
 
 ### C043
 - key: Flag any change that makes a WITH EXECUTE AS impersonation target loginable or widens its grants beyond what the procedures need.
@@ -17699,6 +17742,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: **Impersonation hygiene.** Flag any change that makes a WITH EXECUTE AS target loginable or widens its grants beyond what the procs need.
+- flag: weak-reason
 
 ### C044
 - key: Flag application configs whose connection strings point at privileged accounts such as the admin or deployment principal, sa, or the impersonation target.
@@ -17707,6 +17752,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: **Connection strings use the restricted principal.** Flag app configs pointing at a privileged account: the admin or deployment principal, sa, or the impersonation target.
+- flag: weak-reason
 
 ### C045
 - key: Flag new cross-database access from impersonated contexts and note the documented mechanism (TRUSTWORTHY, ownership chaining or module signing).
@@ -17715,6 +17762,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: **Cross-database reach.** New cross-database access from impersonated contexts is a design change. Flag it and note the documented mechanism: TRUSTWORTHY, ownership chaining or module signing.
+- flag: weak-reason
 
 ### C046
 - key: Where TRUSTWORTHY is the documented choice, confirm a rationale document exists to hand auditors.
@@ -17723,6 +17772,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: Where TRUSTWORTHY is the documented choice, confirm a rationale doc exists to hand auditors.
+- flag: weak-reason
 
 ### C047
 - key: Check for endpoints and handlers missing authorization.
@@ -17731,6 +17782,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT; d17ac8c 2026-06-28 set the division under which the adversarial charter flags such a defect on sight and defers the checklist pass to this agent.
 - verdict: keep
 - reason: A shared subject, two acts: the adversarial charter forbids itself the full audit this checklist performs (A058, A059).
+- passage: **Authentication & authorization (OWASP A01/A07):** handlers missing authorization
 
 ### C048
 - key: Check for IDOR: caller-supplied IDs used without ownership verification.
@@ -17739,6 +17791,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: IDOR, where caller-supplied IDs are used without server-side ownership verification.
+- flag: weak-reason
 
 ### C049
 - key: Check for connection strings, API keys and passwords in code or committed config, secrets in Serilog output, and default or placeholder credentials.
@@ -17747,6 +17801,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT; the division with the adversarial flag-on-sight rule is d17ac8c 2026-06-28.
 - verdict: keep
 - reason: As C047: the checklist pass is the deep half of a division the adversarial charter states by name (A060, A061).
+- passage: **Secrets & configuration (A05):** connection strings, API keys or passwords in code or committed config; secrets in Serilog output; default or placeholder credentials.
 
 ### C050
 - key: Check for PII or credentials in log messages and in audit or error-logging procedure payloads.
@@ -17755,6 +17810,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT; 830ff28 2026-06-17 genericized the named audit procedure to "audit or error-logging proc payloads".
 - verdict: keep
 - reason: No finding.
+- passage: PII or credentials in log messages and in audit or error-logging proc payloads
+- flag: weak-reason
 
 ### C051
 - key: Flag error-data parameters when they may carry sensitive fields.
@@ -17763,6 +17820,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: including error-data parameters that may carry sensitive fields
+- flag: weak-reason
 
 ### C052
 - key: Check for exception details returned to external callers.
@@ -17771,6 +17830,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: exception details returned to external callers
+- flag: weak-reason
 
 ### C053
 - key: Check for missing audit logging on security-relevant actions such as auth events, permission changes and data export.
@@ -17779,6 +17840,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: missing audit logging on security-relevant actions such as auth events, permission changes and data export.
+- flag: weak-reason
 
 ### C054
 - key: Check that external inputs such as API payloads, file uploads and message queues are validated for type, length and range before use.
@@ -17787,6 +17850,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT for the three checks; 156b688 2026-08-26 appended the second-producer check to the same bullet.
 - verdict: keep
 - reason: The bullet's parts are INIT checks plus an incident-born tell that nothing mechanical supersedes, so the compress proposal is taste (A062).
+- passage: **Input validation & boundaries (A03/A04):** external inputs (API payloads, file uploads, message queues) unvalidated for type, length or range
 
 ### C055
 - key: Check for path traversal in file handling.
@@ -17795,6 +17859,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT; the division with the adversarial flag-on-sight rule is d17ac8c 2026-06-28.
 - verdict: keep
 - reason: As C047 (A063, A064).
+- passage: path traversal in file handling
 
 ### C056
 - key: Check for deserialization of untrusted input with unsafe settings.
@@ -17803,6 +17868,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Cited only by the compress group A062, which keeps the bullet as written.
+- passage: deserialization of untrusted input with unsafe settings.
 
 ### C057
 - key: Run the second-producer check: ask whether the change creates a new path to a surface some other file already guards, and whether that guard is reachable from here.
@@ -17811,6 +17877,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 156b688 2026-08-26 (kaizen-batch-2 section 4): the second-producer tell landed in both reviewer charters, the doctrine's single-source clause owning the underlying rule.
 - verdict: keep
 - reason: A copy per sighted charter by the plan's design, since each is loaded alone; the two lenses ask the question for different ends (A065, A066).
+- passage: Run the second-producer check. Does this change create a new path to a surface another file already guards (a sanitizer, a clamp, an allowlist)? Is that guard reachable from here?
 
 ### C058
 - key: Treat a guard private to its first producer as not protecting the path the change adds, so the new path ships unguarded while the guard reads as covering it.
@@ -17819,6 +17886,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 156b688 2026-08-26 (kaizen-batch-2 section 4), named there as the second-producer tell.
 - verdict: keep
 - reason: The recognition cue for the failing shape, a guard visible and unreachable at once; the question alone does not say what a failing answer looks like, and no machinery reads a guard's reachability (A067).
+- passage: A guard private to its first producer leaves the new path unguarded while it reads as covering it.
 
 ### C059
 - key: In JS/Node, shell and CLI code, including the kit's own hooks and setup scripts, check for command and argument injection and unsafe shell, `eval` or `Function` interpolation.
@@ -17827,6 +17895,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d17ac8c 2026-06-28: the kit's own hooks, shell and setup scripts sat in a gap the C#/SQL framing created.
 - verdict: keep
 - reason: No finding. Incident-born and still possible on every hook change.
+- passage: **Non-.NET surfaces (A03/A08):** in JS/Node, shell and CLI code, including the kit's own hooks and setup scripts: command and argument injection; unsafe shell, `eval` or `Function` interpolation
 
 ### C060
 - key: Check for untrusted input (CLI args, env, stdin, data piped from a hook) used in a command or a file path without validation.
@@ -17835,6 +17904,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d17ac8c 2026-06-28, landed with C059 and with the adversarial flag-on-sight pointer that defers to it.
 - verdict: keep
 - reason: The deep half of the division the adversarial charter states by name (A068, A069).
+- passage: untrusted input (CLI args, env, stdin, data piped from a hook) used unvalidated in a command or file path
 
 ### C061
 - key: Check for path traversal, unsanitized file writes, and secrets or tokens written to disk or committed.
@@ -17843,6 +17913,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d17ac8c 2026-06-28, landed with C059.
 - verdict: keep
 - reason: No finding.
+- passage: path traversal and unsanitized file writes; secrets or tokens written to disk or committed.
+- flag: weak-reason
 
 ### C062
 - key: Run `npm audit` or `pnpm audit` where a lockfile is present.
@@ -17851,6 +17923,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d17ac8c 2026-06-28, landed with C059.
 - verdict: keep
 - reason: No finding. The Node counterpart of C065; the read-only guard leaves the audit verbs open.
+- passage: Run `npm audit` or `pnpm audit` where a lockfile is present.
 
 ### C063
 - key: Check for homegrown crypto, MD5 or SHA1 used for security purposes, hardcoded keys or IVs, and missing TLS enforcement on outbound calls.
@@ -17859,6 +17932,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: **Cryptography (A02):** homegrown crypto; MD5 or SHA1 for security purposes; hardcoded keys or IVs; missing TLS enforcement on outbound calls
+- flag: weak-reason
 
 ### C064
 - key: Flag `System.Random` or `Random.Shared` used to generate a credential, token, salt or anything security-bearing, and require `RandomNumberGenerator` instead.
@@ -17867,6 +17942,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: b1be81d 2026-06-28: System.Random routinely misused for tokens, salts and reset codes, surfaced by comparing against a sibling fork of the kit.
 - verdict: keep
 - reason: No finding. Incident-born and no analyzer in the kit enforces it.
+- passage: `System.Random` or `Random.Shared` generating a credential, token, salt or anything security-bearing, where `RandomNumberGenerator` belongs.
 
 ### C065
 - key: Run `dotnet list package --vulnerable --include-transitive`.
@@ -17875,6 +17951,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: **Dependencies (A06):** run `dotnet list package --vulnerable --include-transitive` where a project file is available
+- flag: weak-reason
 
 ### C066
 - key: Report known-vulnerable packages.
@@ -17883,6 +17961,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: No finding.
+- passage: and report known-vulnerable packages.
+- flag: weak-reason
 
 ### C067
 - key: For any shell-command allow rule or grant a change composes or widens, run the two-question grant audit and flag the grant when it fails either screen, treating a grant that fails both as the worst case rather than exempt.
@@ -17891,6 +17971,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 0ea17a9 2026-08-18 (standing-watch plan) installed the grant audit from three CLI probes; 02980e2 2026-08-18 reshaped the second screen after the finishing security review found the original screens cleared `Bash(cat:*)` and the delegating wrappers, and fixed a flag condition that exempted the most dangerous class.
 - verdict: keep
 - reason: The charter is the stated owner (executing-work copies it verbatim by path at SKILL.md:341), no hook audits settings-file grants, and the bullet changes only where C071 retires and C073 compresses (A070, A071, A072).
+- passage: run the two-question grant audit. Flag the grant when it fails either screen. A grant failing both is the worst case rather than an exempt one.
 
 ### C068
 - key: Ask first whether the verb mutates its target.
@@ -17899,6 +17980,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 0ea17a9 2026-08-18 (standing-watch plan); memory claude-code-bash-rule-token-matching.
 - verdict: keep
 - reason: No finding.
+- passage: First, does the verb mutate its target.
+- flag: weak-reason
 
 ### C069
 - key: Ask second what the verb reaches beyond the read it looks like: writing a file, reaching the network, running another command it was handed, or reading material the grant's holder should not see.
@@ -17907,6 +17990,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 02980e2 2026-08-18: the original second screen (write a file or reach the network) cleared `Bash(cat:*)` and execution-delegating wrappers, so it became four instances of one class.
 - verdict: keep
 - reason: No finding. The instance list is the incident's record and what keeps the screen from collapsing back to two members.
+- passage: Second, what does the verb reach beyond the read it looks like: writing a file (options like `--output=<path>`, and any verb carrying a mutating flag form), reaching the network, running another command it was handed (`xargs`, `timeout`, `env`, `find -exec`), or reading material the grant's holder should not see (`Bash(cat:*)` and its equivalents mutate nothing and read every secret on the disk).
 
 ### C070
 - key: Judge the class rather than the four listed instances: ask whether the verb reaches past what the grant is for.
@@ -17915,6 +17999,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 02980e2 2026-08-18, landed with C069.
 - verdict: keep
 - reason: Cited only by the compress group A071, which keeps the class statement as written.
+- passage: Those four are instances of one class, and the class is what to judge: does the verb reach past what the grant is for.
 
 ### C071
 - key: Expect the second screen to be the one missed, most often on a pure-read verb that clears the first screen.
@@ -17934,6 +18019,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 0ea17a9 2026-08-18: three probes against the CLI measured that a rule pins leading whole tokens, grants the whole tail, and that a deny binds an option only at the front of the tail; recorded in the operator-tier memory claude-code-bash-rule-token-matching.
 - verdict: keep
 - reason: The measurement is what rules out the mitigation a reviewer would otherwise accept (a companion deny rule), so the audit's verdict on a grant-plus-deny pair is wrong without it, and nothing mechanical audits settings-file grants (A074).
+- passage: In a settings file the verb list is the only enforcement point, because a companion deny rule cannot carve an option back out of a granted verb.
+- passage: A rule matches leading text on whole-token boundaries and grants the whole tail after the pinned prefix within a single simple command. A deny rule matches the same way. So a deny binds only while the option sits at the front of the tail, and the option escapes it by moving.
 
 ### C073
 - key: Treat the deny half of the token-matching account as measured on Claude Code 2.1.235 and recorded in the operator-tier memory `claude-code-bash-rule-token-matching`, and the allow half as the conservative inferred reading rather than a measurement.
@@ -17945,6 +18032,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - reason: The measured-versus-inferred status stays as a property of the fact, since it changes how far a reviewer leans on the account; the version number, the memory name and the failed-probe account are evidence, and this entry is now their record (A075). The deny half is measured on claude 2.1.233 and 2.1.235 (memory claude-code-bash-rule-token-matching); the allow half cannot be probed on a machine whose default permission mode is permissive, because there the allow list does not bind the child and a permit cannot be told from a rule that never loaded.
 - proposed: Keep one clause stating that the deny half is measured and the allow half inferred, so the allow side is read conservatively; move "Claude Code 2.1.235", the memory record name and the unlisted-verb probe account to this ledger.
 - baseline-test: yes
+- passage: The deny half of that account is measured and the allow half inferred, so read the allow side conservatively.
 
 ### C074
 - key: Read hook-based enforcement on its own terms rather than through the two grant-audit questions.
@@ -17953,6 +18041,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: 0ea17a9 2026-08-18 installed the permission-grants bullet and 02980e2 the same day revised it; the carve-out names readonly-agent-guard.js and memq-grant.js as enforcement on a model the two questions do not describe.
 - verdict: keep
 - reason: Cited only by the compress group A071, which keeps the hook carve-out as written.
+- passage: A hook that parses the whole command (this kit's `readonly-agent-guard.js`), or one that emits an allow keyed on an absolute path (`memq-grant.js`), enforces on a model these two questions do not describe. Such a hook is read on its own terms.
 
 ### C075
 - key: Write each finding as `[CRITICAL|MAJOR|MINOR] [confidence: high|medium|low] file:line - finding. Why exploitable/audit-relevant. Fix (one line).`
@@ -17970,6 +18059,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The format line bounds the tag and C080 names the act when the bound fails; the description's C006 summarizes both (A080; also A008, A010).
+- passage: OWASP: A0X | SOC2: CC6.1/CC7.2/
+- passage: (tag only when clearly applicable; no tag-stuffing)
 
 ### C077
 - key: Set confidence to high when you verified the failing path against the code, medium when it is likely but unverified, and low when it is a suspicion worth a look.
@@ -17978,6 +18069,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f77d921 2026-07-29 extended the two standing reviewers' confidence slot to this charter with the same definition; kaizen 2026-08-08-unify-confidence-vocabulary kept the reviewer copies because fresh-context agents cannot dereference a pointer into a file they do not load.
 - verdict: keep
 - reason: A copy per charter is the recorded decision, and a parity pin is the available tightening; at HEAD the sentence sits on line 65 (A082, A083).
+- passage: Confidence rates how sure you are the defect is real. High means you verified the failing path against the code, medium means likely but unverified, low means a suspicion worth a look.
+- flag: stale
 
 ### C078
 - key: Never downgrade a severity to hedge low confidence; state both honestly and let the orchestrator weigh them.
@@ -17986,6 +18079,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f77d921 2026-07-29, landed with C077 as the same independence-from-severity rule the other reviewers carry.
 - verdict: keep
 - reason: As C077; at HEAD the sentence sits on line 65 (A084, A085).
+- passage: It is independent of severity: never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
+- flag: stale
 
 ### C079
 - key: Use the SOC 2 tags CC6.1 (logical access), CC6.6 (boundaries), CC6.7 (data in transit/rest), CC7.2 (monitoring/anomalies) and CC8.1 (change management).
@@ -17994,6 +18089,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The list the description's C006 summarizes; at HEAD it sits on line 67 (A009, A010).
+- passage: SOC 2 tags, when relevant: CC6.1 (logical access), CC6.6 (boundaries), CC6.7 (data in transit/rest), CC7.2 (monitoring/anomalies), CC8.1 (change management).
+- flag: stale
 
 ### C080
 - key: Omit the tag rather than guess when you cannot map a finding confidently.
@@ -18002,6 +18099,8 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Supplies the act the format line's "clearly applicable" bound implies; at HEAD it sits on line 67 (A080).
+- passage: Omit a tag you cannot map confidently rather than guess.
+- flag: stale
 
 ### C081
 - key: End the review with `VERDICT: CLEAR | CONCERNS | BLOCK` and one sentence.
@@ -18020,6 +18119,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: Cited only by the compress group A087, which keeps the closing paragraph as written.
+- passage: Keep severity honest both ways: do not inflate theoretical issues into Criticals, and do not let a real injection vector slide because it is awkward this late in the effort.
 
 ### C083
 - key: Rate a finding Critical when it is exploitable now, breaks one of the architecture invariants above, or guarantees an audit failure.
@@ -18028,6 +18128,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: The severity definition that binds Critical to the two named architecture invariants (C031, C032), which is why those invariants stay in the document; the compress proposals that dropped it are refused (A087).
+- passage: Critical means exploitable now, breaking an architecture invariant above, or guaranteeing an audit failure.
 
 ### C084
 - key: Say the changeset is clean in one line when it is.
@@ -18036,6 +18137,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: keep
 - reason: A copy per charter of the say-so-when-empty instruction, the positive half suiting a lens whose empty result is CLEAR (A088, A089).
+- passage: If the changeset is clean, say so in one line.
 
 ### R001
 - key: Carry the `Trace target:` line quoted into the brief rather than referenced by path.
@@ -18107,6 +18209,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT for the line; f77d921 2026-07-29 added confidence; f26619c 2026-09-08 (review-loop-provenance section 2) added the trace field.
 - verdict: keep
 - reason: The HEAD-side claim for the format line C075 held; the plan's section 7 pins the trace field on the sighted lines, and the exploitability clause and the OWASP/SOC 2 second line are this lens's own contract (A076 to A079).
+- passage: [CRITICAL|MAJOR|MINOR] [trace: <section N, bullet quoted in five words or fewer> | trace: Goal, <five words> | trace: Intent, <five words> | trace: none | trace: unsupplied] [threat: <entry> | threat: absent]? [confidence: high|medium|low] file:line - finding. Why exploitable/audit-relevant. Fix (one line).
 
 ### R009
 - key: Include the `trace:` field on every Critical and Major finding; it is optional on a Minor.
@@ -18115,6 +18218,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2): the trace feeds executing-work's provenance read of a Major before its severity.
 - verdict: keep
 - reason: New at HEAD with no C restatement, under an In Progress plan whose section 7 pins it (A094).
+- passage: The `trace:` field is required on every Critical and Major and optional on a Minor.
 
 ### R010
 - key: Fill `trace:` with the acceptance bullet, Goal sentence or `## Intent` clause the code fails, never with what you would have asked for.
@@ -18123,6 +18227,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2); amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review.
 - verdict: keep
 - reason: As R009; the never-what-you-would-have-asked-for clause is what separates a spec-traceable Major from a new requirement.
+- passage: It names the acceptance bullet, Goal sentence or `## Intent` clause the code fails, never what you would have asked for.
 
 ### R011
 - key: Write `trace: none` for a finding whose subject nothing in the plan asked for.
@@ -18131,6 +18236,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2).
 - verdict: keep
 - reason: As R009 (A096).
+- passage: A finding whose subject nothing in the plan asked for carries `trace: none`
 
 ### R012
 - key: Trace a defect to the acceptance bullet that asked for the code, however far the failure mode sits from the bullet's wording.
@@ -18139,6 +18245,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08: its message records that this sentence closed a seam a literal reader resolved the wrong way.
 - verdict: keep
 - reason: As R009; without it a leak or race in asked-for code reads as `trace: none` and is misrouted to a judge (A097).
+- passage: A defect in code a bullet asked for traces to that bullet, however far the failure sits from its words.
 
 ### R013
 - key: Get your Criticals and Majors fixed before the section closes, or raised to the operator, whatever their trace value.
@@ -18157,6 +18264,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2); amended in place by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Rationale under a plan still In Progress, as R003; a retire-to-ledger candidate for a later audit (A099). Amended in place by reviewer-reranking section 3: the sentence no longer says a `trace: none` never weakens a security finding's route, since the route is the advisory disposition whatever the trace (T012); the claim that the trace is recorded rather than used to route stands as written.
+- passage: which is a finding about the plan rather than a weaker finding.
 
 ### R015
 - key: Write `trace: unsupplied` on every Critical and Major, and never `trace: none`.
@@ -18165,6 +18273,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2).
 - verdict: keep
 - reason: As R009; the value keeps a no-spec dispatch from reading as a plan-level finding.
+- passage: With no spec path, every Critical and Major carries `trace: unsupplied`, never `trace: none`.
 
 ### T001
 - key: Expect a `Trace target:` line in the brief naming the Goal, the `## Intent` record where the plan carries one, and the acceptance bullets a trace cites.
@@ -18173,6 +18282,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2): the sighted lenses gained a `Trace target:` line so a Major's provenance can be read at adjudication; 6983398 2026-09-10 (the plan's finishing pass) widened the charter's sentence to say a finishing dispatch carries the line too, matching executing-work's enumeration of which lenses carry it; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review, so the Inputs sentence and the output grammar name the same target.
 - verdict: keep
 - reason: Executing-work owns the brief's fields and states at SKILL.md:361 that the security lens carries the line on every dispatch; the charter names the field its cite-over-spec rule keys on, no test pins it, and a fresh-context agent cannot read the field name from a pointer.
+- passage: The brief's `Trace target:` line names the Goal, the `## Intent` record where the plan carries one, and the acceptance bullets a trace cites.
 
 ### T002
 - key: When the `Trace target:` line and the spec file disagree, cite the `Trace target:` line rather than the spec file.
@@ -18181,6 +18291,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2), a copy per sighted charter; carried unchanged by 6983398 2026-09-10, which rewrote only the sentence's opening clause.
 - verdict: keep
 - reason: No hook or test enforces the precedence, and the rule is a copy per sighted charter because each is loaded alone; the adversarial charter carries the same sentence by the plan's design.
+- passage: Cite that line over the spec file when the two differ.
 
 ### T003
 - key: Treat a by-path read of the spec as returning the unamended text.
@@ -18200,6 +18311,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: a5e184b 2026-08-25 (kaizen-batch section 1): the amendments requirement moved out of the reviewer-dispatch template into prose beside it in every sighted charter, because a fourth template field falsified two skills' three-field claims; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
 - reason: A copy per sighted charter, since each is loaded alone and cannot point at a sibling; no hook reads the amendments line.
+- passage: Each entry on an `Amendments in effect:` line amends the spec for this review: judge against the amended contract
 
 ### T005
 - key: Do not report an amendment's effect as spec drift.
@@ -18208,6 +18320,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: a5e184b 2026-08-25 (kaizen-batch section 1), landed with T004; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
 - reason: The instruction is what keeps an amendment's effect out of the finding list, and nothing mechanical filters findings by amendment.
+- passage: and do not report an amendment's effect as spec drift.
 
 ### T006
 - key: Review the entire changeset.
@@ -18216,6 +18329,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
 - reason: finishing-work step 2 owns the whole-changeset dispatch and the description's C003 summarizes it; the charter's clause is the agent-side scope, which a fresh-context agent cannot take from a pointer into finishing-work.
+- passage: A finishing pass reviews the entire changeset.
 
 ### T007
 - key: Focus the review on the section under review.
@@ -18224,6 +18338,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
 - reason: The focus bounds a section pass against re-reviewing the whole tree, and no hook or test scopes a reviewer's read; T008 is the same sentence's qualifier and shares this entry's supersession of R007.
+- passage: A section pass focuses on the section
 
 ### T008
 - key: Follow tainted data wherever it flows, even outside the section.
@@ -18232,114 +18347,116 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
 - reason: The qualifier keeps a section pass from missing a defect that sits outside the diff that reaches it, which is why a security lens follows taint past the section; nothing mechanical follows taint, and the entry shares T007's supersession of R007.
+- passage: but follows tainted data wherever it flows.
 
 ### T009
 - key: Admit `trace: Intent, <five words>` in the output grammar as a citation form beside the bullet and Goal forms.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md:59
-- passage: trace: Intent, <five words>
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review, with the adversarial lens's matching form; the two grammars are a deliberate pair. Reason amended in place by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Same reason as the adversarial lens's form. It changes no routing here, since this lens's Criticals and Majors take the advisory disposition whatever their trace (T012), but a lens unable to express the citation would still record the wrong provenance for the Metrics line.
+- passage: trace: Intent, <five words>
 
 ### T010
 - key: Describe this lens to the dispatcher as advisory: the orchestrator weighs and dispositions each finding, and only a Critical citing a threat-model entry, confirmed by the scope adjudicator, or a Disclosure hit blocks a close.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: Its findings are advisory: the orchestrator weighs and dispositions each one, and only a Critical citing a threat-model entry, or carrying `threat: absent` where the project has written no model, confirmed by the scope adjudicator, or a Disclosure hit blocks a close.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The description is what the dispatcher reads, and a description still promising a blocking lens would have an orchestrator route this lens's findings under the fast lane section 1 deleted. The operator's frame in the plan's Intent record is that a risk is weighed against the project's uses rather than assumed Critical.
+- passage: Its findings are advisory: the orchestrator weighs and dispositions each one, and only a Critical citing a threat-model entry, or carrying `threat: absent` where the project has written no model, confirmed by the scope adjudicator, or a Disclosure hit blocks a close.
 
 ### T011
 - key: Read the project's `## Threat model` section of docs/security-model.md, in its fixed shape (the deployment, the assets, the attacker classes in consideration, the attacker classes out of consideration with the reason), before the code, as what a Critical cites and what narrows the read to the attacker classes the project faces.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: **The threat model.** The model is the `## Threat model` section of the project's `docs/security-model.md`, in one fixed shape: the deployment (where the code runs and who can reach it), the assets (what is protected and from whom), the attacker classes in consideration, and the attacker classes out of consideration with the reason. Read it before the code. It is what a Critical cites, and it is what narrows your read to the attacker classes the project actually faces, so an attacker class the model keeps out of consideration earns no Critical or Major from you.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The operator-tier record `non-converging-review-rounds-mean-no-standard-exists` is why the model is a precondition for a Critical rather than a nicety: a lens with no written standard invents a new case each round. The shape is fixed here because the charter is the one document every project's model is written against, and the judge reads a citation against that shape.
+- passage: **The threat model.** It is the `## Threat model` section of that document, in one fixed shape: the deployment (where the code runs and who can reach it), the assets (what is protected and from whom), the attacker classes in consideration, and those out of consideration with the reason. Read it before the code. A Critical cites it, and an attacker class it keeps out of consideration earns no Critical or Major from you.
+- flag: weak-reason
 
 ### T012
 - key: Take the advisory disposition executing-work states on every Critical and Major whatever its trace, the trace being read for the record rather than for routing.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: The trace is read on your findings for the record rather than for their routing, since your Criticals and Majors take the advisory disposition executing-work states whatever their trace.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Supersedes R013, the agent-facing statement of the fast lane. Executing-work's advisory paragraph owns the route (its ledger's T175 to T183), and the charter states the consequence to the agent so it does not read a trace as a route. The trace still feeds the Metrics line's provenance read.
+- passage: The trace is read on your findings for the record rather than for their routing, since your Criticals and Majors take the advisory disposition executing-work states whatever their trace.
 
 ### T013
 - key: Carry `threat: <entry>` on every Critical and on nothing else, naming the attacker class, the asset and the deployment the model states; under `threat model: absent` write `threat: absent`; read a Critical with no field as an advisory Major.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: The `threat:` field is required on every Critical and appears on nothing else, with one exception. A `Disclosure:` hit carries no `threat:` field and blocks on the list alone, per the Documents rule above, so it is the one Critical this paragraph does not reach. Its value is the threat-model entry the finding needs, named as the attacker class, the asset and the deployment the model states. Under `threat model: absent` the value is `threat: absent`. A Critical carrying no `threat:` field, a `Disclosure:` hit aside, is read as an advisory Major, so a Critical you cannot cite is a Major you rate as one.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The one blocking case the plan keeps rides on this field: executing-work reads a `threat:` citation as the trigger for the relevance ruling, and an uncited Critical as an advisory Major (its ledger's T179). A structural slot rather than a prose reminder, because a lens that omits the field has rated a Major and nothing downstream has to guess.
+- passage: The `threat:` field is required on every Critical and appears on nothing else. Its value names the threat-model entry the finding needs: the attacker class, the asset and the deployment the model states. Under `threat model: absent` it is `threat: absent`. A Critical with no `threat:` field is read as an advisory Major, so a Critical you cannot cite is a Major you rate as one. A `Disclosure:` hit is the exception: it carries no `threat:` field and blocks on the list alone.
 
 ### T014
 - key: Expect every cited Critical to go to the scope adjudicator, a confirmed one fixed before the section closes or raised to the operator and a refused one dispositioned on the judge's ground, so the citation is a claim about the project rather than a severity asserted.
 - class: rationale-example
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: Every cited Critical goes to the scope adjudicator, which confirms or refuses the citation against the model, and a confirmed one is fixed before the section closes or raised to the operator. A refused one is dispositioned on the judge's ground. So the citation is a claim you make about this project, never a severity you assert.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: States to the agent what a citation costs, which is what keeps the field honest: the judge sees every one, so a citation is not a way to make a Major block. The route itself is executing-work's (its ledger's T179).
+- passage: The scope adjudicator confirms or refuses every cited Critical against the model. A confirmed one is fixed before the section closes or raised to the operator, and a refused one is dispositioned on the judge's ground. So the citation is a claim you make about this project, never a severity you assert.
 
 ### T015
 - key: Where an accepted risk's preconditions have eroded, cite the threat-model entry the precondition protected, or rate the finding as an advisory Major.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: An accepted risk whose preconditions have eroded is a finding that cites the threat-model entry the precondition protected, or it rates as an advisory Major.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Supersedes C025. An eroded precondition was a Critical by fiat; under the citation rule it is a Critical only where the model names what the precondition protected, and otherwise a Major the orchestrator weighs. The precondition check itself (C024, C026) stands.
+- passage: An accepted risk whose preconditions have eroded is a finding that cites the threat-model entry the precondition protected, or it rates as an advisory Major.
 
 ### T016
 - key: Where no model doc exists at all, or the one found carries no `## Threat model` section, run the full checklist, open the report with `threat model: absent`, carry `threat: absent` on every Critical so each takes the relevance ruling against the plan's Goal and the deployment its Intent record states, and leave "write the threat model" to the finishing pass.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: **Where the model is absent.** Where no model doc exists at all, or the one found above carries no `## Threat model` section, run the full checklist and open your report with the line `threat model: absent`. Your Majors are advisory as everywhere. Your Criticals carry `threat: absent` in the field below, and that value alone is read as a citation: every one takes the scope adjudicator's relevance ruling, where the judge reads relevance against the plan's Goal and the deployment its Intent record states in place of the missing model, and a confirmed one blocks exactly as a cited one does. The finishing pass, not this review, carries "write the threat model" to the operator.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20, on the operator's decision of 2026-09-20 recorded in the plan's Assumptions.
 - verdict: keep
 - reason: The customer-facing projects have no model on the day this ships and must keep a blocking route behind a judge; writing the model narrows what the judge reads rather than gating whether it runs. The opening line is what tells the orchestrator which reading of `threat:` the report's Criticals carry.
+- passage: **Where the model is absent.** Where no model doc exists, or it carries no `## Threat model` section, run the full checklist and open your report with the line `threat model: absent`. Your Criticals then carry `threat: absent`, which is read as a citation. Each takes the scope adjudicator's relevance ruling against the plan's Goal and the deployment its Intent record states, and a confirmed one blocks. The finishing pass, not this review, asks the operator to write the model.
 
 ### T017
 - key: Report a security document or a security-boundary comment that states something the code does not do, with the contradicting code cited by file and line, as an advisory finding whose disposition is fix now or a written refutation and never defer.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: **Security documents and security-boundary comments.** A security document, or a comment that states what a boundary protects against, that says something the code does not do is a finding, and it is the one duty this lens holds at full weight. Report it with the contradicting code cited, file and line, beside the sentence that claims otherwise. That finding is advisory like every other, and the orchestrator's disposition for it is fix now or a written refutation, never defer, so cite the code precisely enough that the refutation can be checked.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The one duty the Goal keeps at full weight, replacing the claim-class region's first exception that section 1 deleted (executing-work's ledger T181 and T191). A false sentence left standing is the defect the doctrine's nothing-untrue-ships rule names, which is why defer is not a disposition it can take, and the cited code is what makes a refutation checkable.
+- passage: **Security documents and security-boundary comments.** A security document, or a comment stating what a boundary protects against, that says something the code does not do is a finding, and the one duty this lens holds at full weight. Cite the contradicting code by file and line beside the false sentence, precisely enough for a refutation to be checked. The finding is advisory, and its disposition is fix now or a written refutation, never defer.
 
 ### T018
 - key: End with `VERDICT: CLEAR | ADVISORY | BLOCK` and one sentence, BLOCK reserved for a cited Critical or a `Disclosure:` hit, ADVISORY for any other Critical or Major standing, CLEAR for Minors or nothing.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: End with `VERDICT: CLEAR | ADVISORY | BLOCK` and one sentence. BLOCK is reserved for a cited Critical or a `Disclosure:` hit. On a cited Critical it is your claim pending the adjudicator's ruling rather than a settled outcome, since a refused citation is dispositioned on the judge's ground. ADVISORY is any other Critical or Major standing, each of which the orchestrator weighs and dispositions. CLEAR is a changeset carrying Minors or nothing.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Supersedes C081. The alphabet names the tier: a verdict word that reads as blocking on findings the orchestrator is meant to weigh would reinstate the fast lane at the verdict line. No skill or hook parses the words, so the change binds the reader alone.
+- passage: End with `VERDICT: CLEAR | ADVISORY | BLOCK` and one sentence. BLOCK is reserved for a cited Critical, as your claim pending the adjudicator's ruling, or a `Disclosure:` hit. ADVISORY is any other Critical or Major standing, which the orchestrator weighs and dispositions. CLEAR is a changeset carrying Minors or nothing.
 
 ### T019
 - key: Treat a `Disclosure:` hit as the one Critical that blocks with no threat-model citation and no adjudicator ruling.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: A hit is the one Critical that blocks with no threat-model citation and no adjudicator ruling behind it, since the list is the plan's own statement of what must not appear.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The sweep's weight is out of the plan's scope by its own list, and finishing-work step 2 reads the hit as a correctness Critical; the charter says so beside the sweep so the agent does not withhold the `threat:` field from a hit and then read its own rule as downgrading it.
+- passage: A hit is the one Critical that blocks with no threat-model citation and no adjudicator ruling behind it, since the list is the plan's own statement of what must not appear.
 
 ### T020
 - key: Admit `[threat: <entry> | threat: absent]?` in the output grammar beside the trace and confidence fields.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: [threat: <entry> | threat: absent]?
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The grammar is closed, so a field it does not carry is one the lens cannot emit however clearly the prose requires it, which is the same reason the trace form was added (T009). The optional marker is the adversarial grammar's own for `[claim]?`, and the field is required on a Critical by the prose rather than by the grammar.
+- passage: [threat: <entry> | threat: absent]?
 
 ## plugins/claude-kit/agents/performance-reviewer.md
 
