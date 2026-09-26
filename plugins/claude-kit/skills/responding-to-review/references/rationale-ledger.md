@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document governs how a session weighs and answers review output and operator feedback before acting on either. It owns the moments where a review agent returns findings, where the operator gives feedback or a correction, and where a session is about to implement a suggestion from either source, especially one that looks wrong, unclear, or larger than the problem; it also owns how a session counts corroboration across independent review lenses, how it treats a reviewer's clearance or a pair of contradicting verdicts, how it handles a claim finding's fix brief, and the tone of a review reply. It does not own severity triage itself, which it hands to executing-work's "Address findings" step, nor the claim-finding class and its dispositions, which it hands to executing-work, nor the docs-curator Drift Report route, which it hands to finishing-work. Load class: `named-trigger` - the skill is loaded before a specific act, when review output arrives to be adjudicated, when the operator gives feedback, or before implementing a suggestion from either.
 
-Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (S021 and S022 below, S010 retired).
+Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (S021 and S022 below, S010 retired). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `f862acf0` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Treat a review finding as an input to your judgment rather than an order, and evaluate it before you act on it.
@@ -24,6 +24,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: The rule stands; the paragraph compresses to the rule and its imperative once C002 and C057 move here (A001, A002, A036). Nothing enforces it mechanically, so the rule itself is never a retirement candidate. Lands at line 8 (section 34's close) as "A review finding is an input to your judgment, not an order to execute. Evaluate before you act." The fallibility sentence (C002) and the operator-standing sentence (C057) are gone, one edit for the three verdicts.
 - proposed: Reduce line 8 to the rule and its imperative, with the fallibility and operator-standing sentences moved to this ledger.
 - baseline-test: yes
+- passage: A review finding is an input to your judgment, not an order to execute. Evaluate before you act.
 
 ### C002
 - key: Evaluate findings because the kit's fresh-context review agents catch what you missed yet are fallible and cannot see intent you never wrote down.
@@ -81,6 +82,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: The rule stands; the paragraph loses only its third sentence (C010), a doctrine copy, under A006. Lands at line 14 (section 34's close) as "**My feedback** is trusted: implement once you understand it. Still verify scope when it is unclear, and still say so when you see a problem with it." The implement, verify-scope and say-so sentences are unchanged; the third sentence (C010) is gone.
 - proposed: Drop the third sentence of line 14 to this ledger; keep the implement, verify-scope, and say-so sentences unchanged.
 - baseline-test: yes
+- passage: **My feedback** is trusted: implement once you understand it.
 
 ### C008
 - key: Verify the scope of operator feedback when that scope is unclear.
@@ -89,6 +91,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: keep
 - reason: An operator-decision gate (A007): the scope of the operator's own instruction is theirs to state, and the doctrine's intake gap check routes a material gap to them. Retiring it would have a session guess the scope of a trusted instruction.
+- passage: Still verify scope when it is unclear, and still say so when you see a problem with it.
 
 ### C009
 - key: Say so when you see a problem with the operator's feedback.
@@ -97,6 +100,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: keep
 - reason: The skill's instance of the doctrine's Disagree-up-front bullet at the moment feedback arrives; unchanged by the line 14 rewrite.
+- passage: Still verify scope when it is unclear, and still say so when you see a problem with it.
 
 ### C010
 - key: Voice the disagreement because silence reads as agreement and the operator wants the disagreement when you have one.
@@ -118,6 +122,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: The rule stands; the item folds its lead and its restatement into one sentence and its reason (C012) moves here (A009). Lands at line 18 (section 34's close) as "1. **Read the whole set before reacting.** Understand the set, then act, not finding-by-finding in a panic." The interrelation sentence (C012) is gone.
 - proposed: Fold item 1 to its lead plus one sentence naming the finding-by-finding failure, with the interrelation reason moved to this ledger.
 - baseline-test: yes
+- passage: 1. **Read the whole set before reacting.** Understand the set, then act, not finding-by-finding in a panic.
 
 ### C012
 - key: Read the set first because findings interrelate and fixing one can moot another.
@@ -139,6 +144,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: The rule stands and this skill owns it (A011, A013); the item drops its reason sentence here (A012). The why: a reviewer reasoning from a diff can be wrong about code it could not see, and the blind lens sees only the diff by design. Lands at line 19 (section 34's close): the lead and the confirm-in-the-actual-code sentence stand word for word, the diff-reasoning sentence is gone, and the kaizen prose batch's section 6 fold follows them as two sentences, "A finding whose substance is an absence is a scope claim first, so re-read the spec section before you design the fix. An absence outside what the section asked for takes executing-work's out-of-scope route at its step 4 rather than a fix here." The second sentence's scope clause was reworded at round 1 to key on what the section asked for rather than on what its spec text spelled out, since a missing bound inside asked-for code is spec-traceable. The route sits under the bold lead "The out-of-scope route." at executing-work SKILL.md line 423 at HEAD.
 - proposed: Keep the lead and the confirm-in-the-actual-code sentence; move the diff-reasoning reason to this ledger under C013.
 - baseline-test: yes
+- passage: Before implementing a finding, confirm it is real in the actual code and on this stack. A finding whose substance is an absence is a scope claim first, so re-read the spec section before you design the fix. An absence outside what the section asked for takes executing-work's out-of-scope route at its step 4 rather than a fix here.
+- flag: stale
 
 ### C014
 - key: Apply the YAGNI test to any push for configurability, an abstraction, or a "professional" feature: is it needed now?
@@ -147,6 +154,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: keep
 - reason: The probe's fork (fix-or-justify versus YAGNI) is settled by the owner: item 5 hands disposition to executing-work, whose step 4 now reads a Major's provenance before any fix (f26619c). This item only licenses the pushback; the proposed restyle is no shorter (A014, A015).
+- passage: A pushed-for configurability, abstraction, or "professional" feature must be needed now.
 
 ### C015
 - key: Grep for the caller to decide whether the pushed-for addition is needed now.
@@ -155,6 +163,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: no finding.
+- passage: Grep for its caller.
 
 ### C016
 - key: Where the grep shows the thing is unused, say so and leave it out.
@@ -163,6 +172,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: The outcome half of item 3, kept with it under A015.
+- passage: Unused means say so and leave it out.
 
 ### C017
 - key: When a finding is wrong, say why up front and show the evidence: the code, the test, or the constraint.
@@ -171,6 +181,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: The item is kept whole (A016) because the re-check clause inside it is baseline-tested wording and the proposed compression breaks it.
+- passage: 4. **Push back with the reason, up front.** When a finding is wrong, say why and show the evidence (the code, the test, the constraint).
 
 ### C018
 - key: Hold your position under pushback and move only on a new fact, never on tone.
@@ -179,6 +190,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17; the kaizen brief of 2026-08-08 required this no-move-on-tone rule to survive intact when the re-check clause was added.
 - verdict: keep
 - reason: A stated acceptance condition of the bare-challenge brief; the doctrine carries the same rule and this is its review-reply instance.
+- passage: Hold under pushback. Move on a new fact, not on tone.
 
 ### C019
 - key: On a bare challenge carrying no new fact, run exactly one re-verification of your cited evidence before restating: re-open the code, re-run the test.
@@ -187,6 +199,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md: the hold-under-pushback rule had no path to discover thin evidence; RED 4 of 6 under combined pressure, GREEN 5 of 6 with the clause, old-wording control 1 of 3.
 - verdict: keep
 - reason: Baseline-tested wording whose language surfaced verbatim in GREEN reps; the trigger, the bounded action and the instances are each named as required parts. Any rewording re-runs the probe.
+- passage: A bare challenge (pushback carrying no new fact) buys one re-verification of your cited evidence before you restate: re-open the code, re-run the test.
 
 ### C020
 - key: Where the re-check reproduces your evidence, hold and say what you re-checked.
@@ -195,6 +208,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, the same kaizen brief (the resolution rule's first half).
 - verdict: keep
 - reason: Part of the tested clause; "say what you re-checked" is what distinguishes a re-check from a restatement in the reply.
+- passage: A re-check that reproduces the evidence means hold, saying what you re-checked.
 
 ### C021
 - key: Where the re-check finds the evidence thinner than you claimed, treat that as the new fact and downgrade out loud.
@@ -203,6 +217,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, the same kaizen brief (the resolution rule's second half).
 - verdict: keep
 - reason: The clause that makes the no-move-on-tone rule safe: it supplies the new fact from the session's own re-check rather than waiting for one to arrive.
+- passage: One that finds it thinner than you claimed is the new fact - downgrade out loud.
 
 ### C022
 - key: If you pushed back and were wrong, say so plainly and implement, with no defense of why you pushed back.
@@ -211,6 +226,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: The closing rule of item 4, kept with it under A016; the "no defense" clause is the anti-sycophancy rule's mirror for the session's own error.
+- passage: If you pushed back and were wrong, say so plainly and implement, with no defense of why you pushed back.
 
 ### C023
 - key: Handle Critical, Major and Minor findings exactly as executing-work's "Address findings" step defines, and read that step for the triage rule.
@@ -219,6 +235,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: no finding. The pointer at the owner of triage, and the sentence that settles the probe fork on C014.
+- passage: 5. **Triage and record.** Critical, Major, Minor are handled exactly as executing-work's "Address findings" step defines. This skill governs how you weigh and answer a finding before that triage.
 
 ### C024
 - key: When ordering fixes, weight convergence between two independent lenses on one defect above either finding's severity rating.
@@ -227,6 +244,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, kaizen-batch plan section 4; the rule produced its own first instance before it shipped, two reviewers with no contact landing on the same wrong sentence in section 2.
 - verdict: keep
 - reason: Incident-born, applied by name in later Chapters of the same plan, and no machinery counts convergence (A017).
+- passage: When two lenses with no contact land on the same defect, weight that convergence above either finding's severity when you order the fixes.
+- flag: weak-reason
 
 ### C025
 - key: Put a corroborated Major ahead of a lone Critical in the fix order.
@@ -235,6 +254,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, kaizen-batch plan section 4.
 - verdict: keep
 - reason: The instance fixes the rule's reading (ordering, not a tie-break) and hosts the lone-Critical bound (A018).
+- passage: So a corroborated Major goes ahead of a lone Critical.
 
 ### C026
 - key: Still verify a lone Critical against the code before implementing it.
@@ -243,6 +263,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, kaizen-batch plan section 4.
 - verdict: keep
 - reason: The bound that keeps the ordering rule from reading as a downgrade of an uncorroborated Critical (A017).
+- passage: A lone Critical still gets step 2's verification against the code before it is implemented.
 
 ### C027
 - key: Credit convergence because the kit's lenses are built to share nothing: blind lenses get only the base ref or document, sighted ones hold the spec, and none reads another's output.
@@ -251,6 +272,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25; the order clause repaired the section 4 round's finding that "run in parallel" was false for finishing's serial lenses; 6b7b384 2026-08-29 re-keyed the test on what the lenses share.
 - verdict: keep
 - reason: States the independence test the counting rules apply, and its clauses are review-round repairs rather than decoration (A019).
+- passage: The kit builds its lenses to have no contact. Blind lenses get only the base ref or the document, and sighted ones hold the spec. A round's lenses are dispatched together, and none reads another's output. Order does not break independence: finishing runs its qa-verifier before the reviews and its docs-curator after them. What breaks it is what the lenses share.
 
 ### C028
 - key: Check what each lens was given, standing-brief content included, before counting two findings as two observations.
@@ -259,6 +281,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, kaizen-batch section 4 adversarial finding that Standing Brief Amendments break independence while the contamination test clears them.
 - verdict: keep
 - reason: Incident-born and recurring (a 2026-09-06 note records a brief carrying a prior adjudication that turned a lens into a restatement); nothing mechanical reads what a lens was given (A020).
+- passage: Check what each lens was given, standing content included, before you count them as two.
+- flag: weak-reason
 
 ### C029
 - key: Do not count as corroboration two findings from one lens, a reviewer handed another's output, or two agents given the same contaminating framing.
@@ -267,6 +291,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, kaizen-batch plan section 4.
 - verdict: keep
 - reason: The disqualifier list; kaizen/notes-SCOTT-CLAUDE.md line 36 is a live instance of the second case.
+- passage: Two findings from one lens, a reviewer handed another's output, and two agents given the same contaminating framing are one observation reported twice.
 
 ### C030
 - key: Do not count convergence produced by shared standing-brief content, such as a Standing Brief Amendments entry or a repo-wide defect class named in both briefs.
@@ -275,6 +300,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25, the section 4 adversarial finding at docs/archive/claude-kit_kaizen-batch_spec_v1.md line 187.
 - verdict: keep
 - reason: The reconciliation with executing-work's contamination test is the whole point: that test clears the framing, so this rule is the only place the convergence it produces is discounted.
+- passage: Shared standing-brief content counts the same way. A `Standing Brief Amendments` entry riding every sighted brief, or a repo-wide defect class named in both briefs, points two lenses at one defect class. Executing-work's contamination test clears that content, but the convergence it produces is still one input answered twice.
 
 ### C031
 - key: Separate what the convergence is about before counting it: the effort's own artifacts as subject, versus those artifacts cited as evidence.
@@ -283,6 +309,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29, review-and-record plan section 7: a fixture invented a registry journal the directory contract does not define and two independent reviewers cited it as evidence.
 - verdict: keep
 - reason: Incident-born; the subject-versus-evidence split is what keeps the rule from putting the effort's own artifacts out of reach (A021).
+- passage: So separate what the convergence is about.
 
 ### C032
 - key: Count two lenses landing on the same defect in the effort's own artifacts as corroboration.
@@ -291,6 +318,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29, review-and-record plan section 7.
 - verdict: keep
 - reason: The positive half of C031; without it the evidence rule would discount every finding on a fixture the effort wrote.
+- passage: The effort's own artifacts are the review's subject, and two lenses landing on the same defect in them is corroboration.
 
 ### C033
 - key: Count two lenses citing an effort-authored artifact as evidence of a fact the effort does not own as one finding, not two.
@@ -299,6 +327,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29, review-and-record plan section 7; the class sentence is pinned once on three surfaces by test/doctrine-parity.test.js.
 - verdict: keep
 - reason: The incident's own rule, and its class sentence is a pinned copy; operator memory two-surfaces-corroborate-only-if-no-upstream-reaches-both records the general form.
+- passage: Two lenses citing such an artifact as evidence of a fact the effort does not own are one finding, not two. That fact is what a contract requires, what a tool prints, or how a system outside the effort behaves.
 
 ### C034
 - key: For a fact the effort does not own, take corroboration only from evidence originating outside the effort.
@@ -307,6 +336,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29, review-and-record plan section 7.
 - verdict: keep
 - reason: The remedy half of C033; unenforced by machinery.
+- passage: Corroboration about it takes evidence originating outside the effort.
 
 ### C035
 - key: Count an artifact authored before this effort began toward independence, and do not use merge state as the test.
@@ -315,6 +345,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29; the section 7 first draft keyed independence on merge state, which the plan's own commit model falsified within the hour, and the review round replaced it.
 - verdict: keep
 - reason: no finding. A review-caught repair; a session tempted to simplify the test back to merge state re-opens that defect.
+- passage: An artifact authored before this effort began counts toward independence, though it still states no contract. Merge state is not the test, since a section that pushes as it closes leaves the effort's own artifacts merged.
 
 ### C036
 - key: Cite the contract's owning surface for a claim about a contract, and treat it as outranking any artifact written to exercise it.
@@ -323,6 +354,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29, review-and-record plan section 7, designed as a multi-surface copy with the sighted charters because a charter inherits no skills.
 - verdict: keep
 - reason: The orchestrator's copy of a designed three-surface clause; the charter cannot be pointed at from a skill, and the blind lens has no fixture rule, so this is where a blind misread is caught (A022, A023).
+- passage: A claim about a contract cites the contract's owning surface, which outranks any artifact written to exercise it. Among those surfaces are the schema, the interface, the directory or protocol spec, the published shape, and, for what a tool prints, the line in the tool's own source that emits it.
 
 ### C037
 - key: Take the owning surface to be wherever the fact's own producer defines it, never a copy that restates it.
@@ -331,6 +363,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29; pinned once on all three surfaces at test/doctrine-parity.test.js lines 4932 to 4950 after the enumeration lost its tool leg on every surface.
 - verdict: keep
 - reason: A pinned copy keeps its copy; the pin fails on a pointer (A024, A025).
+- passage: Those surfaces are instances rather than the boundary: the owning surface is wherever the fact's own producer defines it, never a copy that restates it.
 
 ### C038
 - key: Where no owning surface states the contract, treat the contract as unstated and the asserting artifact as a proposal rather than the source.
@@ -339,6 +372,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 6b7b384 2026-08-29, review-and-record plan section 7.
 - verdict: keep
 - reason: The orchestrator's disposition generalized over the class, distinct from the reviewer's fixture diagnosis the parity test places on the charters alone (A026, A027).
+- passage: Where no owning surface states the contract, the contract is unstated and the artifact asserting it is a proposal rather than the source.
 
 ### C039
 - key: Read executing-work's SKILL.md for the claim-finding class, its exceptions, and the dispositions at its step 4.
@@ -377,6 +411,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: The rule, its examples and its step-2 parallel stand; the paragraph's motivating third sentence moves here (A031). The why: a clearance arrives looking like the settled state and costs nothing to adopt, which is why it is the harder half to remember. Lands at line 38 (section 34's close): the clearance definition, the examples and the step-2 parallel stand word for word, the paragraph now ending "and a load-bearing clearance owes the same before the section closes on it."; the motivating third sentence is gone.
 - proposed: Drop the paragraph's third sentence to this ledger under C042; keep the clearance definition, the examples, and the step-2 parallel.
 - baseline-test: yes
+- passage: A reviewer's explicit clearance ("this line is fine", "no issue here", "no finding on X") is a claim about the code, not a fact you inherit. Never adopt a load-bearing clearance on the agent's word alone.
 
 ### C043
 - key: Verify a load-bearing clearance against the code before the section closes on it.
@@ -385,6 +420,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1.
 - verdict: keep
 - reason: The act the incident required; unchanged by A031.
+- passage: It owes step 2's verification against the code before the section closes on it.
 
 ### C044
 - key: Judge a clearance load-bearing when believing it retires a check you would otherwise have run.
@@ -393,6 +429,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1.
 - verdict: keep
 - reason: no finding. The test C045's instances make recognizable.
+- passage: A clearance is load-bearing when believing it retires a check you would otherwise run.
 
 ### C045
 - key: Verify the named property a clearance rests on, such as the trust boundary holding, model-writable input not reaching the sink, or the code refusing a case.
@@ -401,6 +438,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28; the second instance is the incident itself.
 - verdict: keep
 - reason: The recognizer for C044's abstract test and the carrier of its imperative; the incident showed recognition is what sessions miss (A032).
+- passage: The lens may say the trust boundary holds, that model-writable input cannot reach the sink, or that the code refuses a case. Each is a property you now rely on and nobody verified, so verify it.
 
 ### C046
 - key: Do not go back into the full diff on a bare APPROVED verdict.
@@ -409,6 +447,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1.
 - verdict: keep
 - reason: Rule, discriminator and a pointer at executing-work's orchestrator-stays-lean rule, which owns the diff-reading bound (A033).
+- passage: A bare `APPROVED` verdict retires no specific check and does not put you back in the diff. Executing-work's orchestrator-stays-lean rule keeps you out of a full diff you are not adjudicating.
 
 ### C047
 - key: When two lenses return contradicting verdicts on one passage, adopt neither verdict and let the artifact settle which holds.
@@ -417,6 +456,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1, the split-verdict instance.
 - verdict: keep
 - reason: Incident-born; the corroboration section had no rule for contradicting verdicts before it (A034).
+- passage: When two lenses contradict on one passage, one clearing what the other rates a defect, adopt neither verdict. The artifact settles which holds, and which artifact depends on the question.
 
 ### C048
 - key: For a contradiction about what the code does, trace the code yourself and record the trace.
@@ -425,6 +465,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28; tracing the gate's own branch order is what settled the incident.
 - verdict: keep
 - reason: The incident's remedy stated as the rule.
+- passage: For what the code does, trace the code yourself.
 
 ### C049
 - key: Record the trace's evidence, the branch order you read, the file:line and the path you followed, rather than the verdict you sided with.
@@ -433,6 +474,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1.
 - verdict: keep
 - reason: What makes a recorded trace checkable later rather than a vote count.
+- passage: Record the trace's evidence (the branch order you read, the file:line, the path you followed), not the verdict you sided with.
 
 ### C050
 - key: For a contradiction about whether the code does what was asked, read the section's own words in the spec and record that reading.
@@ -441,6 +483,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1.
 - verdict: keep
 - reason: The intent half of the artifact rule; the code cannot settle it.
+- passage: For whether the code does what was asked, the spec settles it, since internally consistent code can still be the wrong behavior. Read the section's own words in the spec and record that reading.
 
 ### C051
 - key: Do not break a contradiction tie on severity.
@@ -449,6 +492,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28; in the incident the higher severity happened to be right, which is why severity is named as no tie-break.
 - verdict: keep
 - reason: Consistent with C024's currency distinction; unenforced.
+- passage: Neither severity nor specialty breaks the tie, though specialty tells you which lens could see what.
 
 ### C052
 - key: Do not break a contradiction tie on the lens's specialty.
@@ -457,6 +501,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28; the security lens cleared inside its own specialty and was wrong.
 - verdict: keep
 - reason: The incident's sharpest lesson, and the clause the compress proposal would have deleted (A034).
+- passage: Neither severity nor specialty breaks the tie, though specialty tells you which lens could see what.
 
 ### C053
 - key: Treat a verdict from a lens structurally denied the relevant input as evidence about the artifact it held, never a ruling on the one it did not.
@@ -465,6 +510,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a738710 2026-08-28, review-and-record plan section 1.
 - verdict: keep
 - reason: Follows from the blind lens being denied the spec on purpose; it is how a blind clearance over a spec question is weighed.
+- passage: A verdict from a lens structurally denied the relevant input is evidence about the artifact it did hold and never a ruling on the one it did not.
 
 ### C054
 - key: Apply the kit doctrine's anti-sycophancy rule in full when replying to a review.
@@ -473,6 +519,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17; fdd7b82 2026-07-15 repointed the reference at the doctrine; 5620b2b 2026-09-07 removed the doctrine restatement.
 - verdict: keep
 - reason: Already trimmed to a pointer plus the review-specific instances (A035).
+- passage: The anti-sycophancy rule in the kit doctrine (imported via `~/.claude/CLAUDE.md`) governs here in full.
 
 ### C055
 - key: In a review reply, write no "Good catch", no "You're absolutely right", and no thanks to the reviewer or the operator for the finding.
@@ -481,6 +528,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: The skill's own instance list; the doctrine names different phrasings, so this is not a copy.
+- passage: In a review reply that means no "Good catch", no "You're absolutely right", no thanking the reviewer or me for the finding.
 
 ### C056
 - key: State the fix or state the disagreement, and let the changed code show you heard it.
@@ -489,6 +537,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: keep
 - reason: The positive form of the reply; kept with the section under A035.
+- passage: State the fix, or state the disagreement. The changed code shows you heard it.
 
 ### C057
 - key: Weigh operator feedback as usually right and always worth hearing, but never as infallible.
@@ -518,6 +567,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: a5e184b 2026-08-25; the wording is the section 4 round's correction of "run in parallel", scoped to same-round dispatches.
 - verdict: keep
 - reason: A descriptive leg of the independence account rather than a dispatch instruction; executing-work step 3 owns and enforces the dispatch (A038, A039).
+- passage: A round's lenses are dispatched together, and none reads another's output.
 
 ### R001
 - key: Give every review-agent finding an honest verdict of your own.
@@ -634,6 +684,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill as ported from Daren's fork and session mining; 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: The three named failure modes are the recognizer a session adjudicates a finding against, and C002's retirement of the line 8 motivation rests on this operative form staying here; nothing mechanical checks a finding for any of the three.
+- passage: **Review-agent findings** (adversarial-reviewer, blind-reviewer, prose-reviewer, blind-reader, plan-reviewer, security-reviewer, performance-reviewer, qa-verifier, and any other lens that returns findings) are fallible. A finding can be wrong, out of scope, or built on context the agent lacked.
 
 ### S002
 - key: Give every finding an honest verdict.
@@ -642,6 +693,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; the enumeration grew in 12ef61f (blind lens) and a5fce80 (document battery); 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: No hook makes a session return a verdict on a finding, and the enumeration is what binds each new lens to the rule; supersedes C003, of which R001 was a retired duplicate.
+- passage: Each one owes you an honest verdict.
 
 ### S003
 - key: Push back on a wrong finding and state the reason; treat doing so as correct rather than insubordinate.
@@ -650,6 +702,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: The "not insubordinate" clause is the license a session needs against the pull to defer; supersedes C005, of which R002 was a retired duplicate.
+- passage: Pushing back on a wrong finding with the reason is correct, not insubordinate.
 
 ### S004
 - key: Adjudicate every finding.
@@ -658,6 +711,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: Shares the C003 -> S002 supersession, C003's key having merged the two sentences; R003 was its retired duplicate. Unenforced by machinery and the sentence the whole skill hangs on.
+- passage: Adjudicate every finding.
 
 ### S005
 - key: Do not rubber-stamp a finding and do not reflexively defer to it.
@@ -666,6 +720,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17, installed with the skill; 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: The two failure modes are the anti-sycophancy pair this skill exists for and nothing mechanical catches either; supersedes C004, of which R004 was a retired duplicate.
+- passage: Do not rubber-stamp, and do not reflexively defer.
 
 ### S006
 - key: Read a finding's trace before you read its severity.
@@ -674,6 +729,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2, from the twenty-round section of 2026-09-08 where a Major nobody asked for was built one repair per round (kaizen/notes-NEO-CLAUDE.md line 23); 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: Incident-born and the one sentence the plan directed this skill to carry as the adjudication-time pointer at executing-work's provenance read; supersedes R005.
+- passage: Read a finding's trace before its severity.
 
 ### S007
 - key: Re-trace a Major carrying `trace: none` against the trace target yourself before holding anything on it.
@@ -682,6 +738,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it. goal-fit section 3 2026-09-19 widened the claim a `trace: none` makes to name the Intent clause beside the acceptance bullet and the Goal sentence, matching the provenance read's first value.
 - verdict: keep
 - reason: A `trace: none` is the lens's claim about the plan and is verified like any other claim before it is acted on, consistent with C013; supersedes R006.
+- passage: A `trace: none` on a Major claims that no acceptance bullet, Goal sentence or Intent clause asked for what the finding names. Re-trace that claim against the trace target before holding anything on it.
 
 ### S008
 - key: Send such a finding to the provenance paragraph in executing-work's step 4 instead of into a fix.
@@ -690,6 +747,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: Routes to the owner of the disposition, consistent with C023, and the provenance paragraph still sits at executing-work's step 4 at HEAD (executing-work SKILL.md line 423); supersedes R007. Amendment 2 note at section 34's close: "line 423" describes executing-work before section 4; at HEAD the provenance paragraph sits at line 411, under the bold lead "A Major enters a fix round on its provenance, never on its severity alone.", inside step 4's block, and line 423 is the out-of-scope route. The claim holds.
+- passage: Then send the finding to the provenance paragraph in executing-work's step 4, not into a fix.
+- flag: stale
 
 ### S009
 - key: Trace a blind lens's findings yourself at adjudication.
@@ -698,6 +757,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2 (the orchestrator supplies the blind lens's trace, recorded as orchestrator-made); 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
 - reason: The blind lens carries no trace by design, the same structural fact C053 rests on; supersedes R008.
+- passage: A blind lens carries no trace by design, so trace its findings yourself.
 
 ### S010
 - key: Keep a Critical, and any security finding of Critical or Major weight, on its own route regardless of its trace.
@@ -715,6 +775,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: 830ff28 2026-06-17 routed the report to the operator; dd5e568 2026-08-24 (verification-artifacts plan) replaced the "exactly one" cap with the class finishing-work defines; 55c5abc 2026-09-09 renumbered the step the parenthetical names.
 - verdict: keep
 - reason: Finishing-work owns the stop on a `mistake` and this is the pointer a non-owner keeps, an operator-decision gate because the resolution picks which of code, spec or doc is the truth; supersedes C006, of which R010 was a retired duplicate.
+- passage: The docs-curator's Drift Report carries no severity ratings, and you route it to me per finishing-work.
 
 ### S012
 - key: Read finishing-work's step 5 for the class of adjudications that are yours.
@@ -723,6 +784,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: dd5e568 2026-08-24 installed the pointer at finishing-work's step 4; 55c5abc 2026-09-09 (review-loop-provenance plan section 6) inserted the goal read as step 4 and renumbered steps 5 to 9, repointing this at step 5.
 - verdict: keep
 - reason: Finishing-work step 5 at HEAD is Documentation curation and defines the `mistake`/`deviation` class, the `Basis:` line and the pre-change read (finishing-work SKILL.md line 62), so the pointer is correct, and no test pins the step number in this file; shares the C006 -> S011 supersession, R011 having been C006's retired duplicate.
+- passage: Finishing-work's step 5 defines the adjudications that are yours and how each is recorded.
+- flag: stale
 
 ### S013
 - key: Perform the pre-change read that a `mistake`'s `Basis:` line calls for.
@@ -731,6 +794,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: dd5e568 2026-08-24, verification-artifacts plan; 55c5abc 2026-09-09 renumbered the step it is read from.
 - verdict: keep
 - reason: A named member of the class the S012 pointer names, still defined at the repointed step; shares the C006 -> S011 supersession.
+- passage: The pre-change read a `mistake`'s `Basis:` line calls for is one of them.
 
 ### S014
 - key: Record each of those adjudications the way finishing-work's step 5 directs.
@@ -739,6 +803,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - provenance: dd5e568 2026-08-24, verification-artifacts plan; 55c5abc 2026-09-09 renumbered the step it points at.
 - verdict: keep
 - reason: Carries no mechanic of its own, only the owner's, so it is already the pointer form; shares the C006 -> S011 supersession, R012 having been C006's retired duplicate.
+- passage: Finishing-work's step 5 defines the adjudications that are yours and how each is recorded.
 
 ### S015
 - key: Read `skills/executing-work/SKILL.md` under the kit plugin root for the claim class, its exceptions, and the dispositions at its step 4.
@@ -749,6 +814,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - landed: 1de7db7 section 34
 - reason: The pointer at the owner, which still holds the class, the exceptions and the four dispositions at its step 4 (executing-work SKILL.md line 435); supersedes C039. Amendment 2 note: "line 435" describes executing-work before section 4; at HEAD the class and its exceptions sit between the KIT-CLAIM-CLASS markers at lines 407 to 409 and the four dispositions at line 417, all inside step 4's block, and line 435 is step 5. Flipped from keep at section 34's close, a respell forced by S016: S016's retire took out the enumeration the sentence's terminal colon introduced, so the colon became a period; the words are unchanged. Landed as the proposal below.
 - proposed: The class and its exceptions are executing-work's (`skills/executing-work/SKILL.md` under the kit plugin root), and so are the dispositions of a claim the exceptions do not hold, listed at its step 4.
+- passage: The class and its exceptions are executing-work's (`skills/executing-work/SKILL.md` under the kit plugin root). So are the dispositions of a claim the exceptions do not hold, listed at its step 4.
+- flag: stale
 
 ### S016
 - key: Dispose of such a claim by deleting the false sentence, adding a cheap mechanical check, writing a Chapter line, or routing it out of scope.
@@ -782,6 +849,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: The rule stands and this skill owns it; the passage compresses to the S015 pointer plus one rule sentence carrying S019 as its exception clause and S020 as the other side of the class split, once S016 and S017 leave. Supersedes C040. Baseline-test: yes. Lands at line 34 (section 34's close) as "A fix brief for such a claim never carries a replacement sentence. A claim an exception holds is owed the behavior bar in the same fix round, and every other lands in the close pass that step owns.", after the S015 pointer, whose "a claim the exceptions do not hold" is the antecedent of "such a claim": the proposal's one sentence was split at round 1 into the rule and its bound, the rule scoped to the unexcepted claim as the pre-section text scoped it, and the owner named once, in the pointer, rather than in both sentences. S019 rides as the second sentence's opening clause and S020 as its every-other clause. S015 is recorded as a flip forced by S016.
 - proposed: Compress line 34 to the S015 pointer plus one rule sentence: a claim finding's fix brief never carries a replacement sentence, a claim an exception holds is owed the behavior bar in the same fix round, and every other lands in the close pass executing-work's step 4 owns.
 - baseline-test: yes
+- passage: A fix brief for such a claim never carries a replacement sentence.
 
 ### S019
 - key: Hold a claim to the behavior bar when either exception applies to it.
@@ -793,6 +861,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: A restatement of the owner's bar that survives only as the bound on S018, since without it a security-boundary claim would be barred from a replacement sentence. Supersedes C041. Baseline-test: yes. Lands at line 34 (section 34's close) as the clause "A claim an exception holds is owed the behavior bar in the same fix round" opening S018's second landed sentence, which follows the no-replacement rule at once as its bound. The proposal's "A018" names S018: no A-prefixed entry exists under this heading, and this reason names S018 by id.
 - proposed: Fold into the single rule sentence A018 names as its exception clause.
 - baseline-test: yes
+- passage: A claim an exception holds is owed the behavior bar in the same fix round.
 
 ### S020
 - key: Land every other claim finding's fix in the section's close pass along with the other Minors.
@@ -804,21 +873,23 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: A disposition executing-work's step 4 owns and states in full (executing-work SKILL.md lines 423 and 435), which this skill's item 5 hands to that step, so it folds into S018's rule sentence as the "every other" half of the class split, naming the owner rather than restating the pass. Baseline-test: yes. Lands at line 34 (section 34's close) as the clause "and every other lands in the close pass that step owns" closing S018's second landed sentence, the owner named in the S015 pointer one sentence earlier rather than twice. The proposal's "A018" names S018, as S019's does. Amendment 2 note: "lines 423 and 435" describe executing-work before section 4; at HEAD the close pass is defined at line 405 (step 4's opening line, "recorded in the section's Minor list and fixed in one pass at section close") and the class split at line 417 ("That round's claim findings an exception holds to the behavior bar are dispositioned in the same fix round, while every other accumulates with the Minors for the close pass"), while line 423 is the out-of-scope route and line 435 is step 5.
 - proposed: Merge into A018's rule sentence as the "every other" half of the class split, naming executing-work's step 4 as the owner of the close pass rather than restating the pass.
 - baseline-test: yes
+- passage: Every other claim lands in the close pass that step owns.
+- flag: stale
 
 ### S021
 - key: Keep a Critical from a correctness lens on its own route whatever its trace.
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
-- passage: A Critical from a correctness lens keeps its own route whatever its trace.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
 - verdict: keep
 - reason: The bound S007 and S008 need so the provenance route never delays a correctness Critical. The class is named by lens because the fast lane keyed on the finding is what the plan deletes; supersedes S010.
+- passage: A Critical from a correctness lens keeps its own route whatever its trace.
 
 ### S022
 - key: Send an advisory lens's Critical or Major, the performance-reviewer's or the security-reviewer's, to executing-work's advisory disposition paragraph for its route rather than routing it here.
 - class: pointer
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
-- passage: An advisory lens's Critical or Major, the performance-reviewer's or the security-reviewer's, takes the advisory disposition paragraph at executing-work's step 4 for its route, and nothing here.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
 - verdict: keep
 - reason: Executing-work owns the disposition (T175 to T185 in its ledger). This skill weighs a finding before triage and carries the pointer alone, as it does for the close pass (S020).
+- passage: An advisory lens's Critical or Major, the performance-reviewer's or the security-reviewer's, takes the advisory disposition paragraph at executing-work's step 4 for its route, and nothing here.
