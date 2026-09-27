@@ -72,7 +72,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | `Commit Model` header values, and the parked state an unknown value produces | `curating-docs` | `executing-work`, `kit-goal` |
 | Where in the section loop the commit and the push land under each commit model | `executing-work` | doctrine (Treat durable artifacts as the recovery mechanism), implementer charters |
 | Staging on a shared checkout: only your files, read the staged list, keep the index window narrow | doctrine (Stay in scope; On a checkout another session may commit to) | `executing-work` (the whole-worktree prohibition, in its brief field), implementer charters (no commit, no stage) |
-| The commit message's three layers and the `-F <file>` write | doctrine (A commit title is the index line; Write commit messages via `git commit -F`) | implementer charters |
+| The commit message's three layers | doctrine (A commit title is the index line) | implementer charters |
 | The memory store's own commits and pushes: sync path, allowlist, lock | `memory-system` | `kit-doctor`, `coordinator`, `role` |
 | Deleting a stranded branch after recovery: the one `git branch -D` outside the merged set, on two conditions | `branch-hygiene` (Hard Rules) | `finishing-work` (the strand-check's recovery pointer) |
 

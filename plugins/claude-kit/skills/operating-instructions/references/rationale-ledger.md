@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the operator's core operating doctrine: the house ruleset for how a session thinks, decides, builds, verifies, communicates, and stays in scope. It owns the moments of directness and register in replies, prose and commit-message style, language and data-access defaults, resolving which surface governs when two disagree, deciding what to ask versus decide at intake, capturing kit friction, driving an effort through a plan doc from analysis to close-out, and marking and verifying every load-bearing claim before it ships. Its frontmatter says to consult it at the START of any non-trivial task and whenever unsure how the operator wants work approached, and calls it the always-apply ruleset rather than an optional reference, so its load class is `session-start`.
 
-Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-22 by section 1 of `docs/plans/claude-kit_prose-register_spec_v1.md`, which added the structure layer of the prose register after the plain-prose bullet (`P` entries below), and by that plan's section 4 on 2026-09-22 (P008 below). Redrafted on 2026-09-26 by section 2 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `63045e8d` with its fix round at `68cce656`, so every live entry's `passage:` line quotes the text at `68cce656`, the `flag:` and `ruled:` lines record that pass's flags and the operator's rulings, and P009 below is the heading rule that section added.
+Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-22 by section 1 of `docs/plans/claude-kit_prose-register_spec_v1.md`, which added the structure layer of the prose register after the plain-prose bullet (`P` entries below), and by that plan's section 4 on 2026-09-22 (P008 below). Redrafted on 2026-09-26 by section 2 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `63045e8d` with its fix round at `68cce656`, so every live entry's `passage:` line quotes the text at `68cce656`, the `flag:` and `ruled:` lines record that pass's flags and the operator's rulings, and P009 below is the heading rule that section added. Amended on 2026-09-26 by section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, which moved the claims true only of the operator's setup or of one harness version to memory on the operator's ruling of that date (`A` entries below, and the `ruled:` lines on the `flag: environment` entries).
 
 ### c1.C001
 - key: Apply this doctrine to any non-trivial task you take on.
@@ -394,14 +394,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - passage: `skills/writing-skills/SKILL.md` under the kit plugin root owns the sentence-shape bars.
 
 ### c1.C040
-- key: Write C# and T-SQL by default, and PowerShell for scripting.
+- key: Write C# and T-SQL by default.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:34
-- provenance: f8c0649 2026-06-10, INIT doctrine.
+- provenance: f8c0649 2026-06-10, INIT doctrine. The clause naming this setup moved to memory powershell-is-the-scripting-default (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: keep
 - reason: No finding. The language default the style skills hang from. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. "PowerShell for scripting" is a tool recommendation tied to the operator's Windows setup; "C# and T-SQL unless told otherwise" is a stack preference the style skills hang from, so the proposal is an amend then a move of the PowerShell clause to the operator tier, and the closest call in the set.
-- passage: **C# and T-SQL unless told otherwise; PowerShell for scripting.**
+- passage: **C# and T-SQL unless told otherwise.**
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c1.C041
 - key: Route data access through stored procedures with typed parameters and write no ad hoc SQL from application code.
@@ -412,6 +413,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The doctrine owns the default; csharp-style:81 restates it at the C# call site with the .NET form, an operational residue. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. Stored procedures and EXECUTE-only principals are one stack's design mandate; the recommendation is keep, or relocate to the SQL and C# style skills, since a mandate that must bind before a project declares its type cannot live in a type tier that loads only after.
 - passage: **Data access goes through stored procedures with typed parameters; application connection principals are EXECUTE-only - no ad hoc SQL from application code.**
 - flag: environment
+- ruled: keep 2026-09-26
 
 ### c1.C042
 - key: Follow the operator's house style over sibling code and any implicit local convention.
@@ -1473,13 +1475,14 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: mechanic
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:100
 - provenance: d3f987f 2026-08-25, kaizen batch 2: a merge left the untracked build stamp stale with no conflict and test/hook-canary.test.js reddened; the project memory merging-hook-edits-staleness-the-build-stamp records it with the fix.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: `docs/architecture.md`, the paragraph on `test/hook-canary.test.js` and the stale build stamp
 - landed: a2ca9e5 section 1
 - reason: The canary only detects and the pre-commit rebuild lands after the gate, so the instruction stays and names its act (`build.ps1` or `build.sh`); the mechanism moves here: git merges lines while the stamp hashes bytes, so a stamp built before the merge no longer matches the merged hooks. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. Rebuilding with `build.ps1` or `build.sh` after a hooks merge is a fact about the kit's own repository, which a coworker using the kit elsewhere never meets; item 11's mechanism names only the operator and type tiers, so the proposal is to move it out of the doctrine to the kit repository's testing-discipline skill or contributing notes rather than to memory.
 - proposed: (via A115) "A merge whose diff touches `plugins/claude-kit/hooks/` rebuilds (`build.ps1` or `build.sh`) before it gates"; move the stamp-hashes-bytes mechanism to the ledger.
 - baseline-test: yes
-- passage: A merge touching `plugins/claude-kit/hooks/` rebuilds with `build.ps1` or `build.sh` before gating.
 - flag: environment
+- ruled: move 2026-09-26
 
 ### c1.C147
 - key: Open the cited code and check it against the real symptom before acting on any finding.
@@ -2392,18 +2395,20 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 1c8ae4e 2026-07-24, the same kaizen brief, whose acceptance was a recap containing all four parts for every pending plan.
 - verdict: keep
 - reason: The four parts are the tested acceptance and the filename aside states why the exact name is required (the handle for Discord and /kit-goal); the decision-ask naming rule at line 60 does not require the filename and is a different moment. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The two words "Discord mentions" name the operator's relay integration; the rest of the board rule is kit policy, so the proposal is an amend dropping those words, in the doctrine and in the output style's byte-identical core copy.
-- passage: A turn ending with plans in flight carries one line per pending plan: the friendly name with the exact `docs/plans/` filename, a plain-words reminder of what it is, its status and place in the running order, and what waits on me. The filename is the handle for Discord mentions and /kit-goal.
+- passage: A turn ending with plans in flight carries one line per pending plan: the friendly name with the exact `docs/plans/` filename, a plain-words reminder of what it is, its status and place in the running order, and what waits on me. The filename is the handle for /kit-goal.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C087
 - key: Treat this doctrine as the operator's standing request for dispatch and do not ask per session.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:160
-- provenance: 9865f6d 2026-08-01 named the injected line after a session built a whole plan run inline on it; 0c0eaed 2026-08-01 recast the counter as satisfying the line's condition rather than overriding it; 294e3e6, 8fba6e2, d6cd30d and c8fea88 each added one narrated clause.
+- provenance: 9865f6d 2026-08-01 named the injected line after a session built a whole plan run inline on it; 0c0eaed 2026-08-01 recast the counter as satisfying the line's condition rather than overriding it; 294e3e6, 8fba6e2, d6cd30d and c8fea88 each added one narrated clause. The clause naming this setup moved to memory harness-dispatch-lines-quoted (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: keep
 - reason: Every element in the bullet is an installed fix for a narrated failure, the parity suite pins the bullet's presence, identity and grant, and no hook can answer a system-prompt sentence; the bullet quotes two lines verbatim and reaches those two only, which is the scoping 9865f6d chose so a generalized rule would not corrode legitimate instructions. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. The literal injected harness lines it quotes ("Do not call the AgentTool unless the user requested it", and the Workflow line quoted in c2.C090) are harness wording a release can change; the standing request, its covered class and its lapse are authorization and stay, so the proposal is an amend describing each line rather than quoting it, then a move of the quotes to the operator tier.
-- passage: An injected `Do not call the AgentTool unless the user requested it` bars unrequested dispatch, and this doctrine is my standing request in every session and project. Nothing here discounts a session-prompt instruction.
+- passage: An injected harness line conditioning the Agent tool on my request bars unrequested dispatch, and this doctrine is my standing request in every session and project. Nothing here discounts a session-prompt instruction.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C088
 - key: Dispatch the fresh-context reviewer pair on a section as expected rather than optional.
@@ -2430,14 +2435,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Use the Workflow tool without asking only to dispatch a read-only agent at a reasoning effort the Agent tool cannot set.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:160
-- provenance: 8fba6e2 2026-08-11 moved the grant into the doctrine because two skills were citing an authorization the doctrine withheld; d6cd30d 2026-08-15 widened the covered class shape-first after the consult's fallback cited a grant that excluded it.
+- provenance: 8fba6e2 2026-08-11 moved the grant into the doctrine because two skills were citing an authorization the doctrine withheld; d6cd30d 2026-08-15 widened the covered class shape-first after the consult's fallback cited a grant that excluded it. The clause naming this setup moved to memory agent-tool-takes-a-model-override-but-no-effort (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: rewrite
 - landed: a2ca9e5 section 1
 - reason: The grant, the v2.1.205 fact, the agentType condition and the lapse are each a narrated fix and the suite pins them; the rewrite names the lapse's referent ("this Workflow grant") because the shipped sentence lets a reader lapse the whole dispatch request when the Agent tool gains an effort parameter. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The sentence "On v2.1.205 the Agent tool takes a model override but no effort" pins one harness version; the Workflow grant, its covered class and its lapse clause are authorization and stay, so the proposal is an amend then a move of the version sentence to the operator tier.
 - proposed: Replace "this grant has no purpose left and lapses" with "this Workflow grant has no purpose left and lapses", leaving the Agent-tool request untouched.
 - baseline-test: yes
-- passage: It also covers the Workflow tool for one purpose: a read-only dispatch at an effort the Agent tool cannot set. On v2.1.205 the Agent tool takes a model override but no effort. This bullet defines the covered class: a read-only dispatch needing its effort set per call, naming an `agentType` the read-only guard governs.
+- passage: It also covers the Workflow tool for one purpose: a read-only dispatch at an effort the Agent tool cannot set. This bullet defines the covered class: a read-only dispatch needing its effort set per call, naming an `agentType` the read-only guard governs.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C091
 - key: Ask before any other Workflow use, deep-research included.
@@ -2516,20 +2522,22 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: mechanic
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:170
 - provenance: b9c7f85 2026-06-14 installed the habit; dc128d8 2026-07-01 scoped the corruption traps to Windows PowerShell 5.1 hosts and kept `-F` and the Edit tool as the universal defaults; c3591aa 2026-07-26 handed the specifics to the shell's tool description.
-- verdict: keep
+- verdict: retire
+- superseded-by: memory commit-messages-and-source-files-write-through-a-file (operator tier)
 - reason: No finding touched it; the doctrine owns shell encoding per the ownership map and the sentence already defers the specifics to the active shell's description. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The corruption traps it guards against are Windows PowerShell 5.1 encoding behavior (provenance dc128d8), where bash writes UTF-8 correctly; the proposal is a move to the operator tier, with the ownership map row for shell encoding repointed in the same commit.
-- passage: **Write commit messages via `git commit -F <file>` and source files via the Edit tool or explicit UTF-8,** never shell redirection or inline quoting. The active shell's tool description owns the specifics.
 - flag: environment
+- ruled: move 2026-09-26
 
 ### c2.C100
 - key: Before starting a suite, poll the process list for any foreign test runner or build and either wait for it or name the contention in your report.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
-- provenance: 0ea17a9 2026-08-18 installed the per-machine budget; efcfa16 2026-08-27 stopped the box check naming one engine; 38b1487 2026-08-29 added the limit the always-loaded copy was calling sufficient, after a session that never loaded testing-discipline performed exactly the check the skill calls insufficient.
+- provenance: 0ea17a9 2026-08-18 installed the per-machine budget; efcfa16 2026-08-27 stopped the box check naming one engine; 38b1487 2026-08-29 added the limit the always-loaded copy was calling sufficient, after a session that never loaded testing-discipline performed exactly the check the skill calls insufficient. The clause naming this setup moved to memory process-poll-cannot-see-in-process-agent-fan-out (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: keep
 - reason: Every clause is a narrated fix with a pin (six legs driven red across three probe rounds), and the passage does not contend with itself: a live process is "a sound basis for waiting" and the wait-or-name disjunction is the role skill's own branch, which this bullet defers to and imports no act from. The claim file and the process list are two instruments by design. Since claude-kit_heavy-process-claim-retirement_spec_v1 section 1 the claim file is gone and the bullet owns the wait-or-name branch itself, the process list being the one instrument. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. The clause "It cannot see in-process agent fan-out" is a fact about the harness's current architecture; the rule stands on its timeless reason (a neighbor that starts after the sample), so the proposal is an amend then a move of that clause to the operator tier, low stakes.
 - passage: Before a suite, poll the process list for any foreign test runner or build, whatever its engine and whoever owns it. Wait for a live one or name the contention.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C101
 - key: Treat a clean poll as licensing a heavy spawn only alongside the claim protocol, never on its own.
@@ -2569,17 +2577,18 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - passage: A run that dies partway, at a fraction that moves between attempts, is contention: clear the box and re-run before reading the failure.
 
 ### c2.C105
-- key: Stop a running app host or leftover testhost before every build.
+- key: Stop a running app host or test runner before every build.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:174
-- provenance: b9c7f85 2026-06-14 installed the bullet in home/CLAUDE.md with no incident in the message; the incident lives in the memory record leaked-testhost-false-green (project D--Neuro-Evolution-Operations), applied eight times, last five days before this audit.
+- provenance: b9c7f85 2026-06-14 installed the bullet in home/CLAUDE.md with no incident in the message; the incident lives in the memory record leaked-testhost-false-green (project D--Neuro-Evolution-Operations), applied eight times, last five days before this audit. The clause naming this setup moved to memory a-leftover-testhost-locks-the-dlls (type tier `dotnet`) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: rewrite
 - landed: a2ca9e5 section 1
-- reason: The rule and its DLL-lock bound stay (the incident recurs and no hook stops a testhost); the compress rewrite only moves the sibling reason clauses to this ledger. The pending kaizen note of 2026-09-07 (kaizen/notes-NEO-CLAUDE.md) records that "stop it" read as a machine-wide kill by image name and took down five sessions' MCP children, so the rewrite should scope the stop to processes the actor can attribute to its own tree. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. Its first sentence, the DLL lock and stale-binary false-green, is Windows and .NET behavior; the scoping clause (never a machine-wide kill by image name) is a general safety rule from the kaizen note of 2026-09-07 and stays, so the proposal is an amend then a move of the first sentence to the `dotnet` type tier.
+- reason: The rule stays, with its DLL-lock bound in the `dotnet` type-tier memory (the incident recurs and no hook stops a testhost); the compress rewrite only moves the sibling reason clauses to this ledger. The pending kaizen note of 2026-09-07 (kaizen/notes-NEO-CLAUDE.md) records that "stop it" read as a machine-wide kill by image name and took down five sessions' MCP children, so the rewrite should scope the stop to processes the actor can attribute to its own tree. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. Its first sentence, the DLL lock and stale-binary false-green, is Windows and .NET behavior; the scoping clause (never a machine-wide kill by image name) is a general safety rule from the kaizen note of 2026-09-07 and stays, so the proposal is an amend then a move of the first sentence to the `dotnet` type tier.
 - proposed: Keep the four imperatives and the DLL-lock bound, move the other three reason clauses to this ledger, and fold the kaizen note's own-process-tree scoping into the stop sentence.
 - baseline-test: yes
-- passage: A running app host or leftover testhost locks the DLLs and yields stale-binary false-greens. Stop it before every build, scoped to processes you can attribute to your own tree, never a machine-wide kill by image name.
+- passage: Stop a running app host or test runner before every build, scoped to processes you can attribute to your own tree, never a machine-wide kill by image name.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C106
 - key: Run one integration-test process at a time per shared resource, in the order fast, integration, end-to-end.
@@ -2595,11 +2604,12 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:174
 - provenance: b9c7f85 2026-06-14, no incident stated; no provenance found for the why.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: memory rebuild-test-projects-outside-the-main-solution (type tier `dotnet`)
 - landed: a2ca9e5 section 1
 - reason: The rule stays; its reason clause, "its binaries go stale", is banked here and leaves the bullet under the A011 compress. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. A "main solution" is the .NET build unit, so the claim is meaningless on a project of another class; it meets item 11 as a project-class claim, and the proposed record is type-tier (`dotnet`), triggered on `cmd:dotnet test` and `cmd:dotnet build`.
-- passage: Rebuild any test project outside the main solution before trusting it.
 - flag: environment
+- ruled: move 2026-09-26
 
 ### c2.C108
 - key: Glob for the real solution or file name before the first build.
@@ -2617,21 +2627,23 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Wait on a real readiness signal such as a backgrounded `until curl …` or `until grep -q 'marker' logfile`, never a fixed sleep.
 - class: mechanic
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:176
-- provenance: b9c7f85 2026-06-14 installed it; c3591aa 2026-07-26 trimmed the "long sleeps are blocked" clause the 5-gen harness owns; d3f987f 2026-08-25 added the isolation-screen pointer to resolve a review Minor where this bullet collided with the worktree exception below it.
+- provenance: b9c7f85 2026-06-14 installed it; c3591aa 2026-07-26 trimmed the "long sleeps are blocked" clause the 5-gen harness owns; d3f987f 2026-08-25 added the isolation-screen pointer to resolve a review Minor where this bullet collided with the worktree exception below it. The clause naming this setup moved to memory worktree-isolated-sessions-refuse-until-loops-and-marker-compounds (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: keep
 - reason: The isolation screen refuses a compound and performs no wait, so nothing supersedes the instruction; the pointer at the background-marker bullet keeps the exception in one place. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. Its sentence on a worktree-isolated session refusing the readiness compound is harness behavior; the readiness rule itself (a real signal, never a fixed sleep) stays, so the proposal is an amend then a move of that sentence to the operator tier, with c2.C114.
-- passage: Wait on a real readiness signal, such as a backgrounded `until curl …` or `until grep -q 'marker' logfile`, never a fixed sleep. A worktree-isolated session may refuse these, and the background-marker bullet carries the fallback.
+- passage: Wait on a real readiness signal, such as a backgrounded `until curl …` or `until grep -q 'marker' logfile`, never a fixed sleep.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C110
 - key: Use `curl.exe` when you need a non-2xx response body.
 - class: mechanic
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:176
 - provenance: b9c7f85 2026-06-14; no provenance found for the why.
-- verdict: keep
+- verdict: retire
+- superseded-by: memory curl-exe-returns-a-non-2xx-body (operator tier)
 - reason: No finding of its own; it rides the A016 split unchanged. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. It names `curl.exe`, a Windows binary, so on a macOS or Linux install the sentence is false or meaningless; plan item 11 names it as inside the test. The proposed record is operator-tier, triggered on `cmd:curl`.
-- passage: Use `curl.exe` when you need a non-2xx response body.
 - flag: environment
+- ruled: move 2026-09-26
 
 ### c2.C111
 - key: Do not edit your own permission files even with verbal authorization; hand the operator the exact JSON to paste.
@@ -2649,11 +2661,12 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Have a background run write its own marker, such as `echo $? > run.exit` or a completion line in the log, and read the result from that marker.
 - class: mechanic
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:178
-- provenance: 0ea17a9 2026-08-18, the standing-watch plan's four doctrine lines; the kaizen-batch plan's own gate records (docs/archive/claude-kit_kaizen-batch_spec_v1.md:385,394) show the marker reading saving two gates a wrapper's grep misread.
+- provenance: 0ea17a9 2026-08-18, the standing-watch plan's four doctrine lines; the kaizen-batch plan's own gate records (docs/archive/claude-kit_kaizen-batch_spec_v1.md:385,394) show the marker reading saving two gates a wrapper's grep misread. The clause naming this setup moved to memory background-completion-notification-reports-the-wrapper-exit (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: keep
 - reason: The completion notification reports only the wrapper's exit, and nothing in the harness writes the marker; a completion line the run appends is a marker, not the grep-over-output line 100 forbids. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. Its bold lead ("reports the wrapper's exit, not the run's") warns about harness behavior that could change; the instruction beneath it (write the run's own marker, read the result from it) holds on any setup, so the proposal is an amend giving the bullet an instruction lead, then a move of the warning to the operator tier.
-- passage: Have the run write its own marker, such as `echo $? > run.exit` or a completion line in the log, and read the result from it.
+- passage: Have the run write its own marker, such as `echo $? > run.exit` or a completion line in the log, and read the result from it, never from the task's completion notification.
 - flag: environment
+- ruled: amend 2026-09-26
 
 ### c2.C113
 - key: Settle a background run's death by the process list plus the completion notification, never by a frozen output artifact.
@@ -2672,10 +2685,11 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: mechanic
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:178
 - provenance: d3f987f 2026-08-25, the same amendment's worktree exception; 2bdc43b 2026-08-31 later gave the exit-code rule at line 100 its matching scope carve-out.
-- verdict: keep
+- verdict: retire
+- superseded-by: memory worktree-isolated-sessions-refuse-until-loops-and-marker-compounds (operator tier)
 - reason: This sentence is the fallback's home; line 100's clause is the exit-code rule's own carve-out and must sit with that rule. The isolation screen is the obstacle, not an enforcer. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The bare-backgrounded-redirect fallback for a worktree-isolated session is harness behavior; the proposal is a move to the operator tier with c2.C109's sentence, amending the two pointers at it (c2.C141's exemption and testing-discipline).
-- passage: Where a worktree-isolated session refuses the marker compound, use a bare backgrounded redirect and read the run's own summary output after the notification.
 - flag: environment
+- ruled: move 2026-09-26
 
 ### c2.C115
 - key: Probe a dispatched agent with a message before killing it on a stall signal.
@@ -2861,6 +2875,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The rule and its `<auto-generated>` marker stay; the explanation of why a generated file outlines badly is banked here under A067. Its weak-reason flag was ruled keep on 2026-09-26. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The `<auto-generated>` marker is a C# ecosystem convention; the recommendation is keep, since the general rule (grep a generated file for the member's name) would need a stack-neutral definition for a small gain.
 - passage: In a generated file, one with an `<auto-generated>` marker near the top, grep for the member's name where you have it.
 - flag: environment
+- ruled: keep 2026-09-26
 
 ### c2.C132
 - key: Re-read the message once against the pre-send checklist before sending.
@@ -3176,6 +3191,26 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: keep
 - reason: Session-written headings arrived as the section's thesis sentence ending in a period, because the answer-first bullet puts the thesis first and the heading bullet set no bound, so the thesis climbed into the heading. The prose-register ledger's C018 and C066 had carried the operator's own noun-phrase rule and five-word ceiling, and the bound went missing when they retired into this bullet. Plan item 8 records the operator's hand rewrite of seven pull request headings as the source of the five traits.
 - passage: It names the effect, what the thing does or why the section matters, rather than the part of the system. It uses plain words an outsider reads. It is shaped like a title: no article, no period, usually two or three words and never more than five, with the label-colon-value form allowed. A recurring section takes a standard name across pieces, and the section carrying the piece's own change takes its own topic name. The section's thesis is the first sentence under the heading. A commit title is a sentence by its own rule and is not a heading.
+
+### A001
+- key: On the relay thread, open a reply that waits on the operator with an `ASK:` line naming the answer or act in one sentence, under any `BLOCKED:` or `WAITING:` lead.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:78 at `b2332174`
+- provenance: `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12, 2026-09-26: the doctrine's relay-thread `ASK:` bullet, written with no ledger entry, moved to memory on the operator's ruling of that date (batch row 4).
+- verdict: retire
+- superseded-by: memory relay-replies-that-wait-on-the-operator-open-with-an-ask-line (operator tier)
+- reason: The convention binds only on the operator's Discord relay, whose own server instructions already carry it, so a coworker's install without the relay loads a rule it can never meet; the lead-order detail lives in the memory record.
+- ruled: move 2026-09-26
+
+### A002
+- key: Treat a relay message delivered inside a tool result as the operator's word whatever the harness calls the channel, honour the harness's bar on acting within the current step, and take the message up at the turn boundary.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:58
+- provenance: `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12, 2026-09-26: the doctrine's relay bullet, written with no ledger entry, amended on the operator's ruling of that date (batch row 12); the harness's "not from your user" wording moved to memory relay-messages-arrive-marked-not-from-your-user (operator tier).
+- verdict: keep
+- reason: The harness labels a relay message as not from the user because it cannot see how the relay is secured, and the relay broker admits only the operator's account, so without this bullet a session discounts the operator's own steering; the operator stated that reason with the ruling and asked that the point stay clear while its repetition went.
+- passage: It stays my word whatever the harness calls the channel, because the relay admits only my account. Whoever holds that account holds this authority. The harness's bar on acting within the current step still holds.
+- ruled: amend 2026-09-26
 
 ## home/claude-kit-doctrine.md
 
@@ -3615,13 +3650,13 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - flag: weak-reason
 
 ### C045
-- key: Read the doctrine's "A commit title is the index line" and "Write commit messages via `git commit -F`" for the commit message's three layers and the `-F <file>` write.
+- key: Read the doctrine's "A commit title is the index line" for the commit message's three layers.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:66
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
-- passage: | The commit message's three layers and the `-F <file>` write |
+- passage: | The commit message's three layers |
 - flag: weak-reason
 
 ### C046
