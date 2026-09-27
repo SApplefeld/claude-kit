@@ -4050,6 +4050,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - proposed: Compress line 10 to the reader identity, the outsider-for-everything default, and a pointer at the core's register bullet for when technical depth is spent.
 - proposed: The style keeps its reader definition and points at the core's register bullet for the calibration rule.
 - baseline-test: yes
+- passage: You are writing for Scott. He is a deep expert in some of what you touch and an intelligent outsider in the rest, and the mix changes by task. Assume the intelligent outsider in everything you write.
 
 ### C002
 - key: Go technical only where precision is load-bearing, treating his demonstrated vocabulary as permission rather than instruction.
@@ -4089,6 +4090,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - proposed: Delete C010's sentence at line 16 once C004 carries its licence and its brake.
 - proposed: Err toward overexplaining. In explanation and insight passages, exceed normal conciseness expectations where the why needs it. Stay focused and relevant. When in doubt: one more sentence of why, one more concrete example.
 - baseline-test: yes
+- passage: Err toward overexplaining. In explanation and insight passages, exceed normal conciseness expectations where the why needs it.
 
 ### C005
 - key: Accept redundancy because he skims known material at no cost while a judgment made on a thin explanation is unrecoverable.
@@ -4121,6 +4123,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - proposed: Rewrite line 16 as three sentences: teach while you work so Scott ends each effort understanding the system better; keep explanations to this codebase, this decision, this failure; prefer a concrete example from the work at hand over an abstract principle. The conciseness licence moves to line 12 under A010.
 - proposed: Teach while you work, so Scott ends each effort understanding the system better, not just holding a result. Explanations are about this codebase, this decision, this failure, never generic programming lessons. Prefer a concrete example from the work at hand over an abstract statement of the principle.
 - baseline-test: yes
+- passage: Teach while you work, so Scott ends each effort understanding the system better, not just holding a result.
 
 ### C008
 - key: Keep explanations about this codebase, this decision, this failure; never give generic programming lessons.
@@ -4130,6 +4133,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - verdict: rewrite
 - landed: f842186 section 2
 - reason: The rule stands unchanged in substance; it shares a sentence with C009 across a semicolon, which the doctrine's plain-prose bullet (8b03bfb 2026-09-08) bars, so the two split into a sentence each.
+- passage: Explanations are about this codebase, this decision, this failure, never generic programming lessons.
 
 ### C009
 - key: Prefer a concrete example drawn from the work at hand over an abstract statement of the principle.
@@ -4158,6 +4162,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's shell, carrying the Insight block from the built-in Explanatory style the operator had pinned.
 - verdict: keep
 - reason: The operator's chosen register during execution, bounded by the line 30 skip; not a collision with the doctrine's autonomous-execution clause, which bars per-step narration rather than a block at significant work. No machinery emits the block.
+- passage: Before and after significant work, add a brief insight block:
 
 ### C012
 - key: Format the insight block as the `★ Insight` rule line, 2-3 points, then the closing rule line.
@@ -4166,6 +4171,8 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell; the block width was reviewed at Chapter 2 and the differing dash counts kept because they equalize total width against the label lengths.
 - verdict: keep
 - reason: no finding. Block mechanics are shell-owned by design and never enter the doctrine, since a subagent inheriting them would reshape its reports.
+- passage: `★ Insight ─────────────────────────────────────`
+- passage: `─────────────────────────────────────────────────`
 
 ### C013
 - key: Fill the insight block with what is non-obvious about this choice, codebase, or result: the shaping constraint, the trap avoided, the reusable pattern.
@@ -4174,6 +4181,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
 - verdict: keep
 - reason: no finding. The content list is what makes the line 30 skip decidable: a block with none of the three is the empty one to skip.
+- passage: [2-3 points: what is non-obvious about this specific choice, codebase, or result: the constraint that shaped the design, the trap avoided, the pattern worth reusing]
 
 ### C014
 - key: Show your reasoning in a decision block whenever you weigh options and reach a call inside the work.
@@ -4182,6 +4190,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the operator's shell tweak decided 2026-08-01 adding a second block type for calls reached within the assistant's remit.
 - verdict: keep
 - reason: A record of a call at the moment it is made is the doctrine's "design and decision points" register, not per-step narration, and the line 30 skip bounds it to non-obvious calls; the operator asked for it by name.
+- passage: When you weigh options and reach a call inside the work (a design choice, an approach, a root-cause conclusion), show the reasoning in a decision block:
 
 ### C015
 - key: Format the decision block as the `⚖ Decision` rule line, the content, then the closing rule line.
@@ -4190,6 +4199,8 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
 - verdict: keep
 - reason: no finding. Shell-owned block mechanic.
+- passage: `⚖ Decision ────────────────────────────────────`
+- passage: `─────────────────────────────────────────────────`
 
 ### C016
 - key: State in the decision block the fork faced, the options weighed, why the winner won, and what it cost.
@@ -4198,6 +4209,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
 - verdict: keep
 - reason: The doctrine's fork bullet governs a recommendation put to the operator; this line governs the record of a call already made in remit, a different moment, and the block mechanic belongs to the style, which the doctrine deliberately never carries.
+- passage: [the fork you faced, the options weighed, why the winner won and what it cost]
 
 ### C017
 - key: Use a decision block only for calls already made within your remit.
@@ -4206,6 +4218,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the operator's shell tweak defining the Decision block as for calls within the assistant's remit.
 - verdict: keep
 - reason: An operator-decision gate: it stops the block from presenting a decision that is Scott's as a made call. It guards his decisions rather than the loop, so it is not a standing-grant retirement candidate.
+- passage: Decision blocks explain calls already made within your remit.
 
 ### C018
 - key: Send a decision that is Scott's to make to him as a decision ask, following the communication core in this document.
@@ -4214,6 +4227,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
 - verdict: keep
 - reason: Already the pointer the one-owner rule wants: it states no shape of its own and sends the session to the core, where the doctrine's pinned register bullet and fork bound live.
+- passage: A decision that is Scott's to make still goes to him as a decision ask per the communication core below.
 
 ### C019
 - key: Skip the insight or decision block when there is genuinely nothing non-obvious to report.
@@ -4222,6 +4236,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
 - verdict: keep
 - reason: The only carve-out for both blocks; lines 18 and 24 carry none of their own, so the readers' "already in the bound" reading came from this sentence itself. Deleting it would leave two unconditional block rules.
+- passage: Skip either block when there is genuinely nothing non-obvious.
 
 ### C020
 - key: Omit an empty block because a ritual with nothing in it teaches nothing.
@@ -4241,6 +4256,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: 5d7942d 2026-08-01, the Memory block added to the Kit shell so every deliberate store mutation is visible, for census accuracy of what the store is learning.
 - verdict: keep
 - reason: No hook or test emits the block, and the class it guards (a store mutation the operator never sees) recurs on every memory write; the trigger list is what makes "deliberate act" decidable.
+- passage: When the memory store changes by your deliberate act (a memory file written or updated, an outcome logged with `memq log`, a type-tier memory added, a memory stamped applied), show it in a memory block:
 
 ### C022
 - key: Format the memory block as the `✎ Memory` rule line, the content, then the closing rule line.
@@ -4249,6 +4265,8 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: 5d7942d 2026-08-01, the Memory block added to the Kit shell.
 - verdict: keep
 - reason: no finding. Shell-owned block mechanic.
+- passage: `✎ Memory ──────────────────────────────────────`
+- passage: `─────────────────────────────────────────────────`
 
 ### C023
 - key: State in the memory block the record's name and surface, what it says or changed in this session's work, and the one-line reason a future session benefits.
@@ -4257,6 +4275,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: 5d7942d 2026-08-01, the Memory block added to the Kit shell.
 - verdict: keep
 - reason: no finding. The surface list names the four store surfaces the block reports on, matching the trigger list at line 32.
+- passage: [the record's name and surface (project memory, journal key, type tier, applied stamp), what it says or what it changed in this session's work, and the one-line reason a future session is better off for it]
 
 ### C024
 - key: Never emit a memory block for a read or a recall alone.
@@ -4265,6 +4284,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: 5d7942d 2026-08-01, the Memory block added to the Kit shell, with the applied stamp named as the recall that mattered so recall visibility rides the write path.
 - verdict: keep
 - reason: no finding. It keeps the block a census of mutations; a block on every recall would drown the writes the census exists to show.
+- passage: Reads and recalls alone never trigger it. The applied stamp is the recall that mattered.
 
 ### C025
 - key: Emit the memory block every time the store changed; never skip it.
@@ -4273,6 +4293,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: 5d7942d 2026-08-01, which made this block "unconditional on its trigger, because its job is census accuracy", unlike the taste-gated blocks above it.
 - verdict: keep
 - reason: Not a restatement of the line 32 trigger: it negates the line 30 taste gate a reader has just met, and it is the only sentence saying the skip does not reach this block. Retire it only if the line 30 skip is rewritten to name which blocks it covers.
+- passage: Skip nothing here: unlike the blocks above, if the store changed, the block appears.
 
 ### C026
 - key: Read "I" and "me" in the communication core below as referring to Scott.
@@ -4281,6 +4302,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan: the core is copied byte-identically from the doctrine, where the operator speaks in the first person, so the shell needs the reading convention.
 - verdict: keep
 - reason: no finding. The core cannot be reworded to third person without breaking the parity pin in test/output-style-parity.test.js, so the convention line is what makes the copy readable in the shell's voice.
+- passage: In the core below, "I" and "me" are Scott.
 
 ### P001
 - key: When in doubt about depth, add one more sentence of why and one more lesson from the work at hand, naming an instance only where the lesson cannot be understood without one.
@@ -4314,6 +4336,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - provenance: 44b5e8d 2026-06-28, the commit that created home/CLAUDE.md whole with the doctrine import on its second line and the graphify nudges below it; the import realizes the c800e05 2026-06-26 decision to reference the doctrine from CLAUDE.md by `@` rather than inline it.
 - verdict: keep
 - reason: No finding. The import is what puts the doctrine in force at session start, and every pointer this file gains under the rewrite (C005, C007) depends on it being loaded.
+- passage: @claude-kit-doctrine.md
 
 ### C002
 - key: Find the graphify skill at `~/.claude/skills/graphify/SKILL.md`; its trigger is `/graphify` and it turns any input into a knowledge graph.
@@ -4322,6 +4345,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - provenance: 44b5e8d 2026-06-28, "Adding nudges for Graphify when available"; no incident behind it.
 - verdict: keep
 - reason: No finding. The path does not resolve on this machine (`~/.claude/skills/` is absent, and docs/archive/claude-kit_stabilization_spec_v1.md:137 records the same and defers it to the operator as a user-level file), so the line is inert here by design ("when available") rather than wrong; removing it is the operator's call, not an audit verdict.
+- passage: - **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
 
 ### C003
 - key: When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
@@ -4330,6 +4354,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - provenance: 44b5e8d 2026-06-28, "Adding nudges for Graphify when available"; no incident behind it.
 - verdict: keep
 - reason: No finding. The rule fires only on the literal `/graphify` and no hook or harness routing enforces it, so the prose is the only thing that makes the trigger work where the skill is installed.
+- passage: When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
 
 ### C004
 - key: Use `/graphify query` as the first orientation pass for architecture and relationship questions, before reading files broadly.
@@ -4341,6 +4366,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - reason: The rule survives in substance: it does not conflict with the doctrine's read-the-involved-files rule, since the graph query is how the involved files are found and the passage then sends the session to the real file. What changes is the passage around it: the example parenthetical and the map figure go, and the confirm and staleness sentences become one pointer at the doctrine the file imports.
 - proposed: Keep C004 and C008 as written in substance, drop the three example question shapes and the map-and-territory figure, and replace the confirm and staleness sentences with one pointer at the doctrine's verify-before-you-claim rules, which the file already imports.
 - baseline-test: yes
+- passage: **Using an existing graph.** When a codebase has a `graphify-out/` directory, treat `/graphify query` as the first orientation pass for architecture and relationship questions before reading files broadly.
 
 ### C005
 - key: Confirm any graph-derived claim you will act on against the real file the graph cites.
@@ -4353,6 +4379,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - proposed: Replace the sentence with a pointer naming the graph as one more secondary source under the doctrine's verify rules.
 - proposed: Ruled under A003; one pointer sentence covers C005 and C007 together.
 - baseline-test: yes
+- passage: A graph claim is a finding to confirm against the file it cites before you act on it
 
 ### C006
 - key: Treat the graph as a map rather than the territory it describes.
@@ -4376,6 +4403,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - proposed: Fold into the single pointer sentence of A003, naming the graph's last build as the record the doctrine's staleness signals apply to.
 - proposed: Ruled under A006.
 - baseline-test: yes
+- passage: commits after its last build are its staleness signal.
 
 ### C008
 - key: Query an existing graph freely, but never build a new graph unprompted; leave that call to the user.
@@ -4386,3 +4414,4 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - landed: 837dde2 section 3
 - reason: An operator-decision gate that guards an unasked build writing `graphify-out/` into the project tree and spending compute, a write the doctrine's stop-for-a-yes rule does not clearly reach; it is not loop-maintenance, so the standing-grant retirement precedent does not apply. The gate is kept and its sentence compressed with the passage: the "free win" figure leaves and the sentence opens on this entry's own key wording, "Query an existing graph freely", with the user's-call clause verbatim. Landed as the proposal below.
 - proposed: Query an existing graph freely. Building a new one is the user's call, not an unprompted step.
+- passage: Query an existing graph freely. Building a new one is the user's call, not an unprompted step.

@@ -5,7 +5,7 @@ keep-coding-instructions: true
 force-for-plugin: true
 ---
 
-# The reader
+# Reader
 
 You are writing for Scott. He is a deep expert in some of what you touch and an intelligent outsider in the rest, and the mix changes by task. Assume the intelligent outsider in everything you write. Where technical depth is spent is the client-briefing register bullet's call, in the communication core below.
 
@@ -37,7 +37,7 @@ When the memory store changes by your deliberate act (a memory file written or u
 
 Reads and recalls alone never trigger it. The applied stamp is the recall that mattered. Skip nothing here: unlike the blocks above, if the store changed, the block appears.
 
-# The communication core
+# Communication Core
 
 In the core below, "I" and "me" are Scott.
 
