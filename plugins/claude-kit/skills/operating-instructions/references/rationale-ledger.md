@@ -2401,8 +2401,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:160
 - provenance: 9865f6d 2026-08-01 named the injected line after a session built a whole plan run inline on it; 0c0eaed 2026-08-01 recast the counter as satisfying the line's condition rather than overriding it; 294e3e6, 8fba6e2, d6cd30d and c8fea88 each added one narrated clause.
 - verdict: keep
-- reason: Every element in the bullet is an installed fix for a narrated failure, the parity suite pins the bullet's presence, identity and grant, and no hook can answer a system-prompt sentence; the bullet quotes two lines verbatim and reaches those two only, which is the scoping 9865f6d chose so a generalized rule would not corrode legitimate instructions.
+- reason: Every element in the bullet is an installed fix for a narrated failure, the parity suite pins the bullet's presence, identity and grant, and no hook can answer a system-prompt sentence; the bullet quotes two lines verbatim and reaches those two only, which is the scoping 9865f6d chose so a generalized rule would not corrode legitimate instructions. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. The literal injected harness lines it quotes ("Do not call the AgentTool unless the user requested it", and the Workflow line quoted in c2.C090) are harness wording a release can change; the standing request, its covered class and its lapse are authorization and stay, so the proposal is an amend describing each line rather than quoting it, then a move of the quotes to the operator tier.
 - passage: An injected `Do not call the AgentTool unless the user requested it` bars unrequested dispatch, and this doctrine is my standing request in every session and project. Nothing here discounts a session-prompt instruction.
+- flag: environment
 
 ### c2.C088
 - key: Dispatch the fresh-context reviewer pair on a section as expected rather than optional.
@@ -2526,8 +2527,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 0ea17a9 2026-08-18 installed the per-machine budget; efcfa16 2026-08-27 stopped the box check naming one engine; 38b1487 2026-08-29 added the limit the always-loaded copy was calling sufficient, after a session that never loaded testing-discipline performed exactly the check the skill calls insufficient.
 - verdict: keep
-- reason: Every clause is a narrated fix with a pin (six legs driven red across three probe rounds), and the passage does not contend with itself: a live process is "a sound basis for waiting" and the wait-or-name disjunction is the role skill's own branch, which this bullet defers to and imports no act from. The claim file and the process list are two instruments by design. Since claude-kit_heavy-process-claim-retirement_spec_v1 section 1 the claim file is gone and the bullet owns the wait-or-name branch itself, the process list being the one instrument.
+- reason: Every clause is a narrated fix with a pin (six legs driven red across three probe rounds), and the passage does not contend with itself: a live process is "a sound basis for waiting" and the wait-or-name disjunction is the role skill's own branch, which this bullet defers to and imports no act from. The claim file and the process list are two instruments by design. Since claude-kit_heavy-process-claim-retirement_spec_v1 section 1 the claim file is gone and the bullet owns the wait-or-name branch itself, the process list being the one instrument. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. The clause "It cannot see in-process agent fan-out" is a fact about the harness's current architecture; the rule stands on its timeless reason (a neighbor that starts after the sample), so the proposal is an amend then a move of that clause to the operator tier, low stakes.
 - passage: Before a suite, poll the process list for any foreign test runner or build, whatever its engine and whoever owns it. Wait for a live one or name the contention.
+- flag: environment
 
 ### c2.C101
 - key: Treat a clean poll as licensing a heavy spawn only alongside the claim protocol, never on its own.
@@ -2649,8 +2651,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:178
 - provenance: 0ea17a9 2026-08-18, the standing-watch plan's four doctrine lines; the kaizen-batch plan's own gate records (docs/archive/claude-kit_kaizen-batch_spec_v1.md:385,394) show the marker reading saving two gates a wrapper's grep misread.
 - verdict: keep
-- reason: The completion notification reports only the wrapper's exit, and nothing in the harness writes the marker; a completion line the run appends is a marker, not the grep-over-output line 100 forbids.
+- reason: The completion notification reports only the wrapper's exit, and nothing in the harness writes the marker; a completion line the run appends is a marker, not the grep-over-output line 100 forbids. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. Its bold lead ("reports the wrapper's exit, not the run's") warns about harness behavior that could change; the instruction beneath it (write the run's own marker, read the result from it) holds on any setup, so the proposal is an amend giving the bullet an instruction lead, then a move of the warning to the operator tier.
 - passage: Have the run write its own marker, such as `echo $? > run.exit` or a completion line in the log, and read the result from it.
+- flag: environment
 
 ### c2.C113
 - key: Settle a background run's death by the process list plus the completion notification, never by a frozen output artifact.
