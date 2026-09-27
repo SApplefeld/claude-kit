@@ -839,3 +839,11 @@ test lines: 142159 of cap 142159 across 79 test files
 tests: 4075
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 ```
+
+### Interim board 8 - 2026-09-26
+Queue: sections 9 to 13 run as one goal on the operator's 2026-09-26 ruling. Sections 9 and 10 merged to main as #144 and #146. Section 11 is PR #147 against main (main merged in at c097bb43, its whole gate 4326 tests, 1 standing fail, exit 1), auto-merge armed, waiting on the operator's approval and rulings on its 60 flagged entries. Section 12 is cut from `corpus-compression-s11` at c097bb43.
+Section 12 stage: proposals written, committed and pushed, the operator's ruling pending. Branch `corpus-compression-s12` in `.kit/wt-corpus-s12`. A read-only Opus agent read all 296 live doctrine entries three times: against plan item 11's test, then against the operator's two relayed bars of 2026-09-26 (recorded as Intent rulings at 280b743d). Fifteen entries carry `flag: environment` (77a80c8c, 280b743d, 7e2cbc14), each reason stating what would move, what stays and the recommendation; the ledger cap is synced at 6ee9576d and 96714fff. The batch of 16 claims (the fifteen plus the unledgered relay and `ASK:` bullets) went to the operator on the relay thread with one ASK line, and is on disk at `.kit/scratch/corpus-compression/s12/batch.md`: 4 whole moves, 9 amend-then-move, 1 amend, 2 keep, 1 relocate to the kit repo's own notes. The operator's named candidate c2.C125 does not meet either bar.
+Live dispatches: none.
+Rulings adopted since the last boundary: the operator's two bars of 2026-09-26, recorded in Intent.
+Open asks: the 16-claim batch, and whether the two bars apply to the 48 documents sections 3 to 11 compressed (recommended: a follow-on pass after this plan closes).
+Next action: on the operator's ruling, land each ruled move by item 11's mechanism (memq record, retire with superseded-by, passage removed from both doctrine copies, caps synced) as fix commits on this branch, then review, Chapter 12 and the pull request. Meanwhile section 13 starts on its parts that do not depend on the moves (the corpus cap tooling, the heading pin, the backlog items), since a later move only lowers the doctrine's cap beneath a corpus cap set now; the plan's final close waits on the rulings.
