@@ -2588,10 +2588,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14, no incident stated; no provenance found for the why.
 - verdict: rewrite
 - landed: a2ca9e5 section 1
-- reason: The rule stays; its reason clause, "its binaries go stale", is banked here and leaves the bullet under the A011 compress.
+- reason: The rule stays; its reason clause, "its binaries go stale", is banked here and leaves the bullet under the A011 compress. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. A "main solution" is the .NET build unit, so the claim is meaningless on a project of another class; it meets item 11 as a project-class claim, and the proposed record is type-tier (`dotnet`), triggered on `cmd:dotnet test` and `cmd:dotnet build`.
 - passage: Rebuild any test project outside the main solution before trusting it.
-- flag: weak-reason
-- ruled: keep 2026-09-26
+- flag: environment
 
 ### c2.C108
 - key: Glob for the real solution or file name before the first build.
@@ -2620,10 +2619,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:176
 - provenance: b9c7f85 2026-06-14; no provenance found for the why.
 - verdict: keep
-- reason: No finding of its own; it rides the A016 split unchanged.
+- reason: No finding of its own; it rides the A016 split unchanged. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. It names `curl.exe`, a Windows binary, so on a macOS or Linux install the sentence is false or meaningless; plan item 11 names it as inside the test. The proposed record is operator-tier, triggered on `cmd:curl`.
 - passage: Use `curl.exe` when you need a non-2xx response body.
-- flag: weak-reason
-- ruled: keep 2026-09-26
+- flag: environment
 
 ### c2.C111
 - key: Do not edit your own permission files even with verbal authorization; hand the operator the exact JSON to paste.
