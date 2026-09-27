@@ -568,6 +568,44 @@ test('a cap whose file is untracked is pending, while a cap for an absent file s
     assert.deepStrictEqual(kit.evaluate(measured, budget, []).map((f) => f.path), ['test/new.test.js', 'test/deleted.test.js']);
 });
 
+// The corpus cap names no file, so evaluate's stale-entry sweep must not catch
+// it even where no measured or pending path answers to the key: a budget key
+// with nothing behind it is otherwise exactly the stale-entry shape.
+test('evaluate never reports the corpus cap key as a stale entry', () => {
+    const measured = [{ path: 'test/one.test.js', metric: 'lines', size: 10, tests: 1 }];
+    const budget = { 'test/one.test.js': 120, 'corpus-cap': 90000 };
+    const failures = kit.evaluate(measured, budget, [], []);
+    assert.deepStrictEqual(failures, []);
+});
+
+// corpusCapFailure and corpusSum are the pure reading behind check's and
+// sync's corpus line: a document under test/ and a rationale ledger are read
+// off the budget's own shape rather than a list, so a key the classifier never
+// heard of still counts once it carries a cap.
+test('corpusSum excludes a rationale ledger and everything under test/, and corpusCapFailure reds over cap and greens at it', () => {
+    const budget = {
+        'plugins/claude-kit/skills/alpha/SKILL.md': 10,
+        'plugins/claude-kit/skills/alpha/references/rationale-ledger.md': 900,
+        'test/one.test.js': 500,
+        'corpus-cap': 12
+    };
+    const measuredByPath = new Map([
+        ['plugins/claude-kit/skills/alpha/SKILL.md', { path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words', size: 10, tests: null }],
+        ['plugins/claude-kit/skills/alpha/references/rationale-ledger.md', { path: 'plugins/claude-kit/skills/alpha/references/rationale-ledger.md', metric: 'words', size: 900, tests: null }],
+        ['test/one.test.js', { path: 'test/one.test.js', metric: 'lines', size: 500, tests: 1 }]
+    ]);
+    assert.strictEqual(kit.corpusSum(budget, measuredByPath), 10, 'the ledger and the test file are outside the corpus sum');
+    assert.strictEqual(kit.corpusCapFailure(budget, measuredByPath), null, 'the sum sits at its cap, so there is no failure');
+    const over = kit.corpusCapFailure(Object.assign({}, budget, { 'corpus-cap': 9 }), measuredByPath);
+    assert.strictEqual(over.reason, kit.REASONS.CORPUS_OVER_CAP);
+    assert.strictEqual(over.path, 'corpus-cap');
+    assert.strictEqual(over.size, 10);
+    assert.strictEqual(over.cap, 9);
+    assert.match(over.detail, /^10 words against a cap of 9, 1 over; a raise is an operator ruling, per the corpus cap item in docs\/backlog\.md$/);
+    assert.strictEqual(kit.corpusCapFailure({ 'corpus-cap': 'lots' }, new Map()).reason, kit.REASONS.INVALID_CAP);
+    assert.strictEqual(kit.corpusCapFailure({}, measuredByPath), null, 'a budget with no corpus-cap key has no corpus failure at all');
+});
+
 test('a cap that is not a number and a file the worktree does not hold each red on their own reason', () => {
     const budget = { 'test/one.test.js': 'lots' };
     const failures = kit.evaluate([{ path: 'test/one.test.js', metric: 'lines', size: 10, tests: 1 }], budget, []);
@@ -3425,4 +3463,176 @@ test('sameBudget sees a missing key, an extra key and a moved cap, and ignores k
     assert.strictEqual(kit.sameBudget({ a: 1, b: 2 }, { a: 1 }), false);
     assert.strictEqual(kit.sameBudget({ a: 1 }, { a: 1, b: 2 }), false);
     assert.strictEqual(kit.sameBudget({ a: 1, b: 2 }, { a: 1, b: 3 }), false);
+});
+
+// The corpus cap over a real repository: a sync names it to add a first cap at
+// the current sum, check greens at that cap and reds once a corpus file grows
+// past it, the reason is corpus-over-cap rather than stale-entry, a bare sync
+// leaves the key exactly as it stands and still names it over, and only a sync
+// naming the key moves it.
+test('over a real repository the corpus cap greens at its sum, reds once a corpus file grows, and only a named sync moves it', () => {
+    const dir = makeFixtureRepo();
+    try {
+        assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
+        // The fixture's five corpus files (every measured word file but the ledger
+        // it does not have) sum to 16, the same total the report test pins.
+        const added = runScript(['sync', '--repo', dir, 'corpus-cap']);
+        assert.strictEqual(added.status, 0, added.stdout + added.stderr);
+        assert.match(added.stdout, /^added: corpus-cap: a first cap of 16, /m, added.stdout);
+        assert.strictEqual(runScript(['check', '--repo', dir]).status, 0, 'the corpus sum sits at its own cap');
+
+        // Grown by two words, so the corpus sum reaches 18 against the cap of 16;
+        // its own file cap is raised in the same commit so the file's own over-cap
+        // does not ride along with the corpus one.
+        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here now longer.\n');
+        const budgetPath = path.join(dir, 'test', 'size-budget.json');
+        const grown = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+        grown['home/claude-kit-doctrine.md'] = 5;
+        fs.writeFileSync(budgetPath, kit.serializeBudget(grown, '\r\n', 4), 'utf8');
+        git(dir, ['add', '-A']);
+        git(dir, ['commit', '-q', '-m', 'grow the corpus past its cap']);
+
+        const over = runScript(['check', '--repo', dir]);
+        assert.strictEqual(over.status, 1, over.stdout + over.stderr);
+        assert.match(over.stdout, /^corpus-over-cap: corpus-cap: 18 words against a cap of 16, 2 over; a raise is an operator ruling, per the corpus cap item in docs\/backlog\.md$/m, over.stdout);
+        assert.doesNotMatch(over.stdout, /stale-entry: corpus-cap/, 'the corpus cap key is a cap, never a stale entry: ' + over.stdout);
+        assert.doesNotMatch(over.stdout, /^over-cap: home\/claude-kit-doctrine\.md/m, 'test setup: the file\'s own cap was raised ahead of the grow');
+
+        // The in-process reading carries the same reason and figures as a field.
+        const checked = kit.check(dir, budgetPath);
+        const corpusFailures = checked.failures.filter((f) => f.path === 'corpus-cap');
+        assert.deepStrictEqual(corpusFailures.map((f) => f.reason), [kit.REASONS.CORPUS_OVER_CAP]);
+        assert.strictEqual(corpusFailures[0].size, 18);
+        assert.strictEqual(corpusFailures[0].cap, 16);
+
+        // The report shows the sum against the cap whatever the verdict.
+        const reported = runScript(['report', '--repo', dir]);
+        assert.strictEqual(reported.status, 0, reported.stdout + reported.stderr);
+        assert.match(reported.stdout, /^corpus: 18 words of cap 16$/m, reported.stdout);
+
+        // A bare sync moves every other cap but leaves the corpus cap exactly as it
+        // stands, and still names it over since nothing moved it.
+        const bare = runScript(['sync', '--repo', dir]);
+        assert.strictEqual(bare.status, 1, bare.stdout + bare.stderr);
+        assert.doesNotMatch(bare.stdout, /corpus-cap: 16 to/, 'a bare sync must not move the corpus cap: ' + bare.stdout);
+        assert.match(bare.stdout, /^still over cap: corpus-cap: 18 against a cap of 16$/m, bare.stdout);
+        assert.match(bare.stdout, /^1 entry is still over its cap, so the budget as written still fails check$/m, bare.stdout);
+        assert.strictEqual(JSON.parse(fs.readFileSync(budgetPath, 'utf8'))['corpus-cap'], 16, 'the corpus cap did not move');
+
+        // Naming the key moves it, and only it: the run then greens.
+        const moved = runScript(['sync', '--repo', dir, 'corpus-cap']);
+        assert.strictEqual(moved.status, 0, moved.stdout + moved.stderr);
+        assert.match(moved.stdout, /^raised: corpus-cap: 16 to 18$/m, moved.stdout);
+        assert.strictEqual(JSON.parse(fs.readFileSync(budgetPath, 'utf8'))['corpus-cap'], 18);
+        assert.strictEqual(runScript(['check', '--repo', dir]).status, 0, 'the corpus cap now covers the grown sum');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// Naming a brand-new corpus file beside corpus-cap in the same sync has to put
+// that file's words in the sum the corpus cap moves to, since the sum is what
+// the very next check holds the corpus to; reading it from the budget as it
+// stood before this command's own adds would leave the new file's words out of
+// its own cap.
+test('sync corpus-cap and a new corpus path in one command counts the new path in the sum it writes', () => {
+    const dir = makeFixtureRepo();
+    try {
+        assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
+        git(dir, ['add', '-A']);
+        git(dir, ['commit', '-q', '-m', 'the budget']);
+        const beta = 'plugins/claude-kit/skills/beta/SKILL.md';
+        write(dir, beta, '---\nname: beta\n---\n\nbeta body words here now.\n');
+        git(dir, ['add', '-A']);
+        git(dir, ['commit', '-q', '-m', 'a new corpus file, no cap yet']);
+        const synced = runScript(['sync', '--repo', dir, 'corpus-cap', beta]);
+        assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
+        assert.match(synced.stdout, /^added: .*beta.*a first cap of 5, /m, synced.stdout);
+        // The fixture's five corpus files sum to 16 (the real-repository test
+        // above pins that figure); beta adds 5 more, for 21.
+        assert.match(synced.stdout, /^added: corpus-cap: a first cap of 21, /m, synced.stdout);
+        const checked = runScript(['check', '--repo', dir]);
+        assert.strictEqual(checked.status, 0, 'the corpus cap this command wrote already covers the file it added beside it: '
+            + checked.stdout + checked.stderr);
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// A named sync that leaves corpus-cap unnamed still owes it a disposition: the
+// header comment above this function states that every key left in the budget
+// is moved, unchanged, or outside the named set, and the three counts sum to
+// the whole budget, corpus-cap included once it is a key like any other.
+test('a named sync that does not name corpus-cap counts it among the entries left outside', () => {
+    const dir = makeFixtureRepo();
+    try {
+        assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
+        assert.strictEqual(runScript(['sync', '--repo', dir, 'corpus-cap']).status, 0);
+        git(dir, ['add', '-A']);
+        git(dir, ['commit', '-q', '-m', 'the budget, corpus cap included']);
+        // Lowered rather than raised, so the corpus sum drops and stays under its
+        // own cap: a raise here would also trip corpus-over-cap, which is a true
+        // and separate reading this test is not about.
+        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body.\n');
+        const synced = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md']);
+        assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
+        assert.match(synced.stdout, /^lowered: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 2$/m, synced.stdout);
+        // Seven budget keys total (five corpus files, one test file, corpus-cap);
+        // one named, so six are left outside, corpus-cap among them.
+        assert.match(synced.stdout, /^outside the named paths: 6 entries left as they stand$/m, synced.stdout);
+        const budget = JSON.parse(fs.readFileSync(path.join(dir, 'test', 'size-budget.json'), 'utf8'));
+        assert.strictEqual(budget['corpus-cap'], 16, 'an unnamed corpus cap does not move');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// check's corpus-over-cap failure and report's corpus line are two readers of
+// one lookup; over a pending corpus file (untracked, and capped ahead of being
+// added, the state a file and its own cap ride in together) they have to agree
+// on its words rather than one counting it and the other silently treating it
+// as absent.
+test('report\'s corpus line and check\'s corpus-cap failure agree over a pending corpus file', () => {
+    const dir = makeFixtureRepo();
+    try {
+        assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
+        assert.strictEqual(runScript(['sync', '--repo', dir, 'corpus-cap']).status, 0);
+        git(dir, ['add', '-A']);
+        git(dir, ['commit', '-q', '-m', 'the budget, corpus cap included']);
+        const budgetPath = path.join(dir, 'test', 'size-budget.json');
+        write(dir, 'plugins/claude-kit/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
+        const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+        budget['plugins/claude-kit/skills/beta/SKILL.md'] = 4;
+        fs.writeFileSync(budgetPath, kit.serializeBudget(budget), 'utf8');
+        const reported = runScript(['report', '--repo', dir]);
+        assert.strictEqual(reported.status, 0, reported.stdout + reported.stderr);
+        assert.match(reported.stdout, /^corpus: 20 words of cap 16$/m, reported.stdout);
+        const checked = kit.check(dir, budgetPath);
+        const corpusFailures = checked.failures.filter((f) => f.path === 'corpus-cap');
+        assert.strictEqual(corpusFailures.length, 1, 'the pending file pushed the corpus over its cap');
+        assert.strictEqual(corpusFailures[0].size, 20,
+            'check\'s own corpus-cap failure reads the same pending file\'s words report\'s corpus line does');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// The corpus cap is a repository-supplied value, and report's output is what a
+// Chapter's Delta field quotes, so a cap that is no finite number never reaches
+// it as written: a string carrying a line break and a heading would otherwise
+// forge a line of its own in the quoted block.
+test('report prints a corpus cap that is no finite number as that fact, never as its text', () => {
+    const dir = makeFixtureRepo();
+    try {
+        assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
+        const budgetPath = path.join(dir, 'test', 'size-budget.json');
+        const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+        budget['corpus-cap'] = 'x\n## forged';
+        fs.writeFileSync(budgetPath, kit.serializeBudget(budget), 'utf8');
+        const reported = runScript(['report', '--repo', dir]);
+        assert.doesNotMatch(reported.stdout, /^## forged/m, reported.stdout);
+        assert.match(reported.stdout, /^corpus: \d+ words of cap not a finite number$/m, reported.stdout);
+    } finally {
+        rmDir(dir);
+    }
 });

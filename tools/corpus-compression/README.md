@@ -1,6 +1,6 @@
 # corpus-compression
 
-`workflow.mjs` is the one dispatch path for the corpus-compression plan (`docs/plans/claude-kit_corpus-compression_spec_v1.md`). It runs under the Workflow tool by `scriptPath` and never through the Agent tool, since the Agent tool cannot set effort.
+`workflow.mjs` is the one dispatch path for the corpus-compression plan (`docs/archive/claude-kit_corpus-compression_spec_v1.md`). It runs under the Workflow tool by `scriptPath` and never through the Agent tool, since the Agent tool cannot set effort.
 
 ## Pacing
 

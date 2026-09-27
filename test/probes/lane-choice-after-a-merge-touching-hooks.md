@@ -15,7 +15,12 @@ shapes:
     files:
       - plugins/claude-kit/skills/operating-instructions/SKILL.md
       - plugins/claude-kit/skills/testing-discipline/SKILL.md
+  # A designed red, per test/probes/README.md: this shape holds the doctrine
+  # and the output style without testing-discipline, which owns the rebuild
+  # rule for a merge touching the kit's hooks, so the expected wrong reading
+  # here is run-the-whole-gate-without-rebuilding.
   - name: doctrine-plus-output-style
+    designed-mismatch: testing-discipline-owns-the-hook-rebuild-rule
     files:
       - plugins/claude-kit/skills/operating-instructions/SKILL.md
       - plugins/claude-kit/output-styles/kit.md

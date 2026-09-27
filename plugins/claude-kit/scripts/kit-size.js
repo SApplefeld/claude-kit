@@ -325,12 +325,32 @@ const EXCLUSIONS = ['test/size-budget.json'];
 // gate's data and a reviewer reads it with the test.
 const BUDGET_PATH = 'test/size-budget.json';
 
+// The corpus-wide cap's key in the budget. It names no file, so it is never a
+// row this tool measures and never a per-file cap in the totals; it is a second
+// number the same budget carries, over the sum of a different set of rows. The
+// key is not a legal tracked path (no root holds a bare name with no slash), so
+// nothing here mistakes it for a stale entry by accident; the exemption below is
+// what makes that true on purpose.
+const CORPUS_CAP_KEY = 'corpus-cap';
+
+// A rationale ledger, the one prose class the corpus cap excludes by name. The
+// corpus itself is every other budget key that answers to neither this shape nor
+// a path under test/, read straight from the budget rather than from a count
+// carried here, so a document a later section adds to a measured root joins the
+// corpus the moment its cap does.
+const RATIONALE_LEDGER = /\/references\/rationale-ledger\.md$/;
+
+function isCorpusPath(relPath) {
+    return relPath !== CORPUS_CAP_KEY && !relPath.startsWith('test/') && !RATIONALE_LEDGER.test(relPath);
+}
+
 // Why a file fails the ratchet. Each reason is distinct because a gate that can
 // only say "something failed" cannot tell an over-cap file from a file the
 // classifier never reached, and those two want opposite responses: one is a
 // budget edit, the other is a classifier that has gone blind.
 const REASONS = {
     OVER_CAP: 'over-cap',
+    CORPUS_OVER_CAP: 'corpus-over-cap',
     MISSING_ENTRY: 'missing-entry',
     UNCLASSIFIED: 'unclassified',
     STALE_ENTRY: 'stale-entry',
@@ -338,6 +358,58 @@ const REASONS = {
     UNREADABLE: 'unreadable',
     PATHSPEC_BLIND: 'pathspec-blind'
 };
+
+// The corpus's current word sum, read from worktree content through
+// `measuredByPath` (a path to its measured entry, from `collected.measured` or
+// `pendingMeasured`) rather than from any cap: the reading this cap gates is the
+// same worktree size every other row here is held to. A corpus path with no
+// entry in the map (unreadable, or not yet measured) contributes nothing, since
+// evaluate's own failures already say why that path carries no size.
+//
+// `extraKeys` widens the set summed past the budget's own keys, to a path
+// named in the same sync as `corpus-cap` that the budget does not carry yet:
+// without it, a new corpus file's first cap and the corpus cap moved beside it
+// in one command would sum over the budget as it stood before either write,
+// leaving the new file's words out of the very sum meant to cover it.
+function corpusSum(budget, measuredByPath, extraKeys) {
+    let sum = 0;
+    const seen = new Set();
+    for (const key of Object.keys(budget)) {
+        if (!isCorpusPath(key)) continue;
+        seen.add(key);
+        const m = measuredByPath.get(key);
+        if (m && m.size !== null) sum += m.size;
+    }
+    if (extraKeys) {
+        for (const key of extraKeys) {
+            if (seen.has(key) || !isCorpusPath(key)) continue;
+            const m = measuredByPath.get(key);
+            if (m && m.size !== null) sum += m.size;
+        }
+    }
+    return sum;
+}
+
+// The corpus cap's own failure, or null where the budget carries no such key or
+// the sum sits at or under it. It is read exactly like a per-file cap failure
+// (a reason, a size, a cap, a detail naming both and their difference), on its
+// own reason so a caller telling reasons apart never mistakes it for one.
+function corpusCapFailure(budget, measuredByPath) {
+    if (!Object.prototype.hasOwnProperty.call(budget, CORPUS_CAP_KEY)) return null;
+    const cap = budget[CORPUS_CAP_KEY];
+    if (typeof cap !== 'number' || !Number.isFinite(cap)) {
+        return { path: CORPUS_CAP_KEY, reason: REASONS.INVALID_CAP, detail: 'the cap is not a finite number' };
+    }
+    const sum = corpusSum(budget, measuredByPath);
+    if (sum <= cap) return null;
+    return {
+        path: CORPUS_CAP_KEY,
+        reason: REASONS.CORPUS_OVER_CAP,
+        size: sum,
+        cap,
+        detail: sum + ' words against a cap of ' + cap + ', ' + (sum - cap) + ' over; a raise is an operator ruling, per the corpus cap item in docs/backlog.md'
+    };
+}
 
 // Any repository-supplied text on its way to stdout or stderr: a tracked path, a
 // budget key, a directory this tool was pointed at. The screen is the goal
@@ -638,6 +710,9 @@ function evaluate(measured, budget, unclassified, pending, differsFromHead, opti
         failures.push({ path: relPath, reason: REASONS.UNCLASSIFIED, detail: 'tracked under a measured root and matched by no shape, so nothing measures it' });
     }
     for (const relPath of Object.keys(budget)) {
+        // The corpus cap names no file, so it is never a stale entry; check()
+        // evaluates it on its own reason, over its own sum.
+        if (relPath === CORPUS_CAP_KEY) continue;
         if (!measuredPaths.has(relPath) && !pendingPaths.has(relPath)) {
             failures.push({ path: relPath, reason: REASONS.STALE_ENTRY, detail: 'a cap for a file the classifier no longer reaches and git does not report as untracked under a measured root' });
         }
@@ -929,6 +1004,22 @@ function pendingEntries(budget, measured, untracked) {
         && classify([p]).entries.length === 1);
 }
 
+// A pending key's own worktree measurement, read the same way check() has
+// always read it: classified alone and read from disk, since a pending file
+// carries no entry in `collected.measured` for collect() to have found.
+function pendingMeasuredFrom(repoDir, pending) {
+    return pending.map((p) => measure(classify([p]).entries[0], readWorktree(repoDir, p)));
+}
+
+// The one path-to-measurement lookup every reader of a per-file or corpus cap
+// takes: tracked content plus a pending file's worktree reading, so a capped
+// file that is untracked and pending is in the set check() holds it to and in
+// the set report()'s corpus line sums, rather than one reading the file and
+// the other silently treating it as absent.
+function measuredByPathWithPending(measured, pendingMeasured) {
+    return new Map(measured.concat(pendingMeasured).filter((m) => m.size !== null).map((m) => [m.path, m]));
+}
+
 // The refusal a reading with no corpus takes, or null where there is one. Two
 // faults produce an empty measured set and each gets its own reason, the blind one
 // first: a tree whose root-held paths were all absent from the pathspec-filtered
@@ -1024,15 +1115,18 @@ function check(repoDir, budgetFile, containRoot) {
     if (pending.length === budgetKeys.length) {
         return { status: 'unmeasured', detail: 'every cap in the budget is pending, so the stale-entry mirror is wholly suppressed, no cap over a deleted file could red, and this reading compares no cap at all' };
     }
-    const pendingMeasured = pending.map((p) => measure(classify([p]).entries[0], readWorktree(repoDir, p)));
+    const pendingMeasured = pendingMeasuredFrom(repoDir, pending);
     const changed = changedPaths(repoDir);
     const blindFailures = collected.blind.map((relPath) => ({
         path: relPath,
         reason: REASONS.PATHSPEC_BLIND,
         detail: 'a root holds this tracked path and the pathspec listing did not return it, so nothing classified or measured it'
     }));
+    const measuredByPath = measuredByPathWithPending(collected.measured, pendingMeasured);
+    const corpusFailure = corpusCapFailure(budget, measuredByPath);
     const failures = blindFailures.concat(evaluate(collected.measured, budget, collected.unclassified, pending,
-        changed === null ? null : new Set(changed), { budgetPath: budgetFile, repoDir, pendingMeasured }));
+        changed === null ? null : new Set(changed), { budgetPath: budgetFile, repoDir, pendingMeasured }))
+        .concat(corpusFailure ? [corpusFailure] : []);
     return {
         status: failures.length === 0 ? 'ok' : 'failed',
         failures,
@@ -1522,9 +1616,24 @@ function report(repoDir, budgetFile, containRoot) {
         ? { unavailable: 'the unfiltered git listings returned nothing usable' }
         : counted;
     const untrackeds = untrackedRows(repoDir, untracked);
+    const lines = renderReport(read.rows, totals(collected.measured, budget), budget, untrackeds, collected.blind, outside, read.omitted);
+    if (Object.prototype.hasOwnProperty.call(budget, CORPUS_CAP_KEY)) {
+        // The same measured-plus-pending lookup check() holds every cap to, so a
+        // capped file that is untracked and pending sums here exactly as check()
+        // reads it, rather than reading as absent because this verb never asked
+        // pendingEntries about it.
+        const pending = pendingEntries(budget, collected.measured, untracked);
+        const pendingMeasured = pendingMeasuredFrom(repoDir, pending);
+        const measuredByPath = measuredByPathWithPending(collected.measured, pendingMeasured);
+        // The cap is repository-supplied, so it prints only where it is the finite
+        // number check() holds the sum to; any other value prints as that fact.
+        const cap = budget[CORPUS_CAP_KEY];
+        const capText = typeof cap === 'number' && Number.isFinite(cap) ? String(cap) : 'not a finite number';
+        lines.push('corpus: ' + corpusSum(budget, measuredByPath) + ' words of cap ' + capText);
+    }
     return {
         status: 'ok',
-        lines: renderReport(read.rows, totals(collected.measured, budget), budget, untrackeds, collected.blind, outside, read.omitted),
+        lines,
         outsideRoots: outside,
         rows: read.rows,
         omitted: read.omitted,
@@ -1719,7 +1828,8 @@ function sync(repoDir, budgetFile, containRoot, onlyPaths) {
     if (checked.status === 'git-failed' || checked.status === 'unmeasured') {
         return checked;
     }
-    const blocking = checked.failures.filter((f) => f.reason !== REASONS.OVER_CAP && f.reason !== REASONS.MISSING_ENTRY);
+    const blocking = checked.failures.filter((f) => f.reason !== REASONS.OVER_CAP && f.reason !== REASONS.MISSING_ENTRY
+        && f.reason !== REASONS.CORPUS_OVER_CAP);
     if (blocking.length > 0) {
         const shown = boundList(blocking.map((f) => f.reason + ' ' + safePath(f.path)));
         return { status: 'refused', detail: 'check reports failures a cap move cannot answer, so the budget is left as it stands: '
@@ -1757,9 +1867,24 @@ function sync(repoDir, budgetFile, containRoot, onlyPaths) {
     if (onlyPaths && onlyPaths.length > 0) {
         const untrackedMeasured = new Set(untrackedMeasuredPaths(checked.untracked));
         named = new Set();
+        // Set once the corpus cap itself is named, and read after the loop below
+        // rather than inline: a new corpus file's first cap is added to
+        // measuredByPath by this same loop, in whatever order the command line
+        // gave the two paths, so the sum has to wait for every named path to be
+        // known before it is taken.
+        let corpusCapNamed = false;
         for (const raw of onlyPaths) {
             if (raw === '') {
                 return { status: 'refused', detail: 'an empty path names nothing to cap' };
+            }
+            // The corpus cap is a key rather than a path, so it takes no path
+            // resolution: naming it moves it to the corpus's current sum, whether the
+            // budget already carries the key or gains it here as a first cap, exactly
+            // as an unnamed file's first cap arrives below.
+            if (raw === CORPUS_CAP_KEY) {
+                corpusCapNamed = true;
+                named.add(CORPUS_CAP_KEY);
+                continue;
             }
             if (/[\x00-\x1F]/.test(raw)) {
                 return { status: 'refused', detail: safePath(raw) + ' carries a control character, so it names no file here' };
@@ -1785,6 +1910,9 @@ function sync(repoDir, budgetFile, containRoot, onlyPaths) {
             }
             named.add(rel);
         }
+        if (corpusCapNamed) {
+            measuredByPath.set(CORPUS_CAP_KEY, { path: CORPUS_CAP_KEY, metric: 'words', size: corpusSum(budget, measuredByPath, named) });
+        }
     }
     const next = Object.create(null);
     const moved = [];
@@ -1793,6 +1921,16 @@ function sync(repoDir, budgetFile, containRoot, onlyPaths) {
     let outside = 0;
     for (const key of Object.keys(budget)) {
         const cap = budget[key];
+        // The corpus cap moves only where it is named on the command line: a bare
+        // sync leaves it exactly as it stands, uncounted, since a whole-corpus
+        // figure is not a file's own size to move by default and a bare sync
+        // prints no outside count to hold it to. A named sync that does not name
+        // it falls to the ordinary outside branch below, so it is counted there
+        // like any other cap the run left alone.
+        if (key === CORPUS_CAP_KEY && named === null) {
+            next[key] = cap;
+            continue;
+        }
         if (named !== null && !named.has(key)) {
             next[key] = cap;
             outside += 1;
@@ -1846,8 +1984,13 @@ function sync(repoDir, budgetFile, containRoot, onlyPaths) {
         .filter((m) => m.size !== null && !Object.prototype.hasOwnProperty.call(budget, m.path) && (named === null || !named.has(m.path)))
         .map((m) => m.path)
         .sort();
+    // A file's own over-cap answers to the named set the ordinary way: it is
+    // still over only where it was left out of a named move. The corpus cap's
+    // is over wherever it was left alone, bare sync included, since a bare sync
+    // never moves it and a corpus over its cap must still say so.
     const stillOver = checked.failures
-        .filter((f) => f.reason === REASONS.OVER_CAP && named !== null && !named.has(f.path))
+        .filter((f) => (f.reason === REASONS.OVER_CAP && named !== null && !named.has(f.path))
+            || (f.reason === REASONS.CORPUS_OVER_CAP && (named === null || !named.has(f.path))))
         .map((f) => ({ path: f.path, size: f.size, cap: f.cap }));
     if (moved.length > 0 || added.length > 0) {
         let ordered = next;
@@ -1911,7 +2054,7 @@ function sameBudget(a, b) {
 }
 
 const USAGE = [
-    'usage: node kit-size.js <check|report|init|sync> [--repo <dir>] [--budget <file>] [<path>...]',
+    'usage: node kit-size.js <check|report|init|sync> [--repo <dir>] [--budget <file>] [<path>|corpus-cap ...]',
     '  check   every classified file against its cap, plus the coverage control (exit 1 on any failure)',
     '  report  one line per file whose size moved since HEAD, plus every untracked file under a measured root and every tracked path the pathspec listing missed, then totals',
     '  init    write the budget from current sizes, refusing an existing one',
@@ -2174,6 +2317,10 @@ module.exports = {
     ROOTS,
     EXCLUSIONS,
     BUDGET_PATH,
+    CORPUS_CAP_KEY,
+    isCorpusPath,
+    corpusSum,
+    corpusCapFailure,
     MAX_FILE_BYTES,
     MAX_BUDGET_BYTES,
     MAX_REPORT_ROWS,
