@@ -636,7 +636,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 
 This document is the detailed pattern reference for the operator's C# house style, using a generic document-processing library as its worked example shape. It owns every moment in which C# is written or modified: file layout and using order, namespace shape, class organization into #region blocks, field naming and grouping, constructor form, method declarations, method-body section comments, async and cancellation patterns, logging, exception handling, null handling, Autofac DI registration, naming conventions, MediatR notifications, models and settings classes, whitespace and indentation, and the skeleton for a brand-new service. A session loads it before writing or changing any C# code, which is a named-trigger load class (inferred, since the document itself states no loading rule and its content is a per-act pattern reference rather than standing doctrine).
 
-Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-style.md`).
+Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-style.md`). Redrafted on 2026-09-26 by section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `2b366196` with its fix round at `bac21117`, so every live entry's `passage:` line quotes the text at `bac21117`.
 
 ### C001
 - key: Substitute the target project's own namespaces and type names for the example names rather than copying the example names literally.
@@ -645,6 +645,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17, the fork-improvements commit that genericized the repo-specific example names (ASR.Eleos) after the reference had been written against one real library; a8770b3 2026-06-28 only reworded it to first person.
 - verdict: keep
 - reason: Nothing mechanical checks a generated file for copied placeholder names, so the copy-the-example-literally failure recurs; the SQL reference states the same rule for its own identifiers because neither document is loaded when the other language is written.
+- passage: Substitute the project's own namespaces and type names rather than copying the example names.
 
 ### C002
 - key: Open a sibling file in the library and follow its layout exactly.
@@ -653,6 +654,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 installed the sibling instruction; 830ff28 2026-06-17 added the "already written in this style" bound alongside the SKILL's Precedence section.
 - verdict: keep
 - reason: The bound is the whole point: mimicry is for staying consistent inside code already in this style, never a reason to follow a foreign repo, and the SKILL's Precedence paragraph is what a session reads when the two collide.
+- passage: Inside a repo already in this style, follow a sibling file's layout exactly.
 
 ### C003
 - key: Order using statements System.* first, then convenient third-party such as Serilog, then project namespaces, then other third-party such as AutoMapper and MediatR.
@@ -661,6 +663,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10, the kit's initial commit, which distilled the reference from the operator's own document-processing library.
 - verdict: keep
 - reason: The SKILL checklist cites "reference §1" for this ordering, so the reference is the only place the full order and its not-strictly-alphabetical bound are stated.
+- passage: Order usings `System.*` first, then third-party where convenient (Serilog often mid-list), then project namespaces, then other third-party such as `AutoMapper` and `MediatR`. Order inside a group is loosely alphabetical.
 
 ### C004
 - key: Put no blank lines between the using-statement groups.
@@ -669,6 +672,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: This is the owning statement of the rule, sitting inside the using-order list where a session reads it while writing the block; §15's repeat (C114) retires to it.
+- passage: Put no blank lines between groups
 
 ### C005
 - key: Put a single blank line between the using block and the namespace declaration.
@@ -677,6 +681,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; a formatter is optional in a target repo and the file-head shape is stated nowhere else.
+- passage: one blank line before the namespace.
 
 ### C006
 - key: Prefer the simplest namespace shape: plugin assemblies declare no namespace at all, and a warranted namespace is typically one root namespace per project.
@@ -685,6 +690,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, delta 1 of the PrePass hand-edit review, where Claude-authored C# had declared namespaces the operator's plugin assemblies do not use.
 - verdict: keep
 - reason: Incident-born and unenforced by any hook; the counter-example namespaces name the exact shape the review rejected.
+- passage: Keep namespaces coarse. Plugin assemblies declare none. A warranted namespace aligns to a plugin or large functional chunk, typically one root per project.
+- flag: weak-reason
 
 ### C007
 - key: Never let folders generate sub-namespaces mirroring the folder tree; folders organize files only.
@@ -693,6 +700,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, same PrePass delta as C006.
 - verdict: keep
 - reason: Folder-mirrored namespaces are the default habit of every C# generator, and nothing in the tree refuses them mechanically.
+- passage: Folders never generate sub-namespaces such as `Acme.Documents.Services`.
 
 ### C008
 - key: Declare a namespace file-scoped with a semicolon.
@@ -701,6 +709,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 installed the file-scoped rule; 058e3a3 2026-07-24 rescoped it to "when a new file declares a namespace" so it no longer implied every file declares one.
 - verdict: keep
 - reason: The rescoping is load-bearing beside C006: without it the file-scoped rule reads as requiring a namespace in every file.
+- passage: Where a new file declares a namespace, make it file-scoped:
 
 ### C009
 - key: Write the file-scoped namespace as `namespace Acme.Documents;`.
@@ -709,6 +718,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 installed the specimen; a8770b3 2026-06-28 only replaced the real library name with the generic one.
 - verdict: keep
 - reason: Two words showing the semicolon terminator; the ledger cannot hold it more cheaply than the line does.
+- passage: namespace Acme.Documents;
 
 ### C010
 - key: Leave existing block-scoped namespace files as they are, and write only new files file-scoped.
@@ -717,6 +727,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The owning statement of the leave-alone rule, and it already names `Assembly/RegisterServices.cs` as its example, which is why §11's repeat (C089) retires to it.
+- passage: Leave existing block-scoped files, such as `Assembly/RegisterServices.cs`, alone.
 
 ### C011
 - key: Write no file-level header comments: no copyright, no author block, no license; begin files with `using`.
@@ -725,6 +736,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The three named header kinds are the habitual additions the rule exists to stop and no hook strips one from a written file, so the enumeration keeps.
+- passage: Write no file header: no copyright, author block or license. Files begin with `using`.
 
 ### C012
 - key: Put interfaces in an `Interfaces/` folder, never co-located with their implementations.
@@ -733,6 +745,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, delta 2, which promoted this "from a s16/checklist mention to an explicit rule in reference s1" after the PrePass review found co-located interfaces.
 - verdict: keep
 - reason: The commit made this line the owner by design; §16's closing step (C119) is the procedure's pointer to it, not a rival.
+- passage: Interfaces live in `Interfaces/`, never beside their implementations.
+- flag: weak-reason
 
 ### C013
 - key: Open a file with the ordered usings, a blank line, the file-scoped namespace, then the class declaration, as `Services/Build/FormService.cs:1-13` shows.
@@ -741,6 +755,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10; 830ff28 2026-06-17 genericized the names inside it.
 - verdict: keep
 - reason: The specimen is the only place the "third-party where convenient" slot is actually placed (Serilog mid-list, a trailing `System.Threading`), which the prose explicitly leaves loose.
+- passage: Example:
+- passage: using System.Threading;
 
 ### C014
 - key: Organize a class into `#region` blocks in the order Constants, Variables, Constructor, public method-group regions, Private Methods.
@@ -749,6 +765,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The canonical order is cited outside this skill (the outline recipe in `csharp-style/SKILL.md` reads regions as the file's map), so the full statement stays here.
+- passage: Organize a class into `#region` blocks in this order:
 
 ### C015
 - key: Put `private const string` declarations in `#region Constants`, and omit the region when there are none.
@@ -757,6 +774,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the omit-if-empty clause is stated nowhere else.
+- passage: 1. `#region Constants` - `private const string` declarations, omitted if none
 
 ### C016
 - key: Put private fields in `#region Variables`, grouped by purpose with `// Group.` labels.
@@ -765,6 +783,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; the region's contents rule.
+- passage: 2. `#region Variables` - private fields under `// Group.` labels
+- flag: weak-reason
 
 ### C017
 - key: Put the single constructor in `#region Constructor` with parameters one per line.
@@ -773,6 +793,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: Placement, not the single-constructor rule, which C030 owns; only the word "single" is shared.
+- passage: 3. `#region Constructor` - the single constructor
+- passage: With two or more parameters, put each on its own line
 
 ### C018
 - key: Name each public method-group region for what its methods do, such as `#region Form Processing`.
@@ -781,6 +803,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; the naming rule is what makes region labels carry author intent for the outline recipe.
+- passage: 4. Public method-group regions named for what they do, such as `#region Form Processing`
 
 ### C019
 - key: Put `#region Private Methods` at the bottom of the class, optionally with nested regions for sub-themes.
@@ -789,6 +812,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: The nested-region permission is stated only here.
+- passage: 5. `#region Private Methods` - last, optionally with nested regions for sub-themes
 
 ### C020
 - key: Close every `#region` with a matching `#endregion` and never leave a region open.
@@ -797,6 +821,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; an unclosed region breaks the file and no formatter in the kit's hook chain repairs one.
+- passage: Close every region with a matching `#endregion`.
 
 ### C021
 - key: Align `#region` and `#endregion` lines with the region's contents, four spaces inside a class, not with the class brace.
@@ -805,6 +830,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding, and this is one rule CSharpier does not impose, since preprocessor directives are left where the author put them.
+- passage: Align both lines with the region's contents (four spaces inside a class), not the class brace.
 
 ### C022
 - key: Lay a class out as the skeleton shows: Constants, Variables with group labels, Constructor, a named processing region, then Private Methods with nested themed regions.
@@ -813,6 +839,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The skeleton carries what the prose does not: the nested Private Methods regions indented a further four spaces, which C021 states only for the outer level.
+- passage: Skeleton:
+- passage: #region Form Handling
 
 ### C023
 - key: Name private fields `_camelCase` with a leading underscore.
@@ -821,6 +849,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §3 is the owner; the SKILL checklist carries the twelve-word summary.
+- passage: Private fields are `_camelCase`
 
 ### C024
 - key: Mark all injected dependencies `readonly`.
@@ -829,6 +858,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §3 is the owner; nothing enforces it.
+- passage: Injected dependencies are `readonly`.
 
 ### C025
 - key: Use `private const` for compile-time constants, named `camelCase` for local scoped strings and `SCREAMING_SNAKE_CASE` for cross-cutting markers.
@@ -837,6 +867,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; the two-casing split is stated only here and contradicts the default C# convention, so it cannot be inferred.
+- passage: `private const` names are `camelCase` for local strings (`downloadUrlSuffix`) and `SCREAMING_SNAKE_CASE` for cross-cutting markers (`EMAIL_SENT`).
 
 ### C026
 - key: Name static computed comparison properties in PascalCase, such as `IgnoreCase` and `IgnoreCaseComparer`.
@@ -845,6 +876,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; these look like fields and would otherwise take the `_camelCase` rule.
+- passage: Static computed comparison properties are PascalCase: `IgnoreCase`.
 
 ### C027
 - key: Inside `#region Variables`, group fields under single-line `// Group.` label comments with a blank line between groups.
@@ -853,6 +885,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The owning statement, stated where the grouping rule lives; §15's blank-line repeat (C112) retires to it.
+- passage: In `#region Variables`, group fields under single-line `// Group.` labels, a blank line between groups.
 
 ### C028
 - key: Use the common group labels `// Values.`, `// Mapper.`, `// Services.`, `// Settings.`, and `// State.` for their stated contents.
@@ -861,6 +894,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: All five labels with what each holds appear only here; the SKILL's checklist names the `// Group.` label form without naming any of the five (its philosophy point 2 named three until section 37's rewrite at b608667 reduced it to its bold lead).
+- passage: Common labels: `// Values.` for static comparers and computed defaults, `// Mapper.` for AutoMapper, `// Services.` for injected services, `// Settings.` for `IOptionsMonitor<T>`, and `// State.` for rare mutable state.
 
 ### C029
 - key: Write the Variables region as the `Services/Build/FormService.cs:20-31` example shows, with Values, Mapper, and Services groups separated by blank lines.
@@ -881,6 +915,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: This is the rule; C017's "single constructor" is a description of the region's contents, so the two are not duplicates.
+- passage: Write one primary constructor, with no overloads or static factories.
 
 ### C031
 - key: Put constructor parameters on their own lines indented eight spaces from the class brace.
@@ -889,6 +924,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: Eight spaces is right for constructors specifically; the document's own specimens (lines 179-182) confirm it, and §15's over-generalized version (C115) retires.
+- passage: With two or more parameters, put each on its own line, indented eight spaces from the class brace.
 
 ### C032
 - key: Put the constructor's closing `)` on its own line indented four spaces, at the level of the constructor signature.
@@ -897,6 +933,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The four-space closing indent is stated only here; the SKILL checklist says "own line" and leaves the column open.
+- passage: The closing `)` sits on its own line, indented four spaces at the signature's level.
 
 ### C033
 - key: Open the constructor body with a section-comment block describing what gets assigned, then assign directly.
@@ -905,6 +942,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Stated generally here where the checklist names one specimen label, so the reference is what a session with a different assignment set reads.
+- passage: The body opens with a section comment naming what gets assigned, then assigns directly.
 
 ### C034
 - key: Treat `ArgumentNullException` guards on injected dependencies as optional; they are not required but are fine to add.
@@ -913,6 +951,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 7964c7e 2026-06-28, an operator hand-commit that softened the prior absolute "No `ArgumentNullException` checks" to optional; the commit carries no narrative beyond its title.
 - verdict: keep
 - reason: No finding, and the permission is the point: without it a session reads the older kit convention as a ban.
+- passage: `ArgumentNullException` guards on injected dependencies are optional.
 
 ### C035
 - key: Construct AutoMapper instances inline in the constructor under a `// Save Mapper.` comment.
@@ -921,6 +960,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the inline mapper construction is unusual enough that it is inferable from nothing else in the document.
+- passage: Construct AutoMapper inline under `// Save Mapper.`.
 
 ### C036
 - key: Write the constructor as the `Services/Build/FormService.cs:33-50` example shows, assigning services under `// Save Services.` then building the mapper under `// Save Mapper.`.
@@ -929,6 +969,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: The only place the inline `MapperConfiguration` block C035 mandates is actually shown; the §2 skeleton's constructor omits it.
+- passage: Example:
+- passage: var mapConfig = new MapperConfiguration(c =>
 
 ### C037
 - key: End every async method name in `Async`.
@@ -937,6 +979,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states it positively for all async methods where the SKILL states it as an antipattern keyed on `Task<T>`.
+- passage: Async method names end in `Async`.
+- flag: stale
 
 ### C038
 - key: Make `CancellationToken` the last parameter.
@@ -945,6 +989,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Same split: the positive statement lives here, the antipattern in the SKILL.
+- passage: `CancellationToken` is the last parameter.
+- flag: stale
 
 ### C039
 - key: Break each parameter of a multi-parameter method onto its own line at a four-space indent, with the closing `)` on its own line at the method-signature indent.
@@ -953,6 +999,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Four spaces is the method case and eight the constructor case; every method specimen in the document (lines 209, 246, 483) is at four, so this side wins the contention against C115.
+- passage: A multi-parameter method puts each parameter on its own line at a four-space indent, with the closing `)` on its own line at the signature's indent.
 
 ### C040
 - key: Annotate return types as nullable, such as `Task<FilledForm?>`.
@@ -961,6 +1008,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is what makes the `default`-return rule legal.
+- passage: Annotate returns and parameters nullable where null is a valid value: `Task<FilledForm?>`, `Stream?`.
+- flag: stale
 
 ### C041
 - key: Put no method-level attributes on methods.
@@ -969,6 +1018,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the MediatR carve-out is stated only here.
+- passage: Add no method-level attributes except where required, such as a MediatR handler signature.
 
 ### C042
 - key: Write a method signature as the `Services/Build/FormService.cs:54-57` example shows, one parameter per line with the cancellation token last.
@@ -988,6 +1038,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 installed the section-comment rule; 058e3a3 2026-07-24 (delta 5) sharpened it after the PrePass hand-edit review found narrating comments in Claude-authored C#.
 - verdict: keep
 - reason: Incident-born, nothing mechanical checks comment voice, and the "heart of the style" opening tells a skimming session which section to weight.
+- passage: This is the heart of the style. A method body is a sequence of sections, each under a `// Title.` comment naming what the next block does, not what it did or why.
 
 ### C044
 - key: Write section-comment text in Title Case.
@@ -996,6 +1047,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; Title Case is stated only here and is the visible signature of the style.
+- passage: Comments are Title Case
 
 ### C045
 - key: End every section comment with a period.
@@ -1004,6 +1056,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The skill's frontmatter names this a signature trait, and the reference's §6 conventions list is where the comment mechanics sit together.
+- passage: end with a period: `// Validate Parameters.`
 
 ### C046
 - key: Put one blank line before the section comment between sections.
@@ -1012,6 +1065,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The owning statement, and the only one carrying the "preferred rather than absolute" bound the checklist drops; §15's repeat (C113) retires to it.
+- passage: Prefer one blank line before each section comment.
 
 ### C047
 - key: Keep section comments short, imperative, direct statements of what the next block is intended to do, as a reading aid for someone scanning the method.
@@ -1020,6 +1074,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, delta 5 of the PrePass hand-edit review plus its follow-up clarifications.
 - verdict: keep
 - reason: The specimen and the "incidental we" parenthetical are the resolution that commit recorded, and they are what draws the line the intent-not-vocabulary test asserts.
+- passage: A comment is a short, imperative statement of the next block's intent, a reading aid for someone scanning.
+- flag: weak-reason
 
 ### C048
 - key: Avoid section comments opening with "Now we...", "Here we...", or "This will...".
@@ -1028,6 +1084,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 installed the banned openings; 058e3a3 2026-07-24 records that they stand after the voice rule was sharpened.
 - verdict: keep
 - reason: The named openings are the exact drift the hand-edit review found, and the SKILL's antipattern names one of the same three specimens.
+- passage: Avoid "Now we
+- passage: , "Here we
+- passage: This will
 
 ### C049
 - key: Treat `// Abort if we don't have a Valid VIN, make no changes.` as in-voice.
@@ -1036,6 +1095,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, the follow-up clarification to the PrePass review that fixed where the voice line falls.
 - verdict: keep
 - reason: The intent-over-vocabulary test cannot be stated without an instance whose informal "we" still passes.
+- passage: The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice, the incidental "we" included.
 
 ### C050
 - key: Never let a comment explain history, decision-making, alternatives weighed, or issues encountered; keep WHY comments rare and exceptional.
@@ -1044,6 +1104,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, delta 5; the doc-closeout-discipline plan later added the matching change-narrative antipattern to the SKILL.
 - verdict: keep
 - reason: Incident-born and unenforced; it is the C# face of the doctrine's current-state rule, and both copies were installed deliberately.
+- passage: A comment never explains history, decisions, alternatives weighed or issues met. A WHY comment is rare.
 
 ### C051
 - key: Use the common section comments `// Validate Parameters.`, `// Return Value.`, `// Declare Variables.`, `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.`, and `// Return the Processed Result.` for their stated roles.
@@ -1052,6 +1113,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the canonical label vocabulary is what makes two files written by different sessions read alike.
+- passage: Common section comments: `// Validate Parameters.` for guard clauses, `// Return Value.` for the return variable, `// Declare Variables.` for locals used across try blocks, `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.` for major operations, and `// Return the Processed Result.` at the bottom.
 
 ### C052
 - key: Return early on null or invalid input, as in `if (document == null) return default;`.
@@ -1063,6 +1125,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - reason: The rule stands; only the worked guard changes to `is null`, which is what C054, the SKILL exemplar and the §16 template all already write, so the edit removes a contradiction without touching the rule. Lands at landed line 209 (section 46's close) as the proposal's bullet with the guard reading `is null`, and the §6 example's guard at landed line 227 reads the same, recorded on C061 as the one line of that block this proposal changed; `== null` survives on C054's rule line alone.
 - proposed: Change the worked guard at line 233 and in the §6 example at line 251 to `if (document is null) return default;`, keeping the rule text unchanged.
 - baseline-test: yes
+- passage: Return early on null or invalid input: `if (document is null) return default;`
 
 ### C053
 - key: Return the `default` keyword rather than `null` for null returns on nullable types.
@@ -1071,6 +1134,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The nullable-type bound is stated only here.
+- passage: Return `default`, not `null`, on nullable types.
 
 ### C054
 - key: Use `is null` and `is not null` rather than `== null` and `!= null`.
@@ -1079,6 +1143,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: This is the side history upholds in the `== null` contention; the rejected forms are named only here.
+- passage: `is null` / `is not null` over `== null` / `!= null`.
 
 ### C055
 - key: Use `??=` for default assignment, as in `filledDocument ??= new();`.
@@ -1087,6 +1152,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The owning statement, stated with its worked assignment beside the other body idioms; §10's repeat (C081) retires to it.
+- passage: ??=` for default assignment: `filledDocument ??= new();
 
 ### C056
 - key: Use `var` when the type is obvious from the right-hand side.
@@ -1095,6 +1161,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the "obvious from the right-hand side" bound is what keeps `var` off ambiguous assignments.
+- passage: `var` when the right-hand side makes the type obvious.
 
 ### C057
 - key: Write LINQ as method chains, not query syntax.
@@ -1103,6 +1170,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; no formatter converts query syntax.
+- passage: LINQ method chains, not query syntax.
 
 ### C058
 - key: Use collection expressions and spreads over older constructions: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` plus `ToArray`.
@@ -1111,6 +1179,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, delta 3, grounded in a real data-loss bug: a discarded `Enumerable.Append` result in the source session; 75913a4 2026-07-24 then removed the rationale sentence from the reference, leaving the rule bare.
 - verdict: keep
 - reason: Incident-born with a data-loss consequence and no machinery catches a discarded `Append`; the three named substitutions are the rule's whole content, and the operator has already ruled once that the rationale does not ride in the prose.
+- passage: Collection expressions and spreads: `[.. source.Where(
+- passage: )]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`.
+- flag: weak-reason
 
 ### C059
 - key: Keep explicit constructor parentheses on named-type object initializers, writing `new FilledForm() { Title = docType }` rather than `new FilledForm { Title = docType }`.
@@ -1119,6 +1190,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, delta 4 of the PrePass hand-edit review.
 - verdict: keep
 - reason: No finding; incident-born, contrary to the common C# habit, and the target-typed `new()` carve-out is what keeps it from over-firing.
+- passage: Named-type object initializers keep explicit parens: `new FilledForm() { Title = docType }`, not `new FilledForm { Title = docType }`. Target-typed `new()` stays preferred where the type is inferable.
 
 ### C060
 - key: Use string interpolation `$"..."` rather than `string.Format` or concatenation.
@@ -1127,6 +1199,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; no formatter rewrites `string.Format`.
+- passage: String interpolation `$
+- passage: ` over `string.Format` or concatenation.
 
 ### C061
 - key: Write a method as the `Services/Build/FormService.cs:54-118` example shows: validate, declare the return value, do the work inside try under named section comments, log in catch, return at the bottom.
@@ -1137,6 +1211,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - landed: 1dd5bee section 46
 - reason: The prose names the parts; only this specimen shows the cadence (one section comment per block, the `// Return Value.` slot before try), and cadence drift is exactly what the 2026-07-24 hand-edit review found. Flipped to rewrite at section 46's close by C052's proposal, which names this block's line 251: the block at landed lines 219 to 267 is byte-identical to its source but for that guard, which reads `is null`; the cadence this reason keeps is unchanged.
 - proposed: The block is unchanged but for its guard line, which reads `if (document is null) return default;` per C052.
+- passage: Example:
+- passage: // Document Form is only known by "FormCode", Validate.
 
 ### C062
 - key: Aim for section comments that alone tell the story of the method.
@@ -1145,6 +1221,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: This is the acceptance check for §6, applied to a session's own output, not a why; fourteen words and nothing checks it mechanically.
+- passage: The comments alone should tell the story of the method.
 
 ### C063
 - key: Pass cancellation tokens down the call chain.
@@ -1153,6 +1230,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §7 gathers the async patterns; a token accepted and dropped compiles clean, so nothing catches the omission.
+- passage: Pass cancellation tokens down the call chain.
 
 ### C064
 - key: Use `Task.FromResult(...)` in synchronous helpers that return `Task<T>` for interface uniformity, rather than converting them to a sync signature.
@@ -1161,6 +1239,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it settles the interface-uniformity question a session would otherwise resolve by narrowing the signature.
+- passage: A synchronous helper keeps its `Task<T>` signature for interface uniformity and returns `Task.FromResult(
 
 ### C065
 - key: Use `Task.CompletedTask` in synchronous helpers returning `Task`.
@@ -1169,6 +1248,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the non-generic counterpart of C064.
+- passage: or `Task.CompletedTask` for `Task`.
 
 ### C066
 - key: Use `ConfigureAwait(false)` in background services under `Services/Background/*` but not in regular services, matching the surrounding file.
@@ -1177,6 +1257,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the split by folder is stated only here and no analyzer in the kit enforces either side.
+- passage: Use `ConfigureAwait(false)` in background services (`Services/Background/*`), not regular services, matching the surrounding file.
 
 ### C067
 - key: Return `Task` or `Task<T>` and never `ValueTask`.
@@ -1185,6 +1266,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; `ValueTask` is a common performance suggestion, so the ban has to be written.
+- passage: Return `Task` or `Task<T>`, never `ValueTask`.
 
 ### C068
 - key: Log through `ILogger<T>` injection for new code or the static Serilog `Log`, matching the surrounding file.
@@ -1193,6 +1275,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 7964c7e 2026-06-28, an operator hand-commit that replaced the prior absolute "No `ILogger<T>` is injected" with the preference plus fallback, in SKILL and reference together.
 - verdict: keep
 - reason: The reference carries the match-the-surrounding-file bound the checklist compresses away, and the reversal is recent enough that a session reading the old kit convention needs the current text.
+- passage: Log through injected `ILogger<T>`, preferred for new code, or Serilog's static `Log`, matching the surrounding file.
 
 ### C069
 - key: Include `using Serilog;` in the using list when the static `Log` is used.
@@ -1201,6 +1284,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 7964c7e 2026-06-28, which added the "when the static `Log` is used" condition once `ILogger<T>` became the preferred path.
 - verdict: keep
 - reason: No finding; without the condition the line would demand a Serilog using in files that inject a logger instead.
+- passage: Add `using Serilog;` when the static `Log` is used.
 
 ### C070
 - key: Write catch blocks in the standard shape `catch (Exception ex) { Log.Error(ex, "Failure Processing Document."); }`.
@@ -1209,6 +1293,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the specimen fixes the message form as well as the shape.
+- passage: Catch blocks log in this shape:
+- passage: Log.Error(ex, "Failure Processing Document.");
 
 ### C071
 - key: Use `Log.Debug($"...")` with method-name-prefixed messages for trace-level diagnostics in output services.
@@ -1217,6 +1303,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 installed it; a8770b3 2026-06-28 only genericized the namespace inside the example string.
 - verdict: keep
 - reason: No finding; the method-name prefix convention appears nowhere else.
+- passage: Output services trace with method-name-prefixed `Log.Debug($
+- passage: )`: `Log.Debug($"Acme.Documents.PdfService.CreateFromHtmlAsync called with Html: {html}");`.
 
 ### C072
 - key: End every log message with a period.
@@ -1225,6 +1313,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §8 owns the logging conventions; the SKILL restates it with examples in its checklist.
+- passage: Log messages end in a period.
 
 ### C073
 - key: Use `try { ... } catch (Exception ex) { Log.Error(...); }` as the dominant shape, where the catch logs and the method returns `default`.
@@ -1233,6 +1322,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the swallow-and-return-default contract is unusual enough that a session would otherwise rethrow.
+- passage: The dominant shape is `try {
+- passage: } catch (Exception ex) { Log.Error(
+- passage: ); }`, where the catch logs and the method returns `default`.
 
 ### C074
 - key: Add a `finally` block for delay or sleep loops in background services.
@@ -1241,6 +1333,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it keeps a background loop from starving after a thrown iteration.
+- passage: Background services add a `finally` for delay or sleep loops.
+- flag: weak-reason
 
 ### C075
 - key: Use bare `throw;` sparingly, only when the exception must propagate.
@@ -1249,6 +1343,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is the carve-out that keeps C073 from reading as an absolute swallow.
+- passage: Use `throw;` only when the exception must propagate
 
 ### C076
 - key: Never write `throw ex;`.
@@ -1257,6 +1352,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; `throw ex;` resets the stack trace and no analyzer is guaranteed present in a target repo.
+- passage: never `throw ex;`.
 
 ### C077
 - key: Do not define custom exception types; use the generic `Exception`.
@@ -1265,6 +1361,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; custom exception hierarchies are a standard generated-code habit this style rejects.
+- passage: Define no custom exception types. Use the generic `Exception`.
+- flag: weak-reason
 
 ### C078
 - key: Enable nullable reference types with `<Nullable>enable</Nullable>` in the csproj.
@@ -1273,6 +1371,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is the precondition for the whole §10 set.
+- passage: Enable nullable reference types (`<Nullable>enable</Nullable>` in the csproj).
 
 ### C079
 - key: Put nullable annotations on returns and parameters, such as `Task<FilledForm?>` and `Stream?`.
@@ -1281,6 +1380,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; C040 states it for returns, this line extends it to parameters.
+- passage: Annotate returns and parameters nullable where null is a valid value: `Task<FilledForm?>`, `Stream?`.
 
 ### C080
 - key: Suppress an unused return with a discard, as in `_ = values.TryGetValue("Key", out var value);`.
@@ -1289,6 +1389,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the discard form is stated only here and appears in the §6 worked method.
+- passage: Discard an unused return: `_ = values.TryGetValue("Key", out var value);`.
 
 ### C081
 - key: Use `??=` for late-init defaults.
@@ -1309,6 +1410,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; paired with C083, it is the alternative the null-forgiving ban points at.
+- passage: Use `??` chains for fallbacks.
 
 ### C083
 - key: Do not use the null-forgiving operator `!`; rely on null-conditional and null-coalescing instead.
@@ -1317,6 +1419,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: Reference §10 gathers the null-handling set; the SKILL's antipattern line is the checklist face of the same rule.
+- passage: Never use the null-forgiving operator `!`. Use null-conditional and null-coalescing instead.
 
 ### C084
 - key: Register every type in the library's `Assembly/RegisterServices.cs` Autofac module the same way.
@@ -1325,6 +1428,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §11 carries the file placement, the uniformity requirement and the code block; the checklist carries eleven words.
+- passage: `Assembly/RegisterServices.cs` is the library's Autofac module, and every type registers the same way:
 
 ### C085
 - key: Chain `.AsImplementedInterfaces()` on each registration so interfaces are inferred from the implementation.
@@ -1333,6 +1437,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: The reference says what the call does; the SKILL says why (idempotent by default), and both halves are needed at different moments.
+- passage: `.AsImplementedInterfaces()` infers interfaces from the implementation.
 
 ### C086
 - key: Chain `.PreserveExistingDefaults()` on each registration so any prior registration is respected.
@@ -1341,6 +1446,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: Same split as C085; this call is what makes re-execution safe.
+- passage: `.PreserveExistingDefaults()` respects any prior registration.
 
 ### C087
 - key: Group registrations by domain under uppercase label comments such as `// HANDLERS`, `// BACKGROUND.`, and `// SERVICES.`.
@@ -1351,6 +1457,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - landed: 1dd5bee section 46
 - reason: The uppercase label form and its examples appear only here; the checklist says "grouped by domain label". Flipped to rewrite at section 46's close by C088's proposal, which names this block's line 350: the sentence at landed line 322 is unchanged and the block at 324 to 339 is byte-identical to its source but for its first label, which reads `// HANDLERS.` so that the three labels agree with C088's sentence; the key's `// HANDLERS` example is the source form.
 - proposed: The sentence and the block are unchanged but for the first label, which reads `// HANDLERS.` per C088.
+- passage: Group registrations by domain under uppercase label comments
+- passage: // HANDLERS.
 
 ### C088
 - key: Match the surrounding file on whether a registration label comment ends in a period.
@@ -1362,6 +1470,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - reason: Safe because the doctrine's stay-in-scope rule already stops a session reformatting existing labels, so dropping the match-the-file licence changes only what a session writes new, and the period rule is the skill's own signature trait. Lands at landed line 341 (section 46's close) as 'Registration label comments end with a period, like every other label comment.', the parenthetical gone, and the registration block's first label at landed line 325 reads `// HANDLERS.`, recorded on C087 as the one line of that block this proposal changed; the paragraph-edit-unit read found no other carrier of the match-the-file claim (the phrase's other two occurrences, C066's and C068's lines, carry different claims and are unchanged).
 - proposed: Replace the parenthetical at line 366 with one sentence: registration label comments end with a period like every other label comment; and make the `// HANDLERS` example at line 350 read `// HANDLERS.`.
 - baseline-test: yes
+- passage: Each label ends with a period, like every other label comment:
 
 ### C089
 - key: Leave `RegisterServices.cs` as a block-scoped namespace file when editing it.
@@ -1379,6 +1488,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10; the matching SKILL antipattern was relocated here from the doctrine by the doctrine-rightsizing plan, carrying its incident (an eager startup read bakes in defaults and bypasses test overrides).
 - verdict: keep
 - reason: The reference states the mechanic (which type, read where) and the SKILL states the failure it prevents; a session needs the type name from here.
+- passage: For settings, inject `IOptionsMonitor<TSettings>`, not `IOptions<T>`, and read `.CurrentValue` at use time.
 
 ### C091
 - key: Suffix types that perform core operations and orchestration with `Service`.
@@ -1387,6 +1497,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the suffix table is the naming contract the DI and folder rules assume.
+- passage: | `Service` | Core operations and orchestration | `DocumentService`, `FormService`, `PdfService` |
 
 ### C092
 - key: Suffix MediatR notification handlers with `Handler`.
@@ -1395,6 +1506,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; paired with the `Handlers/` folder rule.
+- passage: | `Handler` | MediatR notification handlers | `AzureFileSaveHandler`, `NetworkFileSaveHandler` |
 
 ### C093
 - key: Suffix static utility method containers with `Helper`.
@@ -1403,6 +1515,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is what keeps a static utility from being named `Service` and registered in DI.
+- passage: | `Helper` | Static utility methods | `DocumentHelper`, `FieldHelper`, `FormHelper` |
 
 ### C094
 - key: Suffix MediatR notifications with `Notification`.
@@ -1411,6 +1524,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; part of the same suffix table.
+- passage: | `Notification` | MediatR notifications | `DocumentProcessedNotification`, `FileSaveNotification` |
 
 ### C095
 - key: Use the `Repository` suffix only for older data-access objects.
@@ -1419,6 +1533,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding, and the legacy-only bound is the working part: it stops a session introducing a repository layer against the stored-procedure default.
+- passage: | `Repository` (Legacy only) | Older data-access objects | `DocumentBatchRepository` |
 
 ### C096
 - key: Prefix method names by verb: `Get*` to read or fetch, `Process*` to orchestrate a pipeline, `Create*` to build a new value, `Extract*` to pull data from a structure, `Build*` to construct a complex output, `Save*` or `Set*` to write or assign.
@@ -1427,6 +1542,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; the verb-to-role mapping is stated only here and is what makes method names predictable across files.
+- passage: Method verb prefixes: `Get*` reads or fetches, `Process*` orchestrates a pipeline, `Create*` builds a new value, `Extract*` pulls data from a structure, `Build*` constructs a complex output, and `Save*` or `Set*` writes or assigns.
 
 ### C097
 - key: Name interfaces with an `I` prefix matching the implementation, as `IDocumentService` to `DocumentService`.
@@ -1435,6 +1551,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the naming rule the SKILL's example only demonstrates.
+- passage: Interfaces take an `I` prefix matching the implementation: `IDocumentService` for `DocumentService`.
 
 ### C098
 - key: Keep MediatR notifications as simple data holders.
@@ -1443,6 +1560,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it keeps behavior out of notifications and in handlers.
+- passage: Notifications are simple data holders:
+- flag: weak-reason
 
 ### C099
 - key: Write a notification as a class implementing `INotification` with initialized auto-properties and a `CancellationToken` property, as `FileSaveNotification` shows.
@@ -1451,6 +1570,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: "Simple data holder" is obeyable only from the specimen: the initialized auto-properties, the `Caller` slot and the carried `CancellationToken` are what the phrase means here and the prose lists none of them.
+- passage: public class FileSaveNotification : INotification
 
 ### C100
 - key: Have handlers implement `INotificationHandler<T>`.
@@ -1459,6 +1579,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the MediatR contract this style uses.
+- passage: Handlers implement `INotificationHandler<T>`
+- flag: weak-reason
 
 ### C101
 - key: Put handlers in the `Handlers/` folder.
@@ -1467,6 +1589,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the folder placement is stated only here.
+- passage: live in `Handlers/`.
 
 ### C102
 - key: Publish by awaiting `_mediator.Publish(...)` with the notification built inline as an object initializer across multiple lines.
@@ -1475,6 +1598,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the multi-line publish shape is stated only here.
+- passage: Publish with the notification built inline
+- passage: await _mediator.Publish(
 
 ### C103
 - key: Set `Caller = nameof(...)` on a published notification so handlers know who fired it.
@@ -1483,6 +1608,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; a convention handlers depend on at runtime, and nothing enforces it.
+- passage: Set `Caller = nameof(...)` on it. Handlers read `Caller` to know who fired it:
 
 ### C104
 - key: Put models under `Models/` organized by purpose: `Models/Database/`, `Models/Documents/`, `Models/Email/`, and `Models/Settings/`.
@@ -1491,6 +1617,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
 - reason: No finding; the folder taxonomy pairs with C007, since these folders generate no namespaces.
+- passage: Models live under `Models/` by purpose: `Models/Database/` for DB-shaped data, `Models/Documents/` for domain documents and forms, `Models/Email/` for email shapes, and `Models/Settings/` for `IOptionsMonitor<T>` settings classes.
 
 ### C105
 - key: Write settings classes as plain DTOs with `{ get; set; }` auto-properties.
@@ -1499,6 +1626,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; settable auto-properties are what `IOptionsMonitor` binding needs.
+- passage: Settings classes are plain DTOs with `{ get; set; }` auto-properties
 
 ### C106
 - key: Do not use records for settings classes.
@@ -1507,6 +1635,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; records are the modern default a generator reaches for, and they break options binding here.
+- passage: never records.
+- flag: weak-reason
 
 ### C107
 - key: Use collection expressions for property init values where natural.
@@ -1515,6 +1645,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10 for the property-init line; 058e3a3 2026-07-24 added the general collection-expression rule to §6 and the checklist.
 - verdict: keep
 - reason: §14 states the preference at the one site the general body rule does not obviously reach, a property declaration rather than a method body.
+- passage: Property init values use collection expressions where natural:
 
 ### C108
 - key: Initialize properties as `= []`, `= string.Empty`, and `= new()` on their declarations.
@@ -1523,6 +1654,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The four specimen properties are the only place the three init forms are matched to their property types; "where natural" alone does not say which a string or a class property takes.
+- passage: public string FormCode { get; set; } = string.Empty;
 
 ### C109
 - key: Indent with four spaces, never tabs.
@@ -1531,6 +1663,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the format-on-edit hook runs CSharpier only when it is installed and does nothing otherwise, so the prose is the only guarantee.
+- passage: Indent four spaces, never tabs.
 
 ### C110
 - key: Put one blank line between methods within a region.
@@ -1539,6 +1672,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the only statement of method spacing.
+- passage: Put one blank line between methods in a region
 
 ### C111
 - key: Put one blank line between regions, after `#endregion` and before the next `#region`.
@@ -1547,6 +1681,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; region spacing is not something a formatter decides, since preprocessor directives are left where the author put them.
+- passage: and between regions.
 
 ### C112
 - key: Put one blank line between field groups, after the labeled comment's group finishes.
@@ -1594,6 +1729,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is what makes the §16 template the greenfield path the SKILL points at when no sibling exists.
+- passage: For a brand-new service in `Services/Build/` or `Services/Process/`, use this skeleton:
 
 ### C117
 - key: Build a new service as the `WidgetService` template shows: usings, file-scoped namespace, Variables, Constructor, a named processing region with validate/return-value/try/catch/return, and a Private Methods region.
@@ -1602,6 +1738,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: C116 says to use "this skeleton", so the template is the rule's object rather than an illustration of it.
+- passage: public class WidgetService : IWidgetService
 
 ### C118
 - key: Register the new service in `Assembly/RegisterServices.cs` under the appropriate label comment.
@@ -1610,6 +1747,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §16 is a procedure, and this is the step that keeps a new service from being written and never wired; §11 owns the registration form it points at.
+- passage: Register it in `Assembly/RegisterServices.cs` under the appropriate label, such as `// SERVICES.`:
 
 ### C119
 - key: Declare the new service's interface in `Interfaces/I<Name>Service.cs`.
@@ -1618,3 +1756,4 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 7964c7e 2026-06-28 trimmed it to its current form when the XML-doc ban was withdrawn; the line itself dates from f8c0649 2026-06-10.
 - verdict: keep
 - reason: Seven words closing the §16 procedure; C012 owns the placement rule and this is the step that applies it, so removing it would end the walkthrough with the service unusable.
+- passage: Declare its interface in `Interfaces/IWidgetService.cs`.

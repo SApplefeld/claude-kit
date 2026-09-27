@@ -715,7 +715,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 
 This document is a set of copy-ready skeletons for a project's `docs/` library: the index README, the active-plans README, the archive README, the living backlog, and the dated quarterly backlog snapshot. It owns the moment when a session seeds a new `docs/` library or retrofits an existing one, deciding what files exist, what headings and placeholder text each carries, where a plan or a backlog item lives at each point in its life, and how each is named. It also fixes the naming shapes (`<project>_<content-type>_v<n>.md`, `backlog-YYYY-QN.md`), the dated backlog item form, and the archive-on-close rule that the skeletons state to their own readers. A session loads it as a `plan-run` reference: it carries no frontmatter and no statement of when it loads, but its content is only usable at the specific act of creating or reorganizing the docs tree, which sits inside a plan run, so it is read immediately before that act rather than at session start.
 
-Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templates.md`).
+Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templates.md`). Redrafted on 2026-09-26 by section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `2bef94c9` with its fix round at `bac21117`, so every live entry's `passage:` line quotes the text at `bac21117`.
 
 ### C001
 - key: Build a new or retrofitted `docs/` library from the skeletons in this document.
@@ -724,6 +724,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, the commit that created the curating-docs skill and its templates so a project carries a seamless record of what is open, what was planned and what was done.
 - verdict: keep
 - reason: this is the file's only self-description, and the file carries no frontmatter and no load condition, so a session opening it needs the line to know the fences below are copy-ready output rather than rules to obey. The SKILL's retrofit step is the call site, not a duplicate.
+- passage: Seed a new or retrofitted `docs/` library from these skeletons.
 
 ### C002
 - key: Replace every `<project>` placeholder in the skeletons with the project's name.
@@ -732,6 +733,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, shipped with the skeletons it governs.
 - verdict: keep
 - reason: no finding. The placeholder is literal text in three skeletons and nothing else in the corpus says to substitute it.
+- passage: Replace `<project>` with the project name.
 
 ### C003
 - key: Write the seeded docs in the kit style: no em dashes, prose for the why, lists for catalogs.
@@ -744,6 +746,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - proposed: replace the style clause with a pointer at the house style, naming no individual traits.
 - proposed: one pointer sentence at the house style in place of the three enumerated traits.
 - baseline-test: yes
+- passage: Keep the kit's house style, which the doctrine's Style section owns.
 
 ### C004
 - key: Title the index file `docs/README.md` with the heading `# <project> Docs`.
@@ -752,6 +755,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding. Fixed skeleton text; the index's path and heading are what the taxonomy's root row refers to.
+- passage: # <project> Docs
 
 ### C005
 - key: Open the index with a line stating the directory is the working library and project history: solution documents, active plans, and archived finished work.
@@ -760,6 +764,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding. Body text of a generated file, addressed to a project's own contributors.
+- passage: This directory is the working library and project history for <project>: the documents about the solution, the active plans, and the archived record of finished work.
 
 ### C006
 - key: Give the index a `## Folder map` section.
@@ -768,6 +773,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Folder map
 
 ### C007
 - key: Keep stable solution documents in the `docs/` root, including architecture, design rationale, and any security model.
@@ -776,6 +782,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, the taxonomy's root zone shipped together with the skeleton that states it to a project.
 - verdict: keep
 - reason: the SKILL's taxonomy table is the rule and this fenced line is the artifact the rule produces, read by contributors who never load the kit. A pointer here would be a dangling reference in every seeded project.
+- passage: - **Root (`docs/`)** holds the stable documents about the solution and this index. Architecture, design rationale, and any security model live here.
 
 ### C008
 - key: Keep only open or in-progress plans in `plans/`, and move a plan to `archive/` the moment it is Complete or abandoned.
@@ -784,6 +791,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: shipped index text, not a second statement of the SKILL's rule; and the index, the plans README and the plans README's Rules list are three different generated files with three different readers. The line's three sentences carry three distinct things, so the proposed compressions each drop one.
+- passage: - **`plans/`** holds active plans only: specs that are open or in progress. A plan moves to `archive/` the moment it is Complete or abandoned.
 
 ### C009
 - key: Read `plans/README.md` for the active-plans folder's own rules.
@@ -792,6 +800,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding. This is the in-project pointer a seeded index is supposed to carry, and it points at a sibling in the same tree rather than at a kit skill.
+- passage: See `plans/README.md`.
 
 ### C010
 - key: Keep finished and abandoned plans with their Chapters, plus dated backlog snapshots, in `archive/`, and treat it as immutable history.
@@ -800,6 +809,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: as C008: shipped index text whose reader has no kit on the shelf. Its relation to C032 and C037 is one rule and, in two other generated files, the move that satisfies it and the act that violates it.
+- passage: - **`archive/`** holds finished and abandoned plans (Chapters intact) and dated backlog snapshots. It is immutable history.
 
 ### C011
 - key: Read `archive/README.md` for the archive folder's own rules.
@@ -808,6 +818,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding. In-project pointer, as C009.
+- passage: See `archive/README.md`.
 
 ### C012
 - key: Give the index a `## Living documents` section.
@@ -816,6 +827,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Living documents
 
 ### C013
 - key: Keep `backlog.md` as the single living handoff and next-steps doc carrying only active items, and prune completed items to a dated snapshot in `archive/`.
@@ -824,6 +836,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: shipped index text; it tells a contributor why the backlog is short, where the seeded `backlog.md` itself tells the person about to edit it what to do. Two files, two readers.
+- passage: - **`backlog.md`** is the single living handoff and next-steps doc. It carries only active items; completed items are pruned to a dated snapshot in `archive/`.
 
 ### C014
 - key: Give the index an `## Active plans` section.
@@ -832,6 +845,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Active plans
 
 ### C015
 - key: List each active plan in `plans/` under the index's Active plans section with a one-line description, and write "None at present." when there are none.
@@ -840,6 +854,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the SKILL owns when the list is refreshed and this owns what the seeded section looks like, including its empty form; delete it and a seeded index carries a heading with no instruction. The close path requires both this list and the plans README's to be refreshed, so the pair is duplication between two outputs by design.
+- passage: (List each active plan in `plans/` with a one-line description. "None at present." when empty.)
 
 ### C016
 - key: Give the index an `## Archive` section.
@@ -848,6 +863,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Archive
 
 ### C017
 - key: Fill the index's Archive section with a line directing the reader to `archive/` for completed plans and backlog snapshots.
@@ -856,6 +872,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: See `archive/` for completed plans and backlog snapshots.
 
 ### C018
 - key: Title `docs/plans/README.md` with the heading `# Active Plans`.
@@ -864,6 +881,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: # Active Plans
 
 ### C019
 - key: Hold only open or in-progress plan specs in the `plans/` folder.
@@ -872,6 +890,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the plans README states its own folder's rule to whoever opens that folder, which is not the same reader as the index's. Rule versus its output against the SKILL's taxonomy row.
+- passage: This folder holds active plans only: specs that are open or in progress.
 
 ### C020
 - key: Treat a plan as the single source of truth for one effort's intent and state, from which a fresh or post-compaction session resumes.
@@ -880,6 +899,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19; the failure it guards is recorded in the SKILL's own excuses table, which says archiving-later is "where this rule died before".
 - verdict: keep
 - reason: this is rationale the rule cannot be obeyed without: C019 is under-motivated on its own, and a contributor who does not know the plan is the resume surface treats `plans/` as scratch space and leaves finished plans in it. Keep it in the document rather than moving it here.
+- passage: A plan is the single source of truth for one effort's intent and state, and a fresh or post-compaction session resumes from it.
 
 ### C021
 - key: Give the plans README a `## Rules` section.
@@ -888,6 +908,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Rules
 
 ### C022
 - key: Keep a plan in `plans/` while it is being worked, and move it to `../archive/` in the same close-out that reaches `Status: Complete` or abandons it.
@@ -896,6 +917,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19; the same-close-out timing is the rule the SKILL's excuses table records as having died once already to "I will archive it later, or in a batch."
 - verdict: keep
 - reason: the seeded Rules list is what a session reads at the moment it is about to defer the move, which is exactly when the rule fails. Deleting it for a pointer removes the sentence from the only place the failure happens.
+- passage: - A plan lives here while it is being worked. When it reaches `Status: Complete` or is abandoned, it moves to `../archive/` in the same close-out that finished it
 
 ### C023
 - key: Perform the move to the archive with `git mv` so history is preserved.
@@ -904,6 +926,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the SKILL and the skeleton are deliberately unequal: the SKILL carries the non-git fallback and the re-add duty because it instructs the session, while the parenthetical here tells a project's reader only that history survives. The skeleton is already the reduced form.
+- passage: (via `git mv`, so history is preserved).
 
 ### C024
 - key: Name a plan file `<project>_<content-type>_v<n>.md`.
@@ -912,6 +935,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19; the ownership map assigns the plan doc's name to `curating-docs`, of which this file is a reference.
 - verdict: keep
 - reason: this is the canonical general form, `v<n>`, of which doctrine's `v1` is the instance, so the naming shape rests here by ownership. The name shape and the versioning rule beside it state different things and share one bullet by design.
+- passage: - Naming: `<project>_<content-type>_v<n>.md`.
 
 ### C025
 - key: Increment the version number for a new plan rather than overwriting a prior one.
@@ -920,6 +944,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the rule and its alternative are stated fully here where doctrine carries only a parenthetical; the pointer finding proposes doctrine give way, which is a change to doctrine and not to this line.
+- passage: Increment the version rather than overwriting a prior one.
 
 ### C026
 - key: Drive the plan lifecycle from the `Status` header: `Ready` plans surface as authored and parked with no resume push, `In Progress` plans surface for resume, and `Complete` plans still in `plans/` are flagged unarchived.
@@ -928,6 +953,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: 897d921 2026-08-29, the section that added `Ready` after two finished plans on another machine went invisible to every recovery surface because their authors wrote `Draft`, a value the kit does not define.
 - verdict: keep
 - reason: no program writes the Status value, so nothing supersedes this; the surfacing layers only read it. The apparent clash with the external-engine stand-down is producer versus consumer, not two instructions: that rule says who may write the header, this says what every reader does with whatever value is there.
+- passage: - The `Status` header drives the lifecycle. `Ready` plans are surfaced as authored and parked, with no resume push; `In Progress` plans are surfaced for resume; `Complete` plans still sitting here are flagged as unarchived.
 
 ### C027
 - key: Cross-reference a plan that relates to or supersedes another in a `## Related` section.
@@ -936,6 +962,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the SKILL carries the header mark and the archived-plan carve-out because it instructs the session at close-out; the seeded Rules list carries the cross-reference duty because that is what a plan author needs at authoring time.
+- passage: - When a plan relates to or supersedes another, cross-reference it in a `## Related` section.
 
 ### C028
 - key: Give the plans README a `## Current` section listing the active plans, or "None at present." when empty.
@@ -944,6 +971,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the index and the plans README both list active plans by design, and the SKILL's close path requires both to be refreshed, so this is duplication between two generated outputs rather than a rule stated twice.
+- passage: ## Current
+- passage: (List active plans, or "None at present.")
 
 ### C029
 - key: Title `docs/archive/README.md` with the heading `# Archive`.
@@ -952,6 +981,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: # Archive
 
 ### C030
 - key: State in the archive README that the folder is immutable history and nothing in it is live or pending.
@@ -960,6 +990,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding. Body text of a generated file whose reader is standing in the archive.
+- passage: This folder is immutable history. Nothing here is live or pending.
 
 ### C031
 - key: Give the archive README a `## Contents` section.
@@ -968,6 +999,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Contents
 
 ### C032
 - key: Move completed and abandoned plans into the archive from `../plans/` with their Chapters intact.
@@ -976,6 +1008,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: this is the archive README's `## Contents` line, and a contents section that points elsewhere for its contents is not a contents section. Rule versus its output against the taxonomy row.
+- passage: - **Completed and abandoned plans**, moved here from `../plans/` with their Chapters intact.
 
 ### C033
 - key: Name a backlog snapshot file `backlog-YYYY-QN.md`.
@@ -984,6 +1017,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: fa5df56 2026-08-09, the backlog-visibility section that added parked dates, the aging check and the quarterly snapshot cadence.
 - verdict: keep
 - reason: the archive README names the shape so a reader of `archive/` can tell a snapshot from a plan without consulting the kit; the SKILL keeps the path, the creation rule and the append discipline.
+- passage: - **Backlog snapshots** (`backlog-YYYY-QN.md`).
 
 ### C034
 - key: Move completed and retired backlog items into the quarter's snapshot rather than striking them through in place.
@@ -992,6 +1026,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: fa5df56 2026-08-09.
 - verdict: keep
 - reason: the archive README tells a reader of `archive/` how items arrive and `backlog.md` tells a reader of the backlog how they leave; neither reader holds the other file. The bar on striking through sits here because this is where the older habit is reached for.
+- passage: Completed and retired backlog items are moved into the quarter's snapshot rather than struck through in place.
 
 ### C035
 - key: Give the archive README a `## Rules` section.
@@ -1000,6 +1035,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: ## Rules
 
 ### C036
 - key: Do not edit an archived plan to reflect new work; write a new plan in `../plans/` cross-referenced to the archived one it builds on or supersedes.
@@ -1008,6 +1044,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, original to the document's archive-immutability discipline.
 - verdict: keep
 - reason: the apparent clash with the supersession-note rule is already carved out in `curating-docs` itself, whose close path says the pointers run one way when the other plan is archived. It is a real clash with `brainstorming` step 9, which states both directions with no carve-out; history and the ownership map put the archive rule on the right side, so brainstorming is the side that gives way, outside this unit.
+- passage: - Do not edit archived plans to reflect new work. A new effort gets a new plan in `../plans/`, cross-referenced to the archived one it builds on or supersedes.
+- flag: stale
 
 ### C037
 - key: Delete nothing from the archive.
@@ -1016,6 +1054,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the retrofit prohibition governs a pass over a whole tree and this governs the archive folder for all time, so neither states the other's scope and a retrofit can relocate a file this rule never sees. Both cold readers reached the same conclusion independently.
+- passage: - Nothing is deleted here.
 
 ### C038
 - key: Title `docs/backlog.md` with the heading `# Backlog`.
@@ -1024,6 +1063,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding, and the filename is read mechanically by the SessionStart backlog block, so the shape is machine-consumed as well as conventional.
+- passage: # Backlog
 
 ### C039
 - key: Carry only active items in the backlog, and move a done item out to a dated snapshot in `archive/` named `backlog-YYYY-QN.md` rather than striking it through in place.
@@ -1032,6 +1072,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, with the snapshot filename added by fa5df56 2026-08-09.
 - verdict: keep
 - reason: the seeded backlog is the file a contributor edits, so the rule about where done items go has to be in it. Both proposed compressions drop "handoff and next-steps", which is the scoping C040 then builds on, so neither is loss-free.
+- passage: The living handoff and next-steps doc. It carries active items only. When an item is done, it moves out to a dated snapshot in `archive/` (`backlog-YYYY-QN.md`) rather than being struck through in place.
 
 ### C040
 - key: Keep per-plan history out of the backlog and let a plan's Chapters travel with the plan into `archive/`; use the backlog only for cross-effort next-steps belonging to no single open plan.
@@ -1040,6 +1081,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19; the SKILL names conflating the two append disciplines as what produces the endless-append problem.
 - verdict: keep
 - reason: this states the split in the file where the conflation actually happens, rather than in the skill a person editing a project backlog is not reading. Its three sentences are the exclusion, where that history goes and when, and the positive scope; both compressions drop the "when it closes" timing.
+- passage: Per-plan history does not live here. A plan's Chapters travel with the plan into `archive/` when it closes. This file is for cross-effort next-steps that do not belong to any single open plan.
 
 ### C041
 - key: Write every active backlog item in the dated shape `- **<item> (YYYY-MM-DD).** <body>`.
@@ -1049,6 +1091,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - verdict: rewrite
 - landed: 5f8b9b7 section 49
 - reason: the rule is unchanged and stays; only the sentence boundaries around it move, when line 85's ninety-word sentence is split. The shape is machine-read by the SessionStart backlog block, and a cross-component pin test feeds this very template block to that hook, so any edit is run against `test/session-start-backlog.test.js` before it ships. Lands at line 85 (section 49's close) as the split's first sentence, word for word; test/session-start-backlog.test.js ran green in the section's lane before and after.
+- passage: Every active item carries the date it was parked: `- **<item> (YYYY-MM-DD).** <body>`.
 
 ### C042
 - key: When keeping an item at the aging check, write the fresh adjudication date first and preserve the original date beside it, as in `(2026-11-07, parked 2026-05-01)`.
@@ -1058,6 +1101,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - verdict: rewrite
 - landed: 5f8b9b7 section 49
 - reason: the rule survives verbatim and moves into its own sentence in the line-85 split. Keep the first-date-ages clause beside it: without that reason the order is arbitrary and a session writes the dates the other way round, which silently resets the item's age. Lands at line 85 (section 49's close) as the split's second sentence, its text from 'The surfacing layers' through the closing parenthesis word for word, the trailing ', and' become a period.
+- passage: The surfacing layers age an item from the first date on its line, so a keep decision at the aging check writes its fresh adjudication date first and preserves the original beside it (`(2026-11-07, parked 2026-05-01)`).
 
 ### C043
 - key: Backfill the date on an undated backlog item and adjudicate that item in the same prune pass.
@@ -1069,6 +1113,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - reason: the duty is unchanged and becomes the third sentence of the split. The change is safe because it moves no rule across a boundary and drops only the surfacing-layer account beside it, which C044 covers. Lands at line 85 (section 49's close) as three sentences on the one line: the item form, the first-date-ages rule with its keep-date order, and 'An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: split line 85 into three sentences, one for the item form, one for the first-date-ages rule with the keep-date order it motivates, and one for the undated backfill duty, keeping every rule intact.
 - baseline-test: yes
+- passage: An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.
 
 ### C044
 - key: Treat an undated backlog item as counted but ageless: the session-start block reports it only in the undated tally and the aging check cannot age it.
@@ -1080,6 +1125,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - reason: the half that says the surfacing ages an item from the first date on its line stays, because C042's ordering depends on it; the undated-tally half is an account of a hook's output that C043 is obeyable without, and its why now lives in this entry. Lands at line 85 as a substitution of the extracted clause rather than a plain deletion: the colon clause (': the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date') is dropped and replaced with ', so', and the state-naming phrase is substituted from 'counted but ageless' to 'past the threshold by definition', together producing 'An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: keep the first-date-ages clause beside the keep-date rule and drop the undated-tally clause, whose why now lives in this ledger.
 - baseline-test: yes
+- passage: The surfacing layers age an item from the first date on its line
 
 ### C045
 - key: Give the backlog an `## Active` section holding the active next-steps and handoffs, each in the dated item shape.
@@ -1088,6 +1134,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, with the dated shape added by c8e1059 2026-08-09.
 - verdict: keep
 - reason: no finding, and the section heading bounds what the SessionStart hook counts, so the shape is pinned by `test/session-start-backlog.test.js`.
+- passage: ## Active
+- passage: - (Active next-steps and handoffs. Each item takes the dated shape above.)
 
 ### C046
 - key: Give the backlog a `## Snapshots` section stating that completed and retired items are archived to `archive/backlog-YYYY-QN.md`.
@@ -1096,6 +1144,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: this is what tells a contributor reading a short backlog where the rest of its history went; the pointer it would be replaced by is not a document the project holds.
+- passage: ## Snapshots
+- passage: Completed and retired items are archived to `archive/backlog-YYYY-QN.md`.
 
 ### C047
 - key: Title a dated backlog snapshot with the heading `# Backlog Snapshot YYYY QN` and state that it holds the completed and retired cross-effort items moved out of `../backlog.md` during that quarter.
@@ -1104,6 +1154,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: # Backlog Snapshot YYYY QN
+- passage: Completed and retired cross-effort items moved out of `../backlog.md` during this quarter.
 
 ### C048
 - key: Treat a quarter's backlog snapshot as append-only within that quarter.
@@ -1112,6 +1164,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: fa5df56 2026-08-09, which set the quarterly snapshot cadence the append rule bounds.
 - verdict: keep
 - reason: the snapshot states its own discipline to whoever opens it next quarter, the reader least likely to have the kit in hand. Four words inside a generated file are not a pointer candidate.
+- passage: Append-only within the quarter.
 
 ### C049
 - key: Write each snapshot entry as one line in the shape `- YYYY-MM-DD: <item, one line, with the outcome>`.
@@ -1120,6 +1173,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
+- passage: - YYYY-MM-DD: <item, one line, with the outcome>
 
 ### C050
 - key: Treat the archive as the project's memory, which is why nothing in it is deleted.
@@ -1128,3 +1182,4 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, whose stated purpose is a seamless record of what is open, what was planned and what was done.
 - verdict: keep
 - reason: the rationale-retirement rule governs rationale propping up an instruction to the session; this is body text of a shipped artifact, the archive README's own six-word statement of what the folder is for. Retiring it changes what every seeded project says to its readers and saves six words.
+- passage: The archive is the project's memory.

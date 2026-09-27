@@ -4,7 +4,7 @@ Seed a new or retrofitted `docs/` library from these skeletons. Replace `<projec
 
 ---
 
-## `docs/README.md` (the index)
+## `docs/README.md`: Index
 
 ```markdown
 # <project> Docs
@@ -95,7 +95,7 @@ Completed and retired items are archived to `archive/backlog-YYYY-QN.md`.
 
 ---
 
-## Dated backlog snapshot (`docs/archive/backlog-YYYY-QN.md`)
+## Backlog Snapshot: `docs/archive/backlog-YYYY-QN.md`
 
 ```markdown
 # Backlog Snapshot YYYY QN
