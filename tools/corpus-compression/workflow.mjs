@@ -1,7 +1,7 @@
 export const meta = {
   name: 'corpus-compression',
   description: 'Paced drafting and review waves for the corpus-compression plan, three documents and five agents open at most',
-  whenToUse: 'Every drafting or review dispatch in docs/plans/claude-kit_corpus-compression_spec_v1.md',
+  whenToUse: 'Every drafting or review dispatch in docs/archive/claude-kit_corpus-compression_spec_v1.md',
   phases: [
     { title: 'Draft', detail: 'one read-only drafter per wave' },
     { title: 'Review', detail: 'the round\'s reviewers, pooled under MAX_OPEN' },
