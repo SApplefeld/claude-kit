@@ -92,7 +92,7 @@
   "test/doctrine-refresh.test.js": 352,
   "test/embedder-install.test.js": 733,
   "test/git-guard-parity.test.js": 796,
-  "test/heading-shape.test.js": 213,
+  "test/heading-shape.test.js": 214,
   "test/hook-canary.test.js": 1799,
   "test/hook-dispatch.test.js": 978,
   "test/jev-battery.test.js": 295,

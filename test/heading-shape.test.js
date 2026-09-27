@@ -84,7 +84,8 @@ function isMachineContract(body) {
 // A word is a whitespace-separated token once an inline code span collapses to
 // one, since a span reads as a single word to a reader scanning the heading. A
 // bare number and a word carrying a colon are already their own token under a
-// plain split, so the corpus-compression plan's 2026-09-26 Assumption naming them is a clarification of this
+// plain split, so the corpus-compression plan's heading-bound Assumption
+// naming them is a clarification of this
 // count rather than a second rule it applies.
 function wordCount(body) {
     const collapsed = body.replace(/`[^`]*`/g, 'X');

@@ -1625,10 +1625,10 @@ function report(repoDir, budgetFile, containRoot) {
         const pending = pendingEntries(budget, collected.measured, untracked);
         const pendingMeasured = pendingMeasuredFrom(repoDir, pending);
         const measuredByPath = measuredByPathWithPending(collected.measured, pendingMeasured);
-        // The cap is repository-supplied, so it prints only as the finite number
-        // check() holds the sum to, through the same screen as every other cap.
+        // The cap is repository-supplied, so it prints only where it is the finite
+        // number check() holds the sum to; any other value prints as that fact.
         const cap = budget[CORPUS_CAP_KEY];
-        const capText = typeof cap === 'number' && Number.isFinite(cap) ? safePath(String(cap)) : 'not a finite number';
+        const capText = typeof cap === 'number' && Number.isFinite(cap) ? String(cap) : 'not a finite number';
         lines.push('corpus: ' + corpusSum(budget, measuredByPath) + ' words of cap ' + capText);
     }
     return {
