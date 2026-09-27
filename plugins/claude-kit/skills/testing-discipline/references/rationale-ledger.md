@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the kit-wide authority on a test suite's two costs, the authoring decision that sets what the suite can see and the gate decision that sets what it costs to consult. It owns these moments: deciding whether a change earns a test and what shape that test takes; deciding whether a test already in the tree still earns its keep or retires; pinning a hazard that a shared setup hides; pricing a test's runtime shape at authoring; choosing which lane runs at a fix round, a section close, a push, a merge, finishing, and a handoff; discriminating a red from a flake; and recording, pinning, and comparing wall-clock and contention figures, including the pre-suite check of the box. It states no runnable commands, since a repo's lane invocations are per-repo facts held in that project's memory tier. Load class: named-trigger, per its own frontmatter description, which lists the acts and events that call it (writing a test, auditing a suite, choosing a lane after a fix, reading a red or a wall-clock figure).
 
-Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 (`W` entries below). Amended on 2026-09-22 by `docs/plans/claude-kit_heavy-process-claim-retirement_spec_v1.md` section 1 (`X` entry below). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `5cce82fa` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags.
+Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 (`W` entries below). Amended on 2026-09-22 by `docs/plans/claude-kit_heavy-process-claim-retirement_spec_v1.md` section 1 (`X` entry below). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `5cce82fa` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags. Amended on 2026-09-26 by section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, which relocated the doctrine's hook-merge rebuild sentence here (`A` entry below).
 
 ### C001
 - key: Read a repo's actual lane and suite commands from that project's memory tier wherever this skill names a lane.
@@ -585,7 +585,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - reason: No hook performs the fallback, so it is not superseded, but the doctrine owns the isolation screen and states the fallback twice; a pointer keeps the rung from stranding a worktree-isolated reader. Lands at line 74 as "Where an isolation screen refuses the marker compound, the doctrine's background-task bullet owns the fallback." The bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 180 states the fallback. Amendment 2 note: "states the fallback twice" describes the doctrine before section 1 (`a2ca9e5`); at HEAD the doctrine states the fallback once, at that bullet, with its gate bullet (line 100) and its route-around bullet (line 176) pointing there.
 - proposed: (via A075) Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
 - baseline-test: yes
-- passage: Where an isolation screen refuses the marker compound, the doctrine's background-task bullet owns the fallback.
+- passage: Where the environment refuses the marker compound, read the run's own summary output after the notification instead.
 - flag: stale
 
 ### C059
@@ -852,3 +852,13 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - landed: 658a62e7 section 1
 - reason: With the claim gone, a suite starts on a clean poll, and an overlap red is the one evidence that the retirement was wrong for some suite. The note goes to the kaizen inbox rather than project memory so the count taken on or after 2026-10-05 finds it wherever the suite lives; the second sentence says so because the kaizen bar otherwise routes a project-specific gotcha to memory.
 - passage: A red seen with another suite, build or embedding pass on the box that passes on a solo re-run is contention evidence. It goes to the kaizen inbox as a note stating which suite cannot share the box with what, whatever repository the suite belongs to.
+
+### A001
+- key: Rebuild before gating when a merge's diff touches the sources a local build artifact is stamped from, the kit repository's `plugins/claude-kit/hooks/` among them.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md:72
+- provenance: `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12, 2026-09-26: the doctrine's hook-merge sentence (the operating-instructions ledger's c1.C146), relocated on the operator's ruling of that day (batch row 16) and generalized so it holds in any repository with a stamped build artifact. The mechanism is the project memory merging-hook-edits-staleness-the-build-stamp.
+- verdict: keep
+- reason: Git merges lines while the stamp hashes bytes, so a stamp built before a merge no longer matches the merged sources, and the merge raises no conflict to say so; a gate run on the stale build reads the old artifact. The rule sits at the merge gate it binds, beside the sentence that makes a merge take the whole gate, and the probe `lane-choice-after-a-merge-touching-hooks` reads it from the doctrine-plus-testing-discipline shape.
+- passage: A merge whose diff touches the sources a local build artifact is stamped from rebuilds before it gates. The merge leaves the stamp stale with no conflict to flag it. In the kit repository those sources are the files under `plugins/claude-kit/hooks/`, rebuilt with `build.ps1` or `build.sh`.
+- ruled: move 2026-09-26

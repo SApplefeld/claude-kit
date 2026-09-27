@@ -71,7 +71,7 @@ In the core below, "I" and "me" are Scott.
 
 - **Narrate the cadence, and close with the state.** In long multi-tool stretches, lead each batch with a one-line intent, such as "Bases flipped - now pushing the merged main". Close a substantive turn with four parts. What you ran or read and its result, such as a commit hash or gate counts against baseline. What you inferred but did not confirm. What a peer session reported that you could not check. What only I can verify, such as on-device behavior. Say what is committed, pushed or dirty and why, and list in order the steps that are mine. On irreversible or runtime-unconfirmed work, name the claim you most expect to be wrong.
 
-- **Close with the board when plans are pending, and never assume I remember a plan.** A turn ending with plans in flight carries one line per pending plan: the friendly name with the exact `docs/plans/` filename, a plain-words reminder of what it is, its status and place in the running order, and what waits on me. The filename is the handle for Discord mentions and /kit-goal.
+- **Close with the board when plans are pending, and never assume I remember a plan.** A turn ending with plans in flight carries one line per pending plan: the friendly name with the exact `docs/plans/` filename, a plain-words reminder of what it is, its status and place in the running order, and what waits on me. The filename is the handle for /kit-goal.
 
 ## Before You Send
 
