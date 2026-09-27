@@ -84,7 +84,7 @@ function isMachineContract(body) {
 // A word is a whitespace-separated token once an inline code span collapses to
 // one, since a span reads as a single word to a reader scanning the heading. A
 // bare number and a word carrying a colon are already their own token under a
-// plain split, so the Assumption's naming them is a clarification of this
+// plain split, so the corpus-compression plan's 2026-09-26 Assumption naming them is a clarification of this
 // count rather than a second rule it applies.
 function wordCount(body) {
     const collapsed = body.replace(/`[^`]*`/g, 'X');
@@ -178,7 +178,7 @@ test('over the corpus every heading meets the pin, rewritten or exempted by name
     // clears its own exemption rather than leaving a silent hole.
     const EXEMPT = [
         ['plugins/claude-kit/agents/scope-adjudicator.md', "The relevance shape's buckets",
-            "pinned byte for byte as RELEVANCE_HEADING in test/review-loop-provenance.test.js:894"]
+            "pinned byte for byte as RELEVANCE_HEADING in test/review-loop-provenance.test.js"]
     ];
     const exemptHits = new Map(EXEMPT.map(([f, body]) => [f + '|' + body, 0]));
     const failures = [];

@@ -601,7 +601,7 @@ test('corpusSum excludes a rationale ledger and everything under test/, and corp
     assert.strictEqual(over.path, 'corpus-cap');
     assert.strictEqual(over.size, 10);
     assert.strictEqual(over.cap, 9);
-    assert.match(over.detail, /^10 words against a cap of 9, 1 over$/);
+    assert.match(over.detail, /^10 words against a cap of 9, 1 over; a raise is an operator ruling, per the corpus cap item in docs\/backlog\.md$/);
     assert.strictEqual(kit.corpusCapFailure({ 'corpus-cap': 'lots' }, new Map()).reason, kit.REASONS.INVALID_CAP);
     assert.strictEqual(kit.corpusCapFailure({}, measuredByPath), null, 'a budget with no corpus-cap key has no corpus failure at all');
 });
@@ -3494,7 +3494,7 @@ test('over a real repository the corpus cap greens at its sum, reds once a corpu
 
         const over = runScript(['check', '--repo', dir]);
         assert.strictEqual(over.status, 1, over.stdout + over.stderr);
-        assert.match(over.stdout, /^corpus-over-cap: corpus-cap: 18 words against a cap of 16, 2 over$/m, over.stdout);
+        assert.match(over.stdout, /^corpus-over-cap: corpus-cap: 18 words against a cap of 16, 2 over; a raise is an operator ruling, per the corpus cap item in docs\/backlog\.md$/m, over.stdout);
         assert.doesNotMatch(over.stdout, /stale-entry: corpus-cap/, 'the corpus cap key is a cap, never a stale entry: ' + over.stdout);
         assert.doesNotMatch(over.stdout, /^over-cap: home\/claude-kit-doctrine\.md/m, 'test setup: the file\'s own cap was raised ahead of the grow');
 
@@ -3612,6 +3612,26 @@ test('report\'s corpus line and check\'s corpus-cap failure agree over a pending
         assert.strictEqual(corpusFailures.length, 1, 'the pending file pushed the corpus over its cap');
         assert.strictEqual(corpusFailures[0].size, 20,
             'check\'s own corpus-cap failure reads the same pending file\'s words report\'s corpus line does');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// The corpus cap is a repository-supplied value, and report's output is what a
+// Chapter's Delta field quotes, so a cap that is no finite number never reaches
+// it as written: a string carrying a line break and a heading would otherwise
+// forge a line of its own in the quoted block.
+test('report prints a corpus cap that is no finite number as that fact, never as its text', () => {
+    const dir = makeFixtureRepo();
+    try {
+        assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
+        const budgetPath = path.join(dir, 'test', 'size-budget.json');
+        const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+        budget['corpus-cap'] = 'x\n## forged';
+        fs.writeFileSync(budgetPath, kit.serializeBudget(budget), 'utf8');
+        const reported = runScript(['report', '--repo', dir]);
+        assert.doesNotMatch(reported.stdout, /^## forged/m, reported.stdout);
+        assert.match(reported.stdout, /^corpus: \d+ words of cap not a finite number$/m, reported.stdout);
     } finally {
         rmDir(dir);
     }

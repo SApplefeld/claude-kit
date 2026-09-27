@@ -407,7 +407,7 @@ function corpusCapFailure(budget, measuredByPath) {
         reason: REASONS.CORPUS_OVER_CAP,
         size: sum,
         cap,
-        detail: sum + ' words against a cap of ' + cap + ', ' + (sum - cap) + ' over'
+        detail: sum + ' words against a cap of ' + cap + ', ' + (sum - cap) + ' over; a raise is an operator ruling, per the corpus cap item in docs/backlog.md'
     };
 }
 
@@ -1625,7 +1625,11 @@ function report(repoDir, budgetFile, containRoot) {
         const pending = pendingEntries(budget, collected.measured, untracked);
         const pendingMeasured = pendingMeasuredFrom(repoDir, pending);
         const measuredByPath = measuredByPathWithPending(collected.measured, pendingMeasured);
-        lines.push('corpus: ' + corpusSum(budget, measuredByPath) + ' words of cap ' + budget[CORPUS_CAP_KEY]);
+        // The cap is repository-supplied, so it prints only as the finite number
+        // check() holds the sum to, through the same screen as every other cap.
+        const cap = budget[CORPUS_CAP_KEY];
+        const capText = typeof cap === 'number' && Number.isFinite(cap) ? safePath(String(cap)) : 'not a finite number';
+        lines.push('corpus: ' + corpusSum(budget, measuredByPath) + ' words of cap ' + capText);
     }
     return {
         status: 'ok',
@@ -2050,7 +2054,7 @@ function sameBudget(a, b) {
 }
 
 const USAGE = [
-    'usage: node kit-size.js <check|report|init|sync> [--repo <dir>] [--budget <file>] [<path>...]',
+    'usage: node kit-size.js <check|report|init|sync> [--repo <dir>] [--budget <file>] [<path>|corpus-cap ...]',
     '  check   every classified file against its cap, plus the coverage control (exit 1 on any failure)',
     '  report  one line per file whose size moved since HEAD, plus every untracked file under a measured root and every tracked path the pathspec listing missed, then totals',
     '  init    write the budget from current sizes, refusing an existing one',

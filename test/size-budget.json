@@ -197,6 +197,6 @@
   "test/session-start-plans.test.js": 491,
   "test/session-start-plugin-view.test.js": 594,
   "test/session-start-shared-checkout.test.js": 307,
-  "test/size-ratchet.test.js": 3618,
+  "test/size-ratchet.test.js": 3638,
   "test/stop-docs-hygiene.test.js": 275
 }
