@@ -862,24 +862,27 @@ test('the box-check bullet states the class in each copy and in the skill', () =
     // per file, so the neighbour leg accepts both rather than forcing one
     // carrier onto the other's house spelling. The last leg is what each
     // carrier does with a clean reading: it starts on it, and it takes the
-    // reading as no proof the box is empty.
-    for (const [label, pattern] of [
+    // reading as no proof the box is empty. The fan-out leg binds the skill
+    // alone: it is a fact about the harness's architecture, which the
+    // doctrine leaves to the skill and the operator's memory, and the
+    // doctrine's limit stands on the neighbour leg.
+    for (const [label, pattern, inDoctrine] of [
         ['the poll is a sample rather than a clearance',
-            /poll is a sample[^.]*(rather than|never|not) a clearance/],
+            /poll is a sample[^.]*(rather than|never|not) a clearance/, true],
         ['a poll cannot see in-process agent fan-out',
-            /cannot see in-process agent fan-out/],
+            /cannot see in-process agent fan-out/, false],
         ['a poll cannot see a neighbour that starts after the sample',
-            /cannot see a neighbou?r that starts after the sample and before/],
+            /cannot see a neighbou?r that starts after the sample and before/, true],
         ['a clean reading is a basis for starting and never proof the box is empty',
-            /is a basis for starting and never proof the box is empty/],
+            /is a basis for starting and never proof the box is empty/, true],
     ]) {
-        assert.match(inSkill[0], pattern,
+        if (inDoctrine) assert.match(inSkill[0], pattern,
             'the doctrine box-check bullet no longer states that ' + label
             + ', so a session that loads only the doctrine performs exactly '
             + 'the check the skill calls insufficient');
         assert.match(inTesting[0], pattern,
             'the testing-discipline skill\'s box check no longer states that '
-            + label + ', while the doctrine\'s copy of the same rule does');
+            + label + ', the limit the skill\'s box check owns');
     }
 });
 
