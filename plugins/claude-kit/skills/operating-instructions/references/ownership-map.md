@@ -108,7 +108,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | The voice layer: which reference a `Voice:` value names, a voice reference's admission, adding one for a new name | `prose-register` (Voice Layer, and `references/voice-scott.md` for the operator's voice) | doctrine (the register bullet) |
 | The machine-prose tells catalog: patterns avoided and hunted by name in any voice, each with its legitimate-form licence | `prose-register` (`references/ai-tells.md`) | `prose-reviewer` charter, `docs/architecture.md` |
 | Pushback with no new fact, a bare "are you sure?": the one re-check before the read is restated or downgraded | doctrine (Disagree up front) | none |
-| Shell encoding, background-run markers, readiness waits, the harness's isolation screen | doctrine (Environment and Tooling Discipline) | the active shell's tool description (the specifics) |
+| Background-run markers and readiness waits | doctrine (Environment and Tooling Discipline) | `testing-discipline` (the reading where the marker compound is refused) |
 
 ## Unowned or contested
 

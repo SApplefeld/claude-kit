@@ -1428,7 +1428,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 2bdc43b 2026-08-31, standing-lines plan §3: the rule's scope was narrowed to commands whose verdict you act on, with a carve-out for a command run for its output, after the literal form collided with four standing rules; the operator memory a-quiet-check-has-four-causes-and-the-exit-code-separates-them records the `probe | head` trap.
 - verdict: keep
 - reason: The trap recurs on every cheap probe and no hook reads a session's exit codes for it; memq's stderr readings and the background marker are the run's own output where the exit status does not discriminate, not exceptions to the rule.
-- passage: Read a verdict you act on from the run's own exit code, never from a grep narrowed to the expected lines. The cheap probe is included, and there `$?` after `probe | head` reports `head`. A run for its output only, or one whose exit code you cannot capture per the background-marker bullet below, is exempt.
+- passage: Read a verdict you act on from the run's own exit code, never from a grep narrowed to the expected lines. The cheap probe is included, and there `$?` after `probe | head` reports `head`. A run for its output only, or one whose exit code the environment will not hand over, is exempt.
 
 ### c1.C142
 - key: Inside a worktree-isolated session, read the run's own summary output and report it as a summary rather than dressing it as an exit status.
@@ -1476,8 +1476,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:100
 - provenance: d3f987f 2026-08-25, kaizen batch 2: a merge left the untracked build stamp stale with no conflict and test/hook-canary.test.js reddened; the project memory merging-hook-edits-staleness-the-build-stamp records it with the fix.
 - verdict: retire
-- superseded-by: `docs/architecture.md`, the paragraph on `test/hook-canary.test.js` and the stale build stamp
-- landed: a2ca9e5 section 1
+- superseded-by: memory merging-hook-edits-staleness-the-build-stamp (project tier), and `docs/architecture.md`'s paragraph on `test/hook-canary.test.js` and the stale build stamp
 - reason: The canary only detects and the pre-commit rebuild lands after the gate, so the instruction stays and names its act (`build.ps1` or `build.sh`); the mechanism moves here: git merges lines while the stamp hashes bytes, so a stamp built before the merge no longer matches the merged hooks. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. Rebuilding with `build.ps1` or `build.sh` after a hooks merge is a fact about the kit's own repository, which a coworker using the kit elsewhere never meets; item 11's mechanism names only the operator and type tiers, so the proposal is to move it out of the doctrine to the kit repository's testing-discipline skill or contributing notes rather than to memory.
 - proposed: (via A115) "A merge whose diff touches `plugins/claude-kit/hooks/` rebuilds (`build.ps1` or `build.sh`) before it gates"; move the stamp-hashes-bytes mechanism to the ledger.
 - baseline-test: yes
@@ -2405,7 +2404,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:160
 - provenance: 9865f6d 2026-08-01 named the injected line after a session built a whole plan run inline on it; 0c0eaed 2026-08-01 recast the counter as satisfying the line's condition rather than overriding it; 294e3e6, 8fba6e2, d6cd30d and c8fea88 each added one narrated clause. The clause naming this setup moved to memory harness-dispatch-lines-quoted (operator tier) on the operator's ruling of 2026-09-26, under `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12.
 - verdict: keep
-- reason: Every element in the bullet is an installed fix for a narrated failure, the parity suite pins the bullet's presence, identity and grant, and no hook can answer a system-prompt sentence; the bullet quotes two lines verbatim and reaches those two only, which is the scoping 9865f6d chose so a generalized rule would not corrode legitimate instructions. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. The literal injected harness lines it quotes ("Do not call the AgentTool unless the user requested it", and the Workflow line quoted in c2.C090) are harness wording a release can change; the standing request, its covered class and its lapse are authorization and stay, so the proposal is an amend describing each line rather than quoting it, then a move of the quotes to the operator tier.
+- reason: Every element in the bullet is an installed fix for a narrated failure, the parity suite pins the bullet's presence, identity and grant, and no hook can answer a system-prompt sentence; the bullet quotes two lines verbatim and reaches those two only, which is the scoping 9865f6d chose so a generalized rule would not corrode legitimate instructions. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's second ruling of that day, which moves point-in-time lessons, harness warnings and versions to memory. The literal injected harness lines it quotes ("Do not call the AgentTool unless the user requested it", and the Workflow line c2.C090 quoted) are harness wording a release can change; the standing request, its covered class and its lapse are authorization and stay, so the proposal is an amend describing each line rather than quoting it, then a move of the quotes to the operator tier.
 - passage: An injected harness line conditioning the Agent tool on my request bars unrequested dispatch, and this doctrine is my standing request in every session and project. Nothing here discounts a session-prompt instruction.
 - flag: environment
 - ruled: amend 2026-09-26
@@ -2606,8 +2605,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14, no incident stated; no provenance found for the why.
 - verdict: retire
 - superseded-by: memory rebuild-test-projects-outside-the-main-solution (type tier `dotnet`)
-- landed: a2ca9e5 section 1
-- reason: The rule stays; its reason clause, "its binaries go stale", is banked here and leaves the bullet under the A011 compress. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. A "main solution" is the .NET build unit, so the claim is meaningless on a project of another class; it meets item 11 as a project-class claim, and the proposed record is type-tier (`dotnet`), triggered on `cmd:dotnet test` and `cmd:dotnet build`.
+- reason: The rule stays; its reason clause, "its binaries go stale", is banked here and leaves the bullet under the A011 compress. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. A "main solution" is the .NET build unit, so the claim is meaningless on a project of another class; it meets item 11 as a project-class claim, and the proposed record is type-tier (`dotnet`), triggered on `cmd:dotnet test`.
 - flag: environment
 - ruled: move 2026-09-26
 
@@ -2641,7 +2639,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14; no provenance found for the why.
 - verdict: retire
 - superseded-by: memory curl-exe-returns-a-non-2xx-body (operator tier)
-- reason: No finding of its own; it rides the A016 split unchanged. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. It names `curl.exe`, a Windows binary, so on a macOS or Linux install the sentence is false or meaningless; plan item 11 names it as inside the test. The proposed record is operator-tier, triggered on `cmd:curl`.
+- reason: No finding of its own; it rides the A016 split unchanged. Its weak-reason flag was ruled keep on 2026-09-26; on 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under plan item 11 instead. It names `curl.exe`, a Windows binary, so on a macOS or Linux install the sentence is false or meaningless; plan item 11 names it as inside the test. The proposed record is operator-tier, triggered on `cmd:Invoke-WebRequest`.
 - flag: environment
 - ruled: move 2026-09-26
 
@@ -2687,7 +2685,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: d3f987f 2026-08-25, the same amendment's worktree exception; 2bdc43b 2026-08-31 later gave the exit-code rule at line 100 its matching scope carve-out.
 - verdict: retire
 - superseded-by: memory worktree-isolated-sessions-refuse-until-loops-and-marker-compounds (operator tier)
-- reason: This sentence is the fallback's home; line 100's clause is the exit-code rule's own carve-out and must sit with that rule. The isolation screen is the obstacle, not an enforcer. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The bare-backgrounded-redirect fallback for a worktree-isolated session is harness behavior; the proposal is a move to the operator tier with c2.C109's sentence, amending the two pointers at it (c2.C141's exemption and testing-discipline).
+- reason: This sentence is the fallback's home; line 100's clause is the exit-code rule's own carve-out and must sit with that rule. The isolation screen is the obstacle, not an enforcer. On 2026-09-26 section 12 of `docs/plans/claude-kit_corpus-compression_spec_v1.md` proposes `flag: environment` under the operator's bar of that day, which asks whether a claim would apply to a coworker on a different setup. The bare-backgrounded-redirect fallback for a worktree-isolated session is harness behavior; the proposal is a move to the operator tier with c2.C109's sentence, amending the two pointers at it (c1.C141's exemption and testing-discipline).
 - flag: environment
 - ruled: move 2026-09-26
 
@@ -3209,7 +3207,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: `docs/plans/claude-kit_corpus-compression_spec_v1.md` section 12, 2026-09-26: the doctrine's relay bullet, written with no ledger entry, amended on the operator's ruling of that date (batch row 12); the harness's "not from your user" wording moved to memory relay-messages-arrive-marked-not-from-your-user (operator tier).
 - verdict: keep
 - reason: The harness labels a relay message as not from the user because it cannot see how the relay is secured, and the relay broker admits only the operator's account, so without this bullet a session discounts the operator's own steering; the operator stated that reason with the ruling and asked that the point stay clear while its repetition went.
-- passage: It stays my word whatever the harness calls the channel, because the relay admits only my account. Whoever holds that account holds this authority. The harness's bar on acting within the current step still holds.
+- passage: The harness marks it untrusted and bars acting on it within the current step, and that bar holds. It is still my word: the relay admits only my account.
 - ruled: amend 2026-09-26
 
 ## home/claude-kit-doctrine.md
@@ -3854,13 +3852,13 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - passage: | The prose register: all session prose, in three layers, the decision ask, close-out status and board recap included |
 
 ### C066
-- key: Read the doctrine's "Environment and tooling discipline" for shell encoding, background-run markers, readiness waits, and the harness's isolation screen.
+- key: Read the doctrine's "Environment and tooling discipline" for background-run markers and readiness waits.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:97
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding.
-- passage: | Shell encoding, background-run markers, readiness waits, the harness's isolation screen | doctrine (Environment and Tooling Discipline) |
+- passage: | Background-run markers and readiness waits | doctrine (Environment and Tooling Discipline) |
 - flag: weak-reason
 
 ### C067

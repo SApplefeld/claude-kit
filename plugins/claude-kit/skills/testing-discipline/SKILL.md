@@ -84,7 +84,7 @@ When a repo first defines its lanes, record their commands in that project's mem
 
 A red is discriminated by protocol, not by re-running the world:
 
-1. **Capture the exit code and the discriminating output from the run itself**: a foreground run's own exit status, or a backgrounded run's marker and the error text in its own log. Where an isolation screen refuses the marker compound, the doctrine's background-task bullet owns the fallback.
+1. **Capture the exit code and the discriminating output from the run itself**: a foreground run's own exit status, or a backgrounded run's marker and the error text in its own log. Where the environment refuses the marker compound, read the run's own summary output after the notification instead.
 2. **Solo, then class, then a full re-run with no code change, then a clean tree.** Solo separates the test from its neighbors. The class run separates the fixture from the box. The unchanged full re-run separates the code from the machine. The same red on a clean tree, or in the baseline you recorded, separates a red that was there before you from one you caused.
 3. **Name it flake or regression, with the reason, before moving on.** The reason cites the discriminating output from step 1, never the timing or the feel of the failure.
 

@@ -585,7 +585,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - reason: No hook performs the fallback, so it is not superseded, but the doctrine owns the isolation screen and states the fallback twice; a pointer keeps the rung from stranding a worktree-isolated reader. Lands at line 74 as "Where an isolation screen refuses the marker compound, the doctrine's background-task bullet owns the fallback." The bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 180 states the fallback. Amendment 2 note: "states the fallback twice" describes the doctrine before section 1 (`a2ca9e5`); at HEAD the doctrine states the fallback once, at that bullet, with its gate bullet (line 100) and its route-around bullet (line 176) pointing there.
 - proposed: (via A075) Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
 - baseline-test: yes
-- passage: Where an isolation screen refuses the marker compound, the doctrine's background-task bullet owns the fallback.
+- passage: Where the environment refuses the marker compound, read the run's own summary output after the notification instead.
 - flag: stale
 
 ### C059
