@@ -10,6 +10,11 @@
 // list or a count here, so a document a later section adds to a measured root
 // joins the sweep the moment its cap does, and the pin never drifts from the 49
 // (or 50, or however many) documents the ratchet itself measures.
+//
+// Bound, declared: the fence reader matches a fence indented 0 to 3 spaces, so
+// a fence nested one level deeper inside a list item is not recognized as one
+// and a heading-shaped line inside it is read as a heading; no corpus document
+// holds one today.
 
 'use strict';
 
@@ -65,9 +70,13 @@ function headingsOutsideFences(text) {
     return headings;
 }
 
-// The plan template's frozen heading shapes, exempt at whatever level and
-// wherever they land, per the curating-docs contract table item 8 points at:
-// a numbered section (`3. <Title>`) and a Chapter heading (`Chapter 12 - ...`).
+// The plan template's frozen heading shapes: a numbered section (`3. <Title>`)
+// and a Chapter heading (`Chapter 12 - ...`), per the curating-docs contract
+// table item 8 points at. Both are level-3 headings in the template
+// (`### 3. <Title>`, `### Chapter N`), so this shape test is paired with a
+// level check at its call site rather than exempting the shape at any level:
+// an ordinary `##` prose heading that merely happens to open with a number is
+// not the template's heading and takes the mechanical rule like any other.
 function isMachineContract(body) {
     return /^\d+\.\s+\S/.test(body) || /^Chapter\s+\d+\b/.test(body);
 }
@@ -85,10 +94,12 @@ function wordCount(body) {
 const ARTICLE = /^(a|an|the)\b/i;
 
 // Every reason a heading fails the pin, empty where it passes. A machine-
-// contract heading passes whatever its shape, checked first so none of the
-// three mechanical rules ever reaches one. Case is not among them, per item 10.
-function headingReasons(body) {
-    if (isMachineContract(body)) return [];
+// contract heading passes whatever its shape, but only at level 3, the level
+// the plan template's own frozen headings take; the same shape at any other
+// level is an ordinary prose heading and takes the three mechanical rules
+// below. Case is not among them, per item 10.
+function headingReasons(body, level) {
+    if (level === 3 && isMachineContract(body)) return [];
     const reasons = [];
     if (/\.$/.test(body)) reasons.push('period');
     if (wordCount(body) > 5) reasons.push('words');
@@ -116,11 +127,17 @@ test('the pin checks no case: an upper-case and a lower-case heading of the same
     assert.deepStrictEqual(headingReasons('all caps heading ends.'), ['period']);
 });
 
-test('a machine-contract heading passes whatever its shape, and a heading inside a fenced block is not read at all', () => {
+test('a machine-contract heading passes whatever its shape at level 3, and a same-shape level-2 heading still fails', () => {
     // A numbered plan section and a Chapter heading, each shaped so every
-    // mechanical rule but the exemption would fail it.
-    assert.deepStrictEqual(headingReasons('3. The dispatch script, its pin and the read-only drafter charter, all one section'), []);
-    assert.deepStrictEqual(headingReasons('Chapter 12 - 2026-09-26, closed with every gate green and the operator still reading'), []);
+    // mechanical rule but the exemption would fail it, at the level-3 the plan
+    // template's own headings take.
+    assert.deepStrictEqual(headingReasons('3. The dispatch script, its pin and the read-only drafter charter, all one section', 3), []);
+    assert.deepStrictEqual(headingReasons('Chapter 12 - 2026-09-26, closed with every gate green and the operator still reading', 3), []);
+
+    // The same numbered shape one level up (`##`) is an ordinary prose
+    // heading rather than the plan template's, so it takes the mechanical
+    // rule and fails it, on both the period and the word count.
+    assert.deepStrictEqual(headingReasons('3. A very long heading that runs on.', 2), ['period', 'words']);
 
     const withFence = [
         '# A Heading',
@@ -170,7 +187,7 @@ test('over the corpus every heading meets the pin, rewritten or exempted by name
         const text = fs.readFileSync(path.join(REPO, relPath), 'utf8');
         for (const heading of headingsOutsideFences(text)) {
             headingCount += 1;
-            const reasons = headingReasons(heading.body);
+            const reasons = headingReasons(heading.body, heading.level);
             if (reasons.length === 0) continue;
             const exempt = EXEMPT.find(([f, body]) => f === relPath && body === heading.body);
             if (exempt) {

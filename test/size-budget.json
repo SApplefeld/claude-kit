@@ -92,7 +92,7 @@
   "test/doctrine-refresh.test.js": 352,
   "test/embedder-install.test.js": 733,
   "test/git-guard-parity.test.js": 796,
-  "test/heading-shape.test.js": 196,
+  "test/heading-shape.test.js": 213,
   "test/hook-canary.test.js": 1799,
   "test/hook-dispatch.test.js": 978,
   "test/jev-battery.test.js": 295,
@@ -197,6 +197,6 @@
   "test/session-start-plans.test.js": 491,
   "test/session-start-plugin-view.test.js": 594,
   "test/session-start-shared-checkout.test.js": 307,
-  "test/size-ratchet.test.js": 3531,
+  "test/size-ratchet.test.js": 3618,
   "test/stop-docs-hygiene.test.js": 275
 }
