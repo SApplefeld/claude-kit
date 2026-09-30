@@ -89,6 +89,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | The machine coordinator's runbook, the board, and every bar on a board line | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: run as any session on this machine may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: tick order, ledger, wake prompt | `standing-watch` | `coordinator` (its named overrides) |
+| The liaison seat's conduct in a shared client thread: speakers, the brief, the relay, the work refused, what is never disclosed | `liaison` | the persona plugin's liaison charter (loads it) |
 | Parking a session at its next safe point when the operator or a relayed drain window asks, everything durable committed | `executing-work` (the `WAITING:` stop shape) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |
 | Arming a completion leash, the canonical condition, and its enforcing Stop hook | `kit-goal` | `executing-work`, `peer-sessions`, `hooks/kit-goal-stop.js` |
 | Dispatching this session's own subagents, and the standing request covering it | doctrine (Dispatch is requested standing) | `executing-work`, `finishing-work`, `consult` (where and how, never wider) |

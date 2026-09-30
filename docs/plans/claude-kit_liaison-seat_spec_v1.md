@@ -1,6 +1,6 @@
 # The liaison skill and the doctrine's sender-class clause
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-30
 
