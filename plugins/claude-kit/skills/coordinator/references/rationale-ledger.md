@@ -2229,13 +2229,13 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: The role skill states the model's scope, chain and exclusions. Where no record answers, the rule above holds whole.
 
 ### c2.C088
-- key: Treat the warranted channels as a closed list of three: the operator's keyboard in the session's own conversation, the account-allowlisted relay thread, and an artifact-borne authorization per dispatch-authority.
+- key: Treat the warranted channels as a closed list of three: the operator's keyboard in the session's own conversation, an operator-class or unclassed event in the account-allowlisted relay thread, and an artifact-borne authorization per dispatch-authority.
 - class: mechanic
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:65
-- provenance: 33c0bed 2026-08-26 installed the list; 8dd5b87 2026-08-26 generalized the first channel at this source so every seat's reading became correct.
+- provenance: 33c0bed 2026-08-26 installed the list; 8dd5b87 2026-08-26 generalized the first channel at this source so every seat's reading became correct. Amended by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 2 on 2026-09-30: the relay channel narrowed to an operator-class event, since a broker host may list participant accounts beside the operator's.
 - verdict: keep
 - reason: Peer-sessions, the role skill and the standing-grants rail all name this skill as the list's owner. The park skill's "two" for a lift is a subset the window paragraph at line 33 states in the same words, not a conflict (A134). Parity at the landing: park:56 spells the lift's two channels as 'the operator's keyboard in this session's conversation or the account-allowlisted relay' where line 33 spells 'their keyboard in the seat's own session or the account-allowlisted relay thread', the same channels and not the same words (park's phrase occurs 0 times in this document).
-- passage: The warranted channels are a closed list of three: the operator's keyboard in the session's own conversation, the account-allowlisted relay thread, and an artifact-borne authorization per dispatch-authority.
+- passage: The warranted channels are a closed list of three: the operator's keyboard in the session's own conversation, an operator-class or unclassed event in the account-allowlisted relay thread, and an artifact-borne authorization per dispatch-authority.
 - flag: stale
 
 ### c2.C089
