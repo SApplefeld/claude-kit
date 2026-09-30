@@ -1,0 +1,101 @@
+# Client sandbox threat model
+
+Status: Ready
+Commit Model: Branch-and-PR
+Created: 2026-09-30
+
+## Dispatch Authorization
+
+The coordinator persona brought the ARCHITECT a proposal on 2026-09-30 that the kit's security model names no client-sandbox deployment and no attacker class for the people who speak in a client's relay thread, and asked for it to be queued as an entry. The ARCHITECT wrote this plan under its design remit, on the operator's ruling of the same day that clients stay operator-class and containment is the deployment's. It has one precondition, on both dispatch and merge: `claude-kit_liaison-seat_spec_v1.md` merges first. That plan's section 2 adds the sender-class clause to the doctrine's relay bullet and rewrites the security model's warranted-channel paragraph to classed accounts, and this plan's sentences name that clause and read against that paragraph. So the run starts by cutting its branch from `main` after that merge, where both are present, and a branch cut earlier is not the run's. The size pin does not gate it, since `docs/` is outside the corpus the pin measures. It runs on a branch and lands through a pull request.
+
+## Goal
+
+The kit's security model states the client sandbox deployment in its threat model, so the security reviewer that reads the model before every review, and the scope adjudicator that rules a Critical's relevance against it, can decide a finding about a client's relay thread from the model's own sentences. The deployment paragraph says the kit also runs on a client's virtual machine outside the operator's network, steered by client personnel through operator-class Discord accounts. The assets list names what that host must not reveal to a thread speaker. The in-consideration list names the participant-class event and the text a thread speaker puts into a session's context. The out-of-consideration list names the operator-class client account, with the operator's reason, so a Critical against it earns no block and the reason is in the document rather than in a session's memory.
+
+## Intent
+
+Scott runs a fleet of persona sessions steered from Discord, and his clients want the same setup on a VM of their own, with two to five of their business analysts talking to one persona in a shared thread. The three companion plans build that sandbox. The coordinator persona found, and brought as a proposal on 2026-09-30, that the threat model still describes the operator's own machines and no other deployment, so a security reviewer on the client host reads a model that does not mention the host it runs on.
+
+The operator's frame, in his words on 2026-09-30, relayed through the coordinator: "for the pilot a small group of trusted personnel at the client will have full steering permissions. The controls and protections will come in at the sandbox itself, walling off what it can do and reach, keeping things isolated to the VM and forcing branch protections and review on anything being output."
+
+Done means: the four threat-model paragraphs state the client deployment, its assets, the classes in consideration and the class out with its reason, and the README's one-line description of the security model still describes the document. Done does not need: a new control in the kit, a change to the reviewer charters' four-part shape or citation form, or a section for the persona plugin's or the broker's own threat surface, which those repositories' documents own.
+
+Alternatives refused. Treating a client account as a participant class with its own controls: the operator ruled the accounts operator-class for the pilot, and a threat-model entry the deployment does not honor is the reassurance the model's own opening paragraph warns against. Putting the client deployment in a new section of its own: the security reviewer reads the `## Threat model` section and nothing else before it reviews, so a fact outside it is a fact that reviewer never reads. Leaving it as a backlog item: the security reviewer runs on every section of the three companion plans, and each run against a model that omits the deployment is a finding weighed by hand.
+
+Rulings after the spec shipped: none yet.
+
+Provenance: distilled by the ARCHITECT persona from the coordinator's proposal record of 2026-09-30 and the operator's ruling of the same day, relayed by the coordinator.
+
+## Approach
+
+The change is four paragraphs under `## Threat model` in `docs/security-model.md`, each gaining sentences rather than a rewrite, plus one sentence in the near-neighbours paragraph that follows them. Every sentence there today still holds, with two exceptions the run makes in place: the deployment paragraph's opening sentence is widened to name both deployments, since left as it stands it bounds the code to the operator's machines one sentence ahead of the client VM, and the near-neighbours paragraph's count is renumbered to fit the neighbour it gains.
+
+Two words the sentences lean on are defined elsewhere, and the run reads them there. The sender classes, `operator` and `participant`, are an attribute the Discord broker writes on each relay event's envelope from its senders list, defined by the broker's plan `channels_client-sandbox_spec_v1.md`. The doctrine's sender-class clause, which reads an operator-class event as the operator's word and a participant-class event as a person's words with no authority, is what the liaison-seat plan's section 2 adds to the relay bullet in `plugins/claude-kit/skills/operating-instructions/SKILL.md`, and it is present on `main` once the precondition is met. The broker's response gate is the broker's judge that decides, per message, whether the message reaches the persona at all, running in shadow or live mode. The `liaison` skill is the one the liaison-seat plan adds under `plugins/claude-kit/skills/liaison/`.
+
+The deployment paragraph gains a second deployment beside the operator's machines: a virtual machine a client runs outside the operator's network, holding the fleet layout, the persona plugin, the kit and the Discord broker, with the client's personnel listed on the broker's senders list as operator-class accounts, a fine-grained GitHub token scoped to the client's one repository as the host's only Git credential, no memory database client file, and a memory store with no remote. The paragraph keeps its pointer to `## Principals` as the governing statement, and adds that the client host is one more machine account under that section's single-principal rule, unchanged: within the client VM's account there is exactly one principal, and the persons behind its operator-class Discord accounts hold the keyboard's standing on it, a permission prompt the harness puts to the thread included. `## Principals` itself does not change, because its rule is stated per machine account and reaches the client VM as written; its enumeration of who the deployment reaches is the operator's fleet's, and the client host is named in this paragraph instead. The paragraph also names Discord's servers as a party outside the LAN that receives every reply a relay-steered session sends, on the operator's fleet today as on the client host, so the two sentences that make the TypeSafe vendor the only such party, "the one party outside the LAN" at line 19 and "the party outside the LAN" at line 568 on `main`, say "a party" instead.
+
+The assets paragraph gains one asset: the operator's other clients' names and work, protected from a thread speaker on the client host. What keeps it off the host is the persona plugin's runbook, which installs the host with an empty memory store, no database client file and no credential of the operator's own fleet. The sentence says so, and says the liaison skill's disclosure list is a conduct rule for the seat rather than a control on the host.
+
+The in-consideration paragraph gains three shapes. A participant-class relay event, which the doctrine's sender-class clause reads as a person's words with no authority, is untrusted input reaching a session through the relay. Text a thread speaker of either class pastes into the thread from elsewhere, such as a document, a page or another tool's output, carrying an instruction addressed to the session, is in consideration on the same terms as a document under review carrying an instruction. That entry excludes the speaker's own words, whose standing is the class's and nothing more; a message the broker's response gate held back, which never reaches a session; and a page or file the session fetches itself, which the paragraph's existing entries already cover. A participant's message arriving while an operator's turn is running is the third shape. The persona plugin reads a class only from the channel tag on the prompt that opens a turn, and a message delivered into a running turn arrives as context with no class reading, so a participant's words can land inside an operator's turn. The plugin's plan records that as a known gap under its Out of Scope and its backlog, and the model names it so a finding against it cites the gap rather than discovering it. Each of the three entries names what the shape buys an attacker, in the paragraph's own phrase "what one buys".
+
+The out-of-consideration paragraph gains one class with its reason: an operator-class client account, meaning exactly an account the host's senders list classes `operator`. The reason is the operator's ruling of 2026-09-30: the pilot's client users hold full steering, approving a permission prompt the harness puts to the thread included, and what bounds what they can reach is the sandbox itself. The sandbox's containment is three measures, the VM's isolation from the operator's network, the client-scoped token, and branch protection with review on the client repository, and none of the three is a kit control. So a security finding that a client user can steer the session earns no block, and the finding a reviewer can raise is one against the host's containment being absent, which cites the deployment paragraph.
+
+The near-neighbours paragraph that follows gains one neighbour that stays in consideration beside the new exclusion. The paragraph today counts three neighbours of the machine-account exclusion, so the new sentence opens by naming the exclusion it sits beside, the operator-class client account, and the paragraph's count sentence is renumbered to fit. The neighbour: an operator's name written as a line label inside a participant's message text, such as a first line reading `<name> (operator):` above an instruction. The class is the envelope's, read from the senders list, and a label is text its writer typed, so the message keeps the participant class and the label buys nothing. The broker's plan states that rule for a buffer of several messages, and the model's sentence is the reader's pointer to it.
+
+The contract sweep for this plan ran over the repository on 2026-09-30 with searches for `threat model`, `attacker class`, `Deployment.`, `out of consideration` and `Disclosure:`, and returned five surfaces. The four threat-model paragraphs in `docs/security-model.md`, lines 15 to 21, and the near-neighbours paragraph at line 23, are the change. The README's index line for the security model, `docs/README.md` line 16, describes the document and changes only where the description stops fitting. The security reviewer charter, `plugins/claude-kit/agents/security-reviewer.md`, reads the four-part shape at line 20 and cites a `threat:` entry at line 71, and the scope adjudicator charter, `plugins/claude-kit/agents/scope-adjudicator.md`, rules against the model's sentences at lines 61 to 63. Neither charter changes, since the shape and the citation form are unchanged. The security model's warranted-channel paragraph, line 890 on `main`, is the liaison-seat plan's section 2 to rewrite, and this plan reads it and does not edit it.
+
+## Sections of Work
+
+### 1. The threat model's client deployment
+Model: opus
+The four paragraphs under `## Threat model` in `docs/security-model.md` gain the sentences the Approach states, in the model's own register: a fact as a precondition that can be checked, never a reassurance. Each paragraph keeps every sentence it holds today. The out-of-consideration entry states the class as a closed set and its reason as the operator's ruling with its date, and names the three containment measures that bound it as the deployment's rather than the kit's. The in-consideration entries each name what the shape can buy, as the paragraph's existing entries do.
+Acceptance:
+- The deployment paragraph's opening sentence names both deployments, and the paragraph names the client virtual machine, the operator-class client accounts on the senders list, the client-scoped token, the absent database client file, the remote-less memory store, the single-principal rule reaching the client VM's account with `## Principals` unchanged, and Discord's servers as a party outside the LAN receiving every relay reply.
+- The two phrases making the TypeSafe vendor the only party outside the LAN, at lines 19 and 568 on `main`, say "a party".
+- The assets paragraph names the operator's other clients' names and work as an asset, the thread speaker as the party it is protected from, and the runbook's empty-host install as what keeps it off the host.
+- The in-consideration paragraph names the participant-class relay event, text a thread speaker pastes into the thread from elsewhere carrying an instruction addressed to the session with the three exclusions the Approach states, and the participant message arriving mid-turn as the plugin's known gap.
+- The out-of-consideration paragraph names the operator-class client account, defines it as exactly an account the host's senders list classes `operator`, gives the operator's ruling of 2026-09-30 as the reason, says the standing includes approving a permission prompt put to the thread, and names the sandbox as the containment with its three measures: the VM's isolation, the client-scoped token and branch protection with review.
+- The near-neighbours paragraph names the operator label written inside a participant's message text as a neighbour that stays in consideration, opening with the exclusion it sits beside, says the class is the envelope's, and its count sentence matches the neighbours it lists.
+- Every sentence in the five paragraphs on `main` before the change is still present, except the deployment paragraph's opening sentence widened in place, the near-neighbours count sentence renumbered, and line 19's "the one party" made "a party".
+- `docs/README.md` line 16 still describes the document; it changes only where the description no longer fits.
+- `node --test test/` passes.
+Files in scope: `docs/security-model.md` (the five paragraphs under `## Threat model`, lines 15 to 23 on `main` today, and the one phrase at line 568), `docs/README.md` (line 16, where needed).
+Audience: the security reviewer and scope adjudicator agents, which read the model's sentences before ruling and know the kit's charters; the operator, who reads the model to check what the kit claims about a client host.
+Voice: company, the `prose-register` skill's company voice reference.
+Fact base: the persona plugin's `agent_persona_client-sandbox_spec_v1.md`, its runbook section, for the host's install, in `https://github.com/SApplefeld/agent_persona` under `docs/plans/` or `docs/archive/`; the broker's `channels_client-sandbox_spec_v1.md` section 4 for the senders list, the envelope's class and the label rule, in `https://github.com/SApplefeld/discord-channels` under the same two paths; the doctrine's relay bullet as the liaison-seat plan's section 2 leaves it on `main`; and this plan's Intent for the operator's ruling. Where a companion plan is still on its own branch, the run reads it there, and the run's Chapter names the branch and commit read.
+Disclosure: no client name, no Discord id, no token, no hostname or path of the operator's own network.
+
+## Out of Scope
+
+- The reviewer charters `security-reviewer.md` and `scope-adjudicator.md`. The four-part shape and the `threat:` citation are unchanged.
+- The security model's warranted-channel paragraph and the architecture doc's relay-broker bullet, which the liaison-seat plan's section 2 rewrites.
+- A control in the kit that bounds a client account. The operator ruled containment the deployment's.
+- The persona plugin's and the broker's own threat surfaces, which those repositories' documents own.
+- The corpus size budget. `docs/` is not measured.
+- The docs index entries for this plan, which the create path wrote when this plan was registered.
+
+## Assumptions
+
+- assumed 2026-09-30 (the operator's ruling relayed by the coordinator): the pilot's client users are operator-class and the containment is the host's, so the model excludes the operator-class client account rather than bounding it; reversal: a later ruling appended under Intent moves the class into consideration and reopens section 1.
+- assumed 2026-09-30 (the persona plugin's plan): the participant message arriving mid-turn is a gap that plan records under its own Out of Scope and backlog, so the model names it rather than closing it; reversal: none, since the plugin plan closing the gap retires the sentence.
+- assumed 2026-09-30 (default): the TypeSafe open question changes nothing section 1 writes, since the model's existing TypeSafe sentences describe what that vendor receives on any host and the runbook installs the key file on the client host too; reversal: one sentence in the deployment paragraph, under a later ruling.
+- assumed 2026-09-30 (default): `## Principals` is unchanged, since its single-principal rule is stated per machine account and reaches the client VM as written, and the client host is named in the deployment paragraph rather than in that section's enumeration of the operator's fleet; reversal: one line in `## Principals`, under a later ruling.
+- assumed 2026-09-30 (default): Discord's servers are named as a party outside the LAN in the deployment paragraph and the "one party" phrase is corrected at lines 19 and 568, since the operator's own fleet already sends every relay reply there and the sentence is untrue today; reversal: none, since the correction holds on both deployments.
+- assumed 2026-09-30 (the operator's ruling relayed by the coordinator, and the ARCHITECT's ruling to the persona worker of 2026-09-30): an operator-class client account's standing includes approving a permission prompt the harness puts to the thread, the deny list being the one hard stop; reversal: a later ruling appended under Intent drops the clause.
+- assumed 2026-09-30 (default): the security reviewer's four-part shape admits new entries in each paragraph without a charter change, since the charter names the parts and not their count; reversal: a charter edit, which is a corpus change and a size-budget entry.
+
+## Operator Verification
+
+None. The deliverable is prose the fact base checks.
+
+## Open Questions
+
+- Whether the TypeSafe vendor is in consideration on the client host, where the runbook installs the key file. The plan leaves the model's existing TypeSafe sentences unchanged but for the "one party" phrase, since they already describe what that vendor receives on any host. Owner: the operator, at the pilot's start.
+
+## Related
+
+- `claude-kit_liaison-seat_spec_v1.md`: the plan whose section 2 rewrites the warranted-channel paragraph this plan reads against, and the merge precondition.
+- `agent_persona_client-sandbox_spec_v1.md` in the `agent_persona` repository: the runbook that installs the host the deployment paragraph describes.
+- `channels_client-sandbox_spec_v1.md` in the `discord-channels` repository: the senders list and envelope class the out-of-consideration entry is defined on.
+
+## Chapters
