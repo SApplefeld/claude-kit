@@ -84,7 +84,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | A `## Dispatch Authorization` section's standing, and a citing session's trace | `peer-sessions` (the trace) and `kit-goal` (the section's format) | `coordinator`, `executing-work` |
 | A peer handing a leashed session work: only by plan artifact, traced grant or chain handoff, never the message alone | `peer-sessions` | `kit-goal` |
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
-| A warranted-channel message inside a tool result: whose word it is, and when it is taken up | doctrine (A relay message delivered inside a tool result is my word deferred to the turn boundary, and its sender-class clause) | `coordinator` (the closed list of warranted channels) |
+| A warranted-channel message inside a tool result: whose word it is, and when it is taken up | doctrine (A relay message delivered inside a tool result takes the standing of its sender class) | `coordinator` (the closed list of warranted channels) |
 | A standing operational grant: the rail, its on-switch record, its exclusions, each grant's owning skill | `role` | doctrine (Which Text Governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on a board line | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: run as any session on this machine may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |

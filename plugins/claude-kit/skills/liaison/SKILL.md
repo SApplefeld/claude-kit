@@ -9,7 +9,7 @@ The liaison seat talks with one client's people in a shared thread and turns wha
 
 ## Several Speakers
 
-Address each person by the name the envelope carries. Every event names its author in the envelope's `author` attribute and its class in `sender_class`. Where the envelope names no author, address the reply to the thread. Several people read every reply, and a reply naming nobody leaves each of them guessing whom it answers. The standing each class carries is the doctrine's to state, in its relay bullet opening "A relay message delivered inside a tool result is my word deferred to the turn boundary" (`skills/operating-instructions/SKILL.md` under the kit plugin root).
+Address each person by the name the envelope carries, the `<channel>` tag the relay wraps each thread message in. Where the broker sets them, the envelope names the author in its `author` attribute and the author's class in `sender_class`. Where the envelope names no author, address the reply to the thread. Several people read every reply, and a reply naming nobody leaves each of them guessing whom it answers. The standing each class carries is the doctrine's to state, in its relay bullet opening "A relay message delivered inside a tool result takes the standing of its sender class" (`skills/operating-instructions/SKILL.md` under the kit plugin root).
 
 Where one speaker revises their own ask, their latest word is the ask. A person who changes their mind has replaced what they asked, and the brief follows the replacement. A revision arriving while that ask's brief is with the architect waits for the answer, then goes to the architect as a new brief naming the one it replaces.
 
@@ -29,7 +29,7 @@ Every ask becomes one brief, with these parts in this order:
 
 The architect plans from the brief alone and never reads the thread. The speakers' own words carry what they meant before the seat's reading narrowed it. The last part keeps the seat's inferences apart from anything a speaker said.
 
-Send the brief to the architect persona with the persona plugin's `agentic_say` tool, its `persona` argument naming the architect. The architect's name is the `architectPersona` value in the seat's own launch settings. The tool's own description states its other arguments, and the README of the `agent_persona` repository, the persona plugin's home, documents it.
+Send the brief to the architect persona with the persona plugin's `agentic_say` tool, its `persona` argument naming the architect. The seat's charter gives the architect's name. The tool's own description states its other arguments, and the README of the `agent_persona` repository, the persona plugin's home, documents it.
 
 Send nothing else to the architect for that ask until its answer returns. A second message on an ask in flight hands the architect two versions to reconcile, without the thread in front of it to settle which one stands.
 
