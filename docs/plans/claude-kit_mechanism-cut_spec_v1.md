@@ -43,7 +43,7 @@ Alternatives refused, one line each:
 
 Rulings after the spec shipped, each appended dated:
 - 2026-09-30, on the relay thread, before the spec: the ceiling formula and the four rulings under Decisions items 2 to 5, "I'm good with everything you've proposed"; the proof standard, "I think the second is enough".
-- The drop list's ruling is recorded under Decisions item 1 when it lands.
+- 2026-09-30, on the relay thread, after the spec was drafted: the drop list approved whole, "Agreed. Approved whole. I'll see the details and comparison in the PR, and we still have git history if something was cut we ended up needing." Row 125, added after the ruling, awaits its own word.
 
 Provenance: distilled by the architect persona from the operator's relay thread of 2026-09-30, the two Anthropic prompting pages, the two measurements under `## Approach`, and the archived corpus-compression spec, in session 5c033e22.
 
@@ -200,7 +200,7 @@ Files in scope: `test/size-budget.json`, `docs/plans/claude-kit_post-rewrite_pro
 
 ## Decisions
 
-**Item 1. The drop list is approved whole, or with named rows kept.** Ruled: pending.
+**Item 1. The drop list is approved whole, or with named rows kept.** Ruled: approved whole, 2026-09-30, on the relay thread, "Agreed. Approved whole. I'll see the details and comparison in the PR, and we still have git history if something was cut we ended up needing." The ruling covers the 61 rows the list held when it was put; row 125, added at the plan review as the consequence of row 478, is put to the operator in the same reply and is applied as drop only once the operator says so.
 
 - Situation. 62 rows read drop, 7,742 words. Each is a mechanism the judge found a tool or the harness already enforces, maintainer documentation a session never acts on, or a guard against a failure not seen on a 5-family model. A drop removes a mechanism, so it is the operator's ruling; a shrink or merge keeps the rule for the reviewers to check.
 - Decision. Whether the 62 rows under `## Drop List` go, and which if any stay.
