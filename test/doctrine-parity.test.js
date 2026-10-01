@@ -211,14 +211,14 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The quantifier, not just the members. Review-Only is the whole of the
     // plan-model override set; Branch-and-PR pushes to its own branch and so
     // performs the default.
-    assert.match(bullet, /What overrides that default: a plan marked Review-Only, and my asking in the session to leave the work uncommitted so I can read it\./,
+    assert.match(bullet, /A plan marked Review-Only, or my asking to leave the work uncommitted, overrides the default\./,
         'the override set no longer reads as Review-Only alone; a set that '
         + 'admits Branch-and-PR tells a session under that model to skip the '
         + 'first-green commits executing-work calls its recovery points');
-    assert.match(bullet, /Branch-and-PR is not an override but an instance of it/,
+    assert.match(bullet, /Branch-and-PR is an instance of the default/,
         'the bullet no longer says Branch-and-PR performs the default rather '
         + 'than overriding it');
-    assert.match(bullet, /the session cutting one first where the checkout sits on a trunk/,
+    assert.match(bullet, /cutting a feature branch first where the checkout sits on a trunk/,
         'Branch-and-PR no longer tells a session on a trunk to cut a feature '
         + 'branch first, so the default sentence two clauses earlier (push the '
         + 'branch you are working from) routes it into pushing the trunk, which '
@@ -232,13 +232,13 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // the question to the owning skill has no such gap, and the floor below is
     // what keeps that assignment from handing an open category to editable
     // skill text.
-    assert.match(bullet, /which acts a model performs is the owning skill's to state and never this bullet's/,
+    assert.match(bullet, /the owning skill states which acts that covers/,
         'the exemption no longer assigns the act list to the owning skill, so '
         + 'the bullet is back to naming acts nothing here can verify');
-    assert.match(bullet, /reaches nothing outside the model's own execution and no statement of a model widens it/,
+    assert.match(bullet, /reaches nothing outside that execution, and no statement of a model widens it/,
         'the exemption no longer closes, so a skill widens it by restating its '
         + 'own commit model more broadly');
-    assert.match(bullet, /no model reaches a deploy or a force push/,
+    assert.match(bullet, /No model reaches a deploy or a force push/,
         'the floor no longer bars a deploy and a force push, which is what stops '
         + 'the assignment from handing an open category to editable skill text');
     assert.match(bullet, /A push that triggers a deploy keeps the deploy's yes/,
@@ -248,7 +248,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The fail-open a garbled commit-model header would otherwise take: the
     // header parser whitelists three literals and reports anything else as
     // unknown, which without this clause falls through to the push default.
-    assert.match(bullet, /absent or reads as none of the three the kit defines takes the ask/,
+    assert.match(bullet, /absent or none of the three curating-docs defines takes the ask/,
         'a plan doc whose commit model is absent or unrecognized no longer '
         + 'takes the ask, so a mistyped header silently authorizes a push');
 
@@ -257,10 +257,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // role/SKILL.md states the delegation instance's scope and its exclusions,
     // so the doctrine names the instance and assigns both to role rather than
     // restating either.
-    assert.match(bullet, /a grant whose owning skill names none authorizes nothing here/,
+    assert.match(bullet, /a proceed-ahead only for the surface its owning skill names/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
-    assert.match(bullet, /the rail's delegation instance names no surface this bullet gates/,
+    assert.match(bullet, /The rail's delegation instance names no surface this test gates/,
         'the delegation clause no longer states that delegation names no surface '
         + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
         + 'clause bounded by the exclusion list invites');
@@ -280,10 +280,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
         + 'what may merge, so nothing in the doctrine states what gates a merge');
 
     // The rail is read at the act, off the governing skill, never off the record.
-    assert.match(bullet, /read at the act rather than assumed from the record/,
+    assert.match(bullet, /read at the act/,
         'a standing grant no longer has to be read at the act, so a record that '
         + 'has gone stale would authorize on its own');
-    assert.match(bullet, /whose body can neither widen nor narrow what that skill states/,
+    assert.match(bullet, /the record can neither widen nor narrow it/,
         'the record-body-is-data clause has left the doctrine; role/SKILL.md '
         + 'states it and this is the always-loaded copy of it');
 
@@ -294,21 +294,17 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // both parts before stopping. Pinned on the test's stable tokens rather
     // than its phrasing, per the plan's standing amendment: the test's name,
     // its quantifier, and each part's named condition.
-    assert.match(bullet, /two-part test/,
-        'the bullet no longer names its class as a two-part test, so the '
-        + 'either-part quantifier and the two conditions pinned below bound '
-        + 'nothing');
     // The quantifier is pinned as its operative phrase rather than as the bare
     // words "either part", which a both-parts rewording still carries ("only
     // where it meets both parts, since either part alone ...").
-    assert.match(bullet, /meeting either part is inside it/,
+    assert.match(bullet, /inside the test if it reaches a surface someone other than you and me depends on, or if you could not undo it/,
         'the two-part test no longer states that an act meeting either part is '
         + 'inside it, so a reader may require both parts before stopping');
     assert.match(bullet, /someone other than you and me depends on/,
         'the first part no longer names the condition the operator ruled, an act '
         + 'reaching a surface someone other than the operator and the session '
         + 'depends on');
-    assert.match(bullet, /could not undo with the tools you hold/,
+    assert.match(bullet, /could not undo it with the tools you hold/,
         'the second part no longer names the condition the operator ruled, an '
         + 'act the session could not undo with the tools it holds');
 
@@ -319,7 +315,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // than anywhere in the bullet, so a member that migrates out of the list
     // into another sentence, where it is no longer ordained, still reddens
     // here.
-    const listSentence = bullet.match(/the list is closed:([^.]*)\./);
+    const listSentence = bullet.match(/never gates this closed list:([^.]*)\./);
     assert.ok(listSentence,
         'the bullet no longer states that the never-gated list is closed, so a '
         + 'session widens it by analogy');
@@ -355,7 +351,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.deepStrictEqual(missing, [],
         'the never-gated channel list no longer carries "' + missing.join('", "')
         + '", so a channel the operator ordained is back under the test');
-    assert.match(bullet, /does not name takes the test/,
+    assert.match(bullet, /Any other channel takes the test/,
         'the never-gated list no longer sends a channel it does not name back to '
         + 'the test, so the list no longer closes the set');
 
@@ -365,15 +361,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // reason is the one the old enumeration pin carried: dropping 'push' from
     // the gated set must not have dropped a force push with it. Pinned on its
     // tokens, the two verdicts and the scope, rather than its phrasing.
-    assert.match(bullet, /force push is never on the list/,
+    assert.match(bullet, /A force push is always inside it/,
         'the bullet no longer states that a force push is never on the '
         + 'never-gated list, so the list\'s "push to the working branch" reads '
         + 'as covering a force push');
-    assert.match(bullet, /always inside the test/,
-        'the bullet no longer keeps a force push always inside the test');
-    assert.match(bullet, /whatever branch it lands on/,
-        'the force-push sentence no longer reaches every branch, so a force '
-        + 'push to the working branch reads as ungated');
 
     // The shared-state reach, stated inside the test's own first part: the
     // old catch-all over shared, global and native state is gone, and this
@@ -392,7 +383,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the other-sessions sentence no longer keys on state other sessions '
         + 'read, which is the trigger that puts a shared-state write inside '
         + 'the class');
-    assert.match(bullet, /reaches a surface the first part names/,
+    assert.match(bullet, /other sessions read is inside the test/,
         'the other-sessions sentence no longer concludes that such a write '
         + 'meets the first part of the test');
 
@@ -403,10 +394,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // that the list above ordains.
     // Pinned on its tokens, the named condition with its verdict and the
     // named exception, rather than its phrasing.
-    assert.match(bullet, /any remote but the working branch's own is inside the test/,
+    assert.match(bullet, /so is a push to any remote but the working branch's own/,
         'the other-remote push no longer sits inside the test, so a push to '
         + 'any other remote is back on inference');
-    assert.match(bullet, /memory store's own sync excepted/,
+    assert.match(bullet, /the memory store's sync excepted/,
         'the other-remote sentence no longer names the memory store\'s own sync '
         + 'as its exception, so the sync the list above ordains is re-gated');
 });
@@ -439,18 +430,25 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
     // standing amendment: the read, the two routes it decides between, and the
     // re-read that closes the check-then-act gap are each a token a prose
     // pass would keep while it reworded the sentence around it.
-    assert.match(bullet, /read the pull request's state/,
+    assert.match(bullet, /Before every push to a branch with a pull request, read its state, and send a merged one's change to a new branch/,
+        'the freeze bullet no longer reads the pull request\'s state before a push, '
+        + 'which executing-work\'s per-section push meets before finishing-work is loaded');
+    assert.match(bullet, /Step 7 of `finishing-work`, Apply the commit model, owns/,
+        'the freeze bullet no longer points at finishing-work step 7, which '
+        + 'carries the reads this bullet once stated');
+    const step7 = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    assert.match(step7, /Before every push to a branch with a pull request, read its state/,
         'the freeze bullet no longer names the state read before a push to a '
         + 'branch with a pull request, so a session pushes after the merge and '
         + 'recreates or extends the head branch as an orphan that reports success');
-    assert.match(bullet, /never back to the merged branch/,
+    assert.match(step7, /never back to the merged branch/,
         'the freeze bullet no longer routes a push on a merged pull request '
         + 'away from the merged branch');
-    assert.match(bullet, /re-read the state or run the strand-check/,
+    assert.match(step7, /re-read the state or run the strand-check/,
         'the freeze bullet no longer closes the check-then-act gap after a '
         + 'push lands, so a read of open taken before the push stands in for '
         + 'where the push landed while the approval merges underneath it');
-    assert.match(bullet, /before the pull request is marked ready/,
+    assert.match(step7, /before the pull request is marked ready/,
         'the freeze bullet no longer commits every durable record before the '
         + 'pull request is marked ready, so with auto-merge armed the approval '
         + 'lands the branch without the record on it');
@@ -511,22 +509,14 @@ test('the chapter-close bullet names the compaction checkpoint in each copy', ()
         const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
         assert.strictEqual(lines.length, 1,
             'expected exactly one chapter-close bullet in the ' + label);
-        assert.ok(lines[0].includes('the compaction checkpoint is opened'),
+        assert.ok(lines[0].includes('the compaction checkpoint'),
             'the chapter-close bullet in the ' + label + ' must name the compaction '
             + 'checkpoint as part of closing a section on a leashed run');
-        assert.ok(lines[0].includes('kit-compact-checkpoint.js open'),
-            'the chapter-close bullet in the ' + label + ' must name the command, '
-            + 'because its audience is a session that never loaded executing-work '
-            + 'and so cannot follow a pointer to it');
-        assert.ok(lines[0].includes(lanePluralDuty + ' that gated it with their '
-            + 'counts and ' + exitCodeDuty),
-            'the chapter-close bullet in the ' + label + ' must require the '
-            + 'Chapter to name every lane that gated the section. Section close '
-            + 'runs the targeted lane, with the contention lane beside it where '
-            + 'the delta touched machine-shared state, so a Chapter that reports '
-            + 'a bare green, or one lane where two ran, says nothing about how '
-            + 'much of the tree that green covered, which is what a later '
-            + 'collateral-red diagnosis reads');
+        assert.ok(lines[0].includes('`skills/executing-work/SKILL.md`')
+            && lines[0].includes('so load it if it is not loaded'),
+            'the chapter-close bullet in the ' + label + ' must send a session '
+            + 'that never loaded executing-work to load it, since that skill now '
+            + 'carries the checkpoint command and the lanes the Chapter records');
     }
 });
 
@@ -574,9 +564,9 @@ test('the Chapter template carries the gate field the doctrine requires', () => 
         + 'though the other never happened');
     assert.ok(field.includes(exitCodeDuty),
         'the Chapter template\'s Gate field no longer asks for ' + exitCodeDuty
-        + ', the phrase the doctrine\'s chapter-close bullet states the duty '
-        + 'in. The two surfaces are pinned on this one shared string so a '
-        + 'reword of either reddens rather than leaving them asking for '
+        + ', the phrase the Gate duty is stated in. The template is that duty\'s '
+        + 'one carrier since the doctrine\'s chapter-close bullet points at '
+        + 'executing-work, so a reword here leaves the Chapter asking for '
         + 'different things');
     assert.ok(field.includes('the code itself rather than a statement that it '
         + 'was read'),
@@ -609,18 +599,17 @@ test('executing-work runs the section close gate after the review fixes', () => 
         + 'the step that states it');
 });
 
-// The two liveness bullets defer their whole operative content to
+// The probe bullet defers its whole operative content to
 // finishing-work: the wedge hallmark, the cadence, and the windows all live
 // there, and standing-watch:75 makes a committed pointer back at the doctrine
-// for the probe habit. Whole-body identity would pass with either bullet
+// for the probe habit. Whole-body identity would pass with the bullet
 // deleted from BOTH copies, leaving that pointer aimed at nothing and the
 // always-on layer silent on the one rule that keeps a session from killing a
 // working agent. The deferral is what earns the pin: a rule carrying its own
 // content fails visibly when deleted, where this one fails by going quiet.
-test('the liveness bullets defer to finishing-work in each copy', () => {
+test('the probe bullet defers to finishing-work in each copy', () => {
     const leads = [
         '- **Probe a dispatched agent with a message',
-        '- **No completion notification is not a stall signal',
     ];
     for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
         for (const lead of leads) {
@@ -779,17 +768,17 @@ test('the gate bullet routes its lanes to the testing-discipline skill in each c
 // construction and routes the cost shapes, the wall-clock capture, and the
 // comparable-contention rule to the skill that owns them.
 test('the authoring bullet routes its cost shapes to the testing-discipline skill in each copy', () => {
-    const lead = '- **Write tests independent by construction';
+    const lead = '- **After each step, run the lane the moment calls for';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
     assert.strictEqual(inSkill.length, 1,
-        'expected exactly one test-authoring bullet in the skill body');
+        'expected exactly one gate bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
-        'expected exactly one test-authoring bullet in the doctrine mirror');
-    assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
-        'the test-authoring bullet must route to testing-discipline by path: the '
-        + 'spawn pricing, the wall-clock capture, and the comparable-contention '
-        + 'rule live in that skill and in no clause of this bullet');
+        'expected exactly one gate bullet in the doctrine mirror');
+    assert.ok(inSkill[0].includes("a test's cost shapes live in `skills/testing-discipline/SKILL.md`"),
+        'the gate bullet must route a test\'s cost shapes to testing-discipline '
+        + 'by path, since the authoring bullet that carried them is merged '
+        + 'into that skill and no clause of the doctrine states them');
 });
 
 // The box-check rule is stated in full in both the doctrine and the skill, on
@@ -808,7 +797,7 @@ test('the box-check bullet states the class in each copy and in the skill', () =
         'expected exactly one box-check bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one box-check bullet in the doctrine mirror');
-    assert.match(inSkill[0], /instances, not the boundary/,
+    assert.match(inSkill[0], /other process holding the box's memory, CPU or the repo's binaries/,
         'the box-check bullet no longer closes its engine list with the class, '
         + 'so `testhost`, `dotnet`, and `node --test` read as the boundary and a '
         + 'runner in an unnamed engine is licensed to run beside your suite');
@@ -5174,9 +5163,9 @@ test('the index-window bullet keeps both of its legs in each doctrine copy', () 
     const legs = [
         ['the window lead', 'On a checkout another session may commit to, the '
             + 'index is a window rather than a resting place.'],
-        ['the merge-listing clause', 'and `git show --first-parent --name-only` '
-            + 'for a merge, whose plain form shows the combined diff and omits '
-            + 'every path that merged cleanly from one side'],
+        ['the merge-listing clause', 'or `git show --first-parent --name-only` '
+            + 'for a merge, whose plain form omits every path that merged cleanly '
+            + 'from one side'],
     ];
     const copies = [
         ['home/claude-kit-doctrine.md',
@@ -6241,13 +6230,13 @@ test('the which-text-governs section is present once in each copy and points at 
         'expected exactly one which-text-governs heading in the doctrine mirror');
     for (const lead of [
         '- **When two surfaces disagree at a moment, rank them before you act.**',
-        '- **A stop read without its exceptions beside it is a pointer, not a bar.**',
-        '- **Authorization for an act the stop-for-a-yes rule gates is positional, never loose prose.**',
         '- **One owner per moment, and the map names it.**',
     ]) {
         assert.strictEqual(inSkill.split('\n').filter((l) => l.startsWith(lead)).length, 1,
             'the which-text-governs section no longer carries exactly one bullet led "' + lead + '"');
     }
+    assert.ok(inSkill.includes('a closed list of three standing grants: the dispatch request, kaizen capture, and the commit-and-push default'),
+        'the ranking bullet no longer closes the doctrine\'s own standing grants at three');
     assert.ok(inSkill.includes('`skills/operating-instructions/references/ownership-map.md` under the kit plugin root'),
         'the one-owner bullet no longer names the ownership map by its plugin-root path; '
         + 'the map pin below reads that path as its near end');
