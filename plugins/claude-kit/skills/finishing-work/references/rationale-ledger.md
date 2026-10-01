@@ -39,7 +39,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 830ff28 2026-06-17 installed the prior-coverage brief rule; 0faeb51 2026-09-06 added the below-Fable and ungated carve-outs when the hybrid tier ladder made some per-section rounds clear nothing.
 - verdict: keep
 - reason: The brief-content rule and step 3's charge are two surfaces of one rule and no hook composes a finishing brief; the carve-outs are the hybrid ladder's own consequence and go stale only if that ladder changes.
-- passage: When per-section reviews cleared parts of the changeset, tell the finishing reviewers what they covered and what changed since, so their budget goes to cross-section cohesion and deltas. A round the rule aimed below Fable, or one that ended ungated, cleared nothing.
+- passage: When per-section reviews cleared parts of the changeset, tell the finishing reviewers what they covered and what changed since, so their budget goes to cross-section cohesion and deltas. A round executing-work's reviewer rule aimed below Fable, or one that ended ungated, cleared nothing.
 
 ### c1.C004
 - key: Eliminate true duplication of review effort, never coverage.
@@ -502,7 +502,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: rewrite
 - landed: d549e65 section 5
 - reason: The path is spelled at lines 16, 22 and 24; line 16 keeps it and this site refers to it. The artifact does not change.
-- passage: Take it as a byte count at the agent's own transcript, never by reading the file and never at a task's `.output` path.
+- passage: Take it as a byte count at the agent's own transcript, read as a size without contents (.NET IO through PowerShell on Windows), never by reading the file and never at a task's `.output` path.
 - flag: stale
 
 ### c1.C054
@@ -521,7 +521,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23; the operator memories `agent-growth-reading-artifact` and `subagent-output-file-is-empty-read-the-jsonl` record the zero-byte placeholder.
 - verdict: keep
 - reason: Reading there produces exactly the never-started shape for a healthy agent, which licenses a TaskStop.
-- passage: Take it as a byte count at the agent's own transcript, never by reading the file and never at a task's `.output` path.
+- passage: Take it as a byte count at the agent's own transcript, read as a size without contents (.NET IO through PowerShell on Windows), never by reading the file and never at a task's `.output` path.
 
 ### c1.C056
 - key: Read the byte count without reading the file, using .NET IO through PowerShell on Windows and whatever reads a size without contents elsewhere.
@@ -530,7 +530,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. The transcript is unsafe to Read whole.
-- passage: Take it as a byte count at the agent's own transcript, never by reading the file
+- passage: Take it as a byte count at the agent's own transcript, read as a size without contents (.NET IO through PowerShell on Windows), never by reading the file
 
 ### c1.C057
 - key: Where you hold both the subagents directory and the agent id and find no file at the path, call the instrument unreadable rather than the agent idle.
@@ -1315,7 +1315,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2.
 - verdict: keep
 - reason: No finding in this range; the reason the user-line control is read first.
-- passage: since the pipeline prints a bare `0` for a missing path.
+- passage: which prints no count at all for a missing path, where the counting pipeline prints a bare `0`.
 
 ### c1.C140
 - key: Recognize that without the shared-retry-budget bound, the synthetic-only-fault shape is the one failure mode that could burn dispatches without limit under an armed leash.
@@ -1742,7 +1742,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ba1060b 2026-08-18, a Major at the document-review battery's finishing pass: the file-type predicate counted an agent charter as prose, so a changeset of nothing but charters, each granting tools through its frontmatter, would have skipped the security review by rule.
 - verdict: keep
 - reason: A charter's `tools:` line is a privilege grant and a skill body is an instruction set; the extension never settles it (A053, A056).
-- passage: **Markdown whose frontmatter is machine-read is not prose for this predicate.** An agent charter under `agents/` is one instance.
+- passage: **Markdown whose frontmatter is machine-read is not prose for this predicate.** An agent charter under `agents/` and a skill's `SKILL.md` are instances.
 
 ### c2.C040
 - key: Run both reviews, scoped to the non-prose files, whenever a single non-prose file appears, even a one-line edit.
@@ -4151,7 +4151,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: keep
 - reason: The reviewers' frontmatter efforts are the Agent-tool defaults for per-section rounds and the finishing route sets high by design; the goal read is excluded because its charter pins high already, which test/readonly-agent-guard.test.js holds in place, so the Agent tool reaches it without Workflow.
 - passage: Dispatch every finishing reviewer at `fable` and effort `high`
-- passage: Step 4's goal read is the one exception and routes itself.
+- passage: Step 4's goal read takes that reading too, but is the one exception to this tier and route, and routes itself.
 
 ### S007
 - key: Run the finishing reviewers at the top model because a fresh-eyes strong-model verdict is what makes plan-covered implementation safe.
@@ -5435,7 +5435,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 and its "step 5's archival" renumbered to step 6 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The archival `git mv` ends in a shell command holding the name as an operand, under the `docs/` the curator writes ungoverned, so the gate carries the weight there.
-- passage: The `LIBRARY HYGIENE` block's `docs/plans/<file>` paths take the same selection and gate against your own listing of `docs/plans/`, and one selecting nothing makes no move and is named in the close-out.
+- passage: The `LIBRARY HYGIENE` block's `docs/plans/<file>` paths take the same selection and gate against your own listing of `docs/plans/`, and one selecting nothing carries no `Class:` tag to stop on, makes no move, and is named in the close-out.
 
 ### S143
 - key: Select hygiene paths against your own listing of `docs/plans/` taken at the repository root, not against the changeset listing.
@@ -5897,7 +5897,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: A paid reader errors transiently, and one re-run distinguishes a transient error from a pair that fails twice; nothing invokes the re-run.
-- passage: Re-run an errored pair, a mismatch or a designed-agreed row once before reading it, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the leg's own `--before <sha>` for a before-leg pair.
+- passage: Re-run an errored pair, an `UNPARSED` reply, a mismatch or a designed-agreed row once before reading it, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the leg's own `--before <sha>` for a before-leg pair.
 
 ### S190
 - key: Record a leg whose pairs all errored as unavailable rather than as zero mismatches.
@@ -5954,7 +5954,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule stands in the compressed paragraph; a single paid-reader verdict is one sample, and the re-run tells a stable mismatch from an unstable one.
 - proposed: keep as one sentence ahead of S195.
 - baseline-test: yes
-- passage: Re-run an errored pair, a mismatch or a designed-agreed row once before reading it, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the leg's own `--before <sha>` for a before-leg pair.
+- passage: Re-run an errored pair, an `UNPARSED` reply, a mismatch or a designed-agreed row once before reading it, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the leg's own `--before <sha>` for a before-leg pair.
 
 ### S195
 - key: Record a re-run that disagrees with the first as an unstable reading with both readings kept, count it as a mismatch, and name it unstable in the close-out.
@@ -6024,7 +6024,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The runner README owns its status vocabulary, and the row list closes its enumeration with a pointer rather than a guess.
-- passage: Read every other row by the runner README's `What a row counts for` section, and name in the close-out status each row it sends there.
+- passage: Read what each row's status counts for in the runner README's `What a row counts for` section. A mismatch on a `ruled` probe that the after leg alone carries takes writing-skills' intent test and is named in the close-out status, and one both legs carry is named in the close-out as the corpus's.
 
 ### S202
 - key: Run the handoff gate before step 7 over the tree as it then stands, re-running the whole gate first where steps 2 through 6 changed anything since step 1's dispatch reported.
@@ -6036,7 +6036,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Step 1 owns the rule, as the sentence says, so this step keeps a pointer plus S203's stand-beside clause; the instruction, every step between step 1 and this one re-arms the gate, is unchanged by the wider range. Landed with the lane named inside the pointer, "The handoff gate, the whole gate with the contention lane beside it, runs before this step, per step 1, which owns that rule": `test/doctrine-parity.test.js`'s integration sweep selects line 91 on S208's landed phrase "the merge request is the last act on the branch" and requires a lane word on that line, which the retired "whole gate runs again first" clause had supplied; naming the lane restates nothing step 1 does not say.
 - proposed: "The handoff gate runs before this step, per step 1, which owns that rule" plus S203's clause.
 - baseline-test: yes
-- passage: The handoff gate, the whole gate with the contention lane beside it, runs before this step under step 1's rule
+- passage: The handoff gate, the whole gate with the contention lane beside it, runs before this step under step 6's rule
 
 ### S203
 - key: Treat the gates this step's own bullets name, the merge's and the install-surface push's, as standing beside the handoff gate rather than in place of it.
@@ -6716,7 +6716,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The path spelling stays, since nothing derives the finishing key from executing-work's section-keyed path; the sentence's "It" now follows the goal-read sentence rather than the provenance-read sentence, so the subject is restored or the inserted sentences move after it. A capture outside the gitignored root is a tracked file carrying the fix narrative into the next commit, the why T023 carried.
 - proposed: Restore the subject ("The provenance read is taken from captures written under this pass's own key ...") or move the hold and design-stop sentences after the capture sentence, so the antecedent is the provenance read again.
 - baseline-test: yes
-- passage: The provenance read is taken from captures under this pass's own key, `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff`, made as executing-work's held-finding paragraph makes them, over the changeset the base ref defines rather than a `Files in scope:` line.
+- passage: The judge's provenance fact follows executing-work's held-finding paragraph over the changeset the base ref defines rather than a `Files in scope:` line: the base ref with the fix commits where this pass's work is committed, else a capture under this pass's own key, `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff`.
 
 ### T023
 - key: Keep the capture inside the gitignored root because a capture outside it is a tracked file carrying the fix narrative into the next commit.
@@ -6871,7 +6871,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The new-round rule is the doctrine's, so the clause survives as the pointer the compressed sentence ends on rather than as a restatement; nothing in this pass is held for the answer to release.
 - proposed: Keep "an answer reopens the plan under the doctrine's new-round rule" as the compressed sentence's closing pointer.
 - baseline-test: yes
-- passage: An answer reopens the plan under the doctrine's new-round rule.
+- passage: An answer reopens the plan as a new round, as step 6 states.
 
 ### T039
 - key: Enter each `ASKED-BUT-UNBUILT` item into this pass's fix path as a spec-traceable Major under that path's fix-or-present rule.
@@ -6935,7 +6935,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: The cited-Critical case is the one route the plan keeps from the old fast lane, and it is the same route a section keeps, behind the same judge. The `Disclosure:` case is the second, grounded at W004, and it reaches the same route with no judge behind it. The correctness clause is there because deleting a blanket "Critical findings block completion" would otherwise read as licence to close over an adversarial Critical, which the terminal condition never allowed.
-- passage: An advisory lens blocks this pass only on a cited security Critical the ruling confirms or on a `Disclosure:` sweep hit, which needs no citation or ruling. Each is fixed before the close or raised to me. This pass reads a sweep hit as a correctness Critical wherever its fix path's exits read one, so the round backstop never freezes it.
+- passage: An advisory lens blocks this pass only on a cited security Critical that executing-work's relevance ruling confirms or on a `Disclosure:` sweep hit, which needs no citation or ruling. Each is fixed before the close or raised to me. This pass reads a sweep hit as a correctness Critical wherever its fix path's exits read one, so the round backstop never freezes it.
 
 ### W004
 - key: Keep the `Disclosure:` sweep with the security lens, where a hit is the one Critical that blocks with no threat-model citation and no ruling behind it.
