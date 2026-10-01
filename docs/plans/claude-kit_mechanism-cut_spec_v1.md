@@ -121,7 +121,7 @@ Files in scope: the skill, `plugins/claude-kit/skills/finishing-work/references/
 Model: opus
 Locus: inline
 `plugins/claude-kit/skills/memory-system/SKILL.md`, cap 13,221, target 5,446, 53 rows, 10 drops, the most of any document: the nudge-log stamp-rate instrument, the frontmatter guard scope, the database internals, the store resolution order, operator anchors inside the store, anchor trust limits, the `author:` field, the superseded floors, the recall label catalogue and auto-memory independence. Each drop's reason says the CLI or the hook enforces it or that no session acts on it. The memq command reference stays as a table of commands with one line each; it is the corpus's heaviest single shrink at 2,277 words today.
-Files in scope: the skill, `plugins/claude-kit/skills/memory-system/references/rationale-ledger.md`, `test/size-budget.json`, and the pin tests step 3 of `## Approach` finds for these documents.
+Files in scope: the skill, `plugins/claude-kit/skills/memory-system/references/rationale-ledger.md`, `test/size-budget.json`, and the pin tests step 3 of `## Approach` finds for these documents; and, folded for sentences rows 885, 858 and 901 made false, `docs/architecture.md`, `docs/security-model.md` and the comments in `plugins/claude-kit/hooks/memory-recognition-nudge.js`.
 
 ### 6. The coordinator, standing-watch and role skills
 Model: opus
