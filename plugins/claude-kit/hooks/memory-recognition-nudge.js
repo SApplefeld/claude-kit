@@ -340,7 +340,7 @@
 // because a record name is unique inside a tier and not across them, and the
 // reading below joins the log against one tier's stamps.
 // It is what makes the experiment readable rather than merely
-// felt: memory-system/SKILL.md's stamp-rate protocol joins this log against
+// felt: the stamp-rate reading below (nudgeStampRate) joins this log against
 // the store's own applied stamps to read whether a nudged record gets used
 // at a higher rate than an unnudged one, which is the evidence decision 2's
 // semantic-tier gate consumes. The log is bounded and rotates past 1 MB in
@@ -2203,7 +2203,7 @@ function nudgeLogPath(root) {
 
 // Append one line per claimed hit to the nudge log. Best-effort and silent
 // throughout, the same posture as every other write in this hook: the log
-// feeds the stamp-rate reading memory-system/SKILL.md describes, never the
+// feeds the stamp-rate reading nudgeStampRate makes, never the
 // matcher, so a failed append changes nothing about the nudge the session
 // already received.
 //
@@ -2411,7 +2411,7 @@ function readUsageStamps(memq, memDir) {
 
 // The evidence decision 2's gate reads: the stamp rate of nudged project-tier
 // records against unnudged ones, over a stated window. Not a hook boundary;
-// this is the reading protocol memory-system/SKILL.md points at, run by hand
+// this is the reading protocol, run by hand
 // or from a short script at the moment the semantic tier's gate is being
 // asked.
 //
@@ -2445,8 +2445,8 @@ function readUsageStamps(memq, memDir) {
 // anchor that matched something the session just did, so the nudged group is
 // already selected for topical relevance before the comparison starts; a
 // materially higher nudged rate is evidence consistent with the nudge
-// working, not proof of it. memory-system/SKILL.md states this plainly beside
-// the reading itself, because the number does not carry its own caveat.
+// working, not proof of it. A report of this number states that caveat beside
+// it, because the number does not carry its own.
 //
 // Returns { since, nudged: {total, stamped, rate}, dispatched: {...},
 // unnudged: {...} }, three arms over one population: a record the log names on a
