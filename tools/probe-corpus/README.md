@@ -149,6 +149,25 @@ error count on its summary line, and carries the count and each reader's own
 reason in `report.md` and `report.json`. A run whose errors are the whole story
 therefore exits 0, and the warning is what says so.
 
+## What a row counts for
+
+A finishing pass reads each row of a whole leg this way, once the re-runs the
+finishing-work skill's step 6 directs have run.
+
+- A `designed` row counts for nothing. A `designed-agreed` row is the finding
+  its marker exists to produce, whatever the probe's ruling state.
+- An `UNPARSED` row is the instrument's, not the corpus's, and reads as an
+  `ERROR`, however the exit code counts it.
+- A pair that errors again on its re-run stays an error in the count.
+- A mismatch on a `proposed` probe is evidence for the operator's rulings batch
+  and never a finding.
+- A mismatch on a `ruled` probe that the after leg alone carries is a finding
+  against the change.
+- A mismatch both legs carry is the corpus's.
+
+A leg's reading is the author's judgment over every invocation the Chapter slot
+quotes, re-runs included, never any one summary line's counts.
+
 ## What the runner reads
 
 Line endings are normalised to LF on the way in, whichever mode read the file.
