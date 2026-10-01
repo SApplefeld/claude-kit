@@ -495,3 +495,8 @@ tests: 4087
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 corpus: 132086 words of cap 143726
 ```
+
+### Correction to Chapter 4 - 2026-10-01
+
+- Decided 2026-10-01, by the operator merging pull request #163 as approved: the finishing-work skill's 8,274-word landing against 5,850 is accepted, and so are the 11 rows Chapter 4 lists as applied in part.
+- Chapter 4's c1.C117 finding is wrong. The sentence "A Chapter states current and terminal fact, such as "delivered in this changeset", never an anticipatory note." stands in the doctrine's Chapter bullet at `home/claude-kit-doctrine.md:85`. It also stands in its two copies at `plugins/claude-kit/claude-kit-doctrine.md:85` and `plugins/claude-kit/skills/operating-instructions/SKILL.md:90`. `git grep` at section 4's tip `32eaa527`, at `cef3afed` and at `origin/main` each finds it, and `git log -S` shows no commit removed it after `63045e8d` added it. The operator ruled "restore" on the relay, and no edit was needed. Section 2's landing lost nothing here.
