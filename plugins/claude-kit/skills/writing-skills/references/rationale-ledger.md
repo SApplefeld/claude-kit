@@ -122,7 +122,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - reason: The rule holds; its sentence also carries the sync command and the shared-checkout reason at sixty words, which the file's own one-idea bar forbids. Split into rule, then command; the ratchet test (test/size-ratchet.test.js) reds a stale cap but nothing moves one for the session. Lands at line 15 as 'A file that grows raises its cap in the same change, and one that shrinks lowers it.' followed by the command as C012's own sentence, the shared-checkout reason (C013) gone, C014, C016, C017, C018, C133 and C134 standing word for word and A017's bare-form sentence landed under C015; the split keeps the command on the bullet's own markdown line, which `test/size-ratchet.test.js`'s test named `the writing-skills ledger bullet names a sync verb the script exports and flags its parser takes` (declared at line 3137 at dcb01e7) requires, a pin the spec's Wording pins line and the brief both missed. Its landing respelled C012's keep sentence; C012 records the flip.
 - proposed: Split the sentence into the grow-and-shrink rule, then the command as its own sentence, with the shared-checkout reason (C013) moved to the ledger; keep C014, C016, C017, C018, C133, C134 as worded, and apply A017 to the bare-form sentence.
 - baseline-test: yes
-- passage: A file that grows raises its cap in the same change, and one that shrinks lowers it.
+- passage: A file that grows raises its cap in `test/size-budget.json` in the same change, and one that shrinks lowers it.
 
 ### C012
 - key: Move caps with `node <plugin-root>/scripts/kit-size.js sync --repo <project root> <path>...`, naming the files the change touched.
@@ -133,7 +133,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: The ratchet test makes a stale cap visible but nothing runs sync for the session, and the path list is the writer's choice. The why of naming paths (C013, moved here): on a shared checkout the bare form would move the caps of a peer's in-flight files into your diff. Flipped from keep to rewrite at section 31's close: C011's split made this clause its own sentence with a leading verb, as C011's proposal orders, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched.
-- passage: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched.
+- passage: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched, a new file's first cap included, tracked or not.
 
 ### C013
 - key: Name the touched paths so a peer's in-flight files' caps stay out of your diff on a shared checkout.
@@ -152,7 +152,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: c591c49 2026-09-08, sync adds a first cap for a named path the budget lacks.
 - verdict: keep
 - reason: No finding of its own; it survives the line 15 split as its own sentence. The named-path form is what admits an untracked file, which the bare form refuses.
-- passage: A new curated file, tracked or not, gets its first cap the same way.
+- passage: Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched, a new file's first cap included, tracked or not.
 
 ### C015
 - key: Use the bare sync form with no paths only in an audit over a clean tree; it moves every cap and refuses on divergence from HEAD.
@@ -163,15 +163,15 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: The refusal conditions are enforced by plugins/claude-kit/scripts/kit-size.js (usage text: sync runs "over a clean tree"; refusal at exit 2 on a file or the budget differing from HEAD, untracked or ignored), so the enumeration retires as superseded; the form-choice sentence stays because no program decides which form a writer reaches for. Lands at line 15 as 'The bare form with no paths moves every cap and belongs to an audit over a clean tree.', the enumerated refusal conditions gone; the script's usage text at `plugins/claude-kit/scripts/kit-size.js` line 1918 and its two refusals at lines 1827 and 1833 at dcb01e7 report them.
 - proposed: Keep "The bare form with no paths moves every cap and belongs to an audit over a clean tree"; drop the enumerated refusal conditions, which the script reports itself.
-- passage: The bare form with no paths moves every cap and belongs to an audit over a clean tree.
+- passage: The bare form with no paths belongs to an audit over a clean tree.
 
 ### C016
 - key: Read the net size change on the Chapter's Delta line.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:15
 - provenance: c591c49 2026-09-08, the Delta line named as where the net is read.
-- verdict: keep
-- reason: The Delta line is a Chapter field the writer reads; no program reads it for the session.
+- verdict: retire
+- reason: row 1251 shrink. The net reading is what executing-work's Chapter template `Delta:` field quotes from `kit-size.js report` (`plugins/claude-kit/skills/executing-work/SKILL.md` line 496), so the sentence only said where something else is said.
 - passage: The net is read on the Chapter's Delta line.
 
 ### C017
@@ -181,7 +181,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: c591c49 2026-09-08, the operator's ruling that the ratchet never forbids adding.
 - verdict: keep
 - reason: It is the reviewer's duty that follows from the ledger principle (C133), which the principle does not state; the two are one bullet by design and no test weighs words.
-- passage: A raise is never a finding by itself, and a reviewer weighs only whether the added words earn their place.
+- passage: A reviewer weighs only whether the added words earn their place, and a rewording takes the shrink where one is available.
 
 ### C018
 - key: When rewording a passage, take the shrink where one is available.
@@ -190,7 +190,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: c591c49 2026-09-08, the third clause of the ledger bullet.
 - verdict: keep
 - reason: No finding of its own; it is the subtraction half of the ledger rule and nothing enforces it.
-- passage: A rewording takes the shrink where one is available.
+- passage: A reviewer weighs only whether the added words earn their place, and a rewording takes the shrink where one is available.
 
 ### C019
 - key: Write one SKILL.md in the kit's voice: direct, opinionated, anti-dogma, with no em dashes.
@@ -257,7 +257,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port.
 - verdict: keep
 - reason: Line 21's three sentences are each one idea and inside the bar; the compress finding was taste.
-- passage: Tables and lists for what gets scanned, prose for the why.
+- passage: Tables for what gets scanned, prose for the why, and a flowchart only for a decision the agent might genuinely get wrong.
 
 ### C026
 - key: Use a flowchart only for a decision where the agent might genuinely go wrong, never for linear steps.
@@ -266,7 +266,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port (the seed's 73a485e touched the line, not the sentence).
 - verdict: keep
 - reason: Stands with line 21; nothing to compress without loss.
-- passage: A flowchart only for a decision the agent might genuinely get wrong, never for linear steps.
+- passage: Tables for what gets scanned, prose for the why, and a flowchart only for a decision the agent might genuinely get wrong.
 
 ### C027
 - key: Give every rule exactly one owning site.
@@ -278,8 +278,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - reason: The doctrine now owns the principle with its form list and carve-outs and ranks above the skill for principles, so line 22 points at the doctrine's bullet and the map, keeping the authoring residue (C030). The why (C029, moved here): a rule stated twice is two rules a week later; the 2026-07-14 audit found a dozen drifted copies, one in outright contradiction. Lands at line 22 under A026 as 'The doctrine's one-owner bullet owns the principle and the forms a mention may take (`skills/operating-instructions/SKILL.md` under the kit plugin root). The ownership map that bullet names carries the owning document for each moment.', the bold lead word for word, C030's sentence standing as the authoring residue and C029's dated sentence gone.
 - proposed: (via A026) Line 22 opens with a pointer at the doctrine's one-owner bullet and the ownership map, keeps C030 as the authoring residue, and drops C029 to the ledger (A032).
 - baseline-test: yes
-- passage: The doctrine's one-owner bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) owns the principle and the forms a mention may take.
-- passage: The ownership map it names gives each moment's owner.
+- passage: The doctrine's one-owner bullet and its ownership map own the principle and the forms a mention may take.
 
 ### C028
 - key: Make every other mention of a rule a pointer or an operational residue at its point of action, never a restatement.
@@ -291,7 +290,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - reason: Real conflict with the doctrine's form list, which licenses a whole copy under a parity pin or build step; d2e2f37 confirmed that carve-out lives in the doctrine and the map and not here, and line 73 already treats the pinned set as a disposition. Line 22 gives way to a pointer at the doctrine's forms; the doctrine's list lacks the residue form and should gain it in the same change (the operating-instructions unit's finding). Lands at line 22 under A030 with the pointer C027 records and one sentence beside it, 'An operational residue at a rule's point of action is a form this kit ships that the doctrine's list does not name.', because the doctrine's landed bullet (`plugins/claude-kit/skills/operating-instructions/SKILL.md` line 48 at dcb01e7, bold lead **One owner per moment, and the map names it**) lists the pointer and the whole copy under a parity pin or a build step and no residue form; the residue sentence leaves when that list gains the form, which stays the operating-instructions unit's finding as A030 ruled. Round 1 dropped that residue sentence: the doctrine's landed bullet admits a pointer or a whole copy and never a part, so a lower surface stating the residue form as a fact contradicted it, and the doctrine's missing form is the operating-instructions unit's finding, captured in the kaizen inbox on 2026-09-12.
 - proposed: (via A030) Line 22 points at the doctrine's bullet for the forms a mention may take; the doctrine's list should gain the operational-residue form in the same change, which is a finding for the operating-instructions unit.
 - baseline-test: yes
-- passage: The doctrine's one-owner bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) owns the principle and the forms a mention may take.
+- passage: The doctrine's one-owner bullet and its ownership map own the principle and the forms a mention may take.
 
 ### C029
 - key: Treat a rule stated twice as two rules a week later, as the 2026-07-14 stabilization audit's dozen drifted copies showed, one in outright contradiction.
@@ -320,7 +319,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 662e5e3 2026-08-01, an external engine parsing every plan doc case-sensitively with nothing telling an author which lines are load-bearing; curating-docs took the contract and this skill a pointer.
 - verdict: keep
 - reason: No finding. A pointer at a frozen shape external tooling parses; the pointer sits here because this is the skill loaded when a plan doc's shape is written.
-- passage: The plan-doc header and structure belong to `curating-docs/SKILL.md`'s "Plan Doc Machine Contract" section. Point at it rather than restating any of its lines.
+- passage: Point at `curating-docs/SKILL.md`'s "Plan Doc Machine Contract" section for the plan-doc header and structure, never restating its lines.
 
 ### C032
 - key: Write a skill description as "Use when..." plus the symptoms that pull it in, and stop there.
@@ -329,8 +328,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the fork port.
 - verdict: keep
 - reason: The rule stands as worded; line 27's opening sentence on what a description is for, and the mechanism (C034), are rationale that move here: the description is how a future session decides whether to load the skill. Held at section 31's close: this keep's own reason moves line 27's opening sentence ('The description is how a future session decides whether to load the skill.') to the ledger, and no rewrite entry orders that move, so the sentence stands word for word as sections 23 to 30 left their like cases, and the trim goes to the operator's keep-held batch.
-- passage: Write it as "Use when
-- passage: plus the symptoms that pull it in, and stop.
+- passage: Write it as "Use when..." plus the symptoms that pull it in, and stop.
 
 ### C033
 - key: Do not summarize the skill's process in its description.
@@ -476,15 +474,15 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25, a review round whose three Majors were one defect: motivating clauses whose asserted mechanism the file's own contract or a grep denied.
 - verdict: keep
 - reason: Incident-born and unenforced. The why (C049, C135 moved here): "`memq recall` returns the whole memory store as one bounded digest" and "the memory store is available in bulk" are the same fact and only the first names something the reader can run; a rule taken on trust cannot be repaired when the fact under it moves, so the reader keeps obeying a rule that describes nothing.
-- passage: **Of two true framings of a fact, ship the one the reader can verify from where they sit.**
+- passage: Framing a fact so the reader can check it is the doctrine's "A claim is written in the form a reader can check" bullet.
 
 ### C048
 - key: Name the file, command, observable event, or artifact the fact lives in, and pick the framing that makes it findable.
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:52
 - provenance: a5e184b 2026-08-25, the same round.
-- verdict: keep
-- reason: The recipe half of C047; stays as its own sentence in the line 52 rewrite.
+- verdict: retire
+- reason: row 1257 merge. The doctrine's "A claim is written in the form a reader can check" bullet carries it ("a name over a description, a path over a location"). The pointer survives as C047's landed sentence.
 - passage: Name the file, command, observable event or artifact the fact lives in, and pick the framing that makes it findable.
 
 ### C049
@@ -536,8 +534,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:55
 - provenance: a5e184b 2026-08-25, the class closure this file's own line 46 requires.
-- verdict: keep
-- reason: No finding. The enumeration closure for the two fact bullets.
+- verdict: retire
+- reason: row 1257 merge. The doctrine's "A claim is written in the form a reader can check" bullet carries the checkable-fact class, and C050's bullet carries the edges of a list.
 - passage: Any fact a rule rests on that the reader cannot check, or whose edges they cannot see, is inside the rule.
 
 ### C054
@@ -547,7 +545,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars section 3 Critical: a delete test stated here reached append-only history and 94,000 words of reference documents, so whether a sentence belongs became the doctrine's call, pointed at.
 - verdict: keep
 - reason: No finding. The pointer is the repair for a widening both review lenses found independently; restating the litmus here is the defect it replaced.
-- passage: Whether a sentence belongs at all is the doctrine's call, in its "Documents ship the current state; the journey lives in git" bullet.
+- passage: Whether a sentence belongs at all is the doctrine's "Documents ship the current state; the journey lives in git" bullet's call.
 
 ### C055
 - key: Write every sentence in the kit's own voice as one idea, in the literal phrase, pointing where another site owns the rule.
@@ -584,7 +582,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 8b03bfb 2026-09-08, the twenty-word tightening.
 - verdict: keep
 - reason: Only this file says the twenty is a diagnostic rather than the bar; the doctrine points here.
-- passage: A count past twenty is the diagnostic that finds a second idea, not the bar itself.
+- passage: A count past twenty is the diagnostic that finds a second idea, read per sentence and never as a target.
 
 ### C059
 - key: Read the word count per sentence and never as a target, since uniform sentence length is its own defect.
@@ -593,7 +591,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 8b03bfb 2026-09-08, installed in the doctrine's core and here together.
 - verdict: keep
 - reason: The doctrine's copy is the pinned register core for operator communication; this one sits beside the count it qualifies for curated prose. The doctrine side is the operating-instructions unit's to rule.
-- passage: Uniform length is its own defect, so the count is read per sentence and never as a target.
+- passage: A count past twenty is the diagnostic that finds a second idea, read per sentence and never as a target.
 
 ### C060
 - key: Make each paragraph one point, or say inside the paragraph why its parts must be read together.
@@ -621,7 +619,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - verdict: rewrite
 - landed: 22eafd6 section 31
 - reason: The sentence carries the rule and the three-clause definition of mannered prose; the definition is the term's meaning and the bar cannot be applied without it, so it stays as its own sentence rather than being cut. Lands at line 62 as two sentences, 'A metaphor stands where it is the established term for the thing and is mannered prose everywhere else. Mannered prose is metaphor and flourish substituted for direct statement, written to display the writer, dragging in connotations the writer did not choose.', the definition kept; the bullet's lead `- **The literal phrase.**` stands at its line start, which the doctrine-parity test declared at line 787 pins.
-- passage: A metaphor stands only where it is the established term. Elsewhere it is mannered prose: metaphor and flourish in place of direct statement, written to display the writer, carrying connotations the writer did not choose.
+- passage: A metaphor stands only where it is the established term, and elsewhere it is mannered prose, flourish in place of direct statement, fixed by the literal phrase.
 
 ### C063
 - key: Fix mannered prose by replacing it with the literal phrase.
@@ -630,15 +628,15 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 8cdb3f5 2026-09-04, the literal-phrase bar.
 - verdict: keep
 - reason: The fix sentence; the reader's compression dropped it, which is why that compression was refused.
-- passage: The fix is the literal phrase.
+- passage: A metaphor stands only where it is the established term, and elsewhere it is mannered prose, flourish in place of direct statement, fixed by the literal phrase.
 
 ### C064
 - key: For the packed sentence, the nested qualification, and the reasoning-first order, read the doctrine's plain-prose bullet, which names each.
 - class: pointer
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:64
 - provenance: 8b03bfb 2026-09-08, the plain-prose bullet added to the doctrine's core.
-- verdict: keep
-- reason: A pointer at the doctrine's bullet for the defects it names; the correct form under one-owner.
+- verdict: retire
+- reason: row 1258 merge. The doctrine's "Plain prose, never mannered prose" bullet names the packed sentence and the nested qualification itself ("Never carry a second rule inside a rule's clause. Never nest a qualification..."). Its "The answer comes first" bullet carries the order.
 - passage: The packed sentence, the nested qualification and the reasoning-first order are the same defect in other shapes, and the doctrine's plain-prose bullet names each.
 
 ### C065
@@ -650,7 +648,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: Stands; once line 22 points at the doctrine's form list (C028), this pointer resolves through it. Flipped to rewrite at section 31's round 1: C027's pointer left this sentence saying Anatomy states the forms where it now points at the doctrine for them. Its landed sentence: 'The one-owner rule under Anatomy above points at the doctrine's bullet for the forms a mention may take; this bar adds no form to that list and no exception.'
 - proposed: The one-owner rule under Anatomy above points at the doctrine's bullet for the forms a mention may take; this bar adds no form to that list and no exception.
-- passage: Anatomy's one-owner rule points at the doctrine's bullet for the forms a mention may take. This bar adds no form and no exception.
+- passage: The forms a mention may take are the doctrine's one-owner bullet's, and this bar adds none.
 
 ### C066
 - key: Treat any prose that costs the reader more to read than it changes for them as inside the bar, even where none of the three bars names its form.
@@ -737,7 +735,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: ab3d766 2026-08-29, the four dispositions for a carrier on another surface.
 - verdict: keep
 - reason: The paragraph's rule over every carrier, which the dispositions instance; C075 is the closure for a carrier fitting none, not a duplicate.
-- passage: A carrier on another surface is not automatically yours to edit in place.
+- passage: A carrier on another surface is not automatically yours to edit in place:
 
 ### C075
 - key: Name a carrier fitting none of the four dispositions as such and route it deliberately, never editing it in place by default.
@@ -746,7 +744,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: ab3d766 2026-08-29, added when the fix round found a closed set of three dispositions with no home for the kit's dominant carrier shape.
 - verdict: keep
 - reason: The class closure the file's own line 46 requires; incident-born and unenforced.
-- passage: a carrier fitting none is named as such and routed deliberately, never edited in place by default
+- passage: A carrier fitting none of these is named as such and routed deliberately, never edited in place by default.
 
 ### C076
 - key: Where the one-owner rule applies, fix the owning site rather than the nearest copy.
@@ -765,7 +763,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - verdict: rewrite
 - landed: 22eafd6 section 31
 - reason: The rule holds and its bound (a partial edit reds the parity pin by design) is enforced by the pins in test/doctrine-parity.test.js; the fifty-word sentence carrying it, the bound and C078 splits into three, nothing removed. Lands at line 73 as three sentences, 'Where the surfaces are a deliberate byte-identical set, every copy lands in one edit or none does. A partial edit reds the parity pin by design.' and C078's own sentence after them, nothing removed. Its landing respelled C078's keep sentence; C078 records the flip.
-- passage: A deliberate byte-identical set lands every copy in one edit or none. A partial edit reds the parity pin by design.
+- passage: A deliberate byte-identical set lands every copy in one edit or none, and the set is as large as the parity pin says.
 
 ### C078
 - key: Take the byte-identical set's size from what the parity pin says, not from the pair you first thought of.
@@ -776,7 +774,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: Stands as its own sentence after the split; the reader's compression dropped it. Flipped from keep to rewrite at section 31's close: C077's split made this clause its own sentence, so its first letter is a capital, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The set is as large as the pin says rather than as large as the pair you first thought of.
-- passage: The set is as large as the pin says, not the pair you first thought of.
+- passage: A deliberate byte-identical set lands every copy in one edit or none, and the set is as large as the parity pin says.
 
 ### C079
 - key: Where the claim is a deliberate restatement across surfaces the section's scope already covers, land the correction on every one of them in the same edit.
@@ -802,22 +800,24 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:75
 - provenance: 6d2e6cc 2026-08-29, the finishing pass of review-and-record, where the main thread's own corrections had no reviewer between edit and commit.
-- verdict: rewrite
+- verdict: retire
 - landed: 22eafd6 section 31
-- reason: The rule holds; the origin story (an orchestrator's main thread making scattered corrections between rounds, which no brief reaches) is journey and moves here as the why the rule sits on the writer's side. Lands at line 75 as 'The rule binds every writer amending curated prose. Assume no downstream backstop, since what stands downstream differs by surface.', the origin story gone, with C082's pointer as the paragraph's last sentence.
+- reason: row 1268 (Correction rule binds every writer), dropped under the mechanism cut.
 - proposed: Line 75 becomes: the rule binds every writer amending curated prose; assume no downstream backstop, since which pass reads which surface is finishing-work's and executing-work's to state; the origin story goes to the ledger.
 - baseline-test: yes
 - passage: The rule binds every writer amending curated prose.
+- ruled: cut 2026-09-30
 
 ### C082
 - key: Do not assume a downstream reviewer will catch the amendment; what stands downstream differs by surface.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:75
 - provenance: 6d2e6cc 2026-08-29, three fix-round passes each finding a universal about which pass reads which surface false at some site.
-- verdict: rewrite
+- verdict: retire
 - landed: 22eafd6 section 31
-- reason: The rule holds as the safe assumption; its ninety-word bound enumerates finishing-work's and executing-work's dispatch conditions, which those skills own and which drifted here three times, so it becomes a pointer at them and cannot drift again. Lands at line 75 as the pointer 'Which pass reads which surface is finishing-work's and executing-work's to state (`skills/finishing-work/SKILL.md` and `skills/executing-work/SKILL.md` under the kit plugin root).', the ninety-word enumeration gone; finishing-work's step 5 (its `SKILL.md` line 62 at dcb01e7) and executing-work's step 3 (its Document Review Brief, lines 341 and 352) are the targets.
+- reason: row 1268 (Correction rule binds every writer), dropped under the mechanism cut.
 - passage: Assume no downstream backstop, since what stands downstream differs by surface. Which pass reads which surface is finishing-work's and executing-work's to state (`skills/finishing-work/SKILL.md` and `skills/executing-work/SKILL.md` under the kit plugin root).
+- ruled: cut 2026-09-30
 
 ### C083
 - key: Test a skill by watching an agent's behavior with and without the new wording rather than trusting untested prose.
@@ -1183,7 +1183,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - reason: The complies-with-doctrine mechanism moves here; the setting-conditional in the bound (inheritance on: the RED is contaminated and production-faithful; off: a RED is genuine) stays as C122's bound, because C122 cannot be applied without knowing which state the harness is in. Lands at line 91 as 'Where the harness's subagent inheritance is on, that contamination is production-faithful rather than a test defect, and where the inheritance is off, a RED is genuine.', the complies-with-doctrine account gone; 'that contamination' takes its antecedent from the bold lead's 'contaminated RED'. Round 1 reordered the landed sentence to 'Where the harness's subagent inheritance is off, a RED is genuine, and where it is on, that contamination is production-faithful rather than a test defect.', so that C122's 'there' names the on-state rather than the genuine RED the earlier order left it beside.
 - proposed: Keep one sentence naming the inheritance setting and what each state means for a RED; move the complies-with-doctrine account to the ledger.
 - baseline-test: yes
-- passage: Where the harness's subagent inheritance is off, a RED is genuine. Where it is on, the contamination is production-faithful rather than a test defect.
+- passage: Where the harness's subagent inheritance is off, a RED is genuine.
 
 ### C122
 - key: Treat absence of failure in a doctrine-adjacent RED as weak evidence, not proof the rule is dead weight.
@@ -1192,7 +1192,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 12ef61f 2026-07-09, the review-tension plan.
 - verdict: keep
 - reason: Incident-born, recurs at every doctrine-adjacent rule, unenforced; b99a7fe declined a brief on this very reading.
-- passage: Absence of failure there is weak evidence, not proof the rule is dead weight.
+- passage: Where it is on, absence of failure is weak evidence, not proof the rule is dead weight.
 
 ### C123
 - key: Judge such a rule on its distinct value: point-of-action encoding survives compaction and reaches contexts the doctrine does not.
@@ -1201,7 +1201,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: Stands with its parenthetical contexts (a headless worker mid-loop, a session whose doctrine was summarized away), which are the observable instances the test needs.
-- passage: Judge such a rule on its distinct value: point-of-action encoding survives compaction and reaches contexts the doctrine does not (a headless worker mid-loop, a session whose doctrine was summarized away).
+- passage: Such a rule may ship on its point-of-action value, surviving compaction and reaching contexts the doctrine does not, and the record says it stands on that rationale.
 
 ### C124
 - key: Where you ship a rule whose RED did not reproduce, record that it stands on the distinct-value rationale rather than on a demonstrated failure.
@@ -1212,7 +1212,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: Stands as worded; its sentence loses the semicolon-joined C125 to its own sentence. Flipped from keep to rewrite at section 31's close: C125's split took the semicolon clause after this sentence, so its terminal mark is now a period after 'failure', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: If you ship a rule whose RED did not reproduce, record that it stands on that rationale, not on a demonstrated failure.
-- passage: If you ship a rule whose RED did not reproduce, record that it stands on that rationale, not on a demonstrated failure.
+- passage: Such a rule may ship on its point-of-action value, surviving compaction and reaching contexts the doctrine does not, and the record says it stands on that rationale.
 
 ### C125
 - key: Leave out a rule with neither a reproduced RED nor that rationale.
@@ -1222,15 +1222,15 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - verdict: rewrite
 - landed: 22eafd6 section 31
 - reason: The rule holds; it shares a semicolon sentence with C124, which the doctrine's plain-prose bullet forbids, so it becomes its own sentence with nothing removed. Lands at line 91 as its own sentence, 'A rule with neither a reproduced RED nor that rationale is the guidance-from-imagination antipattern, so leave it out.', nothing removed. Its landing respelled C124's keep sentence; C124 records the flip.
-- passage: A rule with neither a reproduced RED nor that rationale is the guidance-from-imagination antipattern, so leave it out.
+- passage: A rule with neither a reproduced RED nor that rationale is left out.
 
 ### C126
 - key: Do not write a narrative such as "the time we fixed X" in place of a reusable technique.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:95
 - provenance: 830ff28 2026-06-17, the fork port.
-- verdict: keep
-- reason: No finding. Stated only here, so the antipattern is its owner.
+- verdict: retire
+- reason: row 1269 shrink. The doctrine's "Documents ship the current state; the journey lives in git" bullet carries it ("state what is true now, never how or when it was learned").
 - passage: A narrative ("the time we fixed X") instead of a reusable technique.
 
 ### C127
@@ -1274,8 +1274,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:99
 - provenance: 830ff28 2026-06-17, the fork port.
-- verdict: keep
-- reason: No finding. Stated only here, and line 91 (C125) points at it by name.
+- verdict: retire
+- reason: row 1269 shrink. RED step 1 ("If it does not fail, there is nothing to fix, so stop.", C085) and C125's landed sentence carry the act.
 - passage: Guidance written from imagination instead of an observed failure.
 
 ### C132
@@ -1301,8 +1301,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:15
 - provenance: c591c49 2026-09-08.
-- verdict: keep
-- reason: A location fact the ratchet test does not tell the reader.
+- verdict: retire
+- reason: row 1251 shrink. The budget file's path now rides in C011's landed sentence, and `test/size-ratchet.test.js` reports its own failures.
 - passage: In the kit's own repository, `test/size-budget.json` holds the caps and `test/size-ratchet.test.js` makes growth visible, not forbidden.
 
 ### C135
@@ -1343,7 +1343,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the check that derives the moment list; line rewritten by 55c5abc 2026-09-09 (step renumbering), the claim's words unchanged.
 - verdict: keep
 - reason: The runner's `--touching` selects at file grain only, so the hunk-against-scenario half has no mechanical substitute and stays with the writer.
-- passage: Match the changed and untracked paths since the before leg's `<sha>` against the shapes' `files:` lists, then the changed hunks against those probes' scenarios.
+- passage: Match the changed and untracked paths since `<sha>` against the shapes' `files:` lists, then the changed hunks against those probes' scenarios.
 
 ### S003
 - key: Run nothing for a hunk no scenario turns on, and record that it ran nothing.
@@ -1352,7 +1352,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the second half of the check sentence (shares C093's supersession with S002); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: Nothing records a scenario-excluded hunk for the session, so the record-it clause is the writer's and stays as its own sentence in the split.
-- passage: A hunk no scenario turns on runs nothing, and that is recorded where the reading is.
+- passage: A hunk no scenario turns on runs nothing.
 
 ### S004
 - key: Let the before-and-after pair stand in for the reps as the RED and the GREEN.
@@ -1371,7 +1371,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, rewrite 9 of section 3 (a proposed reading is rulings evidence); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: The branch every probe takes today, and finishing-work's step 6 states the same routing for its own pass; two moments, one rule each.
-- passage: For a `proposed` probe, only the after leg runs, recorded as evidence for the operator's rulings batch
+- passage: For a `proposed` probe, only the after leg runs, as evidence for the operator's rulings batch, and the reps still run.
 - flag: stale
 
 ### S006
@@ -1391,7 +1391,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the third clause of the proposed-probe sentence (shares C095's supersession with S005); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: The bound that keeps a proposed probe's after leg from being read as the GREEN; unenforced.
-- passage: and the reps still run
+- passage: For a `proposed` probe, only the after leg runs, as evidence for the operator's rulings batch, and the reps still run.
 
 ### S008
 - key: Do not treat a before leg that matches as step 1's nothing-to-fix case, and do not stop on it.
@@ -1419,9 +1419,9 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the closure written over the four readings when they were installed; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
-- verdict: rewrite
+- verdict: retire
 - landed: 22eafd6 section 31
-- reason: The class closure this file's own line 46 requires of every enumeration; its bound is what keeps errored, designed and no-changed-file rows from being forced into a reading. Flipped from keep to rewrite at section 31's close: S009's retirement took the noun this sentence's 'Its readings' pointed at, so the sentence now opens 'The pair's readings', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: row 1264 merge. `tools/probe-corpus/README.md` closes the pair statuses in its status list (line 110) and in "What a row counts for".
 - proposed: The pair's readings close at four: a matching pair on a moment the change did not mean to move is a reading that held; a before-leg mismatch the after leg matches is the repair; a mismatch both legs carry is the corpus's, recorded as such; and an after-leg mismatch the before leg lacks takes the intent test below, as does a matching pair on a moment the change meant to move, which is a finding rather than a reading that held.
 - passage: A pair reads exactly one of four ways.
 
@@ -1432,7 +1432,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the four closed readings; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: One of the four readings the plan's Chapter assigns to this file; stays as its own sentence.
-- passage: A match on a moment the change did not mean to move is a reading that held.
+- passage: A match on a moment the change meant to move is a finding, and any other match held.
 
 ### S012
 - key: Read a before-leg mismatch that the after leg matches as the repair.
@@ -1448,8 +1448,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
-- verdict: keep
-- reason: One of the four readings; finishing-work's step 6 names the same row for its own pass, which is two moments rather than a duplicate.
+- verdict: retire
+- reason: row 1264 merge. `tools/probe-corpus/README.md` "What a row counts for" says "A mismatch both legs carry is the corpus's.".
 - passage: A mismatch both legs carry is the corpus's, recorded as such.
 
 ### S014
@@ -1457,8 +1457,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
-- verdict: keep
-- reason: The reading that feeds the intent test S033 and S034 own; stays.
+- verdict: retire
+- reason: row 1264 merge. S033's landed sentence ("The intent test covers a ruled probe's after-leg mismatch the before leg lacks.") carries the act.
 - passage: An after-leg mismatch the before leg lacks takes the intent test
 
 ### S015
@@ -1468,7 +1468,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the second half of the intent-test reading (shares C100's supersession with S014); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: A matching pair on an intended move is the one reading a session would misread as success, so the finding label is load-bearing.
-- passage: as does a match on a moment the change meant to move, which is a finding rather than a reading that held.
+- passage: A match on a moment the change meant to move is a finding, and any other match held.
 
 ### S016
 - key: Re-run an errored, unparsed, or unavailable-leg pair once, as finishing-work's step 6 directs.
@@ -1480,7 +1480,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - reason: Step 6 owns the re-run count and its triggers and states them, so the sentence restates its owner; it becomes a pointer, with S017 as the residue that follows. Baseline-test: yes. Lands at line 87 as 'An errored or unparsed pair, or one in a leg recorded unavailable, is none of these and is re-run as finishing-work's step 6 directs.', the re-run count gone, with S017 as its own sentence after it; the 'none of these' closure moved into this sentence from the errors-again clause the split left without a subject. Its landing respelled S017's and S018's keep sentences; S017 and S018 record the flips. Its landing also moved the 'none of these' closure onto the errored or unparsed pair before its re-run, so the closure covers the pair before and after the re-run, which the proposal did not order.
 - proposed: Reduce to a pointer ("an errored or unparsed pair is re-run as finishing-work's step 6 directs"), keeping S017 as the residue sentence that follows it.
 - baseline-test: yes
-- passage: An errored or unparsed pair, or one with a leg recorded unavailable, is none of these and is re-run as finishing-work's step 6 directs.
+- passage: Read each row by `tools/probe-corpus/README.md`'s "What a row counts for" section, after the re-runs finishing-work's step 6 directs.
 
 ### S017
 - key: Where the re-run errors again, count the pair for nothing and run the reps above instead.
@@ -1491,16 +1491,16 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - landed: 22eafd6 section 31
 - reason: This file's own consequence, which step 6 does not state: a pair that errors twice stands in for nothing, so the reps run. Flipped from keep to rewrite at section 31's close: S016's landing made this clause its own sentence after the pointer, as S016's proposal orders, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Where it errors again it stands in for nothing, so the reps above run.
-- passage: If it errors again it stands in for nothing, and the reps run.
+- passage: A pair that errors again stands in for nothing, and the reps run.
 
 ### S018
 - key: Take finishing-work's step 6 dispositions for a designed shape's rows and for a designed-agreed row.
 - class: pointer
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06 wrote it against step 5; 55c5abc 2026-09-09 renumbered the pointer to step 6.
-- verdict: rewrite
+- verdict: retire
 - landed: 22eafd6 section 31
-- reason: Already a pointer, and step 6 carries the designed and designed-agreed dispositions under the new number. Flipped from keep to rewrite at section 31's close: S016's split left this clause without the subject it shared, so its first letter is a capital and its verb is 'are' rather than 'enter', the 'none of these' closure kept, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: row 1264 merge. `tools/probe-corpus/README.md` "What a row counts for" disposes `designed` and `designed-agreed` rows, and finishing-work step 6 keeps them off the before-leg list.
 - proposed: A designed shape's rows and a designed-agreed row are none of these either and take finishing-work's step 6 dispositions.
 - passage: A designed shape's rows and a designed-agreed row are none of these either and take step 6's dispositions.
 
@@ -1514,8 +1514,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - reason: The runner README's "What the runner reads" section owns what each leg reads, and this sentence restates a consequence of it; it becomes a pointer at tools/probe-corpus/README.md with the residue that such rows are no reading. Baseline-test: yes. Lands at line 87 as 'Rows from a shape naming no changed file are no reading at all, which follows from what each leg reads in `tools/probe-corpus/README.md`'s "What the runner reads" section.', the pointer folded into the residue sentence rather than landed as a second standalone pointer, since S031's sentence later in the paragraph already points at that README for what each leg reads; the section named sits at `tools/probe-corpus/README.md` line 154 at dcb01e7.
 - proposed: Point at tools/probe-corpus/README.md for what each leg reads and keep "such rows are no reading" as the residue.
 - baseline-test: yes
+- passage: Read each row by `tools/probe-corpus/README.md`'s "What a row counts for" section, after the re-runs finishing-work's step 6 directs.
 - passage: Rows from a shape naming no changed file are no reading at all.
-- passage: `tools/probe-corpus/README.md` owns what each leg reads, in its "What the runner reads" section, and what each row status means.
 
 ### S020
 - key: Run the before leg as `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`.
@@ -1524,7 +1524,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, with the parity pin tying the flags to the runner's KNOWN_FLAGS; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: A pinned copy: test/doctrine-parity.test.js requires writing-skills to spell `--only` and `--before` inside a run.mjs command span and refuses any flag the runner does not take. Keep verbatim.
-- passage: The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`.
+- passage: The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`, over the `ruled` moments the check kept.
 
 ### S021
 - key: Run the after leg as the same command with no `--before` and with its own moment list.
@@ -1533,7 +1533,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: The second half of the pinned command pair; stays.
-- passage: The after leg is the same command without `--before`.
+- passage: The after leg is the same command without `--before`, over every moment the check kept.
 
 ### S022
 - key: Set the after leg's `<moments>` to the comma-joined list of every moment the check kept.
@@ -1542,7 +1542,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, rewrite 12 of section 3, which corrected a copy of finishing-work's economy that had made the RED unobtainable exactly where a fix worked; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: Incident-born within the plan's own rounds; the moment-list derivation is this file's, where finishing-work derives its own list with `--touching`.
-- passage: The after leg's `<moments>` is every moment the check above kept, comma-joined
+- passage: The after leg is the same command without `--before`, over every moment the check kept.
 
 ### S023
 - key: Set the before leg's `<moments>` to that same list narrowed to the `ruled` moments.
@@ -1551,7 +1551,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the second half of the moment-list sentence (shares C106's supersession with S022); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: The narrowing is what keeps the before leg off a proposed probe's paid readers. The why (S024, moved here): a pair is a reading only where both legs ran the moment, and a proposed probe runs the after leg alone.
-- passage: and the before leg's is that list narrowed to the `ruled` ones
+- passage: The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`, over the `ruled` moments the check kept.
 
 ### S024
 - key: Narrow the before leg because a pair is a reading only where both legs ran the moment.
@@ -1579,7 +1579,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the bound of the before-ref sentence (shares C107's supersession with S025), written against step 5; 55c5abc 2026-09-09 renumbered the recording step to 6.
 - verdict: keep
 - reason: The pointer resolves: finishing-work's step 6 states that the empty-tree base ref a root-commit effort yields leaves the before leg unrun and recorded as such.
-- passage: A root-commit change takes the `<sha>` finishing-work's pre-step-1 derivation yields, which leaves the before leg unrun as step 6 records it.
+- passage: A root-commit change leaves the before leg unrun.
 
 ### S027
 - key: Run the pair once at the section's close over the section's whole change, not at each fix round.
@@ -1588,7 +1588,7 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the paid-reader economy; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
 - verdict: keep
 - reason: A per-fix-round pair would spend about forty cents a pair per round (memory record the-probe-runner-is-a-paid-box-claimed-run); nothing enforces the once.
-- passage: The pair runs once at the section's close over its whole change, never at each fix round.
+- passage: The pair runs once at the section's close over its whole change, never at each fix round, and inside a finishing pass only finishing-work's step 6 runs the set.
 
 ### S028
 - key: Inside a finishing pass, do not run the set yourself; only finishing-work's step 6 runs it.
@@ -1597,16 +1597,16 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: e0ef09c 2026-09-06, the one-owner-per-moment split that gave the finishing pass its own run, written against step 5; 55c5abc 2026-09-09 renumbered it to step 6.
 - verdict: keep
 - reason: The bound that keeps a finishing pass from running the pair a second time beside step 6's run over the whole changeset, which that step states.
-- passage: Inside a finishing pass, only finishing-work's step 6 runs the set.
+- passage: The pair runs once at the section's close over its whole change, never at each fix round, and inside a finishing pass only finishing-work's step 6 runs the set.
 
 ### S029
 - key: Take the box claim that step 6 names before running the pair.
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06 wrote the claim clause against step 5; ddcb28e 2026-09-07 rewrote that step to "takes no heavy-process claim" (one network-bound reader holds neither processors nor memory); 55c5abc 2026-09-09 renumbered the pointer to step 6 and left the clause as it was.
-- verdict: rewrite
+- verdict: retire
 - landed: 22eafd6 section 31
-- reason: The clause is still false after the merge: step 6 names no box claim, so a session following it would claim a slot the owner says the runner does not take. Drop the clause and point at finishing-work's step 6 for the run's process standing; finishing-work's own post-gate re-run sentence says "under its own claim", a conflict inside that file for its unit to rule. Baseline-test: yes. Lands at line 87 as 'The run's process standing is finishing-work's step 6's.', the box-claim clause and S030's lane clause gone. Amendment 2: this reason's closing clause is stale at dcb01e7, the 'under its own claim' sentence it names being absent from `plugins/claude-kit/skills/finishing-work/SKILL.md` (a grep for the phrase returns nothing), whose step 6 states the standing whole ('It takes no heavy-process claim'); the verdict stands on the clause's first sentence.
+- reason: row 1265 shrink. It was a pointer only, and finishing-work step 6 states how its run is backgrounded and re-run (lines 138 to 140).
 - proposed: Drop the box-claim clause and point at finishing-work's step 6 for the run's process standing.
 - baseline-test: yes
 - passage: Finishing-work's step 6 owns the run's process standing, how it is spawned, when a leg is re-run and what each row counts for.
@@ -1627,8 +1627,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: pointer
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the ownership split the fifteen rounds settled on; line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
-- verdict: keep
-- reason: The ownership statement S019 is rewritten to honour; the README exists at that path with a "What the runner reads" section and the pair-status list.
+- verdict: retire
+- reason: row 1265 shrink. It was a pointer only, and S016's landed sentence points at the README's "What a row counts for" section.
 - passage: `tools/probe-corpus/README.md` owns what each leg reads, in its "What the runner reads" section, and what each row status means.
 
 ### S032
@@ -1636,8 +1636,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: pointer
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the ownership split (shares C110's supersession with S031), written against step 5; 55c5abc 2026-09-09 renumbered the pointer to step 6.
-- verdict: keep
-- reason: Step 6 carries the spawn, re-run and row-count text under the new number; S016's rewrite folds into this pointer.
+- verdict: retire
+- reason: row 1265 shrink. It was a pointer only, and S016's landed sentence points at finishing-work step 6 for re-runs.
 - passage: Finishing-work's step 6 owns the run's process standing, how it is spawned, when a leg is re-run and what each row counts for.
 
 ### S033
@@ -1701,8 +1701,8 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - class: rule
 - source: plugins/claude-kit/skills/writing-skills/SKILL.md:87
 - provenance: e0ef09c 2026-09-06, the read-it-yourself residue (shares C113's supersession with S037); line rewritten by 55c5abc 2026-09-09, the claim's words unchanged.
-- verdict: keep
-- reason: Routes a pair's raw replies through line 85's read-every-flagged-result rule; nothing reads them for the session.
+- verdict: retire
+- reason: row 1265 shrink. C090 ("Read every flagged result yourself...") carries reading the runner's raw replies.
 - passage: Read the raw replies the runner keeps as you read flagged results.
 
 ### S040
@@ -1721,4 +1721,4 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: docs/backlog.md 2026-09-13, batch 2 ruling 26 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 5, which placed the pointer in this section because the sentence bars live here.
 - verdict: keep
 - reason: The bars shape a sentence and say nothing about whether a lesson enters a standing passage as a rewrite or as a rider, which is the kaizen skill's rule at its disposition step; a writer who reaches these bars while landing a lesson needs the owner named, since a bar-compliant appended sentence is exactly the form the owner refuses. The pointer carries the rule's lead and no bound, per the one-owner rule under Anatomy. The paragraph it joins keeps C054's doctrine pointer word for word and closes on the bars being read over the rewrite's result, so the paragraph makes one point: whose call each question is before the bars apply.
-- passage: How an accepted lesson enters standing prose is the kaizen skill's disposition step (`skills/kaizen/SKILL.md` under the kit plugin root): the owning passage is rewritten with the lesson in mind, never appended to. The bars below shape the surviving sentences at authoring, read over that rewrite's result.
+- passage: An accepted lesson lands by the kaizen skill's rewrite-not-append rule (`skills/kaizen/SKILL.md` under the kit plugin root).
