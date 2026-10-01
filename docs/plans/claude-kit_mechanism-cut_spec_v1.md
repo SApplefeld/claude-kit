@@ -546,3 +546,10 @@ tests: 4087
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 corpus: 125353 words of cap 143726
 ```
+
+### Interim board 5 - 2026-10-01
+- Section 6 stage: drafting. Branch `mechanism-cut/s6`, cut from `mechanism-cut/s5` at `6c02471b` per the stacking rule, since pull request #165 (section 5) is open and unmerged. Scratch is `.kit/scratch/mechanism-cut/s6/`.
+- Live dispatches: Workflow run `wf_17b639ef-051`, five opus-medium drafters, one track each: the coordinator skill in three parts (co1 lines 1 to 78, rows 523 to 539, target 1,536; co2 lines 79 to 156, rows 540 to 556, target 1,678; co3 lines 157 to 231, rows 557 to 571, target 1,454), standing-watch whole (target 1,374) and role whole (target 2,174); briefs in `brief-*.md`, built by `build-waves.js`. The baseline whole gate (`baseline.exit`) and the probe before leg at `6c02471b` over the ten moments in `probes.txt` (`probe-before.exit`) run in the background.
+- Rulings adopted (route b, declared): the coordinator drafts in three parts with per-part ledger extracts and the other two skills whole, all 559 live entries placed. Row 1116 (role's prune text, merge into the coordinator) keeps one sentence in the role skill carrying the board-first and no-board clauses, since both skills draft in one wave and neither drafter may rely on the other adding text. The coordinator's board-write sentence on the off-Windows sync is re-aimed at what the landed memory-system skill says (section 5's flag).
+- Pins: `pins.md`. Pinned text inside three drop rows is retired by the main thread at the landing: the homing round (row 566, ten phrases), the misfiling algebra (row 559, two phrases) and standing-watch's residual default (row 1191, one line's lead and three phrases).
+- Next: save the drafts, join the coordinator's parts, apply the ledger lines, retire the drop-row pins, run the targeted lane, commit first green, then the review wave, the section-close pair, the probe after leg and the whole gate.
