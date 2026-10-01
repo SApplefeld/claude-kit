@@ -75,9 +75,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, the adversarial review's second arming contradiction between this section and the tick order.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A008, A010, A011. The tick order at line 49 owns the sequence; two statements of one sequence is the class that produced both arming contradictions, so line 17 points and step 4 keeps. Lands at line 17 as 'The order a pass ends on is fixed by the tick order below, at step 4.', the sequence gone from this line; step 4 at line 49 ('**Act**, then **write the ledger**, then **ensure the next wake is armed**, then **sleep.**') states it whole and is unchanged.
+- reason: row 1187 (Safety arm versus paced arm), merged. The owner is tick step 4 (C062): "**Act**, then **write the ledger**, then **ensure the next wake is armed**, then **sleep.**".
 - proposed: (via A010) Line 49 (C062) keeps the sequence; line 17 points at the tick order.
 - baseline-test: yes
 - passage: The order a pass ends on is fixed by the tick order below, at step 4.
@@ -87,8 +87,8 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rationale-example
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, arming repair; the cost was stated at 0ea17a9 2026-08-18.
-- verdict: keep
-- reason: A012. The tick both opens and closes by arming, so the end-of-pass order reads as contradicting step 1 unless this reason names which arm and why.
+- verdict: retire
+- reason: row 1187, merged. The write-then-arm order it reasoned for is stated whole at tick step 4 (C062), and the reason stays on this ledger.
 - passage: A pass that arms before it writes loses the pass when the write does not happen.
 
 ### C009
@@ -96,9 +96,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: mechanic
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, the two-arm design that ended the second arming contradiction.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A013. The definitions are the repair; nothing classifies an arm mechanically. Flipped from keep to rewrite at section 29's close: C010's landing took the clause after this sentence's colon, so the colon becomes a period, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: row 1187, merged. Tick step 1 (C057) names the safety arm: "This is the safety arm, and its cadence is the runbook's to state." The pacing paragraph (C069) owns the one-shot paced arm.
 - proposed: The safety arm is the standing heartbeat, a repeating timer whose only job is to guarantee that some wake exists.
 - passage: A watch arms for two reasons only. The safety arm is the standing heartbeat, a repeating timer whose only job is to guarantee that some wake exists. The paced arm is a one-shot that sets when the next pass runs.
 
@@ -107,9 +107,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, arming repair; the restart rule itself is from 0ea17a9 2026-08-18 (tick order).
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A014, A015. Tick step 1 at line 46 states it with the reason and the cadence ownership; line 17 keeps the safety-arm definition and drops the restatement of when it is armed. Lands at line 17 by dropping ': a session that died mid-pass left no timer behind at all, so a restart puts the heartbeat up before it checks anything', the when-armed duty folded into the pointer 'The tick order opens with the first and closes with the second, and states when each is armed.'; step 1 at line 46 ('**Ensure the heartbeat is armed first**, before any check, on any restart.') states the restart rule whole and is unchanged. The drop made C009's colon a period, which C009 records. Its landing respelled C009's keep sentence; C009 records the flip.
+- reason: row 1187, merged. The owner is tick step 1 (C057): "**Ensure the heartbeat is armed first**, before any check, on any restart.".
 - proposed: (via A014) Line 46 (C057) keeps; line 17's restart clause folds into the pointer at the tick order.
 - baseline-test: yes
 - passage: The tick order opens with the first and closes with the second, and states when each is armed.
@@ -119,9 +119,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, "reads both steps as ensure rather than add" was the repair's own wording.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A016, A017. Steps 1 and 4 each carry their own ensure reading; line 17 keeps the phrase only as the gloss on its pointer at the tick order. Lands at line 17 as the standalone sentence 'Both steps read as ensure rather than add.', the two instances after the colon (a heartbeat already standing, a static board) gone; C058 at step 1 and C063 at step 4 state them at their own steps, both lines unchanged.
+- reason: row 1187, merged. The ensure-never-add reading stays at step 1 (C058, "the move is to look, not to add a second") and at step 4 (C063, "On a static board the heartbeat is that wake and nothing more is armed.").
 - proposed: (via A016) Lines 46 (C058) and 49 (C063) keep; line 17 keeps only "both steps read as ensure rather than add" as the pointer's gloss.
 - baseline-test: yes
 - passage: Both steps read as ensure rather than add.
@@ -169,7 +169,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 3074425 2026-08-31, the coordinator board that filled with its own journey; banked operator-tier as a-coordination-ledger-holds-current-state-not-its-own-journey.
 - verdict: keep
 - reason: A020. The three disqualified grounds are what stops the old re-derivability test being read back in; no hook screens a ledger line.
-- passage: A line belongs on the ledger only if a successor with no context needs it to resume the watch. Being true, hard-won, or dressed with an evidence time and a re-derive command does not qualify it.
+- passage: Both kinds answer one admission test: a line belongs on the ledger only if a successor with no context needs it to resume the watch.
 
 ### C017
 - key: Reject a line that argues rather than states, or whose subject is the keeper's own reasoning rather than the watched system.
@@ -189,7 +189,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - landed: e9245e7 section 29
 - reason: A024, A025. This line is the owner of the route; under the rewrite it gains the drop branch line 28 currently adds. Flipped from keep to rewrite at section 29's close: C025's landing moved the drop branch from line 28 onto this sentence, as this entry's own reason foresaw, so the sentence gains ', and otherwise it is dropped' before its semicolon, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: What such a line carries, where durable, goes where the destination rule at the end of this file sends it, and otherwise it is dropped; the ledger is not its second home.
-- passage: What such a line carries, where durable, goes where the destination rule at the end of this file sends it, and otherwise it is dropped.
+- passage: What it carries, where durable, goes where the destination rule below sends it, and otherwise it is dropped.
 
 ### C019
 - key: Keep off the ledger any line the keeper cannot confidently say a successor needs.
@@ -198,7 +198,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03, the inverted default from the 201-kilobyte coordinator board, Section 2 of docs/archive/claude-kit_gating-definitions_spec_v1.md.
 - verdict: keep
 - reason: A026 to A028. The sentence is pinned verbatim by test/doctrine-parity.test.js (line 1935); a rewording that keeps the direction still fails the pin, so update the pin in the same edit. Amendment 2: the test/doctrine-parity.test.js line 1935 cite sits at the test named `the standing-watch admission default faces outward at both forks and the named inward spellings are absent` at the landing (declared near line 1924; line 1935 is a comment inside it); prefer the test name over the line. Amendment 3: the pin is retired, so Amendment 2's cite names a test that no longer reads this sentence. It reddened on any rewording that kept the direction, an edit a session may make on its own authority, which is the testing-discipline skill's sixth retire class. A re-aimed replacement failed too, the paragraph stating its rule and then pricing the opposite error, so only a binder onto the subject separated them. The direction is now prose-enforced, checked against the coordinator skill's restatement of the default. The surviving legs read the paragraph's lead, its tie-break framing and the founding sentence's absence, none of them the direction. The test was renamed in the same edit, since its old name claimed a direction no leg reads; cite it as `standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent`.
-- passage: At the first, a line the keeper cannot confidently say a successor needs stays off. That default is the admission test's tie-break for doubt, and it answers only where the keeper cannot call the test.
+- passage: At the first fork, whether a line belongs, a line the keeper cannot confidently say a successor needs stays off and leaves by the admission test's route. That default is the admission test's tie-break for doubt, used only where the keeper cannot call the test.
 
 ### C020
 - key: Accept the loss of a wrongly-excluded line, because a reproducible fact costs one re-derivation, a durable one costs one read of its home surface, and the rest is content the test exists to keep off.
@@ -207,7 +207,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03, "with the loss accepted in place rather than argued away".
 - verdict: keep
 - reason: A029. The third cost is the one instruction that stops a rescue on the only-record ground the founding incident used; the backlog contests this pricing (lines 368, 369), which shows it is load-bearing. Amendment 2: the docs/backlog.md lines 368 and 369 cites sit at the items whose bold leads read 'The watch chassis names no author for a keeper-learned standing DO-NOT, and no destination for one either' and 'The watch chassis's admission default still drops a DO-NOT-shaped line whose membership the keeper cannot call' (lines 383 and 384 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the leads over the lines.
-- passage: Kept off wrongly, a line costs one of three things. A line the watched system reproduces costs a re-derivation under the tick order. A durable line with a home under the destination rule costs one read of that home. Any other line is lost, and that loss is accepted. What the default exists to keep off, a keeper's reasoning and an episode's narrative, is recorded nowhere else, so sparing the irreplaceable would spare all of it.
+- passage: Kept off wrongly, a line costs at worst its loss, which is accepted.
 
 ### C021
 - key: Expect a wrongly-admitted line to survive every rewrite, because supersede, prune and the per-pass write all ask what fact a line holds and never whether it belongs.
@@ -219,16 +219,16 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - reason: A027, A030. The one-sentence asymmetry stays because it is why the default faces outward; the trace it currently carries restates lines 36 and 40 and lives here: supersede fires on a changed fact, prune moves only what supersede retired, the per-pass write leaves an unrefreshed line as found, so no later rule asks whether a line belongs. Lands at line 28 as 'Kept on wrongly, a line survives every rewrite this file performs, since none asks again whether a line belongs.', opening 'Kept on wrongly,' rather than the proposal's 'a wrongly-admitted line' to hold the parallel with C020's 'Kept off wrongly,' sentence before it; the three-rule trace lives here, including the sentence 'A line that should never have been admitted holds either a fact of the watched system that no successor needs, which those rewrites keep current rather than remove, or no fact of the watched system at all, the shape the second tell above marks, which none of them touches; so it accrues.' and the clause 'a question the admission test asks once, at placement', neither keyed to another entry.
 - proposed: One sentence: a wrongly-admitted line survives every rewrite this file performs, since none asks again whether a line belongs; the three-rule trace lives in this ledger under C021.
 - baseline-test: yes
-- passage: Kept on wrongly, a line survives every rewrite this file performs, since none asks again whether a line belongs.
+- passage: Kept on wrongly, it survives every rewrite, since none asks again whether a line belongs.
 
 ### C022
 - key: Fire supersede only when the fact a line holds changes.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03 restated it; the rule was installed at 0ea17a9 2026-08-18 (line 36) and earned by probe B.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A031, A032. Line 36 owns supersede; this premise becomes a pointer at it. Lands at line 28 as the proposal reads, 'Supersede, under its own rule below, fires only on a changed fact.'; line 36 keeps the rule and line 30's C040 sentence stands.
+- reason: row 1190 shrink. This premise was argument for C021, and C021's landed sentence carries the act. Supersede's own rule stays at C049.
 - proposed: (via A031) Line 36 keeps; line 28's premise reads "supersede, under its own rule below, fires only on a changed fact"; line 30's C040 stays.
 - baseline-test: yes
 - passage: Supersede, under its own rule below, fires only on a changed fact.
@@ -238,9 +238,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03 restated it; line 40 ("move superseded history") is from 0ea17a9 2026-08-18.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A027. Line 40 owns the prune; this premise becomes a pointer at it. Lands at line 28 as 'The prune, under its own rule below, moves only what supersede has retired.', in the pointer form C022's proposal fixes for its sibling premise so the pair reads as one; line 40 states the prune whole.
+- reason: row 1190 shrink. This premise was argument for C021, and C021's landed sentence carries the act. The prune's own rule stays at C052.
 - passage: The prune, under its own rule below, moves only what supersede has retired.
 
 ### C024
@@ -250,16 +250,16 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03.
 - verdict: keep
 - reason: A027. The only statement in the file of what the per-pass write does to an unrefreshed line; tick step 4 says only "write the ledger", so this has no owner to point at and may move beside step 4.
-- passage: The per-pass write rewrites current a line the re-derivation refreshes. A line it neither confirms nor contradicts is left standing as found.
+- passage: The write refreshes what the re-derivation measured and leaves any other line as found.
 
 ### C025
 - key: Send a line the admission default keeps off to the destination rule where it carries something durable, and otherwise drop it.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A024, A025, A033, A034. The sentence already says "by the same route as a line that fails the test"; the drop branch moves to line 26 and this becomes the bare pointer. Lands at line 28 as the bare pointer 'What the default keeps off leaves by the same route as a line that fails the test.', the clause ': where it carries something durable it takes the destination rule, and otherwise it is dropped' gone; the drop branch lands on line 26 inside C018's sentence, which C018 records, so the route the pointer names is stated whole at one site. Its landing respelled C018's keep sentence; C018 records the flip. Its landing respelled C031's keep sentence; C031 records the flip.
+- reason: merged into C019's landed sentence, "...stays off and leaves by the admission test's route.", which now states the route once.
 - passage: What the default keeps off leaves by the same route as a line that fails the test.
 
 ### C026
@@ -267,27 +267,29 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, the route by which a doubted prohibition could be kept off and drop from the wake prompt; the residual framing is from 6c725a0 2026-09-03.
-- verdict: keep
-- reason: A035. The paragraph lead is pinned (test/doctrine-parity.test.js line 1935); the A035 rewrite splits the paragraph and pointer-izes its restated premises but keeps this sentence verbatim. Amendment 2: the test/doctrine-parity.test.js line 1935 cite sits at the test named `the standing-watch admission default faces outward at both forks and the named inward spellings are absent` at the landing (declared near line 1924; line 1935 is a comment inside it); prefer the test name over the line. Amendment 3: that test was renamed when its direction legs retired, since the old name claimed a direction no leg reads. This pin is unaffected and still runs there; cite it as `standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent`.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: **The admission default is residual.** It decides only what no rule has already placed.
+- ruled: cut 2026-09-30
 
 ### C027
 - key: Treat as placed by this file: the two-kinds rule's members, the read protocol, and the pass record named by the destination rule.
 - class: mechanic
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03.
-- verdict: keep
-- reason: A036. Nothing performs placement; the backlog (line 365) notes the coordinator's board excludes the read protocol this names, a consumer-side gap. Amendment 2: the docs/backlog.md line 365 cite sits at the item whose bold lead reads 'The coordinator's board carries a class its own two-kinds statement excludes' (line 380 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: This file places the two kinds' members, the read protocol, and the pass record the destination rule names.
+- ruled: cut 2026-09-30
 
 ### C028
 - key: Do not read "the current state" as a placed class of its own; it is the ledger's own definition, already divided into the placed members.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, closing a reading that would make every fact of the watched system a recognised member.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A035. A defensive gloss on line 81's wording; the safe move is to word line 81 so the reading cannot arise and drop the gloss, in the same edit that gives line 81 its missing destination leg (A093). Lands in one edit with C091 across lines 30 and 81: line 30 loses the gloss sentence beginning 'The current state that rule also names' whole, so 'Those are this file's own placing rules' again follows the enumeration it refers to, and line 81 gains, after C090's sentence, 'The current state is the ledger's own definition under The two artifacts, which the two-kinds rule above already divides into the members it places.', so the placed-class reading cannot arise. The missing destination leg (A093) is read as that definition at the point of use rather than as a fourth destination, since C089's reason places the leg for a durable fact about the watched system in the backlog as an open design item; the reading is the implementer's inference, A093's own text not being in the tree, and the round read it.
+- reason: row 1207 shrink. The gloss re-explained the ledger's definition, which C004's bullet under Two Artifacts and the two-kinds bullets (C014, C015) still carry.
 - passage: The current state is the ledger's own definition under Two Artifacts, which the two-kinds rule already divides into the members it places.
 
 ### C029
@@ -295,66 +297,73 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, "the repair is a pointer to the rules that already answer whether such a line is needed, not a new exception".
-- verdict: keep
-- reason: A035. Without it placement would become the exemption the be769a8 round rejected outright (Standing Brief Amendment 2 of that plan).
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: A rule places a class by naming it as ledger content, which settles that a successor needs the class.
 - passage: Placement exempts nothing from the admission test.
+- ruled: cut 2026-09-30
 
 ### C030
 - key: Refuse a line that is not the member it presents as, and refuse a member whose particular line no successor needs to resume the watch.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03.
-- verdict: keep
-- reason: A035. The two refusals are what keep the test whole under placement; the first is the founding incident's dressed-up lines.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: The test still refuses a line that is not the member it presents as, the way a withdrawn reading can pose as one. It also refuses a member whose particular line no successor needs.
+- ruled: cut 2026-09-30
 
 ### C031
 - key: Keep off a recognised member whose particular line the keeper cannot confidently say a successor needs, and route it by the destination rule or drop it.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03.
-- verdict: rewrite
+- verdict: retire
 - landed: e9245e7 section 29
-- reason: A026, A028, A033, A034. Already the pointer form ("exactly as the paragraph above states it") and carries the pinned carve-out for a prohibition or trap; deleting it deletes the exemption's application. Flipped from keep to rewrite at section 29's close: C025's landing moved the route this sentence's 'the route stated there' pointed at from line 28 to line 26, and the clause was respelled to name the paragraph that now states it. Landed as the proposal below.
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - proposed: That second refusal is asked of the line rather than of the class, so the keeper can be in doubt on it, and that doubt is the admission default's like any other save on those same two members: a recognised member whose particular line the keeper cannot confidently say a successor needs stays off, under the default exactly as the paragraph above states it, and leaves by the route the admission test's paragraph states, the destination rule where it carries something durable and otherwise dropped.
 - passage: That refusal is asked of the line, so the keeper can doubt it. Such doubt is the default's, and the line stays off and leaves by the admission test's route.
+- ruled: cut 2026-09-30
 
 ### C032
 - key: Apply the admission default only in the test's doubt branch, in its three shapes: an unplaced line whose need cannot be called, a line not recognisable as a member, and a recognised member whose particular line cannot be called needed.
 - class: mechanic
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03.
-- verdict: keep
-- reason: A037. No program classifies a doubt; the backlog (line 369) contests the second shape for a DO-NOT of uncertain membership, which is a design question on this sentence. Amendment 2: the docs/backlog.md line 369 cite sits at the item whose bold lead reads 'The watch chassis's admission default still drops a DO-NOT-shaped line whose membership the keeper cannot call' (line 384 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: The default lives only in that doubt branch, in three shapes. One is a line outside every named class whose need the keeper cannot call. One is a line the keeper cannot recognise as a member. One is a recognised member whose particular line the keeper cannot say a successor needs.
+- ruled: cut 2026-09-30
 
 ### C033
 - key: Read a prohibition's cited condition measuring false as meaning the line does not bind this pass, never that the line is retired.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, a security-lens regression in that round made a false reading a retirement trigger and was reverted.
-- verdict: keep
-- reason: A038. Blast-radius gate on an act against a system the watch does not own; the regression it guards against was real in the same round.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: Where it cites a condition, the re-measure step measures it every pass. A false reading means the line does not bind this pass, never that it is retired.
+- ruled: cut 2026-09-30
 
 ### C034
 - key: Hold a prohibition that cites no condition as binding until the operator's word retires it.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03; that round withdrew a governing-document retirement route because the re-measure step re-reads a document only for a line citing a condition.
-- verdict: keep
-- reason: A039 to A041. Premise for the conditionless case; blast-radius. The backlog (line 371) notes the liveness cost, over-binding after a document drops the prohibition, which is the recoverable direction. Amendment 2: the docs/backlog.md line 371 cite sits at the item whose bold lead reads 'Two consequence claims in the watch chassis name mechanisms its own steps do not run' (line 386 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: Where it cites none, it binds until the operator's word retires it.
+- ruled: cut 2026-09-30
 
 ### C035
 - key: Treat a do-not-reopen trap as needed however old it is.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03 restated it; the rule is line 40's from 0ea17a9 2026-08-18.
-- verdict: keep
-- reason: A042, A043. Ends "by the prune rule", which is the pointer form at the owner.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: A do-not-reopen trap is needed however old it is, by the prune rule.
+- ruled: cut 2026-09-30
 
 ### C036
 - key: Put a recognised prohibition or trap on the standing list and remove it only when its source retires it.
@@ -363,34 +372,37 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: be769a8 2026-09-03.
 - verdict: keep
 - reason: A039, A040. The conclusion that places both members and names the one fact supersede fires on for them; C034 is its premise.
-- passage: So a recognised prohibition or trap takes the standing list and leaves only when its source retires it, the one changed fact supersede fires on for these two.
+- passage: Prohibitions and do-not-reopen traps stay on the ledger, however old, until their source retires them.
 
 ### C037
 - key: A consuming skill naming a member whose content no probe reproduces and whose loss licenses the act it closes off must state that the member takes this exemption.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, the exemption pinned on the property rather than the names so a consumer's equivalent member reads it.
-- verdict: keep
-- reason: A035. The property sentence is pinned (test/doctrine-parity.test.js line 1935); the obligation is what makes the pin mean anything to a consumer. Amendment 2: the test/doctrine-parity.test.js line 1935 cite sits at the test named `the standing-watch admission default faces outward at both forks and the named inward spellings are absent` at the landing (declared near line 1924; line 1935 is a comment inside it); prefer the test name over the line. Amendment 3: that test was renamed when its direction legs retired, since the old name claimed a direction no leg reads. This pin is unaffected and still runs there; cite it as `standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent`.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: What earns those two members their exemption is the property rather than their names: no probe of the watched system reproduces them, and their loss licenses the act they exist to close off. A consuming skill naming a member with that property states that the member takes this exemption.
+- ruled: cut 2026-09-30
 
 ### C038
 - key: Do not admit or rescue a line on the grounds that nothing else records it.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: 6c725a0 2026-09-03, the founding incident's content had no other record either.
-- verdict: keep
-- reason: A035. Pinned verbatim ("Having no other record neither admits a line nor rescues one"); the load-bearing half of the outward default.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: Having no other record neither admits a line nor rescues one. A one-record line no rule places stays off under the default's doubt.
+- ruled: cut 2026-09-30
 
 ### C039
 - key: A skill built on this chassis must name by rule every class its ledger is the one record of.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: 6c725a0 2026-09-03, "the placed class defined by the rule that places it rather than by an enumeration the chassis cannot close over its consumers".
-- verdict: keep
-- reason: A035. The one route by which a one-record class survives the outward default; a consumer that skips it loses the class by construction.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: So a skill built on this chassis names by rule every class its ledger is the one record of, since an unnamed one is exactly what the default loses.
+- ruled: cut 2026-09-30
 
 ### C040
 - key: Rewrite in place under supersede the reading a withdrawal replaced, whether the watched thing moved or the instrument was wrong.
@@ -417,7 +429,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03, the kind fork stated for the chassis and mirrored in the coordinator.
 - verdict: keep
 - reason: A045, A046. The fork's lead is pinned; the A045 rewrite pointer-izes the restated kind definitions and wake-prompt trace and keeps this sentence.
-- passage: **The kind fork is decided on the cost of the misfiling, never on the kinds' names.** Doubt about which kind an admitted line is falls to the kind whose misfiling is cheaper.
+- passage: **The kind fork is decided on the cost of the misfiling, never on the kinds' names.**
 
 ### C043
 - key: Re-derive by probing the watched system, never by reading another record, whatever the line's provenance.
@@ -426,7 +438,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03 added "whatever the line's provenance" for told-not-derived lines; the probe rule is tick step 2's from 0ea17a9 2026-08-18.
 - verdict: keep
 - reason: A047 to A049. Pointer at step 2 carrying a bound step 2 lacks; the backlog (line 362) records that a recent ping cannot meet it. Amendment 2: the docs/backlog.md line 362 cite sits at the item whose bold lead reads 'The watch chassis places a situational member that cannot satisfy its own re-derive obligation' (line 377 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
-- passage: Situational is re-derived before acting, by probing the watched system, never by reading another record, whatever the line's provenance.
+- passage: Situational is re-derived by probing the watched system, never by reading another record, whatever the line's provenance.
 
 ### C044
 - key: On this file's two kinds, let doubt fall to situational, since a wrongly-standing line is acted on stale while a wrongly-situational one costs one extra probe per pass.
@@ -435,7 +447,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03.
 - verdict: keep
 - reason: A050. Pinned through its carve-out clause (test/doctrine-parity.test.js line 1935) because stopping at "situational," left the qualifier position open to a reversing exception. Amendment 2: the test/doctrine-parity.test.js line 1935 cite sits at the test named `the standing-watch admission default faces outward at both forks and the named inward spellings are absent` at the landing (declared near line 1924; line 1935 is a comment inside it); prefer the test name over the line. Amendment 3: this pin is retired on C019's ground, so Amendment 2's cite names a test that no longer reads this fork's direction. The fork sends doubt to situational and then carves out the members whose doubt falls to standing, so a leg reading the general rule needed a binder onto its subject and reddened on a plain rewording. The direction is now prose-enforced. The carve-out's own three legs retire with it in the same edit, each having required a phrase of the carve-out's prose and each watched reddening on a rewording that kept the rule. The test was renamed in that edit, since its old name claimed a direction no leg reads; cite it as `standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent`.
-- passage: A line filed standing wrongly is acted on stale, the failure this file exists to prevent. A line filed situational wrongly costs one extra probe per pass. So doubt falls to situational, with one carve-out asked first.
+- passage: Any other doubt about an admitted line's kind falls to situational: a line wrongly filed standing is acted on stale, and one wrongly filed situational costs one extra probe.
 
 ### C045
 - key: Ask first whether the line is a prohibition or a do-not-reopen trap, and let doubt on that question fall to standing.
@@ -444,15 +456,15 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03; be769a8 2026-09-03 bounded it to doubt ("reaches only the doubt") so it cannot readmit by name.
 - verdict: keep
 - reason: A045. "such a member falls to standing" and "reaches only the doubt" are both pinned. Amendment: both pins are retired, on C044's ground. Each required a phrase of this carve-out's own prose, and each was watched reddening on a rewording that left the rule untouched, an edit a session may make on its own authority. Nothing else would have to change beside such a rewording: no hook or script reads this prose, `docs/architecture.md` does carry "no probe of the watched system reproduces" verbatim but under no marker region and no byte-identity pin, so it is a restatement rather than a designed copy and nothing holds the two texts equal, neither pin proved a neighbouring leg had something to compare, and `docs/security-model.md` cites no test over this file. The carve-out is prose-enforced, and what stays is a leg on the paragraph's presence, which the chassis owes every consuming skill that states its own fork beside an override of these kinds.
-- passage: Doubt about whether a line is a prohibition or a do-not-reopen trap falls to standing, since no probe reproduces either and filing it situational saves no measurement.
+- passage: Doubt about whether a line is a prohibition or a do-not-reopen trap is asked first and falls to standing, since no probe reproduces either.
 
 ### C046
 - key: A trap filed situational commands the re-opening it forbids, and a prohibition filed situational drops out of the wake prompt and stops binding before any pass reads the ledger.
 - class: rationale-example
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:32
 - provenance: 6c725a0 2026-09-03, each member's own reason; the prohibition case was proven real at be769a8 2026-09-03.
-- verdict: keep
-- reason: A051. The carve-out inverts the paragraph's own default and these two accounts are the only statement of why; both readers keep.
+- verdict: retire
+- reason: row 1192 shrink. Its two accounts were the carve-out's argument, and C045's landed clause "since no probe reproduces either" carries the act.
 - passage: A trap filed situational commands the re-opening it forbids, since re-deriving it is that re-opening. A prohibition filed situational can never be re-derived. It drops out of the wake prompt under Wake mechanics and stops binding before any pass reads the ledger.
 
 ### C047
@@ -508,7 +520,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 0ea17a9 2026-08-18 (docs/archive/claude-kit_standing-watch_spec_v1.md lines 96 to 97).
 - verdict: keep
 - reason: A055. Stays whole; only C055's reason clause leaves the paragraph.
-- passage: **Prune on a quiet tick**, never on a busy one.
+- passage: **Prune on a quiet tick**, never on a busy one, shifting superseded history to a dated archive.
 
 ### C053
 - key: Move superseded history to a dated archive byte-identical to what it replaced, and verify the hash at the destination rather than at the source.
@@ -517,7 +529,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 0ea17a9 2026-08-18.
 - verdict: keep
 - reason: A055, A056. A rule, not a reason; K19's compression that dropped it is rejected. No program performs the prune.
-- passage: Move superseded history to a dated archive byte-identical to what it replaced, and verify the hash at the destination rather than at the source.
+- passage: **Prune on a quiet tick**, never on a busy one, shifting superseded history to a dated archive.
 
 ### C054
 - key: Keep do-not-reopen traps live in the ledger however old they are.
@@ -526,7 +538,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 0ea17a9 2026-08-18.
 - verdict: keep
 - reason: A042, A043, A055. The owner; its reason ("outlast the reasoning that produced them") stays because lines 30 and 32 cite it.
-- passage: Keep the do-not-reopen traps live in the ledger however old they are: their whole value is that they outlast the reasoning that produced them.
+- passage: Prohibitions and do-not-reopen traps stay on the ledger, however old, until their source retires them.
 
 ### C055
 - key: Re-derive any section offsets or line pointers after the last edit of the pass, never before.
@@ -680,7 +692,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 0ea17a9 2026-08-18.
 - verdict: keep
 - reason: A071. Nothing formats a ping.
-- passage: A ping is what the loop sends the operator. Its parts, in order:
+- passage: A ping to the operator has three parts, in order:
 
 ### C072
 - key: Put corrections to earlier claims first, labeled as a correction.
@@ -718,7 +730,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 0ea17a9 2026-08-18, a true engine value reported against the wrong subject a dozen times; the doctrine's Before-you-send question was added in the same commit.
 - verdict: keep
 - reason: A074 to A076. The ping template's instance of a doctrine principle; the closing sentence is the incident stated as a rule.
-- passage: Every figure or state in the message names its source (the row, the column, the scan cycle it came from) and names its subject. A true number reported against the wrong subject is a wrong number.
+- passage: **The evidence line**, naming each figure's source and subject, as the doctrine's Before You Send list asks.
 
 ### C076
 - key: Carry a dedup key per condition, send one ping per condition, and never re-send an ask already pending.
@@ -738,7 +750,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - landed: 2b427ac section 4
 - reason: The pointer names both owners and restates neither rule. Under ruling 2, which gives every restatement of an amended rule current text or a bare pointer, the escalation parenthetical names the owner the doctrine names: the doctrine's "Pause only for a true blocker" bullet points at the executing-work skill's closed blocker set, so "which owns the blocker set" became "which points at the executing-work skill for the closed blocker set". Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all (the doctrine's "Pause only for a true blocker" bullet, under How we work, which points at the executing-work skill for the closed blocker set a ping may interrupt on), and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
-- passage: When to escalate at all is the doctrine's "Pause only for a true blocker" bullet, under How we work, which points at the executing-work skill for the closed blocker set. What a measurement reads when its source is down is the doctrine's "cannot measure" line, under Verify before you claim.
+- passage: Escalate only under the doctrine's "Pause only for a true blocker" bullet, and report a measurement whose source is down as the doctrine's "cannot measure".
 
 ### C078
 - key: Before any closure, dismissal, delete, or resume on the watched system, name in one sentence what will act on the thing afterward.
@@ -765,7 +777,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: d8a3355 2026-08-23, the doctrine's liveness bullets stopped reading silence as alive and standing-watch got a route that resolves; a healthy agent was nearly killed on filesystem silence in the founding loop.
 - verdict: keep
 - reason: A079. The paragraph's route and its enumeration of what finishing-work owns are the fix for a stranded audience, and line 75 is pinned as the committed pointer (test/doctrine-parity.test.js line 429). Amendment 2: the test/doctrine-parity.test.js line 429 cite sits at the test named `the liveness bullets defer to finishing-work in each copy` at the landing (declared near line 428, its comment naming standing-watch line 75 as the committed pointer near line 422); prefer the test name over the line.
-- passage: Killing a dispatched agent is that same door.
+- passage: Killing a dispatched agent is that same door: probe it with a message first, per the doctrine's probe bullet.
 - flag: stale
 
 ### C081
@@ -775,7 +787,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: d8a3355 2026-08-23, written into the tick order because a watch never re-blocks.
 - verdict: keep
 - reason: A080. Intentionally different semantics from executing-work's re-block trigger.
-- passage: So every pass with a dispatch in flight evaluates the hallmark.
+- passage: A watch's tick is none of the wakes `finishing-work`'s unavailability rule fires at, so every pass with a dispatch in flight evaluates that rule's wedge hallmark.
 
 ### C082
 - key: Read `finishing-work`'s unavailability paragraphs first, from the bold lead "Unavailability is the gate failing to run at full strength".
@@ -784,7 +796,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: d8a3355 2026-08-23, the rule located by its bold lead because finishing-work carries no heading for it.
 - verdict: keep
 - reason: A082, A083. A pointer at the map's owner; the inline plugin-root resolution is what makes it resolve without a second lookup.
-- passage: That pass first reads `skills/finishing-work/SKILL.md` under the plugin root (`CLAUDE_PLUGIN_ROOT` where the harness supplies it, else this skill's own base directory's grandparent), from the bold lead **Unavailability is the gate failing to run at full strength**.
+- passage: It reads `skills/finishing-work/SKILL.md` under the plugin root from the bold lead **Unavailability is the gate failing to run at full strength** and takes every window from that rule, never inventing one.
 
 ### C083
 - key: Derive any stall window from that finishing-work rule and never invent one this skill does not own.
@@ -793,7 +805,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: d8a3355 2026-08-23, replacing a local-window prohibition neither cited surface stated.
 - verdict: keep
 - reason: A084, A085. Deferral of the figure to its sole owner.
-- passage: Derive any window from that rule and never invent one.
+- passage: It reads `skills/finishing-work/SKILL.md` under the plugin root from the bold lead **Unavailability is the gate failing to run at full strength** and takes every window from that rule, never inventing one.
 
 ### C084
 - key: Guard against manufacturing a stall signal from quiet, because quiet is most of what a watch ever looks at.
@@ -802,7 +814,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: d8a3355 2026-08-23; the near-kill on filesystem silence is from the founding loop (0ea17a9 2026-08-18).
 - verdict: keep
 - reason: A086 to A088. The only thing distinguishing the per-pass check from the owner's trigger; both readers keep.
-- passage: A loop staring at a quiet directory will manufacture the stall signal for itself, because quiet is most of what a watch ever looks at.
+- passage: A loop staring at a quiet directory manufactures the stall signal for itself, because quiet is most of what a watch looks at.
 
 ### C085
 - key: End a watch when the quiet streak runs long enough that the operator retires the loop.
@@ -820,7 +832,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 0ea17a9 2026-08-18 (design); 6c725a0 2026-09-03 last touched.
 - verdict: keep
 - reason: A091. The founding loop's own distillation produced this skill.
-- passage: It then hands over a distilled list of what the interventions taught, split two ways: what the watched system should do for itself, and what the kit should stop the agent doing.
+- passage: It then hands over what the interventions taught, split between what the watched system should do for itself and what the kit should stop the agent doing.
 
 ### C087
 - key: Write every pass in a form that survives distillation: the condition, what was done about it, and what it turned out to mean.
@@ -829,7 +841,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 6c725a0 2026-09-03 added the bound that "what it turned out to mean" is a fact of the watched system, never the keeper's reasoning.
 - verdict: keep
 - reason: A021, A022, A091. The bound cites the admission test's tell rather than restating it. The backlog (line 364) asks whether one pass record survives the next pass, a design question on this line. Amendment 2: the docs/backlog.md line 364 cite sits at the item whose bold lead reads 'The watch chassis does not say whether one pass record survives the next pass' (line 379 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
-- passage: The ledger is the raw material for that list, so write every pass in a form that survives distillation: the condition, what was done about it, and what it turned out to mean. That last is the fact of the watched system the pass established, never the keeper's reasoning, which the admission test's second tell refuses.
+- passage: So each pass records the condition, what was done, and what it turned out to mean about the watched system.
 
 ### C088
 - key: Send a decision about a plan to that plan's Chapters.
@@ -838,7 +850,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 3074425 2026-08-31, the write-time destination rule from the coordinator board incident.
 - verdict: keep
 - reason: A092 to A094. A pointer at executing-work's Chapter contract, not a restatement of it.
-- passage: A decision about a plan goes to that plan's Chapters.
+- passage: The destination rule sends a decision about a plan to that plan's Chapters, and a durable lesson about the watch's own instruments to the memory store in the pass that produced it.
 
 ### C089
 - key: Send a durable lesson about the watch's own instruments to the memory store in the pass that produced it.
@@ -847,7 +859,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 3074425 2026-08-31; the memory record's own discipline-at-write-time paragraph.
 - verdict: keep
 - reason: A093. Stays whole under the rewrite; the backlog (line 360) names the missing leg for a durable fact about the watched system itself. Amendment 2: the docs/backlog.md line 360 cite sits at the item whose bold lead reads 'The watch ledger has no destination for a durable fact about the watched system itself' (line 375 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
-- passage: A durable lesson about the watch's own instruments goes to the memory store in the pass that produced it.
+- passage: The destination rule sends a decision about a plan to that plan's Chapters, and a durable lesson about the watch's own instruments to the memory store in the pass that produced it.
 
 ### C090
 - key: Keep on the ledger the pass record and the current state, and write nothing to the ledger twice.
@@ -856,7 +868,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: 3074425 2026-08-31.
 - verdict: keep
 - reason: A093. Stays; "the current state" is to be worded so C028's gloss is unnecessary. Stands word for word at section 29's close; the wording C028's reason asks for lands as the sentence after this one ('The current state is the ledger's own definition under The two artifacts, which the two-kinds rule above already divides into the members it places.') rather than inside it, which C028 records.
-- passage: The ledger keeps the pass record above and the current state, and nothing is written to the ledger twice.
+- passage: The ledger keeps the pass record and the current state, and nothing is written to the ledger twice.
 
 ### C091
 - key: On a watch with no scheduled end, rely on write-time routing as the whole mechanism, since distil-at-retirement never fires on a seat that does not retire.
@@ -866,16 +878,17 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - verdict: rewrite
 - landed: e9245e7 section 29
 - reason: A093. The rule and its condition stay; the trailing account moves here: without the routing a standing seat's ledger accumulates its own journey and every successor pays the resume cost (memory a-coordination-ledger-holds-current-state-not-its-own-journey, Unbounded growth and Resume cost). Lands at line 81 as 'On a watch with no scheduled end, a standing seat, that write-time routing is the whole mechanism: distil-at-retirement never fires on a seat that does not retire.', the account from ', and what stands in its place without the routing is accumulation' gone; the memory this reason names is named nowhere in the skill body, so no contract name left with the account. C028's bound sentence lands before this one in the same edit.
-- passage: On a watch with no scheduled end, a standing seat, that write-time routing is the whole mechanism: distil-at-retirement never fires on a seat that does not retire.
+- passage: On a watch with no scheduled end, a standing seat, that write-time routing is the whole mechanism, since distil-at-retirement never fires.
 
 ### C092
 - key: Unlike a prohibition or do-not-reopen trap, doubt about whether a particular "mechanism confirmed in source" line is needed is not exempt from the admission default, and its wrongful exclusion is priced as a re-derivation.
 - class: rule
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, the exemption drawn on the property no probe reproduces, which the mechanism member lacks.
-- verdict: keep
-- reason: A035. The backlog (line 371) notes the re-derivation pricing names a source read the tick order never schedules, a design question rather than a sweep finding. Amendment 2: the docs/backlog.md line 371 cite sits at the item whose bold lead reads 'Two consequence claims in the watch chassis name mechanisms its own steps do not run' (line 386 at 16c5e61, every standing-watch item having moved fifteen lines down the file); prefer the lead over the line.
+- verdict: retire
+- reason: row 1191 (Residual default and exemptions), dropped under the mechanism cut.
 - passage: The third shape does reach a mechanism confirmed in the system's source, whose loss is priced above as a re-derivation.
+- ruled: cut 2026-09-30
 
 ### C093
 - key: Follow the doctrine's habit, under Environment and tooling discipline, of probing a dispatched agent with a message before any stall-signal kill.
@@ -884,5 +897,5 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redra
 - provenance: d8a3355 2026-08-23; the probe habit moved to the doctrine at 0ea17a9 2026-08-18 as one of the four lines every session needs.
 - verdict: keep
 - reason: A079. The committed pointer the parity pin at test/doctrine-parity.test.js line 429 relies on. Amendment 2: the test/doctrine-parity.test.js line 429 cite sits at the test named `the liveness bullets defer to finishing-work in each copy` at the landing (declared near line 428, its comment naming standing-watch line 75 as the committed pointer near line 422); prefer the test name over the line.
-- passage: The doctrine carries the habit of probing it with a message before any stall-signal kill, under Environment and tooling discipline.
+- passage: Killing a dispatched agent is that same door: probe it with a message first, per the doctrine's probe bullet.
 - flag: stale

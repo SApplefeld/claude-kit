@@ -2238,7 +2238,7 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // more: inverting the admission default in place, "...needs stays off"
 // rewritten as "...needs goes on the ledger", leaves every leg in this test
 // green.
-test('standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent', () => {
+test('standing-watch carries its admission default, its prune keep for prohibitions and traps, and its kind fork, and the retired inward sentence is absent', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
     const founding = 'A line you cannot confidently place is situational';
@@ -2268,40 +2268,23 @@ test('standing-watch carries its admission default, its residual exemptions and 
     assert.ok(admission,
         'standing-watch no longer opens its admission-default paragraph with '
         + '"Doubt falls to the cheap side"; the legs below read that '
-        + 'paragraph and the residual one beside it');
+        + 'paragraph');
     assert.ok(admission.includes('tie-break for doubt'),
         'the admission default is no longer stated as the admission test\'s '
-        + 'tie-break for doubt, which is what keeps it residual to the rules '
+        + 'tie-break for doubt, which is what keeps it a fallback for the rules '
         + 'that already place content rather than a stage every line passes');
-    const residual = lines.find((l) => l.startsWith('**The admission default is residual'));
-    assert.ok(residual,
-        'standing-watch no longer carries the residual-default paragraph; the '
-        + 'default decides only what no rule has already placed');
-    assert.ok(residual.includes('Having no other record neither admits a line nor rescues one'),
-        'the residual paragraph no longer states that having no other record '
-        + 'neither admits a line nor rescues one, which is the load-bearing '
-        + 'half: the founding incident\'s content had no other record either');
-    // The default's doubt branch must not reach a recognised prohibition or
-    // trap. Unreached, such a line is kept off and then dropped, since the
-    // destination rule holds no leg for one, and a prohibition off the
-    // standing list leaves the wake prompt and stops binding with no pass
-    // able to notice. The exemption is pinned with the property that earns
-    // it, because an exemption stated on the two members' names alone gives
-    // a consuming skill's equivalent member nothing.
-    assert.ok(residual.includes(
-        "The third shape does not reach two of the standing kind's members"),
-        'the residual paragraph no longer exempts two of the standing kind\'s '
-        + 'members from the default\'s third doubt shape; a recognised '
-        + 'prohibition or trap reached by that shape is kept off the ledger '
-        + 'and dropped, and a prohibition off the standing list stops binding '
-        + 'before any pass reads the ledger');
-    assert.ok(residual.includes(
-        'What earns those two members their exemption is the property rather '
-        + 'than their names'),
-        'the residual paragraph no longer states the exemption on the property '
-        + 'that earns it rather than on the two members\' names, which is what '
-        + 'a consuming skill naming an equivalent member of its own reads to '
-        + 'know the exemption reaches it');
+    // A prohibition or trap must survive the prune however old it is. Pruned,
+    // it leaves the wake prompt and stops binding with no pass able to
+    // notice, so the keep is pinned on the prune rule's own line.
+    const prune = lines.find((l) => l.startsWith('**Prune on a quiet tick**'));
+    assert.ok(prune,
+        'standing-watch no longer opens its prune paragraph with "Prune on a '
+        + 'quiet tick"; the leg below reads that paragraph');
+    assert.ok(prune.includes('Prohibitions and do-not-reopen traps stay on the '
+        + 'ledger, however old, until their source retires them'),
+        'the prune paragraph no longer keeps prohibitions and do-not-reopen '
+        + 'traps on the ledger until their source retires them; a pruned '
+        + 'prohibition stops binding before any pass reads the ledger');
     const fork = lines.find((l) => l.startsWith('**The kind fork'));
     assert.ok(fork,
         'standing-watch no longer carries the kind-fork paragraph; an admitted '
@@ -2378,8 +2361,9 @@ test('the coordinator board default faces outward at both forks', () => {
 });
 
 // The coordinator skill states four counted, drift-prone claims in prose with
-// nothing else exercising them: the four-kinds routing's destinations, homing's
-// no-residue rule with the cut invariant that bounds it, the readability test
+// nothing else exercising them: the four-kinds routing's destinations, the cut
+// rule that a line leaves the board only once its destination write is
+// confirmed, the readability test
 // standing where a size figure would, and the reconciliation paragraph's
 // deliberate exclusion of every memory tier. A claim nothing reads is a claim
 // nothing contradicts, so it rots while keeping its authoritative tone, and an
@@ -2401,10 +2385,9 @@ test('the coordinator board default faces outward at both forks', () => {
 //
 // Each claim's load-bearing words are bound to a contiguous span that includes
 // the words carrying its direction or its condition, because a span starting
-// after them is satisfied by a sentence that reverses the rule: pinning "the
-// round establishes that its own first entry landed" without "before any
-// destination write begins" passes a rewrite that moves the check after the
-// write. A pin here is verbatim by convention: a rewording that keeps the
+// after them is satisfied by a sentence that reverses the rule: pinning "its
+// destination write is confirmed landed" without "only once" passes a rewrite
+// that cuts the line first. A pin here is verbatim by convention: a rewording that keeps the
 // meaning still fails it, and updating the pin belongs to that same edit.
 //
 // The legs that prove an absence each state what they cover rather than
@@ -2434,7 +2417,7 @@ test('the coordinator board default faces outward at both forks', () => {
 //   the claim is the pair of skill-side legs below, which read the exclusion
 //   sentence and its route in the coordinator skill itself. A future index that
 //   restates the claim again is a restating surface with no pin, and earns one.
-test('the coordinator skill\'s four counted routing and homing claims are each pinned', () => {
+test('the coordinator skill\'s four counted routing, cut, readability and source claims are each pinned', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
 
@@ -2475,62 +2458,16 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
         'the coordinator skill no longer states the routing\'s residual outcome, that a candidate '
         + 'no kind claims is written nowhere; without it the four-way test has no answer for a '
         + 'candidate that answers to none of its kinds');
-    assert.ok(body.includes('The two board kinds are permissions and the two off-board ones are '
-        + 'refusals'),
-        'the coordinator skill no longer resolves a candidate answering to both a board kind and '
-        + 'an off-board one; the rule is a refusal winning over a permission rather than a '
-        + 'tiebreak, and it stands in place of an enumeration asserted exhaustive and mutually '
-        + 'exclusive');
 
-    // Claim 2: homing is named, distinct from pruning, leaves no residue, and
-    // every cut is bounded by a confirmed landing elsewhere. The
-    // no-residue rule's span runs from its verb through both of its objects,
-    // since binding the clause alone is satisfied by a negating prefix.
-    assert.ok(body.includes('**Homing returns a grown board\'s content to where it belonged, and '
-        + 'it is not a prune.**'),
-        'the coordinator skill no longer names homing as its own operation distinct from a prune; '
-        + 'the prune-versus-home distinction is the claim this leg pins, and collapsing the '
-        + 'two is what leaves a pruning pass destroying the only copy of a line');
-    assert.ok(body.includes('the content then comes off the board outright, with no pointer to the '
-        + 'record now holding it and no tombstone marking that it was ever there'),
-        'the coordinator skill\'s no-residue rule is no longer present verbatim: homed content '
-        + 'comes off the board with no pointer and no tombstone. A board that swapped each homed '
-        + 'line for a pointer would keep a change log where the content had been and accrete at '
-        + 'the rate it homed, which is what the rule refuses. Either the rule was inverted or the '
-        + 'sentence was reworded; a rewording updates this pin in the same edit');
-    assert.ok(body.includes('a round cuts only a line whose content it has confirmed landed '
-        + 'somewhere else'),
-        'the coordinator skill no longer bounds a homing cut on a confirmed landing elsewhere; '
-        + 'this is the one invariant that makes the operation safe, and without it a round that '
-        + 'fails at its destination write still cuts the board\'s only copy');
-    assert.ok(body.includes('A round writes at two moments')
-        && body.includes('The first moment\'s entry carries `fail` and the second `pass`'),
-        'the coordinator skill no longer states the homing round\'s audit as two journal moments '
-        + 'with the first carrying fail and the second pass; the two-moment shape is the round\'s '
-        + 'audit record, and a single moment cannot distinguish a round that died '
-        + 'partway from one that never started');
-    assert.ok(body.includes('Pruning is the other operation and is untouched by this one'),
-        'the coordinator skill no longer holds pruning separate from homing; superseded history '
-        + 'stays pruning\'s business, and merging the two operations is what the separation '
-        + 'refuses');
-    // The span opens at "before any destination write begins" because that is
-    // where the safety lives: a rewrite moving the check after the write leaves
-    // every later word intact.
-    assert.ok(body.includes('before any destination write begins, the round establishes that its '
-        + 'own first entry landed, and whether it landed cut'),
-        'the coordinator skill no longer requires a round to confirm, before any destination write '
-        + 'begins, that its own first journal entry landed and whether it landed cut; without it a '
-        + 'round publishes and cuts on the strength of an account that may not exist, while the '
-        + 'confirming read below covers only the destination write. The span deliberately opens on '
-        + 'the ordering words, since a check moved to after the write keeps every later word');
-    assert.ok(body.includes('An entry the round cannot establish landed, which includes one it '
-        + 'establishes did not, leaves the round performing neither a destination write nor the '
-        + 'cut'),
-        'the coordinator skill no longer states what a round does when it cannot establish that its '
-        + 'own first entry landed. The span includes the condition on purpose, and the condition is '
-        + 'the unknown rather than an observed failure: a clause covering only an entry known not to '
-        + 'have landed lets a round publish and cut on a landing it never established, which is the '
-        + 'direction every other reading in this file takes the other way');
+    // Claim 2: a line comes off the board only once its destination write is
+    // confirmed. The span opens on "only once" because that is where the
+    // safety lives: a rewrite cutting first and writing after keeps every
+    // later word.
+    assert.ok(body.includes('A line comes off the board only once its destination write is '
+        + 'confirmed landed.'),
+        'the coordinator skill no longer bounds taking a line off the board on a confirmed '
+        + 'landing at its destination; without it a cut whose destination write failed removes '
+        + 'the board\'s only copy');
 
     // Claim 3: the readability test is the board's health rule and a size
     // figure is not. The absence leg's coverage is stated in the header.
@@ -2539,10 +2476,6 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
         'the coordinator skill no longer states the board\'s readability test as a cold successor '
         + 'taking the seat from one read; this is the property the skill states in place of a '
         + 'byte figure, and it is the test a pass checks and acts on');
-    assert.ok(body.includes('that failure earns a homing round rather than a harder prune'),
-        'the coordinator skill no longer names a homing round as what a readability failure earns; '
-        + 'the test without its action is a recorded-and-ignored proxy, the same failure a byte '
-        + 'figure has');
     assert.deepStrictEqual(sizeFigures(body), [],
         'the coordinator skill states a size figure, where the readability test above is the '
         + 'board\'s health rule: a byte figure is a proxy that gets recorded and ignored, the '
