@@ -150,7 +150,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
 - reason: Sends the reader to this language's exemplar and templates; a pointer to the SQL twin would name the wrong language.
-- passage: With no sibling, use the exemplar below and the reference's full template.
+- passage: With no sibling, use the exemplar below and the reference's section 1 file structure and section 2 skeleton.
 
 ### C016
 - key: Let a repository's mechanically-enforced contract override this style, and nothing softer than one.
@@ -451,7 +451,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
 - reason: The doctrine's Defaults bullet owns the data-access default; this bullet carries the .NET call form, the language-scoped instance the map assigns to the style skill. Whole at the clause grain at section 37's close: line 81 ends at the closing parenthesis after `CommandType.StoredProcedure`, C046's clause gone after the semicolon.
-- passage: - ❌ Inline SQL text in application code - data access goes through stored procedures (`CommandType.StoredProcedure`)
+- passage: - ❌ Inline SQL text in application code - call the stored procedure with `CommandType.StoredProcedure`, per the doctrine's Defaults
 
 ### C046
 - key: The connection's principal is EXECUTE-only by design, so inline SQL is an architecture violation rather than a shortcut.

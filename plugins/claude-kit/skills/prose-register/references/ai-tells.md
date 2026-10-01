@@ -43,7 +43,7 @@ Every paragraph three sentences, every sentence the same length. To measure the 
 
 ### Bold Lead-In on Every Bullet
 
-A **Bold term:** lead on every bullet, argument bullets included. The doctrine's rule-then-reason bullet owns the rule and its bound.
+Every bullet opens on a **Bold term:** lead, argument bullets included, so the list reads as labels. The doctrine's rule-then-reason bullet owns the rule and its bound.
 
 ### Signposting and Throat-Clearing
 

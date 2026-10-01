@@ -21,7 +21,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. This sentence is the skill's scope statement and the tiebreak rule (dominant pattern first, exception flagged) that A026 and A063 lean on to resolve the contradictions section.
-- passage: The rules are drawn from a half-dozen samples of the operator's writing: proposals, benefit analyses, architecture documents and email replies. Where the samples disagree, the dominant pattern comes first and the exception follows.
+- passage: Each rule's dominant pattern comes first and any exception follows.
 - flag: stale
 
 ### C002
@@ -335,7 +335,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - landed: f02aa85 section 36
 - reason: The owner of the pivot; line 142 (C081) was a copy and retires. The rewrite of C034 folds the set-up clause into this sentence without changing the markers. Lands at line 59 (section 36's close) as "Build the status quo the reader holds, then pivot with `However,` or `By comparison,` or `Comparatively,` to why it is not sufficient.", the markers word for word and "Build the case" respelled by C034's rewrite, so the verdict reads rewrite.
 - proposed: Line 63 keeps its heading and its three markers, its set-up clause reading as C034's rewrite states it.
-- passage: Build the status quo the reader holds, then pivot with `However,`, `By comparison,` or `Comparatively,` to why it falls short.
+- passage: Build the status quo the reader holds, then pivot with `However,`, `By comparison,` or `Comparatively,` to why it falls short, after the answer is stated.
 
 ### C034
 - key: Treat the pivot as the core rhetorical move: set up the reasonable-sounding status quo, then pivot to why it is not sufficient.
@@ -347,7 +347,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - reason: The set-up clause is load-bearing: ai-tells distinguishes the licensed pivot (against a position a real reader holds) from the straw-position tell, and the writer needs the set-up instruction to stay on the licensed side. The frequency claim ("appears in every sample, the core rhetorical move") is sample evidence and lives here now. Lands at line 59 (section 36's close) as "Build the status quo the reader holds, then pivot with `However,` or `By comparison,` or `Comparatively,` to why it is not sufficient.", the three markers kept from C033's sentence and the frequency sentence gone.
 - proposed: Line 63 becomes one sentence: build the status quo the reader holds, then pivot with "However," or "By comparison," to why it is insufficient; the frequency sentence goes to the ledger.
 - baseline-test: yes
-- passage: **Pivot against the status quo.** Build the status quo the reader holds, then pivot with `However,`, `By comparison,` or `Comparatively,` to why it falls short.
+- passage: **Pivot against the status quo.** Build the status quo the reader holds, then pivot with `However,`, `By comparison,` or `Comparatively,` to why it falls short, after the answer is stated.
 
 ### C035
 - key: Use numbered lists with lettered sub-items (1 then a then i) when listing steps, components, or ranked items.
@@ -690,9 +690,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:34
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
-- verdict: keep
-- reason: No finding. Stated once.
+- verdict: retire
+- reason: row 1087 (Oxford comma consistency), dropped under the mechanism cut.
 - passage: **One Oxford-comma convention per document.**
+- ruled: cut 2026-09-30
 
 ### C071
 - key: Write in active construction by default rather than passive voice.
@@ -1053,7 +1054,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: No conflict with SKILL.md:63, which says bullets are typically bold term plus explanation and is bounded to non-ranked field lists; SKILL.md:75 independently bars bullets for decomposing arguments, which is the same boundary this rule draws.
-- passage: A **Bold term:** lead on every bullet, argument bullets included.
+- passage: Every bullet opens on a **Bold term:** lead, argument bullets included, so the list reads as labels.
 - flag: unfounded
 
 ### C023

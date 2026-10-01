@@ -12,7 +12,7 @@ Read [references/csharp-style.md](references/csharp-style.md), the full pattern 
 1. **Comments are visual structure.** A short `// Title.` comment heads each block as its section header. **Every section comment ends with a period.** It states imperatively what the next block does: "Validate Parameters." not "Now we check the inputs". Judge intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. A comment never explains history, decisions, alternatives weighed or issues met. A WHY comment is rare, and its reason follows as its own sentence.
 2. **Idempotent by default.** Code never breaks on re-execution.
 3. **Section banners over inline narration.** `#region Title` / `#endregion` organize every class.
-4. **Find a sibling and mimic it.** When in doubt, follow the layout of an existing file of similar shape exactly. A sibling never takes you out of this style in a foreign repo. With no sibling, use the exemplar below and the reference's full template.
+4. **Find a sibling and mimic it.** When in doubt, follow the layout of an existing file of similar shape exactly. A sibling never takes you out of this style in a foreign repo. With no sibling, use the exemplar below and the reference's section 1 file structure and section 2 skeleton.
 
 ## Precedence
 
@@ -69,7 +69,7 @@ A positional record or primary constructor shows in both lists, and the repeat i
 - ❌ Fine-grained namespaces - keep them coarse and minimal, one root namespace per project where warranted, and never map folders to sub-namespaces
 - ❌ Removing `#region` blocks because "modern style" dislikes them
 - ❌ The null-forgiving operator `!` - use null-conditional and null-coalescing instead
-- ❌ Inline SQL text in application code - data access goes through stored procedures (`CommandType.StoredProcedure`)
+- ❌ Inline SQL text in application code - call the stored procedure with `CommandType.StoredProcedure`, per the doctrine's Defaults
 - ❌ Resolving configuration options once at startup instead of lazily at request time
 - ❌ Ordering middleware by convenience rather than cost - cheap rejection (rate limiting) belongs before expensive work (authentication)
 

@@ -140,7 +140,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - provenance: 830ff28 2026-06-17, the style-precedence rule installed in the doctrine and both style skills in one change, ported from a peer fork; the live incident class is kaizen/archive/2026-07-30-reviewer-style-skill-paths.md, a reviewer that judged by repo convention.
 - verdict: keep
 - reason: The ownership map makes the style skills the owners and the doctrine's Defaults bullet the pointer, and the copy here is the one a subagent reads because subagents do not inherit the doctrine. The third sentence bounds the sibling rule against the legacy-sibling reading and stays.
-- passage: The doctrine's Defaults rule governs: house style yields only to a repo's mechanically enforced contract.
+- passage: The doctrine's Defaults rule governs.
 - passage: A messy legacy sibling in a foreign repo is no reason to drop the style.
 
 ### C015
@@ -250,7 +250,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - landed: e6f408d section 38
 - reason: Survives in the C021 rewrite with its figure as the bound and its antecedent respelled; a `GO` anchor is the obvious wrong move on a T-SQL install script and the rule is what forecloses it. Respelled at section 38's close by C024's retire, which took the install script its "that one" pointed at; lands at line 75 as "Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them.", the rule and the figure unchanged.
 - proposed: Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them.
-- passage: Never anchor on `GO`.
+- passage: Never anchor on `GO`, which carries no structure.
 
 ### C026
 - key: Add `-i` to the definitions grep when reading a vendor script.
@@ -261,7 +261,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - landed: e6f408d section 38
 - reason: Survives in the C021 rewrite with its antecedent respelled; the case-sensitivity cost (9 of 5,332) is the bound that tells a session when the flag matters. Respelled at section 38's close by C020's retire on line 73, which took the deployment corpus its "that corpus" pointed at; lands at line 75 as "The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script.", the bound unchanged.
 - proposed: The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script.
-- passage: Add `-i` for a vendor script.
+- passage: Add `-i` for a vendor script, since the definitions pattern is case-sensitive.
 
 ### C027
 - key: Find `LOGIN`, `ROLE`, `SEQUENCE`, and `SYNONYM` objects by name rather than through the definitions pattern.
@@ -999,7 +999,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Sizes the header banner and admits eyeballing; C082 sizes a different object.
-- passage: Two asterisk rows of about 92, counted by eye, open and close it, and one separates VERSION from NOTES.
+- passage: A doubled asterisk row of about 92, counted by eye, opens and closes it, and one row separates VERSION from NOTES.
 
 ### C046
 - key: Bookend the SCRIPT/AUTHOR/DATE/VERSION block with two adjacent asterisk lines.
@@ -1008,7 +1008,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: Two asterisk rows of about 92, counted by eye, open and close it
+- passage: A doubled asterisk row of about 92, counted by eye, opens and closes it
 
 ### C047
 - key: Separate the metadata block from the NOTES section with one asterisk line.
@@ -1017,7 +1017,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: and one separates VERSION from NOTES.
+- passage: and one row separates VERSION from NOTES.
 
 ### C048
 - key: Write the banner DATE in ordinal English format such as "February 16th, 2025", not "2025-02-16".

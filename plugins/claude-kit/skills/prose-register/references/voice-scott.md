@@ -4,7 +4,7 @@ The operator's voice, for a piece marked `Voice: scott`. It admits only rules th
 
 ## Opener
 
-- **Open with a blunt declarative statement of the core premise.** Never an anecdote or a scene. The doctrine's answer-first bullet owns the rest.
+- **Open with a blunt declarative statement of the core premise.** Never a question, a quote, an anecdote or a scene. The doctrine's answer-first bullet owns the rest.
 - **Lead the opening sentence with a frame-setter.** `"The most valuable resource to the business is…"` is one form.
 - **Keep the opening paragraph to one to three sentences and 25 to 55 words.**
 - **In an email reply, open with a one-line acknowledgement before the frame-setter.** `"Thanks [Name]!"` is one form.
@@ -35,7 +35,7 @@ The operator's voice, for a piece marked `Voice: scott`. It admits only rules th
 
 ## Close
 
-- **Close on the end state.** In two to four short sentences, in past tense or present indicative, state what the reader now has after applying the design. Never close on a promise, a gut punch, a rhetorical question or a rallying cry. `"The ultimate result of this design is that we have…"` is one pattern.
+- **Close on the end state.** In two to four short sentences, in past tense or present indicative, state what the reader now has after applying the design. Never close on a future promise, a gut punch, a rhetorical question or a rallying cry. `"The ultimate result of this design is that we have…"` is one pattern.
 - **Label the final section `END RESULT`, `Aftermath` or `Resolution`, or leave the close unlabeled.**
 - **In an email, close with an invitation to respond and a signoff.** A call to action appears nowhere else.
 

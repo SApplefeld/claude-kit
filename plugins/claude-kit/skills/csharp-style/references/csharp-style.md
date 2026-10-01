@@ -212,6 +212,6 @@ public string FormCode { get; set; } = string.Empty;
 public FilledForm FilledForm { get; set; } = new();
 ```
 
-## 15. New Service Template
+## 15. New Service Placement
 
 For a brand-new service in `Services/Build/` or `Services/Process/`, start from the section 2 skeleton. Register it in `Assembly/RegisterServices.cs` under a label such as `// SERVICES.`. Declare its interface in `Interfaces/`.

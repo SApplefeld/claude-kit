@@ -65,7 +65,7 @@ The three are instances of one class: prose that costs the reader more to read t
 
 **When an amendment corrects a claim a curated document states, the edit unit is the paragraph, never the sentence.** Re-derive the whole paragraph from the corrected claim. Then check the claim's other carriers: the neighbouring clauses that qualified or restated it, and any sibling surface stating the same behavior. The unit is the claim on every surface carrying it, whether or not anything here names that surface. Carriers this kit keeps producing include a doctrine parity copy, the output style's register block, an agent charter, a test's assertion message, a memory record and a README's payload map, and that list is not the boundary. An amendment that corrects no claim, such as a typo fix, an added bullet or a label rename, takes whatever edit it needs.
 
-An insertion anchored on neighbouring text restores that anchor byte for byte, re-grepped with a control at HEAD.
+An insertion anchored on a block's tail, or on the next entry's first line, restores every byte of that anchor in the replacement. It then re-greps the neighbour's lead-in, with a control at HEAD proving the pattern matches the intact form.
 
 A carrier on another surface is not automatically yours to edit in place:
 
@@ -94,7 +94,7 @@ For a `ruled` probe, the pair stands in for the reps above as the RED and GREEN.
 
 The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`, over the `ruled` moments the check kept. The after leg is the same command without `--before`, over every moment the check kept. `<sha>` is the parent of the change's first commit resolved to a sha, or `HEAD` for an uncommitted change. A root-commit change leaves the before leg unrun.
 
-Read each row by `tools/probe-corpus/README.md`'s "What a row counts for" section, after the re-runs finishing-work's step 6 directs. Rows from a shape naming no changed file are no reading at all. A before-leg mismatch the after leg matches is the repair. A match on a moment the change meant to move is a finding, and any other match held. A pair that errors again stands in for nothing, and the reps run. Rows from a shape naming no changed file are no reading at all.
+Read each row by `tools/probe-corpus/README.md`'s "What a row counts for" section, after the re-runs finishing-work's step 6 directs. A before-leg mismatch the after leg matches is the repair. A match on a moment the change meant to move is a finding, and any other match held. A pair that errors again stands in for nothing, and the reps run. Rows from a shape naming no changed file are no reading at all.
 
 The intent test covers a ruled probe's after-leg mismatch the before leg lacks. A move the change intended is a re-ruling to ask the operator for, and any other is a finding.
 

@@ -58,7 +58,7 @@ Indexes live in their table's file. Each sits in its own `IF NOT EXISTS` block, 
 
 Every procedure carries the metadata banner the §19 template shows, inside `BEGIN -- PROCEDURE`, giving its purpose, author, version and history. Never skip it.
 
-- Two asterisk rows of about 92, counted by eye, open and close it, and one separates VERSION from NOTES.
+- A doubled asterisk row of about 92, counted by eye, opens and closes it, and one row separates VERSION from NOTES.
 - DATE is **ordinal English** ("February 16th, 2025", not "2025-02-16").
 - Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY`, its body indented under it.
 - AUTHOR is `<Author Name>` or `<Author Name> / <Company>`.

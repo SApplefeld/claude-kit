@@ -17,7 +17,7 @@ Read [references/sql-style.md](references/sql-style.md), the detailed pattern re
 
 ## Precedence
 
-The doctrine's Defaults rule governs: house style yields only to a repo's mechanically enforced contract.
+The doctrine's Defaults rule governs.
 
 ## Deployment Exemplar
 
@@ -72,7 +72,7 @@ In a SQL file past roughly 1,000 lines opened to find one thing, grep the defini
 
 A banner sentence opening with an object keyword still matches and is read past rather than filtered.
 
-Take banners second with `grep -n -A 1 -E '^\s*/\*{3,}'`, where a doubled border's second line is the label. Read past hits outside the definitions' ranges rather than scoping the grep, since range-restricting forms renumber lines. Never anchor on `GO`. Add `-i` for a vendor script. Find `LOGIN`, `ROLE`, `SEQUENCE` and `SYNONYM` by name.
+Take banners second with `grep -n -A 1 -E '^\s*/\*{3,}'`, where a doubled border's second line is the label. Read past hits outside the definitions' ranges rather than scoping the grep, since range-restricting forms renumber lines. Never anchor on `GO`, which carries no structure. Add `-i` for a vendor script, since the definitions pattern is case-sensitive. Find `LOGIN`, `ROLE`, `SEQUENCE` and `SYNONYM` by name.
 
 ## Antipatterns
 
