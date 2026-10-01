@@ -55,7 +55,7 @@ See `archive/`.
 
 ## Rules
 
-- Edit or delete nothing here. New work gets a new plan in `../plans/`, cross-referenced to the archived plan it builds on or supersedes.
+- Edit no archived plan, and delete nothing here. New work gets a new plan in `../plans/`, cross-referenced to the archived plan it builds on or supersedes.
 ```
 
 ## `docs/backlog.md`

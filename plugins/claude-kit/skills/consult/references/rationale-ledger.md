@@ -512,7 +512,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09, the design stop, added so a re-reader counting second-attempt shapes finds it. goal-fit section 3 2026-09-19 moved it out of bullet (a) into its own bullet (e), the stop no longer being a second failed attempt but a question put before the first one.
 - verdict: keep
 - reason: The one shape on the floor whose seat is not the consultant; stated here because a session counting the floor would otherwise dispatch the consultant with the lean that judge must never receive. Executing-work step 4 owns the stop and this is the pointer.
-- passage: Executing-work's step 4 convenes its judge, never the `consultant`.
+- passage: Executing-work's step 4 convenes its judge, never the `consultant`, because that judge must never receive the querent's lean.
 
 ### R012
 - key: Expect the design stop not to be the only shape routing elsewhere, since the repeating-class Critical branch goes to the tier ladder.

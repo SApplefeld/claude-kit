@@ -6198,10 +6198,8 @@ test('the ownership map is tracked and names every shipped skill as an owner', (
 // surfaces need it self-contained. The authoring rule in brainstorming states what
 // an author must write; the charter in blind-reader is read by an agent barred from
 // resolving the term against this repository, so neither surface can point at the
-// other. Divergence here is the one failure the blind read's adjudication cannot
-// survive: it reads a disagreement between the reader's near-miss pairs and the
-// author's definition as evidence about the spec, so two sides handed different class texts manufacture
-// that disagreement themselves and the loudest bucket fills with noise. Compared on
+// other. Divergence hands the author and the reader two different class texts,
+// so the reader's near-miss pairs mark a boundary the author never drew. Compared on
 // collapsed whitespace, since the sentence wraps differently on the two surfaces.
 test('the bounded-artifact class sentence reads the same on both gating surfaces', () => {
     const classSentence = 'a phrase deciding what a bounded artifact admits, '
@@ -6220,8 +6218,8 @@ test('the bounded-artifact class sentence reads the same on both gating surfaces
         assert.strictEqual(hits, 1, rel + ' states the bounded-artifact class '
             + 'sentence ' + hits + ' times, not once; both surfaces carry it '
             + 'verbatim so the blind read hands one class to its two sides, '
-            + 'and a divergence manufactures the disagreement the check reads '
-            + 'as evidence about the spec');
+            + 'and a divergence makes each near-miss pair answer a definition '
+            + 'the author never wrote');
     }
 });
 

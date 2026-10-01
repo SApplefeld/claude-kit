@@ -52,7 +52,7 @@ The check also runs without a close-out. When the session-start block reports an
 When asked to tidy or retrofit a `docs/` that predates this structure:
 
 1. **Audit, read-only.** List every doc, read each plan's `Status` header, and classify each: active plan, completed or abandoned plan, about-the-solution doc, or stray.
-2. **Propose the migration.** Name the plans that move to the archive, what the index and backlog will hold, and which READMEs get seeded. Move nothing until it is confirmed.
+2. **Propose the migration.** Name the plans that move to the archive, what the index and backlog will hold, and which READMEs get seeded. Move nothing until it is confirmed. Where a plan has not already made that call, the stop is the material decision executing-work's blocker set names.
 3. **Apply on approval.** Create the zones and READMEs from the templates, `git mv` the completed and abandoned plans into the archive, seed the index and backlog, and report what moved. Never delete a file. Relocate it instead.
 
 ## Plan Doc Machine Contract
@@ -62,8 +62,8 @@ A plan doc's header and structure are not just kit convention. An external engin
 | Line or heading | Exact shape | Value rule |
 |---|---|---|
 | Title | `# <Title>` (first H1) | free-form |
-| Status header | `Status: <value>`; the first occurrence above the first `##` heading is the one read | must equal `Complete` exactly, whole string and case-insensitive, for the plan to read as terminal. `Complete (archived)` or any other trailing text does not terminate. `In Progress`, `Complete` and `Ready` carry a kit-side meaning. `Ready` marks a plan authored and parked before any run starts |
-| Commit Model header | `Commit Model: <value>`; the first occurrence above the first `##` heading is the one read | must open with `Commit-and-Push`, `Branch-and-PR`, or `Review-Only`, case-insensitive, trailing prose tolerated. Any other leading token, or an absent header, parks the run without dispatching. `Review-Only` itself never dispatches. Under `Branch-and-PR`, trailing prose reading `per-section PR` or `one PR per section`, in either word order, with `pull request` spelled out or not, opens each section's pull request ready for review. Every other reading, absent prose included, is the draft-per-plan default, one draft pull request for the whole plan. A kit session's own pull request follows `finishing-work`'s Apply the commit model step |
+| Status header | `Status: <value>`; the first occurrence above the first `##` heading is the one read | must equal `Complete` exactly, whole string and case-insensitive, for the plan to read as terminal. `Complete (archived)` or any other trailing text does not terminate. `In Progress`, `Complete` and `Ready` carry a kit-side meaning. `Ready` marks a plan authored and parked before any run starts. `Ready` alone or followed by a parenthetical reads as parked, while a continuation like `Ready for review` reads as unrecognized |
+| Commit Model header | `Commit Model: <value>`; the first occurrence above the first `##` heading is the one read (a Chapter's own `Commit Model:` line, required by `executing-work`'s template, is a later occurrence and is ignored) | must open with `Commit-and-Push`, `Branch-and-PR`, or `Review-Only`, case-insensitive, trailing prose tolerated. Any other leading token, or an absent header, parks the run without dispatching. `Review-Only` itself never dispatches. Under `Branch-and-PR`, trailing prose reading `per-section PR` or `one PR per section`, in either word order, with `pull request` spelled out or not, opens each section's pull request ready for review. Every other reading, absent prose included, is the draft-per-plan default, one draft pull request for the whole plan. Prose about commits rather than pull requests, such as `one commit per section`, does not name the cadence and leaves the default in force. A kit session's own pull request follows `finishing-work`'s Apply the commit model step |
 | Disjoint header | `Disjoint: <value>`; the first occurrence above the first `##` heading is the one read | `yes`, case-insensitive, declares the plan independent of whatever else is in flight. Anything else, an absent header included, means not disjoint, which is the safe default. It is read only to decide whether the engine may start this plan beside another that is blocked on something outside its control. A wrong `yes` therefore surfaces as a merge conflict at the pull-request gate rather than as an engine error |
 | `## Sections of Work` heading | the literal text `Sections of Work` on a `##` line | bounds the block. Any other `##` heading inserted inside it ends the block early, silently dropping every later `### N.` section |
 | Section heading | `### N. <Title>` (one or more digits, a period, whitespace) inside `## Sections of Work` | free-form title |
@@ -83,7 +83,7 @@ None of `## Intent`, `## Assumptions` and `## Dispatch Authorization` appears in
 
 `## Dispatch Authorization` goes **above** `## Sections of Work`. `## Intent` and `## Assumptions` go outside `## Sections of Work` and above `## Chapters`. A misplaced heading truncates the parse silently. Inside `## Sections of Work` it drops every later `### N.` section, and after `## Chapters` every Chapter below it stops registering.
 
-Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
+Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the freeze rule in `skills/brainstorming/SKILL.md`'s spec format.
 
 ## Templates
 

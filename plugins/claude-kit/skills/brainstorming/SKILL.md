@@ -19,7 +19,7 @@ Explore the problem with me in conversation, then capture the agreement as a spe
 
 5. **Present options with tradeoffs** when a real decision exists, per the doctrine's "At a fork, lead with your recommendation and the alternatives you weighed" bullet.
 
-6. **Offer the design council at a hard fork.** When step 5 surfaces a hard or material decision with more than one defensible approach, offer the `design-council` skill before settling it 1:1. Such a fork is an architecture or schema choice, build-vs-buy, a migration direction, or a tradeoff expensive or awkward to undo. Err toward offering, and lower the bar to offer, never the bar to run. Make the offer in the turn you recognize the fork, not a later one you control. Do not auto-run it, and name the cost so I can authorize the spend. If I decline, stay in the 1:1 conversation.
+6. **Offer the design council at a hard fork.** When step 5 surfaces a hard or material decision with more than one defensible approach, offer the `design-council` skill before settling it 1:1. Such a fork is an architecture or schema choice, build-vs-buy, a migration direction, or a tradeoff expensive or awkward to undo. Err toward offering, and lower the bar to offer, never the bar to run. Make the offer in the turn you recognize the fork, not a later one you control. Do not auto-run it, and name the cost so I can authorize the spend. If I decline, stay in the 1:1 conversation. I can invoke it directly at any time.
 
 7. **Derive the files in scope from the tree.** Where a name, rule, or shape the change touches appears in more than one file, one scout sweep runs before the sketch and returns every surface that speaks that contract. Unsure counts as yes. The sweep is its own second pass, reading for coverage, and runs even where Explore already mapped the area. Band it and state its return contract per `executing-work/SKILL.md`'s "Band the scout by question shape, and state its return contract", on the built-in Explore subagent carrying that band's explicit model override. Write the sections' "Files in scope" lists from its return, and cite its searches and the surfaces they found in the Approach. Surfaces spanning independent subsystems go back through step 2's split check before any sketch.
 
@@ -35,9 +35,9 @@ Explore the problem with me in conversation, then capture the agreement as a spe
 
     Coverage is checked here: every surface step 7's sweep returned appears in some section's Files in scope or under `## Out of Scope`, and one appearing in neither is placed before the spec ships. Every claim the Goal makes is owned by some section's acceptance criteria. A Goal sentence no section delivers is given a section, recorded under `## Operator Verification` where only my action can deliver it, or struck from the Goal.
 
-    The blind read that follows is separate and is not optional. Dispatch the `blind-reader` agent with the spec itself as the document under review and `Reader: an implementer with no session context, engineer persona, may open the repository`. Adjudicate each question it returns, and each pair its charter returns per gating definition, one of three ways: answer it in the spec, declare it under `## Assumptions` and in the recap, or put it to me with a recommendation. Record `blind read: <n> questions, <a> answered, <b> assumed, <c> asked` in the handoff recap. A trivial spec of one or two sections may skip the blind read, saying so.
+    The blind read that follows is separate and is not optional. Dispatch the `blind-reader` agent with the spec itself as the document under review and `Reader: an implementer with no session context, engineer persona, may open the repository`. Adjudicate each question it returns, and each pair its charter returns per gating definition, one of three ways: answer it in the spec, declare it under `## Assumptions` and in the recap, or put it to me with a recommendation. A pair is answered in the spec by rewriting the definition wherever the reader placed a member on a side you did not mean. Record `blind read: <n> questions, <a> answered, <b> assumed, <c> asked` in the handoff recap. A trivial spec of one or two sections may skip the blind read, saying so.
 
-    **The plan review follows the blind read and precedes the handoff recap.** Dispatch the `plan-reviewer` agent with the spec path alone, never the design conversation, at fable and effort high through Workflow's `agent()` on executing-work's Reviewer Dispatch template, after executing-work's capacity reading. Without Workflow, use the Agent tool at `model: 'fable'` and record the review as run at lower effort. Where fable cannot run at all, or that reading returned `-> downgrade`, wait rather than substitute a lower model, and record the wait. On a `NEEDS_CONTEXT` return, repair the Goal it could not read against and dispatch again. Adjudicate each finding the same three ways as a blind-read question. A Critical rewrites the spec before it ships, and one re-dispatch after that rewrite is the author's call rather than a loop. Record `plan review: <n> findings, <a> fixed, <b> assumed, <c> asked` beside the blind-read line.
+    **The plan review follows the blind read and precedes the handoff recap.** Dispatch the `plan-reviewer` agent with the spec path alone, never the design conversation, at fable and effort high through Workflow's `agent()` on executing-work's Reviewer Dispatch template, after executing-work's capacity reading. Without Workflow, use the Agent tool at `model: 'fable'` and the charter's frontmatter effort, `low`, and record the review as run at lower effort. Where fable cannot run at all, or that reading returned `-> downgrade`, wait rather than substitute a lower model, and record the wait. On a `NEEDS_CONTEXT` return, repair the Goal it could not read against and dispatch again. Adjudicate each finding the same three ways as a blind-read question. A Critical rewrites the spec before it ships, and one re-dispatch after that rewrite is the author's call rather than a loop. Record `plan review: <n> findings, <a> fixed, <b> assumed, <c> asked` beside the blind-read line.
 
     A spec that skipped the blind read skips the plan review with it, and says so. A session that cannot dispatch (a worker under an external engine) records the skip under `## Assumptions`, and that engine's own review stands in.
 
@@ -65,7 +65,7 @@ Explore the problem with me in conversation, then capture the agreement as a spe
 
 Prefer rich references over prose: acceptance criteria as runnable checks or rubrics, and for UI or visual work a mockup or reference implementation over a description. They ride on the `References:` line.
 
-~~~markdown
+```markdown
 # <Title>
 
 Status: In Progress | Ready
@@ -115,7 +115,7 @@ Unresolved items and who owns the answer.
 
 ## Chapters
 (Appended by executing-work as sections complete. Leave empty at creation.)
-~~~
+```
 
 The `Status:` line is picked at authoring. A spec for a run that starts now is born `In Progress`, and one deliberately parked is born `Ready`, which session start surfaces as parked rather than offering for resume.
 

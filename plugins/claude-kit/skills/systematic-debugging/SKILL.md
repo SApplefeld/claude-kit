@@ -41,4 +41,4 @@ Fix the cause, not the symptom, and verify the repro now passes. The doctrine's 
 
 ## When Not to Use
 
-A failed first fix means you are now debugging, so use this skill.
+A directly visible cause with a trivial fix, such as a typo, skips the phases and is fixed under the doctrine's rules. A failed first fix means you are now debugging, so use this skill.

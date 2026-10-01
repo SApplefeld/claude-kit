@@ -575,7 +575,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - proposed: (via A101) One sentence: adding either heading mid-run is an above-Chapters edit and is made and recorded per brainstorming's approval-drift rule.
 - baseline-test: yes
 - superseded-by: C068
-- passage: Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
+- passage: Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the freeze rule in `skills/brainstorming/SKILL.md`'s spec format.
 
 ### C056
 - key: Seed README, index, and backlog skeletons from `references/templates.md` rather than inventing a new shape per project.
@@ -711,7 +711,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the instance and its pointer are C055's.
 - verdict: keep
 - reason: C055's instance grows from two headings to three. A plan written before the template carried `## Intent` gains it mid-run as an edit above `## Chapters` like the other two, so the sentence names the class rather than a pair.
-- passage: Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
+- passage: Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the freeze rule in `skills/brainstorming/SKILL.md`'s spec format.
 
 ## plugins/claude-kit/skills/curating-docs/references/templates.md
 
@@ -1058,7 +1058,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the retrofit prohibition governs a pass over a whole tree and this governs the archive folder for all time, so neither states the other's scope and a retrofit can relocate a file this rule never sees. Both cold readers reached the same conclusion independently.
-- passage: - Edit or delete nothing here.
+- passage: - Edit no archived plan, and delete nothing here.
 
 ### C038
 - key: Title `docs/backlog.md` with the heading `# Backlog`.
