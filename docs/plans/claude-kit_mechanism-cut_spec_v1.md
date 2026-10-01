@@ -14,7 +14,7 @@ Pacing is a hard requirement, on the operator's word of 2026-09-30 ("use workflo
 
 ## Goal
 
-The kit loads 51 documents as instruction: the 51 paths in `test/size-budget.json` that are neither a rationale ledger nor under `test/`. At `e1a2bb0d` their caps sum to 143,606 words on `node plugins/claude-kit/scripts/kit-size.js`'s count, the `corpus-cap` key. When this plan is done, every one of the 1,270 mechanisms the inventory at `tools/corpus-compression/mechanism-cut-2026-09-30.json` names has met its call: kept as it is, shrunk to its rule and one reason, merged into the one document that owns it, or dropped. The 62 drops are gone with their ledger entries retired. Each document lands at or under the target its section states, 77,397 words in sum over the 50 inventoried documents with the liaison skill's target added in section 7, or its section's pull request carries the one-line miss ask that decision 1 of `docs/plans/claude-kit_lean-kit_program_v1.md`, the lean kit program, provides. `corpus-cap` moves down to the landed sum, so regrowth past it reds the gate. The doctrine and the output style have been read whole by the operator, and every other document by the reviewers.
+The kit loads 51 documents as instruction: the 51 paths in `test/size-budget.json` that are neither a rationale ledger nor under `test/`. At `e1a2bb0d` their caps sum to 143,606 words on `node plugins/claude-kit/scripts/kit-size.js`'s count, the `corpus-cap` key. When this plan is done, every one of the 1,270 mechanisms the inventory at `tools/corpus-compression/mechanism-cut-2026-09-30.json` names has met its call: kept as it is, shrunk to its rule and one reason, merged into the one document that owns it, or dropped. The 61 drops are gone with their ledger entries retired. Each document lands at or under the target its section states, 77,397 words in sum over the 50 inventoried documents with the liaison skill's target added in section 7, or its section's pull request carries the one-line miss ask that decision 1 of `docs/plans/claude-kit_lean-kit_program_v1.md`, the lean kit program, provides. `corpus-cap` moves down to the landed sum, so regrowth past it reds the gate. The doctrine and the output style have been read whole by the operator, and every other document by the reviewers.
 
 Acceptance:
 
@@ -45,7 +45,8 @@ Rulings after the spec shipped, each appended dated:
 - 2026-09-30, on the relay thread, before the spec: the ceiling formula and the four rulings under Decisions items 2 to 5, "I'm good with everything you've proposed"; the proof standard, "I think the second is enough".
 - 2026-09-30, on the relay thread, after the spec was drafted: the drop list approved whole, "Agreed. Approved whole. I'll see the details and comparison in the PR, and we still have git history if something was cut we ended up needing." Row 125, added after the ruling, awaits its own word.
 - 2026-09-30, on the relay thread, after the spec was pushed: the operator asked whether the plan was dispatched. That is a status question and not the arming word, so the plan stayed parked. Row 125 is applied as drop only once ruled, and section 10 asks if no word has landed by then.
-- 2026-09-30, on the relay thread, after the explicit ask: the plan runs, "Run it please!" Row 125 is not yet ruled.
+- 2026-09-30, on the relay thread, after the explicit ask: the plan runs, "Run it please!"
+- 2026-09-30, on the relay thread: row 125 kept, "Keep it please." The drop list is the 61 rows.
 
 Provenance: distilled by the architect persona from the operator's relay thread of 2026-09-30, the two Anthropic prompting pages, the two measurements under `## Approach`, and the archived corpus-compression spec, in session 5c033e22.
 
@@ -190,7 +191,7 @@ Files in scope: the eight documents, their ledgers, `test/size-budget.json`, and
 ### 10. The agent charters
 Model: opus
 Locus: inline
-The eighteen charters under `plugins/claude-kit/agents/`, caps 394 to 3,167, targets from the cut file's rows: adversarial-reviewer 1,879, prose-reviewer 1,492, scope-adjudicator 1,241, security-reviewer 1,312, docs-curator 1,110, blind-reviewer 806, blind-reader 830, performance-reviewer 717, implementer-fable 785, implementer-opus 768, implementer-sonnet 723, implementer-haiku 617, plan-reviewer 797, qa-verifier 587, consultant 235, council-member 310, corpus-drafter 373 plus section 1's declared growth, design-facilitator 327. Drops are 9 rows totalling 349 words, the ninth being row 125, the blind reader's near-miss pairs, which is the reader-side half of the gating litmus section 8 drops and is retired naming row 478. Every charter's frontmatter, tool list, effort and status vocabulary are keeps, since the orchestrator and the hooks parse them. The four implementer charters share their text by design; their rows are applied once and mirrored, and the Chapter says which charter was drafted and which were mirrored.
+The eighteen charters under `plugins/claude-kit/agents/`, caps 394 to 3,167, targets from the cut file's rows: adversarial-reviewer 1,879, prose-reviewer 1,492, scope-adjudicator 1,241, security-reviewer 1,312, docs-curator 1,110, blind-reviewer 806, blind-reader 830, performance-reviewer 717, implementer-fable 785, implementer-opus 768, implementer-sonnet 723, implementer-haiku 617, plan-reviewer 797, qa-verifier 587, consultant 235, council-member 310, corpus-drafter 373 plus section 1's declared growth, design-facilitator 327. Drops are 8 rows totalling 177 words. Row 125, the blind reader's near-miss pairs, stays as keep on the operator's ruling of 2026-09-30, though the gating litmus that read its output goes with row 478 in section 8; the reader still returns the pairs, and the spec author reads them without the litmus's four results. Every charter's frontmatter, tool list, effort and status vocabulary are keeps, since the orchestrator and the hooks parse them. The four implementer charters share their text by design; their rows are applied once and mirrored, and the Chapter says which charter was drafted and which were mirrored.
 Files in scope: the eighteen charters, `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md` and the other ledgers `docs/rationale-ledgers.md` places them under, `test/size-budget.json`, and the pin tests step 3 of `## Approach` finds for these documents.
 
 ### 11. The corpus cap, the program and the handoffs
@@ -202,10 +203,10 @@ Files in scope: `test/size-budget.json`, `docs/plans/claude-kit_post-rewrite_pro
 
 ## Decisions
 
-**Item 1. The drop list is approved whole, or with named rows kept.** Ruled: approved whole, 2026-09-30, on the relay thread, "Agreed. Approved whole. I'll see the details and comparison in the PR, and we still have git history if something was cut we ended up needing." The ruling covers the 61 rows the list held when it was put; row 125, added at the plan review as the consequence of row 478, is put to the operator in the same reply and is applied as drop only once the operator says so.
+**Item 1. The drop list is approved whole, or with named rows kept.** Ruled: approved whole, 2026-09-30, on the relay thread, "Agreed. Approved whole. I'll see the details and comparison in the PR, and we still have git history if something was cut we ended up needing." The ruling covers the 61 rows the list held when it was put; row 125, added at the plan review as the consequence of row 478, was put to the operator in the same reply and ruled kept, 2026-09-30, "Keep it please." It is applied as keep.
 
-- Situation. 62 rows read drop, 7,742 words. Each is a mechanism the judge found a tool or the harness already enforces, maintainer documentation a session never acts on, or a guard against a failure not seen on a 5-family model. A drop removes a mechanism, so it is the operator's ruling; a shrink or merge keeps the rule for the reviewers to check.
-- Decision. Whether the 62 rows under `## Drop List` go, and which if any stay.
+- Situation. 61 rows read drop, 7,570 words. Each is a mechanism the judge found a tool or the harness already enforces, maintainer documentation a session never acts on, or a guard against a failure not seen on a 5-family model. A drop removes a mechanism, so it is the operator's ruling; a shrink or merge keeps the rule for the reviewers to check.
+- Decision. Whether the 61 rows under `## Drop List` go, and which if any stay.
 - Stakes. Without the ruling the plan does not arm. A row kept by name is applied as keep and its words come off that document's cut.
 - Options. (a) Approve whole. (Recommended.) The ledger keeps each row's reason, and a failure that reappears brings the rule back from git with its entry intact. (b) Approve with named exceptions. (c) Refuse the list: the plan runs shrinks and merges only, and the targets rise by each document's drop words.
 - Unanswered: the plan stays parked.
@@ -240,11 +241,10 @@ Files in scope: `test/size-budget.json`, `docs/plans/claude-kit_post-rewrite_pro
 
 ## Drop List
 
-The 62 rows Decisions item 1 rules on, heaviest first. Row numbers index the cut file. Row 125 was added at the plan review as the consequence of row 478.
+The 61 rows Decisions item 1 rules on, heaviest first. Row numbers index the cut file. Row 125, the blind reader's near-miss pairs, was put as a 62nd row at the plan review and ruled kept, so it is not listed.
 
 | Row | Words | Document | Mechanism | Why it goes |
 |---|---|---|---|---|
-| 125 | 172 | `agents/blind-reader.md` | Gating definition near-miss pairs | The reader-side half of the gating litmus row 478 drops; nothing reads its output once the litmus is gone. |
 | 995 | 801 | `skills/operating-instructions/references/ownership-map.md` | Pointer and copy column | It serves kit maintainers auditing drift, not a session looking for an owner, it is greppable on demand, and it is the largest word cost in the file at about a quarter of every load. |
 | 566 | 596 | `skills/coordinator/SKILL.md` | Homing round protocol | This transactional ceremony guards a rare cleanup, and one rule would cover it: cut a line only after its destination write is confirmed. |
 | 1191 | 473 | `skills/standing-watch/SKILL.md` | Residual default and exemptions | A self-referential apparatus about how rules interact that no 5-family model would apply faithfully mid-watch; the operative rule fits in one sentence under the prune rule. |
