@@ -7,7 +7,7 @@ description: "Use when working with the kit memory store beyond plain memory fil
 
 The kit memory store is the file-per-fact memories plus an extension layer: an outcome journal (`outcomes.jsonl`), used-tracking (`usage.jsonl`), tags, a decay lifecycle, a shared project-type tier, and an operator tier. All of it is reached through the `memq` CLI.
 
-`memq` resolves the store itself: a git worktree resolves the same store as its main checkout, and a store pin (`KIT_MEMORY_PROJECT`), honored only under the engine store signals below, fixes the store regardless of the working directory.
+`memq` resolves the store itself: a linked worktree of an ordinary checkout resolves the same store as its main checkout, a subdirectory of the project resolves its project's store in a session filed under that project, and a store pin (`KIT_MEMORY_PROJECT`), honored only under the engine store signals below, fixes the store regardless of the working directory.
 
 An unpinned working directory naming a network share is refused. `get`, `touch` and `triggers` still pass with `--operator` or `--type=<type>`, which resolve their tier from the store root. A refused writing verb exits non-zero, and a refused reading verb exits 0 with empty stdout. So read the stderr line, since status alone cannot tell a stood-down `recall` from a clean read of an empty store.
 
@@ -15,7 +15,7 @@ The **engine store signals** are `KIT_MEMORY_ROOT` with `KIT_MEMORY_ROOT_ALLOW_D
 
 Two rules govern everything below:
 
-- **Never hand-edit `outcomes.jsonl` or `usage.jsonl`.** A stopped shared-tier delete names in its failure line what it removed, and re-running the same delete under its consent flag finishes it.
+- **Never hand-edit `outcomes.jsonl` or `usage.jsonl`.** A shared-tier delete that stopped partway is finished by re-running the same delete under its consent flag, never by editing either file, and its failure line names what it removed.
 - **Journal entries never enter the memory index.** `MEMORY.md` carries index lines for memory files and exactly one journal pointer line, verbatim: `Outcomes: outcomes.jsonl holds the action journal; query with memq find <term>.`
 
 ## memq Reference
@@ -24,13 +24,13 @@ Two rules govern everything below:
 |---|---|
 | `memq log <key> pass\|fail "<summary>" [--tag t]... [--detail "..."]` | Append one outcome to the project journal. Compose the summary to 120 characters and `--detail` to 500, since past a cap the tail is dropped and the success line announces the cut. When a cut is announced, re-log the lost tail as its own entry. |
 | `memq find <term> [--tag t] [--outcomes\|--memories\|--all] [--archived]` | Hybrid search. The lexical block first, one summary line per substring hit over this project's tiers: journal keys as `<key>  <pass>/<fail>  last <age>  <latest summary>`, memories as `<name>  [tags]  <description>`. Then, with the embedder installed, a semantic block over every store on the machine. `--archived` shows retired records, labeled and demoted. A model-judged block follows where an endpoint is configured, and it is advisory. |
-| `memq get <key\|name> [--type\|--type=<type>\|--operator]` | Full journal entries for a key, or a memory file's body from the first tier holding that name. Appends a read stamp in the tier it served, the pinned tier under a flag. |
+| `memq get <key\|name> [--type\|--type=<type>\|--operator]` | Full journal entries for a key, or a memory file's body from the first tier holding that name. Appends a read stamp in the tier it served, the tier a flag names under a flag. |
 | `memq recall [--situation "<text>"]` | The whole store as one bounded digest, no search term. It writes no stamp. Run at effort start, at a seat takeover, and again at a boundary taking the hand walk below. |
 | `memq judged --situation "<text>" [--tag t] [--limit <n>]` | The judged fleet block's lines over this project's own records, for a caller that spawns memq. Stdout is at most ten judged lines and never the vector-order fallback. Every empty answer exits 0 with its reason on stderr. |
 | `memq recent [--since <n>d\|<n>h]` | What the store recorded inside a window (default `1d`), grouped by write surface. Writes nothing, not even a read stamp. Run at close-out. |
 | `memq jev-calibration [--since <n>d]` | The judged fleet block's hit rate in ten score bands. The reading can confirm or raise a floor and never lower one. Writes nothing on this machine. |
 | `memq unstamped [--since <n>d\|<n>h]` | The memories opened inside a window (default `1d`) and never stamped applied. Writes nothing. Run at every Chapter boundary and once more at close-out. |
-| `memq touch <name> --applied [--type\|--type=<type>\|--operator]` | Stamp a memory as applied, in the tier a flag names. `--type=<type>` is what stamps a type-tier record from a project that declares no type. One tier flag or neither, never both. |
+| `memq touch <name> --applied [--type\|--type=<type>\|--operator]` | Stamp a memory as applied, in the tier a flag names. `--type=<type>` is what stamps a type-tier record from a project that declares no type, and it is withheld under the engine store signals. One tier flag or neither, never both. |
 | `memq anchor <name> <path>... [--operator]` | Record which files a project memory is about, at the bytes they hold now: one `anchors:` frontmatter line of `<path>@<sha>` entries, merged into any existing line with fresh hashes. |
 | `memq triggers <name> [<type>:<pattern>...] [--type\|--type=<type>\|--operator] [--replace [--confirm-shared]]` | Record the triggers a memory should be surfaced by, as one `triggers:` frontmatter line of `<type>:<pattern>` entries. Types are `cmd`, `err`, `skill`, `agent`, `tool` and `glob`, and the pattern is stored verbatim. With no tier flag it writes the project tier, or a run's pending tier inside a run. Bare `--type` means the working project's declared `Project-Type`, and `--type=<type>` names the tier. Keep the value on the flag word, because `triggers rec --type cmd:whatever` parses as a type named rec. `--replace` is the only way an entry comes off. |
 | `memq add-type <type> <name> "<description>" [--body "..."\|--body-file <path>] [--tag t]... [--trigger <type>:<pattern>]... [--supersedes <name>] [--update [(--body ...) --confirm-shared]]` | Write a type-tier memory and its index line together, under the tier lock, the only type-tier authoring path. Use `--body-file` for any body with newlines in it. The success line reports the stored body's length, which is the signal that a body arrived whole. `--update` alone rewrites the description, and with a body flag and `--confirm-shared` it replaces the body. On creation the verb prints its nearest neighbours on stderr before the write, and the block warns and never gates. |
@@ -42,7 +42,7 @@ Two rules govern everything below:
 | `memq decay-scan` | Report decay candidates with their evidence dates, the pinned class, a superseded record whatever its idle clock, and a standing usage-evidence line. On stderr it adds the anchor-drift block, then the neighbour-pairs block of live same-tier records at or above the overlap floor. That block never reads the pending tier and withholds pairs a `supersedes:` pointer joins or `machine:` scopes split, so a missing pair is no evidence of no duplicate. Writes no record, index line, journal entry or stamp. |
 | `memq decay-prune [--rollup [--drop-malformed]] [--archive <name>]... [--archive-type <name>]... [--archive-operator <name>]... [--confirm-shared]` | The pass's one mutation path over the store's own records and sidecars, and it mutates only what its flags name. `--rollup` runs the journal rollup and the usage prunes. `--drop-malformed` rides `--rollup` and removes the malformed sidecar lines that rewrite otherwise preserves. A shared-tier archival needs `--confirm-shared`: always for `--archive-operator`, and for `--archive-type` whenever the scan of declaring projects finds more than one or cannot run. Running the Decay Pass owns when to supply it. Refuses a pinned target. |
 | `memq decay-done` | Touch the decay stamp that records a completed pass. |
-| `memq db-sync` | Publish this machine's whole store to the shared memory database and drain the local stamp queue. Session start and the doctor's `-Fix` already run it. |
+| `memq db-sync` | Publish this machine's whole store to the shared memory database and drain the local stamp queue. Where a database is configured, session start and the doctor's `-Fix` already run it. |
 | `memq db-promote <name> [--sandbox <name>] [--tier project\|type\|operator] [--segment <segment>]` | Flip one private project record to shared on the host. Curator login only. Nothing on disk changes. |
 | `memq db-curate [--unapplied <days>] [--superseded] [--orphans]` | The curator's three lists off the host: records unapplied inside a window, live records another supersedes, and orphans. Curator login only. Writes nothing. |
 
@@ -136,7 +136,7 @@ Tags are an optional list on memory frontmatter and journal entries, queried wit
 
 - **Frontmatter uses the inline form only**: `tags: a, b` on one line inside the `---` block. The YAML list form reads as no tags at all.
 - **A record's `MEMORY.md` index line wins over its frontmatter `description:` line wherever it holds text.** With no index line, or an empty one, the frontmatter value stands in.
-- **The registry** is `~/.claude/memory-types/tag-registry.md`: one tag per line, an optional one-phrase gloss after it. Add a line before minting a tag, since `memq` warns on any tag outside the registry and still writes the record.
+- **The registry** is `~/.claude/memory-types/tag-registry.md`: one tag per line, an optional one-phrase gloss after it. Add a line before minting a tag, since once the file exists `memq` warns on any tag outside the registry and still writes the record.
 
 ## `machine:` Field
 
@@ -170,13 +170,13 @@ Author only through `memq add-type`. The frontmatter guard refuses a direct Writ
 
 A machine with `~/.claude/kit-memory-db.json` publishes its store to a shared database through `memq db-sync`. The markdown tiers stay the record, and the database is a derived copy no verb reads a body back from.
 
-**The fleet memory block is the shared index's voice at session start and in `recall`, and a Jev config makes it a judged recollection.** That config is `~/.claude/kit-jev.json`. Read the block's lines as records likely to change your next move. A line saying no fleet record bears on this project's recent work is a judged answer, not an outage. Where the judge stands down, the block falls back to the nearest-by-vector list and names why. Open a shown record with `memq get <name>`, never a Read of its file, since `get` keys the read to the pointer.
+**The fleet memory block is the shared index's voice at session start and in `recall`, and a Jev config makes it a judged recollection.** That config is `~/.claude/kit-jev.json`, and with it TypeSafe's Jev, a model judge, scores the nearest records against the work in progress. Read the block's lines as records likely to change your next move. A line saying no fleet record bears on this project's recent work is a judged answer, not an outage. Where the judge stands down, the block falls back to the nearest-by-vector list and names why. Open a shown record with `memq get <name>`, never a Read of its file, since where the shell carries the session id `get` records that the shown record was read.
 
 ## Shared-Tier Repair and Removal
 
 **A shared-tier write is not one-way.** Both shared tiers take a whole-body repair, a true delete and a recognition line stated whole (`memq triggers ... --replace`), under the same lock and `--confirm-shared` consent as their other shared work. Compose carefully because every project and machine sharing the tiers reads them, not because a mistake is permanent.
 
-- **Repair** is `add-type <type> <name> "<description>" --body "..."` (or `--body-file <path>`) `--update --confirm-shared`, and the operator twin. It replaces the body whole, and the mandatory description rewrites the index line every project reads, so pass the one the record should keep. Repair refuses `--tag`, `--supersedes`, `--trigger` and `--machine`, so such a change is a delete and a fresh write. Triggers are the exception, which the triggers verb corrects in place.
+- **Repair** is `add-type <type> <name> "<description>" --body "..."` (or `--body-file <path>`) `--update --confirm-shared`, and the operator twin. It replaces the body whole, and the mandatory description rewrites the index line every project reads, so pass the one the record should keep. Repair refuses `--tag`, `--supersedes`, `--trigger` and, on the operator twin, `--machine`, so such a change is a delete and a fresh write. Triggers are the exception, which the triggers verb corrects in place.
 - **Delete** is `delete-type <type> <name> --confirm-shared`, and the operator twin. In one locked operation it removes the record, its archived copy, its index lines and its usage stamps. Check the name before you confirm, because a name the tier does not hold is not refused. A delete of a record another machine has since modified stalls the sync until a human settles the git conflict in the store checkout.
 
 **Four remedies, one per way a record goes bad, and routing between them is the whole point of holding them apart.** Delete is for the record that was **never true**: a mistake, a fact wrong when written, a body that says something you did not mean. Repair is for the record whose **fact is right and whose body is wrong**, so the text is replaced whole and the record keeps its name and history. Supersede is for the record that **was right and is stale now**: the fact has been overtaken, so a new record carries the answer and points back at the old one with `--supersedes`. Each read surface then labels and demotes the old record and nominates it for archive, though the session hook's `MEMORY.md` index shows its description unlabeled. Archive, which `decay-prune` performs, is for the record that **aged out**: it moves to the tier's `archive/`, off the live answers but still reachable by name.
@@ -185,7 +185,7 @@ Route by what went wrong, not by how much you dislike the record. The decay scan
 
 **Deletion removes a record from the store, not from its history.** The shared tiers live in a git repository replicated to a private remote, so a deleted record's content stays in that history and on every machine that already pulled. Rotate anything it carried that it should not have, since the delete is not a redaction.
 
-**The unattended vector gets a bounded subset of this CLI.** Under the engine store signals memq runs under the prompt-free grant in `hooks/memq-grant.js`, which owns the list of withheld shapes. A withheld shape is not denied but silent, and with nobody there to approve it the command is lost. So a fleet worker leaves a withheld write to an attended session, such as a delete, a body-carrying update, `--body-file`, `--supersedes`, `--trigger`, `triggers`, `anchor` or `--rollup`.
+**The unattended vector gets a bounded subset of this CLI.** Under the engine store signals memq runs under the prompt-free grant in `hooks/memq-grant.js`, which owns the list of withheld shapes. A withheld shape is not denied but silent, and with nobody there to approve it the command is lost. So a fleet worker leaves a withheld shape to an attended session, such as `find`, `--type=<type>`, a delete, a body-carrying update, `--body-file`, `--supersedes`, `--trigger`, `triggers`, `anchor` or `--rollup`.
 
 ## `supersedes:` Field
 
@@ -223,7 +223,7 @@ Six types, and the type is what says how the pattern is read: `cmd:<pattern>` ag
 
 A memory's idle clock runs from the freshest of its file mtime, its `created:` date and its newest `applied` stamp. Summarizing condenses the body and keeps the index description. Archiving moves the record and its index line to the tier's `archive/`.
 
-**Use extends the thresholds, and never confers permanence.** A memory is a summarize candidate after 30 idle days and an archive candidate after 60, each extended by 30 per distinct applied day up to 365. Crossing a threshold nominates and never retires.
+**Use extends the thresholds, and never confers permanence.** A memory is a summarize candidate after 30 idle days and an archive candidate after 60, each extended by 30 per distinct applied day, the extension capped at 365. Crossing a threshold nominates and never retires.
 
 ### Pinning
 
@@ -231,7 +231,7 @@ A `pinned: YYYY-MM-DD` top-level line makes a memory never a decay candidate, an
 
 **A pin is a judgment act, and the tally is evidence for it, never its trigger.** Set one in the turn a memory proves structurally load-bearing, or at a decay pass on a candidate that must not age out. Revoke it by deleting the line.
 
-No memq path writes or removes `pinned:`. So a shared-tier pin is the operator's own edit made outside the harness, since the frontmatter guard refuses the write tools there. That edit is the one exception to the bar on hand-editing a shared tier. A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use one to clear a pin.
+No memq path writes or removes `pinned:`. So a shared-tier pin is the operator's own edit made outside the harness, since the frontmatter guard refuses the write tools there. That edit is the one exception to the bar on hand-editing a shared tier. A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use a delete verb to clear a pin.
 
 ### Scan Evidence Line
 
@@ -249,7 +249,7 @@ The pass runs at close-out, called from `finishing-work` step 8, and never unpro
 
 ## Search Before Writing
 
-A project-tier memory arrives through the Write tool, which writes the indexed record whose `MEMORY.md` line you write beside it, or through `memq put`, which writes the unindexed one. Neither path prints the shared-tier verbs' neighbours block, so run `memq find` in the words of the fact before either write. Read a lexical hit as an overlap candidate on its own, since a record the lexical block listed shows no semantic score. `hooks/memory-frontmatter-guard.js` refuses a malformed project-tier frontmatter block and any Write, Edit or MultiEdit into either shared tier.
+A project-tier memory arrives through the Write tool, into the memory write destination the SessionStart hook names, which writes the indexed record whose `MEMORY.md` line you write beside it, or through `memq put`, which writes the unindexed one. Neither path prints the shared-tier verbs' neighbours block, so run `memq find` in the words of the fact before either write. Under the engine store signals `find` is withheld, so that search is an attended session's. Read a lexical hit as an overlap candidate on its own, since a record the lexical block listed shows no semantic score. `hooks/memory-frontmatter-guard.js` refuses a malformed project-tier frontmatter block and any Write, Edit or MultiEdit into either shared tier.
 
 ## Known Limits
 

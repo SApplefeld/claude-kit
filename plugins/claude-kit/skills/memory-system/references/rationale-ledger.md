@@ -53,7 +53,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 945a75c 2026-08-19, the worktree-store-and-autosync plan, which folded a worktree onto its main checkout's store after the per-worktree split.
 - verdict: keep
 - reason: The fold's consequence is still live: the operator record unstamped-lists-peer-session-reads records a worktree's unstamped report listing a peer session's reads because both share one store. memq.js performs the fold and tells the session nothing.
-- passage: `memq` resolves the store itself: a git worktree resolves the same store as its main checkout, and a store pin (`KIT_MEMORY_PROJECT`), honored only under the engine store signals below, fixes the store regardless of the working directory.
+- passage: `memq` resolves the store itself: a linked worktree of an ordinary checkout resolves the same store as its main checkout, a subdirectory of the project resolves its project's store in a session filed under that project, and a store pin (`KIT_MEMORY_PROJECT`), honored only under the engine store signals below, fixes the store regardless of the working directory.
 
 ### c1.C005
 - key: Set `KIT_MEMORY_PROJECT` to fix the store by environment so the working directory does not choose it.
@@ -62,7 +62,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2fd5c9c 2026-08-01, the instance-store-pin plan for engine-spawned sessions; the bound was corrected by 2ac43f4 2026-08-28 after the skill promised an escape hatch the code ignored.
 - verdict: keep
 - reason: A session choosing whether to set the pin, which is the remedy line 8 offers for a mapped drive, needs the bound before it acts. The stderr note that the pin was ignored only fires afterwards.
-- passage: `memq` resolves the store itself: a git worktree resolves the same store as its main checkout, and a store pin (`KIT_MEMORY_PROJECT`), honored only under the engine store signals below, fixes the store regardless of the working directory.
+- passage: `memq` resolves the store itself: a linked worktree of an ordinary checkout resolves the same store as its main checkout, a subdirectory of the project resolves its project's store in a session filed under that project, and a store pin (`KIT_MEMORY_PROJECT`), honored only under the engine store signals below, fixes the store regardless of the working directory.
 
 ### c1.C006
 - key: Expect a refusal on a working directory spelled relative, or rooted win32 with one leading backslash and no drive, ahead of everything including the pin.
@@ -240,7 +240,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b136b28 2026-08-22, the confirmation round that corrected the delete's step account.
 - verdict: keep
 - reason: The failure line is the only honest account of what a stopped delete removed, and it is what supersedes the step-order enumeration (c1.C109). A013 keeps it at a sentence inside the compressed line 14.
-- passage: A stopped shared-tier delete names in its failure line what it removed, and re-running the same delete under its consent flag finishes it.
+- passage: A shared-tier delete that stopped partway is finished by re-running the same delete under its consent flag, never by editing either file, and its failure line names what it removed.
 
 ### c1.C023
 - key: Re-run the same delete under its consent flag to finish the steps a stopped run left.
@@ -249,7 +249,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b136b28 2026-08-22, alongside c1.C022 in the same correction.
 - verdict: keep
 - reason: The remedy for a half-landed delete, most needed where the stop fell inside the record-file unlinks. Nothing performs it for the session, so it survives A013's compression at a sentence.
-- passage: A stopped shared-tier delete names in its failure line what it removed, and re-running the same delete under its consent flag finishes it.
+- passage: A shared-tier delete that stopped partway is finished by re-running the same delete under its consent flag, never by editing either file, and its failure line names what it removed.
 
 ### c1.C024
 - key: Never let a journal entry into the memory index.
@@ -418,7 +418,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - landed: d2c43f1 section 22
 - reason: Which tier's clock moves is what a session weighs before running `get` on a shadowed name, and no other line states the pinned-tier bound, so the bound stays as a clause. The Applied stamps section keeps the semantics.
 - proposed: (via A044) Cut the get row's stamp sentence to "appends a read stamp in the tier it served, the pinned tier under a flag".
-- passage: Appends a read stamp in the tier it served, the pinned tier under a flag.
+- passage: Appends a read stamp in the tier it served, the tier a flag names under a flag.
 
 ### c1.C041
 - key: Expect `get` to follow the body with one `anchors:` line per anchor and one `triggers:` line per declared trigger.
@@ -486,7 +486,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: a0edaed 2026-08-25, the round whose own message records that the rule held for eight review rounds while its reasons kept dying.
 - verdict: retire
 - landed: d2c43f1 section 22
-- reason: merged into the Applied Stamps paragraph, "No report is a swept window on its own. The report set against your own account of the stretch is.".
+- reason: merged into c2.C083, whose landed passage reads "No report is a swept window on its own. Set it against your own account of the stretch: adjudicate every listed line, then stamp by name any use the list did not raise.".
 - proposed: Cut the unstamped row to usage, one pointer sentence at the Applied stamps section, and the two bare triggers.
 - proposed: (via A066) Merge the row's "No report is a swept window on its own" sentence and its "which the paragraphs below own" pointer into one sentence pointing at the Applied stamps section.
 - baseline-test: yes
@@ -499,7 +499,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: a0edaed 2026-08-25, installed with the rule it points at.
 - verdict: retire
 - landed: d2c43f1 section 22
-- reason: merged into the same Applied Stamps paragraph that c1.C047 names. With the copied sentence gone, the pointer has nothing to point from.
+- reason: merged into c2.C083, the live Applied Stamps entry c1.C047 also retires into. With the copied sentence gone, the pointer has nothing to point from.
 - passage: The Applied stamps section owns how to read it against your own account of the stretch.
 
 ### c1.C049
@@ -527,7 +527,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, which gave the attached spelling its meaning and its fleet refusal.
 - verdict: keep
 - reason: One clause stating the fleet refusal beside the fleet section at line 166, which owns the reason (a stamp cannot land in a type the project has not opted into). One clause is the pointer-sized form.
-- passage: `--type=<type>` is what stamps a type-tier record from a project that declares no type.
+- passage: `--type=<type>` is what stamps a type-tier record from a project that declares no type, and it is withheld under the engine store signals.
 
 ### c1.C052
 - key: Record which files a project memory is about with `memq anchor <name> <path>...`, writing one `anchors:` line of `<path>@<sha>` entries.
@@ -740,7 +740,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02, which made an untriggered record land with its missing handle named rather than be refused.
 - verdict: retire
 - landed: d2c43f1 section 22
-- reason: carried by the unattended-vector follow-on paragraph, "the `add` still lands with every other field and names the missing declaration on stderr". memq prints the note itself.
+- reason: row 893 (Unattended vector grant subset) shrink drops the follow-on paragraph. memq prints the missing-trigger note on stderr itself, and the landed unattended-vector paragraph names `--trigger` among the withheld shapes a fleet worker leaves to an attended session.
 - proposed: (via A115) Drop the no-trigger note passage from the add-type row; line 219 keeps the fact.
 - passage: A record written with no trigger still lands, and stderr names the missing handle.
 
@@ -2382,7 +2382,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, shipped with the registry.
 - verdict: keep
 - reason: The warning does not block the write, so the ordering is the author's to hold; the section states the warning beside the act it asks for and the command table row is the reference entry (A155, A156).
-- passage: Add a line before minting a tag, since `memq` warns on any tag outside the registry and still writes the record.
+- passage: Add a line before minting a tag, since once the file exists `memq` warns on any tag outside the registry and still writes the record.
 
 ### c2.C103
 - key: Expect no tag warnings while the registry file is absent, and every unregistered tag to warn once it exists, an empty file included; creating the file turns the control on.
@@ -3059,7 +3059,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8f2b500 2026-08-08 set tags at creation and named the delete-and-rewrite remedy; 752dbce, b5c0a98 and 9b1180b widened the creation-only set to machine, pointer and triggers.
 - verdict: keep
 - reason: This is the whole creation-only field set with its remedy; row 30's tags clause is the narrower copy (A035 to A037).
-- passage: Repair refuses `--tag`, `--supersedes`, `--trigger` and `--machine`, so such a change is a delete and a fresh write.
+- passage: Repair refuses `--tag`, `--supersedes`, `--trigger` and, on the operator twin, `--machine`, so such a change is a delete and a fresh write.
 
 ### c3.C017
 - key: Declare recognition triggers after creation with `memq triggers <name> <type>:<pattern> --operator` or `--type=<type>`, which merges into the existing line, or writes it whole under `--replace --confirm-shared`.
@@ -3256,7 +3256,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02, when the `--trigger` option was refused on the unattended vector after its own spec's claim that it widened nothing was disproved.
 - verdict: keep
 - reason: The handoff to an attended session is a human act no program performs, guarding a recognition line that reaches every project and machine (A076 to A079).
-- passage: So a fleet worker leaves a withheld write to an attended session, such as a delete, a body-carrying update, `--body-file`, `--supersedes`, `--trigger`, `triggers`, `anchor` or `--rollup`.
+- passage: So a fleet worker leaves a withheld shape to an attended session, such as `find`, `--type=<type>`, a delete, a body-carrying update, `--body-file`, `--supersedes`, `--trigger`, `triggers`, `anchor` or `--rollup`.
 
 ### c3.C037
 - key: Re-run the whole `add` from an attended session to give a record a `supersedes:` pointer, or delete and rewrite one that already landed without it, since the field is creation-only and `--update` refuses it.
@@ -5434,7 +5434,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31, the council's surviving objection to any formula was answered by making it a one-liner statable verbatim in code and skill.
 - verdict: keep
 - reason: It is the code's own formula by design ("two surfaces, one truth"), so a session reading a tally on a scan line can check the nomination without opening memq. Retiring it would reverse a decided trade rather than remove a copy.
-- passage: A memory is a summarize candidate after 30 idle days and an archive candidate after 60, each extended by 30 per distinct applied day up to 365.
+- passage: A memory is a summarize candidate after 30 idle days and an archive candidate after 60, each extended by 30 per distinct applied day, the extension capped at 365.
 
 ### c5.C011
 - key: Read the formula as buying 180 extra idle days for six days of use, with the cap first binding at thirteen distinct days.
@@ -5714,7 +5714,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: rewrite
 - landed: d2c43f1 section 22
 - reason: The bar survives in the compressed paragraph; the route it forbids is not implied by the route c5.C033 gives, so it stays a rule. Its two costs move to this ledger (c5.C038).
-- passage: A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use one to clear a pin.
+- passage: A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use a delete verb to clear a pin.
 
 ### c5.C038
 - key: Avoid the delete because it drops the record's usage stamps, zeroing the applied tally and its extension, and meets another machine's copy as a modify/delete conflict that stalls sync.
@@ -5735,7 +5735,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - landed: d2c43f1 section 22
 - reason: No code enforces an absence: the delete verbs simply carry no pin check (memq.js:16417, :16522). The sentence is what tells a session a pinned shared record is removable at a cost, which is the fact the consult needed. Flipped from keep to rewrite at section 22's close: c5.C038's retire dropped the costs its 'that reason' pointed at, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The delete verbs deliberately do not refuse a pinned record, since refusing there would leave a pinned shared record removable by no path at all.
-- passage: A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use one to clear a pin.
+- passage: A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use a delete verb to clear a pin.
 - flag: stale
 
 ### c5.C040
@@ -5746,7 +5746,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: rewrite
 - landed: d2c43f1 section 22
 - reason: The bound survives as the closing clause of the compressed paragraph; it is the correction of a real misreading and no program states it.
-- passage: A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use one to clear a pin.
+- passage: A pin binds the decay pass and nothing else: the delete verbs still remove a pinned record, so never use a delete verb to clear a pin.
 
 ### c5.C041
 - key: Expect every scan to count the whole pinned population and list the first ten with a counted remainder.
@@ -6727,4 +6727,4 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: the persona-memory-port plan's section 6, which rewrote the opening that named the Write tool as the project tier's only door once `memq put` became a second one (D004).
 - verdict: keep
 - reason: The two doors write different records, one that session start prints and one it leaves out, so the paragraph names both by what they write. Neither runs the neighbours block the shared-tier verbs print, so the advice to search first covers both.
-- passage: A project-tier memory arrives through the Write tool, which writes the indexed record whose `MEMORY.md` line you write beside it, or through `memq put`, which writes the unindexed one. Neither path prints the shared-tier verbs' neighbours block, so run `memq find` in the words of the fact before either write.
+- passage: A project-tier memory arrives through the Write tool, into the memory write destination the SessionStart hook names, which writes the indexed record whose `MEMORY.md` line you write beside it, or through `memq put`, which writes the unindexed one. Neither path prints the shared-tier verbs' neighbours block, so run `memq find` in the words of the fact before either write.
