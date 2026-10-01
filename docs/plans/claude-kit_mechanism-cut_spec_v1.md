@@ -46,6 +46,7 @@ Rulings after the spec shipped, each appended dated:
 - 2026-09-30, on the relay thread, after the spec was drafted: the drop list approved whole, "Agreed. Approved whole. I'll see the details and comparison in the PR, and we still have git history if something was cut we ended up needing." Row 125, added after the ruling, awaits its own word.
 - 2026-09-30, on the relay thread, after the spec was pushed: the operator asked whether the plan was dispatched. That is a status question and not the arming word, so the plan stayed parked. Row 125 is applied as drop only once ruled, and section 10 asks if no word has landed by then.
 - 2026-09-30, on the relay thread, after the explicit ask: the plan runs, "Run it please!" Row 125 is not yet ruled.
+- 2026-10-01, on pull request #159: section 2 approved at 04:33:52Z and merged at 04:34:12Z, with no comment. The pull request put its three misses and its 23 declined rows with a recommendation on each, so the approval is read as taking those recommendations; the read is an inference from the approval, not a written ruling.
 
 Provenance: distilled by the architect persona from the operator's relay thread of 2026-09-30, the two Anthropic prompting pages, the two measurements under `## Approach`, and the archived corpus-compression spec, in session 5c033e22.
 
