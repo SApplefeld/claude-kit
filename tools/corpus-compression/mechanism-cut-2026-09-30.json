@@ -1254,8 +1254,8 @@
    "does": "Has the session find phrases that decide what a bounded artifact admits. For each it returns three admitted, kept-out and separating-feature pairs from the text alone, never using printed exclusions, and says so when it finds fewer than three.",
    "words": 172,
    "kind": "mechanism",
-   "call": "drop",
-   "why": "The reader-side half of the gating litmus row 478 drops; nothing reads its output once the litmus is gone. Set at the plan review of 2026-09-30."
+   "call": "keep",
+   "why": "This is the most unusual procedure in the document, and it would not happen without the text. The bounded-artifact definition is dense but carries the boundary itself. Put as a drop at the plan review of 2026-09-30 as the consequence of row 478, and kept on the operator's ruling the same day."
   },
   {
    "id": 126,
