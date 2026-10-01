@@ -4052,9 +4052,10 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:20
 - provenance: docs/plans/claude-kit_jev-coverage-check_spec_v1.md section 3 2026-09-21, on the precedent of the plan review's row (C012).
-- verdict: keep
-- reason: The check is a new moment inside step 10, and the step's other named reads each have a row, so a reader looking for where the recap's `jev coverage:` line is governed would otherwise find no owner. The row names the two documents that restate the moment, so a later change to the step reaches them.
+- verdict: retire
+- reason: Dropped by row 476 of `tools/corpus-compression/mechanism-cut-2026-09-30.json`, which removes the Jev coverage check from brainstorming's self-review, so the moment this row named no longer exists.
 - passage: | The Jev coverage check in self-review, and the recap's closing line | `brainstorming` (step 10, the coverage check) |
+- ruled: cut 2026-09-30
 
 ### P001
 - key: Read the `prose-register` skill for the recipe, the scaling and the voice layer of a document written for a named reader, the doctrine owning the register rule itself.

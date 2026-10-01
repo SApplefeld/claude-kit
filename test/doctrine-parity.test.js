@@ -5685,9 +5685,6 @@ const INTEGRATION_ACTION = new RegExp([
 const GATE_STATED = /whole gate|targeted lane|contention lane|install surface/i;
 
 const INTEGRATION_EXEMPT = [
-    ['skills/brainstorming/SKILL.md', 'land it on main and leave no mess',
-        'names the commit model for a plan header; the push it describes is '
-        + 'executing-work step 7\'s, which names that push\'s lane where it happens'],
     ['skills/branch-hygiene/SKILL.md', 'Bring the commits over',
         'the stranded-recovery path\'s gate is an open operator decision in '
         + 'docs/backlog.md: a cherry-pick onto a fresh base produces a tree '
@@ -6201,10 +6198,8 @@ test('the ownership map is tracked and names every shipped skill as an owner', (
 // surfaces need it self-contained. The authoring rule in brainstorming states what
 // an author must write; the charter in blind-reader is read by an agent barred from
 // resolving the term against this repository, so neither surface can point at the
-// other. Divergence here is the one failure the gating litmus cannot survive: the
-// check reads a disagreement between the reader's classification and the author's
-// as evidence about the spec, so two sides handed different class texts manufacture
-// that disagreement themselves and the loudest bucket fills with noise. Compared on
+// other. Divergence hands the author and the reader two different class texts,
+// so the reader's near-miss pairs mark a boundary the author never drew. Compared on
 // collapsed whitespace, since the sentence wraps differently on the two surfaces.
 test('the bounded-artifact class sentence reads the same on both gating surfaces', () => {
     const classSentence = 'a phrase deciding what a bounded artifact admits, '
@@ -6222,9 +6217,9 @@ test('the bounded-artifact class sentence reads the same on both gating surfaces
         const hits = body.split(classSentence).length - 1;
         assert.strictEqual(hits, 1, rel + ' states the bounded-artifact class '
             + 'sentence ' + hits + ' times, not once; both surfaces carry it '
-            + 'verbatim so the gating litmus hands one class to its two sides, '
-            + 'and a divergence manufactures the disagreement the check reads '
-            + 'as evidence about the spec');
+            + 'verbatim so the blind read hands one class to its two sides, '
+            + 'and a divergence makes each near-miss pair answer a definition '
+            + 'the author never wrote');
     }
 });
 

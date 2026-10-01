@@ -61,7 +61,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 27ac5d7 2026-08-27, restating the doctrine's pre-existing cross-component pin at the owner's point of action; the plan's Chapter 1 records the text as doctrine-verbatim.
 - verdict: keep
 - reason: This skill owns what earns a test; the doctrine's copy is the pointer surface per the ownership map. A session changing the pin rule changes it here and points from the doctrine.
-- passage: **A cross-surface pin**: a writer and a reader share a value, such as a wire field, a filter constant or a column list, and each side tested only against its own literal hides a mismatch.
+- passage: **A cross-surface pin**: a writer and a reader share a value, such as a wire field, and each side tested only against its own literal hides a mismatch.
 
 ### C006
 - key: Write a regression test pinning the fixed cause of a defect that actually happened, on a stable form and never on the sentence the fix wrote.
@@ -134,7 +134,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 70b1f73 2026-09-04, with the two exceptions added when the class as drafted retired a live length assertion that guards a set comparison against two empty sets; d2e2f37 2026-09-05 clarified "another leg" as another assertion in the same suite.
 - verdict: keep
 - reason: The exceptions are what keep the class from retiring instrument controls; C015's duplicate class does not carry them.
-- passage: **A count pin a sibling leg already covers**: an assert that a family has seven members where nothing derives the seven and another assertion in the same suite catches the same drift. A count each side derives independently stays, and so does a hardcoded count that is the only detector of a symmetric removal.
+- passage: **A count pin a sibling leg already covers**: a hardcoded count that another assertion in the same suite already checks. A count each side derives independently stays, and so does one that is the only detector of a symmetric removal.
 
 ### C014
 - key: Retire an exact-wording pin on stderr, stdout, or curated prose, pinning the exit code, a stable token, or a machine-read field instead.
@@ -143,7 +143,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 70b1f73 2026-09-04; the byte-identity carve-out was the plan's load-bearing correction, since the tree held at least six pinned copy sets no registry names and the rule as written would have retired their guards.
 - verdict: keep
 - reason: no finding.
-- passage: **An exact-wording pin on prose no identity contract covers**: an assert on stderr or stdout text, or on a curated sentence, where pinning the exit code, a stable token or a machine-read field leaves the wording free to improve.
+- passage: **An exact-wording pin on prose no identity contract covers**: an assert on stderr, stdout or a curated sentence where an exit code, a stable token or a machine-read field would leave the wording free. A text two or more surfaces carry by design keeps its byte-identity pin.
 - flag: weak-reason
 
 ### C015
@@ -171,7 +171,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 70b1f73 2026-09-04, added because the classes as drafted retired the withheld controls the doctrine's silent-check bullet mandates, two of them live in the kit's own suite; d2e2f37 respelled "neighbour".
 - verdict: keep
 - reason: A stated exemption, not a conflict with C015 or C018: a control's defect (an empty comparison) is caught nowhere else. It is written on what the leg is for rather than its shape so a new control shape is covered.
-- passage: A leg whose job is to prove the comparison beside it had something to compare is none of these, whatever its shape, since a control that cannot fail alone keeps its neighbor's silence honest.
+- passage: A control leg is none of these, per the doctrine's withheld-control bullet ("A silent check earns its silence with a withheld control").
 
 ### C018
 - key: Retire, and never write, any test whose maintenance cost is not paid for, even when no listed class names it.
@@ -187,19 +187,21 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:37
 - provenance: 70b1f73 2026-09-04, the shape bar specified in the subtraction-bars plan's Section 1; d2e2f37 2026-09-05 reworded the paragraph at the finishing fix round.
-- verdict: keep
-- reason: Composes with C008 through C020; no history records friction with the paragraph's four rules sharing one paragraph.
+- verdict: retire
+- reason: row 1232 (Shape bar), dropped under the mechanism cut.
 - passage: **The shape bar:** one focused test per stated behavior, sized like its neighbors
 - flag: weak-reason
+- ruled: cut 2026-09-30
 
 ### C020
 - key: Add a further test beside an existing one only where its subject is something the earlier test cannot see.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:37
 - provenance: 70b1f73 2026-09-04, as C019; the instances clause names the controls the doctrine mandates so they are not read as surplus.
-- verdict: keep
-- reason: This clause is what reconciles the family pin with a member's own behavior test and what keeps withheld controls off the surplus list.
+- verdict: retire
+- reason: row 1232 (Shape bar), dropped under the mechanism cut.
 - passage: with a further test beside it only where its subject is what an earlier test cannot see.
+- ruled: cut 2026-09-30
 
 ### C021
 - key: Where a section adds tests and retires none, state the reason in that section's Chapter.
@@ -215,9 +217,10 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: pointer
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:37
 - provenance: 70b1f73 2026-09-04 ("with the doctrine's own bullet left to govern a scratch check"); d2e2f37 renamed the scratch check a temporary repro.
-- verdict: keep
-- reason: A pointer at the owner of the red-first discipline; it stops the shape bar being read as retiring a temporary repro.
+- verdict: retire
+- reason: row 1232 (Shape bar), dropped under the mechanism cut.
 - passage: The doctrine's "Make the test earn its green" bullet governs a temporary repro.
+- ruled: cut 2026-09-30
 
 ### C023
 - key: Pin a hazard that an area's shared setup avoids with one test that does not share that setup.
@@ -270,7 +273,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 27ac5d7 2026-08-27, from the census's 239 spawn-class call sites across 32 test files.
 - verdict: keep
 - reason: no finding.
-- passage: **A spawn per assertion** becomes a spawn per batch: run the process once and assert many times against its output.
+- passage: Any cost paid per test that could be paid once per process is paid once, as a spawn per assertion becomes a spawn per batch.
 - flag: weak-reason
 
 ### C028
@@ -278,8 +281,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:48
 - provenance: 27ac5d7 2026-08-27, the cost shapes.
-- verdict: keep
-- reason: An instance under the class closer C033, the same enumeration shape as the litmus; the instance is the shape the census priced.
+- verdict: retire
+- reason: row 1235 shrink. The fixture shape is one instance of the per-process class, and C033's landed sentence "Any cost paid per test that could be paid once per process is paid once" carries the act.
 - passage: **A fixture built per test** becomes one built once per process and copied, so each test mutates its own copy.
 
 ### C029
@@ -289,7 +292,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 27ac5d7 2026-08-27; the doctrine's authoring bullet keeps the same sentence by the plan's requirement and routes the shapes here (parity-pinned route).
 - verdict: keep
 - reason: The owner's statement of the shape; the doctrine's copy is the principle-keeping restatement the plan adjudicated. Deleting it strands C030.
-- passage: **A fixed port or shared mutable state** becomes an owned temp dir.
+- passage: Any shared resource that could be owned is owned, as a fixed port becomes an owned temp dir.
 
 ### C030
 - key: Configure the test runner parallel from day one so a dependent test fails at birth rather than at a retrofit.
@@ -308,7 +311,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 27ac5d7 2026-08-27, the cost shapes.
 - verdict: keep
 - reason: no finding.
-- passage: **A real spawn only where the boundary is the subject**: a shell, a CLI or a cross-process boundary is honestly tested by a real spawn, and everything else in-process.
+- passage: A real spawn belongs only where a shell, a CLI or a cross-process boundary is the subject.
 - flag: weak-reason
 
 ### C032
@@ -316,8 +319,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: mechanic
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:50
 - provenance: 27ac5d7 2026-08-27, restored at the review round ("the per-spawn cost magnitude, which is the argument for batching, had been dropped", a Minor).
-- verdict: keep
-- reason: no finding.
+- verdict: retire
+- reason: row 1235 shrink. The spawn-cost figure is argument, and C027's and C031's landed sentences carry the act.
 - passage: A real process spawn costs on the order of half a second to a second, so a suite that spawns per assertion spends its wall clock proving things about a wrapper nobody is testing.
 - flag: environment
 
@@ -328,7 +331,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 27ac5d7 2026-08-27, the class closer for the cost shapes.
 - verdict: keep
 - reason: The closer reaches a shape no bullet names; the bullets are its instances and neither replaces the other.
-- passage: Any cost paid per test that could be paid once per process, and any shared resource that could be an owned one, takes the same trade.
+- passage: Any cost paid per test that could be paid once per process is paid once, as a spawn per assertion becomes a spawn per batch. Any shared resource that could be owned is owned, as a fixed port becomes an owned temp dir.
 
 ### C034
 - key: Run the lane the gate moment names, never a bigger one.
@@ -348,16 +351,16 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: efcfa16 2026-08-27 review finding (a lane of the changed files' tests structurally could not reach a whole-tree pin, which that diff itself demonstrated), restated at cceff11 2026-08-31.
 - verdict: keep
 - reason: Deliberately stated in full on the doctrine and here and pinned as such for doctrine-only-reader visibility; a change to the definition lands on both copies or reds the lane-text pin.
-- passage: **The targeted lane**, the changed files' tests plus any whole-tree pin whose subject those files are,
+- passage: **The targeted lane** is the changed files' tests plus any whole-tree pin whose subject those files are.
 
 ### C036
 - key: Take the targeted lane at a fix round and at a section close, whatever the delta touched.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:58
 - provenance: a321af3 2026-08-30, the gate-cadence plan's core sentence (operator decision 2026-08-30: the whole gate saved for the handoff; 25-plus-minute gates on the NEO box priced a ten-chapter plan at 250 added minutes), with the push forward-reference added against that plan's Section 2 Critical.
-- verdict: rewrite
+- verdict: retire
 - landed: 627ad10 section 32
-- reason: The rule, the push forward-reference and C037's act stay; the sentence explaining why the definition has a second half moves here: a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers. Lands at line 58 with the definition, the rule, the push forward-reference and C037's act kept and the explanatory sentence gone; A034 ruled keep on this entry and the pair lands as the spec's Rulings paragraph describes, the rule upheld and only the sentence's form changed. C037 opens its own sentence as a result and is recorded as a flip forced by this entry.
+- reason: row 1236 merge. The doctrine's gate bullet carries the moment: "Fix rounds and section close take the targeted lane, whatever the delta touched." It also carries the push condition. The landed pointer "The doctrine's gate bullet (...) names which moment takes which lane." routes there.
 - proposed: Keep the definition, C036, C037's act, the push forward-reference and C038's duty (or its pointer per A040); move "a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers" to the ledger.
 - baseline-test: yes
 - passage: is what a fix round and a section close take, whatever the delta touched. A push after a section close is a moment of its own and takes the lane its own condition below names.
@@ -378,9 +381,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:58
 - provenance: 9784239 2026-08-30, the gate-cadence plan's Section 5: every Chapter satisfied the template and violated the doctrine because nothing that defines a Chapter carried the lane; the template gained its Gate field.
-- verdict: rewrite
+- verdict: retire
 - landed: 627ad10 section 32
-- reason: Executing-work owns Chapter contents and its Gate field carries the duty and the reason; this becomes a pointer at that field so three copies do not drift. Lands at line 58 as "Executing-work's Chapter template carries the duty to name the lane or lanes that ran, at its Gate field." The field opens `Gate: <the lane or lanes that ran` at `plugins/claude-kit/skills/executing-work/SKILL.md` line 506 at HEAD.
+- reason: row 1236 merge. The doctrine's gate bullet carries "The Chapter that closes a section names the lane or lanes that ran.".
 - proposed: (via A040) Replace the sentence with a pointer at the Chapter template's Gate field in executing-work.
 - baseline-test: yes
 - passage: Executing-work's Chapter template carries the duty to name the lane or lanes that ran, at its Gate field.
@@ -418,8 +421,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:59
 - provenance: a321af3 2026-08-30, Principle 2 as C040.
-- verdict: keep
-- reason: The principle that lets the condition retire itself without an edit; removing it leaves the condition reading as a rule about claude-kit.
+- verdict: retire
+- reason: row 1237 merge. The principle is argument. C040's condition sentence, which this skill and the doctrine's gate bullet both carry, already keys on the surface.
 - passage: The pre-push moment keys on the surface, never on a repo's name, so a trunk that gains branch protections and a merge gate stops earning it with nothing here to edit.
 
 ### C043
@@ -427,8 +430,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:59
 - provenance: a321af3 2026-08-30, gate-cadence Principle 1 (operator decision 2026-08-30): a plan hands off clean on our own evidence.
-- verdict: keep
-- reason: An operator decision stated at the owner with its reason; the doctrine's clause is the approved verbatim text.
+- verdict: retire
+- reason: row 1237 merge. The doctrine's gate bullet carries "It runs at finishing even where downstream CI exists.".
 - passage: Finishing earns the gate even where downstream CI exists, because the plan hands off clean on our own evidence and CI is only a backstop.
 
 ### C044
@@ -438,7 +441,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 9784239 2026-08-30, gate-cadence Section 6: post-merge lost its lane when the unconditional pre-push gate retired, and a merge's redness sits in files neither parent changed (the 27ac5d7 baseline's stale-stamp reds after merge ee7a336 are the recorded instance).
 - verdict: keep
 - reason: Pinned on both copies and carried by every finishing-work merge bullet under the integration-verb sweep.
-- passage: A merge takes the whole gate too: a clean merge can redden a suite with both parents green, in files neither parent changed, which no lane derived from the merge's own diff reads.
+- passage: A merge takes the whole gate too.
 
 ### C045
 - key: Populate the contention lane with the tests whose subject is genuinely machine-shared state, such as a machine-global tier or a real shared lock, each saying so in its own text.
@@ -473,8 +476,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:62
 - provenance: efcfa16 2026-08-27 review finding that the lane enumeration was not closed with its class.
-- verdict: keep
-- reason: The closing default over this file's list; the doctrine closes its own list the same way, re-sited at 9784239 after a reader priced a merge at the targeted lane.
+- verdict: retire
+- reason: row 1236/1237 merge. The doctrine's gate bullet carries "Any other step takes the targeted lane.".
 - passage: Any step not named above takes the targeted lane, and only the moments named above earn the whole gate.
 
 ### C049
@@ -482,9 +485,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rationale-example
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:64
 - provenance: a321af3 2026-08-30, operator decision 2026-08-30 accepting late discovery with its price named; the window-cutting clause is the fix for that plan's Section 2 Critical (the skill had claimed nothing between sections reads the tree, false for a Commit-and-Push push to main).
-- verdict: rewrite
+- verdict: retire
 - landed: 627ad10 section 32
-- reason: The pricing narrative moves here: reserving the whole gate for the handoff means a targeted lane reads the changed files' families and nothing further out, so an untouched consumer of a changed shared module can go red unseen until finishing, except where a push to an install-surface trunk or a mid-plan merge fires the whole gate. The clause naming those two moments stays in the skill. Lands at line 64 with the two pricing sentences gone; the lead now reads "Two of the moments above run the whole gate mid-plan, which cuts short the stretch where only targeted lanes read the tree.", respelled inside this entry's own passage because "that window" lost its definition with the first pricing sentence, and the sentence naming the two moments is word for word.
+- reason: row 1240 merge. The paragraph is the argument behind the peer rule, and the doctrine's gate bullet carries the act: "A peer whose baseline reddens outside its own diff suspects the in-flight plan first.".
 - proposed: Reduce the paragraph to the window-cutting clause and C050; the pricing sentences ("Reserving the whole gate for the handoff buys wall clock at a named price", "So the price is paid between the sections only...") move to the ledger.
 - baseline-test: yes
 - passage: Two of those moments, a push to a trunk consumers install from directly and a merge, run the whole gate mid-plan. Between them only targeted lanes read the tree, so a family the plan never touched can carry a red unseen.
@@ -495,8 +498,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:64
 - provenance: a321af3 2026-08-30; the approved text first pointed the heuristic at the changed families and was corrected to the untouched consumers, which is the direction the lane cannot read.
-- verdict: keep
-- reason: The peer's reading rule at the point of action, separating suspicion from its confirming check; the doctrine's copy is the approved verbatim sentence.
+- verdict: retire
+- reason: row 1240 merge. The doctrine's gate bullet carries "A peer whose baseline reddens outside its own diff suspects the in-flight plan first.".
 - passage: A peer whose own baseline reddens suspects the in-flight plan before its own change, and confirms by checking whether the red sits outside its own diff.
 
 ### C051
@@ -504,26 +507,28 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:66
 - provenance: efcfa16 2026-08-27 review Critical: splitting the gate into lanes left the baseline unscoped, so a 12-test targeted run could be diffed against an 1853-test baseline and reported as no regressions.
-- verdict: rewrite
+- verdict: retire
 - landed: 627ad10 section 32
-- reason: The ownership map gives delta reporting to the doctrine's gate bullet, whose copy is pinned and carries the same reason; this line becomes a pointer at it. Lands at line 66 as one pointer shared with C052: "The doctrine's gate bullet ("After each step, run the lane the moment calls for, and report the delta") owns the same-lane baseline and the whole-gate baseline a no-regressions claim takes." The bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 100 states both rules.
+- reason: row 1241 (Doctrine pointer on baselines), dropped under the mechanism cut.
 - proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
 - baseline-test: yes
 - passage: The doctrine's gate bullet ("After each step, run the lane the moment calls for, and report the delta") owns the same-lane baseline and the whole-gate baseline a no-regressions claim takes.
 - flag: stale
+- ruled: cut 2026-09-30
 
 ### C052
 - key: Take a whole-gate baseline of its own before claiming no regressions across the suite.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:66
 - provenance: efcfa16 2026-08-27, as C051.
-- verdict: rewrite
+- verdict: retire
 - landed: 627ad10 section 32
-- reason: As C051; the doctrine's copy is the owner's. Lands at line 66 in the one pointer C051's record quotes.
+- reason: row 1241 (Doctrine pointer on baselines), dropped under the mechanism cut.
 - proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
 - baseline-test: yes
 - passage: The doctrine's gate bullet ("After each step, run the lane the moment calls for, and report the delta") owns the same-lane baseline and the whole-gate baseline a no-regressions claim takes.
 - flag: stale
+- ruled: cut 2026-09-30
 
 ### C053
 - key: Read a repo's lane commands from that project's memory tier.
@@ -640,7 +645,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - reason: Reads as an absolute threshold; state that the growth is first established under the contention rule, then routed. Lands at line 82 as "Growth is established under the contention rule below before it is read. Established growth past a few minutes is a finding to route, a fast lane for day-to-day edits or the whole gate at the moments that earn it, never a fact of life to absorb."
 - proposed: C063 states its dependency: growth established under the contention rule, past a few minutes, is a finding to route.
 - baseline-test: yes
-- passage: Growth established under the contention rule below, past a few minutes, is a finding to route, never a fact of life to absorb. The route is a fast lane for day-to-day edits, with the whole gate kept for the moments that earn it.
+- passage: Growth established under the contention rule below, past a few minutes, is a finding to route, never a fact of life to absorb.
 
 ### C064
 - key: Give every measured figure recorded in a journal-layer artifact a moment-pin.
@@ -665,8 +670,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: pointer
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:83
 - provenance: 7ef71e3 2026-09-01, Section 2 (the epoch as a memory record at a canonical key).
-- verdict: keep
-- reason: The parity test checks the far end still carries the epoch record and the expiry rule; the pointer is pinned at both ends.
+- verdict: retire
+- reason: row 1245 shrink. The sentence says who owns a neighboring moment. The memory-system skill's expiry rule carries the per-hostname epoch, and both reviewer charters point at it directly.
 - passage: The machine is part of the pin: the configuration epoch a figure is read against is recorded per hostname, so a pin naming no machine can be placed against no epoch.
 
 ### C067
@@ -674,9 +679,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: mechanic
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:83
 - provenance: 7ef71e3 2026-09-01, restating the doctrine's journey-ban bullet and its append-only exemption.
-- verdict: rewrite
+- verdict: retire
 - landed: 627ad10 section 32
-- reason: The doctrine owns the layer's definition and the sentence already names it as the doctrine's; it becomes a pointer, keeping only that Chapters carry pinned figures under the append-only exemption. Lands at line 83 as "The doctrine's journey ban ("Documents ship the current state; the journey lives in git") defines the journal layer, and a plan doc's Chapters carry pinned figures under its append-only exemption." The pointer names the journey ban so that C069's "the ban" keeps its antecedent on the line; the bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 26 states the layer and the append-only exemption.
+- reason: row 1245 shrink. The doctrine's "Documents ship the current state; the journey lives in git" bullet defines the journal layer and the append-only exemption, and C068's landed sentence carries the Chapter site.
 - proposed: (via A090) Replace the journal-layer sentence with a pointer at the doctrine's "Documents ship the current state" bullet, keeping only that Chapters carry pinned figures under its append-only exemption.
 - baseline-test: yes
 - passage: The doctrine's journey ban ("Documents ship the current state; the journey lives in git") defines the journal layer, and a plan doc's Chapters carry pinned figures under its append-only exemption.
@@ -692,15 +697,15 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - reason: "Dated evidence ... nowhere else" over-reaches the decision and bars the "decided YYYY-MM-DD" records the doctrine requires and the archived plans carry in Decisions sections; scope it to moment-pinned measured figures. Lands at line 83 as "A plan doc sitting in curated `docs/` therefore carries moment-pinned figures at its own journal-layer sites, which are its Chapters, its interim board entries and its Evidence section, and nowhere else in it." Its closing tail left with the scoping, beyond the proposal's letter, as the sentence's own rationale: the plan doc is that carve-out because it is the effort's own journal, never because the ban is weaker inside it, and C069's sentence carries the guard.
 - proposed: Scope the sentence to moment-pinned measured figures; a dated decision record is the doctrine's decision-batch rule and is untouched.
 - baseline-test: yes
-- passage: Within a plan doc, pinned figures sit only at its journal-layer sites: its Chapters, its interim board entries and its Evidence section.
+- passage: Within a plan doc, pinned figures sit only in its Chapters, its interim board entries and its Evidence section.
 
 ### C069
 - key: Carry no dated-evidence annotation in a curated document, a code comment, or a skill body.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:83
 - provenance: 7ef71e3 2026-09-01, the bar the operator made load-bearing in Decision 1, written as the one-sentence pointer at the doctrine's ban the plan's Section 1 prescribed.
-- verdict: keep
-- reason: Already the pointer form; the plan doc is excluded by the preceding sentence's carve-out. Whole at line 83 at section 32's close; "the ban" takes its antecedent from C067's landed pointer, which names the journey ban.
+- verdict: retire
+- reason: row 1245 shrink, which restated the doctrine's journey rule. The doctrine's "Documents ship the current state" bullet carries the bar: "Code comments and shipped artifacts state what is true now... Dates, evidence and claim-status marks go in the journal layer.".
 - passage: Elsewhere the ban holds, so a curated document, a code comment and a skill body carry no dated-evidence annotation.
 
 ### C070
@@ -710,7 +715,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 7ef71e3 2026-09-01, Decision 1 ("cited from the journal line, never restated in it"); the project memory holding the suite baseline was cut to a pointer and kept the scatter analysis it is the home for.
 - verdict: keep
 - reason: Part of the single owning site; removing it reopens restated evidence at every journal line.
-- passage: The deep evidence behind a figure, such as a scatter analysis or a multi-run comparison, lives in memory or in the plan's Evidence section, and a journal line cites it there. A figure at that home carries its evidence in full and cites nothing.
+- passage: Deep evidence behind a figure, such as a scatter analysis, lives in memory or in that Evidence section, and a journal line cites it there.
 
 ### C071
 - key: Record the box's process count and free memory, captured at the run, beside every wall-clock figure.
@@ -738,8 +743,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: mechanic
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:84
 - provenance: 27ac5d7 2026-08-27 review Minor ("varies widely enough" had no observable edge).
-- verdict: keep
-- reason: no finding. A session changing it should know the operator-tier record `box-duration-figures-need-a-co-measured-control` found two runs hours apart diff across an unrecorded fleet size and asks for a co-measured control in the same run; that record post-dates this sentence and the kit answered it with the moment-pin rather than an edit here.
+- verdict: retire
+- reason: row 1246 shrink. The quiet-versus-loaded recipe goes, and C072's landed sentence carries the comparability act.
 - passage: To see the edge, run the same suite on the same tree once with the box quiet and once beside a neighbor's suite, and the two figures show how much of any growth the load alone accounts for.
 
 ### C074
@@ -749,16 +754,15 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 27ac5d7 2026-08-27, the engine-agnostic box check, after a session followed the doctrine's enumerated list exactly and missed a live node --test gate; d2e2f37 respelled "neighbour".
 - verdict: keep
 - reason: The same rule at two points of action by design, with the skill's bullet pinned on its class phrases and both blind spots so a session loading either copy gets the same check.
-- passage: Before starting a suite, check the process list for a test runner or build, whatever its engine, whether owned by another session or by a running engine,
-- passage: `testhost`, `dotnet`, `node --test`, and a build are instances, not the boundary: the class is any foreign process holding the box's memory, its CPU or the repo's binaries while your suite runs.
+- passage: Poll as the doctrine's machine-budget bullet ("One heavy process at a time is a per-machine budget, not a per-directory one") states, counting a runner or build whatever its engine, whether owned by another session or by a running engine.
 
 ### C075
 - key: When the pre-suite check finds a foreign process, either wait for it or name the contention in what you report.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:85
 - provenance: 27ac5d7 2026-08-27, as C074.
-- verdict: keep
-- reason: Part of the pinned two-copy rule; the doctrine's cost sentence makes waiting sound, not mandatory, so there is no fork.
+- verdict: retire
+- reason: row 1247 merge. The doctrine's machine-budget bullet carries "Wait for a live one or name the contention.".
 - passage: and either wait for it or name the contention in what you report.
 
 ### C076
@@ -768,7 +772,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: 31faeb3 2026-08-28, review-and-record Section 10, from the coordinator's measured finding (three polls over two minutes returning three pictures of one stretch of work).
 - verdict: keep
 - reason: Pinned on this bullet as the rule's boundary rather than its reason; no machinery replaces the reading and the incident recurs on every shared box.
-- passage: This poll is a sample, never a clearance. It cannot see in-process agent fan-out, which spawns no engine, and it cannot see a neighbor that starts after the sample and before the suite. A clean poll is a basis for starting and never proof the box is empty, so an overlap it missed is named as contention.
+- passage: The poll is a sample, never a clearance. It cannot see in-process agent fan-out, which spawns no engine, and it cannot see a neighbor that starts after the sample and before the suite. A clean poll is a basis for starting and never proof the box is empty. A machine-state sentence leaving the session names the poll and its age, or says "not polled this turn".
 
 ### C077
 - key: Let a clean poll license a spawn only alongside the claim protocol, which the role skill owns in full.
@@ -785,8 +789,8 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:85
 - provenance: 31faeb3 2026-08-28, Section 10, written as a cross-reference to the doctrine's machine-budget bullet rather than a restatement.
-- verdict: keep
-- reason: Already the pointer form, quoting the owning bullet by title; the operator record on forged partial results is the incident class behind it.
+- verdict: retire
+- reason: row 1247 merge. The doctrine's machine-budget bullet carries "A run that dies partway, at a fraction that moves between attempts, is contention".
 - passage: A run that dies partway through is contention evidence whatever poll preceded it, per the doctrine's machine-budget bullet ("One heavy process at a time is a per-machine budget, not a per-directory one").
 
 ### W001
@@ -805,7 +809,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the operator's 2026-09-17 example that a method running only when a setting is true earns no test, bounded by the council's security lens to the four things a guard's caller depends on.
 - verdict: keep
 - reason: A flag is the case where the choice and the requirement sit closest together, so the boundary is stated exactly rather than left to the general question. Each of the four is a way a guard fails open: a throw in a hook that swallows errors is a silent allow, and a looser disabling match disables the guard in more cases.
-- passage: **The flag case:** what a flag is set to in a configuration is a choice, and it is not pinned. Four things about a flag are requirements.
+- passage: **The flag case:** what a flag is set to in a configuration is a choice, and it is not pinned. Beyond the both-ways proof in the doctrine's "Make the test earn its green" bullet, a flag's requirements are the direction a guard takes on unreadable input, an unparseable value degrading rather than throwing, and the exact value that disables a guard.
 
 ### W003
 - key: Price a test at its wall clock multiplied by every future section that runs the gate, plus every future red with no defect behind it, and state that trade in the Chapter for any test that spawns a process or builds a fixture per test.
@@ -814,7 +818,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the operator's 2026-09-17 statement that every test is wall clock added to every future section. That plan's Approach records the gate's clock at 950.5 seconds serial against a 316.8 second three-worker floor and a 260.7 second longest file, read from main at f799f1f7.
 - verdict: keep
 - reason: The gate's clock is total work over the workers rather than the longest file, so a spawn added in any file lengthens it, which is why the trade is stated per spawning test rather than per file. The operator ruled out a declared test budget, so the price is a statement the Chapter carries and never a cap a ratchet refuses.
-- passage: **The price:** a test costs its wall clock times every future section that runs the gate, plus every future edit that reds it with no defect behind it.
+- passage: **The price:** a test costs its wall clock at every future gate, plus every edit that reds it with no defect behind it, so it is written only where the break it would catch costs more.
 
 ### W004
 - key: Pin a fixed defect's cause on a stable form (a token, a direction, a field, a far end), never on the sentence the fix happened to write, and do not read a defect commit as exempting a wording pin from the wording class.
@@ -823,7 +827,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the 2026-09-03 test audit kept a wording family in `test/doctrine-parity.test.js` whole under the defect rule, which is the application gap this clause closes.
 - verdict: keep
 - reason: Supersedes C006. A defect earns a pin on its cause, and the sentence a fix wrote is only the vehicle for that cause. Without the clause any wording pin traceable to a fix commit was immune to the wording class, however often a legitimate rewording turned it red.
-- passage: A defect commit earns the cause its pin. It does not exempt a wording pin from the wording class.
+- passage: A defect commit does not exempt a wording pin from the wording class.
 
 ### W005
 - key: Retire a pin on a choice whether or not a sibling duplicates it, reshape it where a requirement sits beside the choice, and keep the carve-outs the other classes state.
