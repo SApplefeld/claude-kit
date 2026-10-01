@@ -6,7 +6,7 @@ Created: 2026-10-01
 
 ## Dispatch Authorization
 
-`Status: Ready` is the parked value the plan-doc contract gives an authored plan; this paragraph decides arming. The plan arms once the mechanism cut, `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, reads Complete, since sections 3 and 4 here add sentences to two skills that cut is still trimming, and once the operator's four rulings under `## Intent` are recorded. It has no other precondition.
+`Status: Ready` is the parked value the plan-doc contract gives an authored plan; this paragraph decides arming. The plan arms once the mechanism cut, `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, reads Complete, since section 3 here adds sentences to two skills that cut is still trimming. The operator's four rulings under `## Intent` are recorded, so that precondition is met. It has no other precondition.
 
 ## Goal
 
@@ -28,11 +28,11 @@ Alternatives refused:
 - Keep the `spec` verb as an operator tool. Refused: no skill runs it since mechanism cut row 476, and a verb nobody runs is a mechanism with no reader. Git history keeps it. Ruling 3 below lets him keep it.
 - Put the implementer's self-check in the four implementer charters. Refused: mechanism cut section 10 is cutting them, and one optional Dispatch Brief field places it with no charter edit.
 
-Rulings after the spec shipped, each appended dated. Four are asked of the operator on 2026-10-01:
-1. The gate shape: advice that prompts the session's own re-read, reviewers always dispatched, nothing blocked on a number.
-2. The re-read line: every promise reading over 0.6, or the three most doubted with no number.
-3. The `spec` verb: retire, or keep as an operator tool with its header corrected.
-4. The corpus cap: about 230 words added to executing-work and finishing-work while the mechanism cut halves the corpus.
+Rulings after the spec shipped, each appended dated. Four were asked of the operator on 2026-10-01 and answered the same day on the architect's thread:
+1. The gate shape, ruled 2026-10-01: advice that prompts the session's own re-read, reviewers always dispatched, nothing blocked on a number. In his words: "it's meant to help guide the session writing the code before it enters the full system two reviewers. It's sort of like a quick rubber duck check I would do in person going back over my acceptance criteria."
+2. The re-read line, ruled 2026-10-01: every promise reading over 0.6 is re-read, with no cap on the count. In his words: "Option A, every promise with doubt. Jev is a quick, cheap check, no reason to limit it to only top 3."
+3. The `spec` verb, ruled 2026-10-01 under a condition he set: "If it adds nothing material, I'm good with dropping it. Static lists to check against feel like the weakest use of Jev to me." The architect read the evidence against that condition and recorded retire. The evidence: no Chapter in any clone of this repository records a `jev coverage:` reading from a design session, so no spec was ever re-read on its account; the first plan's own provenance rests on one four-section plan where the ranking matched findings order with section length confounded, and the per-topic reading ran near a coin flip; the mechanism cut dropped the skill step on 2026-09-30 because "its four recorded forms cost more than the thin-section risk the blind read catches." The verb checks a fixed list of 28 topics, which is the use he named weakest. Git keeps the code, and reversal is one word from him: section 2 then keeps the verb, corrects its header and drops the removal bullets.
+4. The corpus cap, ruled 2026-10-01: the raise for this plan's sentences is approved. In his words: "Yes, okay to add to the Corpus for this new functionality."
 
 Provenance: distilled by the ARCHITECT persona on 2026-10-01 from the DEV-PLUGIN persona's brief quoting the operator, the first plan's archive, the two scripts and the executing-work skill at `61d51d25`, the two memory records above, and pull request 168.
 
@@ -93,7 +93,7 @@ Tests: no new test. `test/doctrine-parity.test.js` and `test/size-ratchet.test.j
 
 ## Assumptions
 
-- assumed 2026-10-01 (source: the operator's 2026-09-20 record, "anything over about 0.6 handed to a strong model to confirm"): the re-read line is 0.6; reversal: one number in two skill sentences, pending ruling 2.
+- decided 2026-10-01 (ruling 2 under `## Intent`, confirming the operator's 2026-09-20 record "anything over about 0.6 handed to a strong model to confirm"): the re-read line is 0.6 and every promise over it is re-read; reversal: one number in two skill sentences.
 - assumed 2026-10-01 (default): a rise of 0.3 after a fix round earns a re-read; reversal: one number in one sentence.
 - assumed 2026-10-01 (default): the state cap is 120,000 UTF-16 code units, twice the coverage check's section cap, against an experiment that sent up to about 24,000 tokens; reversal: one constant.
 - assumed 2026-10-01 (default): the deadline is 30 seconds with retries at 1 and 4 seconds; reversal: three constants.
@@ -107,6 +107,6 @@ Tests: no new test. `test/doctrine-parity.test.js` and `test/size-ratchet.test.j
 
 ## Open Questions
 
-- Rulings 1 to 4 under `## Intent` are the operator's, asked on the architect's thread on 2026-10-01.
+- None. Rulings 1 to 4 under `## Intent` are recorded. Ruling 3 was recorded under the operator's stated condition and reverses on one word from him.
 
 ## Chapters
