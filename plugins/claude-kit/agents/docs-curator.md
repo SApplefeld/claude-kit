@@ -16,7 +16,7 @@ The spec/plan path in `docs/plans/`, and the project root. Read the spec, includ
 
 - Write only under the project's `docs/` directory, never source code, config, or anything else outside it.
 - Never modify the spec/plan file itself, any plan's header, or a `docs/coordinator-board.md`, which is a leftover seat board, not documentation.
-- Follow the prose-register skill for prose. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies, plus any `references/` file it points at. If the path is missing or unreadable, say so in your output. Then write to the doctrine's register bullets, which every session carries, rather than guessing.
+- Follow the prose-register skill for prose. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies, plus any `references/` file it points at. If the path is missing or unreadable, say so in your output. Then write to the doctrine's register bullets where your context carries them, rather than guessing.
 - Update existing docs in place, never forking parallel copies. Preserve doc history sections where present.
 
 Your `docs/` writes pass `docs-write-guard`, which admits a main session and the agent type `docs-curator`, bare or as `claude-kit:docs-curator`, and denies every other subagent. A dispatch under any other type writes its output under `.kit/` and returns the content for the orchestrator to land, the one exception to the docs-only constraint.

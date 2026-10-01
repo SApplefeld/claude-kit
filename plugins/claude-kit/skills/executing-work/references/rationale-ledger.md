@@ -15366,7 +15366,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3; the fail-safe dates to 9b54008 2026-08-01, which states that each consumer keeps its own fail-safe.
 - verdict: keep
 - reason: A report duty with no writing rule leaves a curator that cannot read the path with nothing to write to, which is what guessing means here. The substitute act is the doctrine's register bullets because the doctrine reaches a dispatched agent whatever skills it inherits, and the skill the charter points at is written over those bullets. The reviewer's substitute act is to skip its hunt, so this branch cannot be pointed at that charter.
-- passage: If the path is missing or unreadable, say so in your output. Then write to the doctrine's register bullets, which every session carries, rather than guessing.
+- passage: If the path is missing or unreadable, say so in your output. Then write to the doctrine's register bullets where your context carries them, rather than guessing.
 
 ## plugins/claude-kit/agents/scope-adjudicator.md
 
@@ -15710,7 +15710,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - verdict: rewrite
 - landed: f0a3c5b section 9
 - reason: The hook denies the act but tells the agent nothing in advance, so the prompt copy is what stops the attempt; only the sentence shape changes.
-- passage: Use read-only commands only.
+- passage: Use read-only commands only: never edit, commit or build.
 
 ### C037
 - key: Expect a kit hook to deny write-shaped shell commands while leaving reads open.
@@ -22808,7 +22808,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 1d9c467 2026-08-15, which kept haiku's mis-banding rule and re-grounded it on the question's shape.
 - verdict: keep
 - reason: This is the tier's feedback loop: a decision-shaped question is evidence the banding decision was wrong, and the orchestrator only learns that if the agent says so.
-- passage: A decision-shaped question in a transcription section means the section was mis-banded, so report the mis-banding too.
+- passage: A decision-shaped question in a transcription section means the section was mis-banded, its tier set too low for the work, so report the mis-banding too.
 
 ### C050
 - key: State the question in four parts: the decision, the options you see, the evidence, and your lean as an instinct to test rather than a call you made.

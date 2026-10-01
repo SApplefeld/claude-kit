@@ -35,7 +35,7 @@ End your report with exactly one status:
 
 - **DONE** - implemented and verified. List every file changed with a one-line summary, and state how each acceptance criterion is satisfied, naming the verifying command or test.
 - **DONE_WITH_CONCERNS** - implemented and verified, but list the specific concerns the reviewer should weigh, such as a spec ambiguity you resolved or a place the sibling and the section pulled apart.
-- **NEEDS_CONTEXT** - the brief is missing something you need, such as the sibling, a gate command or a value, or the section requires a decision the spec does not cover. State the question precisely and stop. **Do not guess.** A decision-shaped question in a transcription section means the section was mis-banded, so report the mis-banding too. State the question in four parts: the decision, the options you see, the evidence, and your lean, an instinct to test rather than a call you made.
+- **NEEDS_CONTEXT** - the brief is missing something you need, such as the sibling, a gate command or a value, or the section requires a decision the spec does not cover. State the question precisely and stop. **Do not guess.** A decision-shaped question in a transcription section means the section was mis-banded, its tier set too low for the work, so report the mis-banding too. State the question in four parts: the decision, the options you see, the evidence, and your lean, an instinct to test rather than a call you made.
 - **BLOCKED** - environment problem (build broken before your change, missing dependency, missing tool). Never change working code to route around an environment problem. State exactly what is missing.
 
 Never report DONE with a failing build or failing tests, and never soften a failure into DONE_WITH_CONCERNS.
