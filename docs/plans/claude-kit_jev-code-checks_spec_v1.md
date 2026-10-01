@@ -1,0 +1,112 @@
+# A session asks Jev whether its code keeps the section's promises before it spends the reviewers, and again after each fix round
+
+Status: Ready
+Commit Model: Branch-and-PR
+Created: 2026-10-01
+
+## Dispatch Authorization
+
+`Status: Ready` is the parked value the plan-doc contract gives an authored plan; this paragraph decides arming. The plan arms once the mechanism cut, `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, reads Complete, since sections 3 and 4 here add sentences to two skills that cut is still trimming, and once the operator's four rulings under `## Intent` are recorded. It has no other precondition.
+
+## Goal
+
+When this ships, an execution session can ask TypeSafe's Jev model, in a few seconds, how much doubt there is that the code it just built keeps each promise its plan section makes. The answer is a ranking of the section's promises, most doubted first, each with a probability, and it is advice: the session re-reads the doubted promises against the code itself, fixes or explains each, and then dispatches the reviewers it would have dispatched anyway. After a fix round the same questions run again against the saved first reading, so a promise the fix broke stands out. An implementer runs the same check over its own changes before it reports, on questions the orchestrator prepared. The kit's shared TypeSafe client refuses a request carrying a credential shape, and the gatherer that reads source files for the check refuses credential and settings files by name, so source code leaves the LAN and secrets do not. The `spec` verb retires with its topic file and tests, since no skill runs it. The curated docs state what the channel now sends.
+
+## Intent
+
+The operator's frame, on the kit worker's relay thread on 2026-10-01, verbatim: "a Jev self-review that checked whether a body of code / section body / chapter summary stayed aligned with the goal / intent and if they accomplished what was scoped. That would have a ranking, and a low ranking would trigger the same session to re-review the work before passing it over to the adversarial, blind, performance, and security reviewers. The idea was to lead with a quick 'rating' that was cheap and fast to help guide the section on work delivered before invoking the more expensive and slower system two reviewers." And: "Yes please! I am really looking forward to that piece."
+
+The shape he agreed on 2026-09-20 and 2026-09-21 still holds: the tools are generic and the questions stay specific, the checks advise and never gate, and this is the second of two plans. The first shipped the client and the spec coverage check. The experiment record behind both is the operator-tier memory `jev-checks-stated-promises-and-cannot-invent-the-question` and the personas record `jev-code-review-prototype-first-results`: questions derived from a section's own promises caught a reviewer's Critical blind, broken reading 0.93 and fixed 0.18; broad quality scales did not discriminate; Jev reads comments as evidence; a tight window causes false alarms; and the operator's own reading was that anything over about 0.6 goes to a strong model to confirm.
+
+What done needs to do: a `promises` verb on the existing check script that reads prepared questions and whole source files with comments stripped and prints the promises ranked by doubt; a record and a delta so a fix round reads what it moved; a credential screen in the client and a file screen in the gatherer; the skill sentences at four moments; and the docs.
+
+What done does not need to do: no gate, pass or fail on a score, and no finding printed; no question Jev writes, and none an implementer writes for itself; no reading handed to any reviewer; no question bank grown from reviewer findings, which waits on the false-alarm rate on clean code; no per-function windowing; no change to the fleet-block judge beyond the reason set it reads; no doctor check or permission rule.
+
+Alternatives refused:
+- A hard gate, where a doubted promise blocks the reviewer dispatch until it clears. Refused: the 2026-09-20 shape says advise and never gate, and the operator's 2026-10-01 words ask the session to re-review, which is an act the session takes on advice. The reviewers run whatever the reading says.
+- No number at all, the session re-reading its three most doubted promises every time. Refused as the default: the operator's own record names 0.6 as the hand-off to a strong model, and three re-reads on a clean section spend attention the number would save. Ruling 2 below lets him pick it.
+- Keep the `spec` verb as an operator tool. Refused: no skill runs it since mechanism cut row 476, and a verb nobody runs is a mechanism with no reader. Git history keeps it. Ruling 3 below lets him keep it.
+- Put the implementer's self-check in the four implementer charters. Refused: mechanism cut section 10 is cutting them, and one optional Dispatch Brief field places it with no charter edit.
+
+Rulings after the spec shipped, each appended dated. Four are asked of the operator on 2026-10-01:
+1. The gate shape: advice that prompts the session's own re-read, reviewers always dispatched, nothing blocked on a number.
+2. The re-read line: every promise reading over 0.6, or the three most doubted with no number.
+3. The `spec` verb: retire, or keep as an operator tool with its header corrected.
+4. The corpus cap: about 230 words added to executing-work and finishing-work while the mechanism cut halves the corpus.
+
+Provenance: distilled by the ARCHITECT persona on 2026-10-01 from the DEV-PLUGIN persona's brief quoting the operator, the first plan's archive, the two scripts and the executing-work skill at `61d51d25`, the two memory records above, and pull request 168.
+
+## Approach
+
+**One request per check, carrying whole files with comments stripped.** The `promises` verb takes a questions file and one or more source paths. The questions file is a JSON array of `{ id, promise }`, `id` a non-empty string no other entry carries and `promise` the promise as the plan states it. Each becomes one `noul` question, keyed `p_<id>`, asking whether the code in `code` fails to keep the promise, with `true` as "the code does not do this, or does it only in part" and `false` as "the code does this as stated". The answer is the doubt. The state is `{ code }`, every file in argument order, each opened by a line `==== <path as given>` and followed by its text with comments stripped by extension: `//` and `/* */` for `.js`, `.mjs`, `.cjs`, `.ts`, `.cs`; `--` and `/* */` for `.sql`; `#` for `.ps1`, `.sh`, `.py`; any other extension is sent as it is. The strip is a line and block scan that knows no strings, so a `//` inside a string literal loses the rest of its line. That is accepted, since the text is a measurement input and never runs. Nothing else rides: not the plan, not the questions file's path, not any environment value. The request goes through `jev-client.js` with a 30-second deadline and retries at 1 and 4 seconds, the first plan's policy with ten more seconds for a larger state. The whole state is checked before the send, and one past 120,000 UTF-16 code units reads `not checked (code too long)`, so a file like a 13,000-line hook source is refused rather than truncated.
+
+**The reading is a ranking and three closing lines.** The report opens `model <m>, input tokens <n>, files <k>`, then one line per promise, most doubted first, ties in questions-file order on the value as printed: `<id>: doubt <p>  <promise, cut to 80 characters>`. The closing line is `jev promises: <n> promises, most doubted <id> at <p>` at exit 0, `jev promises: not checked (<reason>)` at exit 2, or `jev promises: not configured` at exit 2, followed by the sentence "Doubt is a pointer to re-read the promise against the code, never a finding." A usage refusal is one stderr line and exit 1, sending nothing. `--record <path>` writes the answers as `{ model, at, answers: { <id>: <p> } }` after a checked run, creating the parent, and only then. `--against <path>` reads such a record, prints `(was <q>, <+/-d>)` on each line whose id the record holds, prints `(new)` on a line whose id it does not, ignores a record id the questions file no longer holds, and adds `, largest rise <id> by <d>` to the closing line where any rise is positive. A record that cannot be read or parsed is a usage refusal.
+
+**The screens sit where the second producer arrives.** The client gains a ninth reason, `screened`, raised in `run` after the body is serialized and before the key is read, when the body matches any of a closed list of credential shapes: the literal `TYPESAFE_API_KEY`, `Bearer ` followed by 16 or more token characters, `sk-` followed by 20 or more, `ghp_`, `gho_`, `github_pat_`, `xox` followed by one of `baprs` and a hyphen, `AKIA` followed by 16 upper-case letters or digits, `-----BEGIN` followed by any words and `PRIVATE KEY-----`, and an assignment of `password`, `passwd`, `secret`, `api_key`, `apikey` or `token` to a quoted literal of 8 or more characters, case-insensitive. The refusal's detail names the shape class and never the match. The screen runs on every send, so the coverage verb while it stands, the fleet-block judge and the new verb all pass it, and `jev-judge.js` is read on contact to confirm an unlisted reason stands the judge down. The gatherer in the check script refuses, before any read, a path whose base name matches a closed list: `.env` and `.env.*`, `*.pem`, `*.key`, `*.pfx`, `*.p12`, `*.jks`, `*.keystore`, `id_rsa*`, `id_ed25519*`, `*.tfvars`, `.npmrc`, `.netrc`, `credentials*`, `*.secrets*`, `kit-jev.json`, `kit-endpoint.json`, `claude-kit.local.json`, `settings.local.json`, and any `settings*.json` or `*.json` whose parent directory is `.claude`. The refusal is `not checked (screened file)` with the path, never its content. The kit's own tests plant key shapes, so a test file sent to the check reads `screened`, and that is the screen working.
+
+**The check sits at four moments, each one sentence or one field.** Before dispatch, the orchestrator writes `.kit/scratch/<plan-slug>/promises-section-<n>.json` from the section text, one entry per acceptance bullet and per sentence that names a behavior the section builds, and the Dispatch Brief gains an optional `Promise check:` field naming that file and the command, so the implementer runs it over its changed files and carries the closing line and every promise over the re-read line in its report. At step 2, the orchestrator runs the verb over the section's changed source files with `--record`, re-reads each promise over the line against the code, fixes it or records one line in the Chapter, re-runs once after a fix, and then dispatches step 3's reviewers whatever the reading. At step 4, after a fix round's delta, the verb runs with `--against` the step-2 record, and a promise whose doubt rose by 0.3 or more is re-read before the close gate. At finishing, before step 3's final adversarial review, the same verb runs over the changeset's source files against a promises file written from the Goal's sentences, and its closing line rides the final Chapter. No reading reaches a reviewer brief, under step 3's never-pre-judge rule. A `not checked` or `not configured` line is recorded as printed and never retried into a pass.
+
+**The sweep for surfaces that state the rule.** Searches run 2026-10-01 at `61d51d25`: `grep -rn -i "jev\|typesafe"` over `plugins/claude-kit/skills/`, `plugins/claude-kit/agents/`, `docs/`, `test/`, and the three scripts. Found: `brainstorming/SKILL.md` step 10 (the coverage check, which pull request 168 removes), the ownership map's Jev row (which that pull request removes), `docs/security-model.md`'s TypeSafe channel section (two callers, the closed set of eight, what crosses), `docs/architecture.md`'s script entries, `docs/README.md`'s summary lines, `test/kit-jev-check.test.js`, `test/jev-client.test.js`, `test/size-budget.json`'s entries for the two skills, and `docs/backlog.md` on branch `mechanism-cut/s9` (the retire-or-keep item). Section 3 reads `executing-work/SKILL.md` and `finishing-work/SKILL.md` as the mechanism cut left them, since both are being cut while this plan waits.
+
+## Sections of Work
+
+### 1. The client screens every body for credential shapes, and the gatherer refuses credential and settings files
+Model: fable
+`jev-client.js` gains `screened` as its ninth reason, raised in `run` after `JSON.stringify` and before the key read, on the closed shape list in the Approach, with a detail naming the shape class only. The header comment's reason list and count change to match. A new module `plugins/claude-kit/scripts/jev-gather.js` exports `gatherCode(paths)`: refuses a path on the closed base-name list before reading it, reads each remaining file as UTF-8, strips comments by extension as the Approach states, and returns `{ ok: true, code, files }` or `{ ok: false, reason: 'screened file', path }`. `jev-judge.js` is read for how it handles a reason it does not name, and changed only where an unlisted reason would not stand it down.
+Acceptance:
+- A client test plants each listed shape in a state and reads `screened` with a detail naming the class and not the planted text, under the existing eight-character key sweep; a control with none of the shapes reaches the stand-in server.
+- A gather test sends each listed base name and reads `screened file` with the path and no content; a control file beside them is read; each extension's comment forms are stripped and a `//` inside a string loses its line, pinned as the stated behaviour.
+- `test/jev-client.test.js`'s closed-set pin counts nine reasons.
+Files in scope: `plugins/claude-kit/scripts/jev-client.js`, `plugins/claude-kit/scripts/jev-gather.js` (new), `plugins/claude-kit/scripts/jev-judge.js` (only where the reason set is enumerated), `test/jev-client.test.js`, `test/jev-gather.test.js` (new), `test/size-budget.json`.
+Tests: the shape screen in both directions per shape, the file screen in both directions, and the key sweep over every refusal line, since a screen that names its match would print the secret it exists to keep.
+
+### 2. The promises verb reads prepared questions and source files, and the spec verb retires
+Model: opus
+`kit-jev-check.js` gains `promises <questions.json> <file>... [--record <path>] [--against <path>]` as the Approach states, through `jev-gather.js` and `jev-client.js`, with the ranking, the three closing lines, the closing sentence, the 120,000-unit cap, the 30-second deadline and the record and delta forms. The `spec` verb, `readTopics`, `parsePlan`, `jev-coverage-topics.json` and `test/kit-jev-check.test.js`'s coverage cases are removed, and the header comment describes the one verb that remains. The usage line names `promises`.
+Acceptance:
+- A test with a stand-in server returning fixed values prints the promises most doubted first with ties in file order, the three header fields, and the closing line naming the most doubted id and value.
+- `--record` writes the record only after a checked run, and `--against` prints each `(was, delta)` and the `largest rise` clause from that record; a record that cannot be read is a usage refusal at exit 1 sending nothing.
+- A questions file with a repeated or empty id, or a path on the gather screen, is refused before any send; a state past the cap reads `not checked (code too long)`.
+- A machine with no config reads `not configured` at exit 2, and one with no key reads `not checked (no key)`; neither prints the key, under the sweep.
+- `node --test test/*.test.js` exits 0 with no coverage case left and no file under `plugins/claude-kit/scripts/` or `test/` naming the topic file.
+Files in scope: `plugins/claude-kit/scripts/kit-jev-check.js`, `plugins/claude-kit/scripts/jev-coverage-topics.json` (removed), `test/kit-jev-check.test.js`, `test/size-budget.json`.
+Tests: the ranking order, the three closing forms, the record-after-checked-run rule, the delta arithmetic, and the usage refusals, each with its control.
+
+### 3. The skills place the check at four moments and the docs state what the channel sends
+Model: opus
+`executing-work/SKILL.md`, read as the mechanism cut left it: step 1 gains the promises-file sentence and the Dispatch Brief its optional `Promise check:` field; step 2 gains the run, re-read, record-or-fix and re-run-once sentences and the rule that step 3 dispatches whatever the reading; step 4 gains the `--against` sentence and the 0.3 rise. `finishing-work/SKILL.md` step 3 gains the Goal-promises sentence and where the closing line lands. The ownership map gains one row naming `executing-work` step 2 as the owner of the promise check and its recap line. `docs/security-model.md`'s TypeSafe section states the new caller, that source files with comments stripped cross, the two screens and the closed set of nine. `docs/architecture.md` names `jev-gather.js` beside the other two scripts, and `docs/README.md`'s summary lines follow. `test/size-budget.json` is synced for every file that moved, and the corpus-cap raise is recorded under ruling 4. The whole added text across the two skills is at most 230 words, counted by `kit-size.js`.
+Acceptance:
+- `node plugins/claude-kit/scripts/kit-size.js check --repo .` exits 0 after the sync, and the Chapter records the corpus-cap line it printed.
+- `node --test test/*.test.js` exits 0, `test/doctrine-parity.test.js` included.
+- Every sentence added names the command, the file path form and the moment, and no sentence tells a reviewer about the reading.
+Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/finishing-work/SKILL.md`, `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`, `docs/security-model.md`, `docs/architecture.md`, `docs/README.md`, `test/size-budget.json`, and the rationale ledgers `docs/rationale-ledgers.md` places those two skills under.
+Tests: no new test. `test/doctrine-parity.test.js` and `test/size-ratchet.test.js` run and their results ride the Chapter.
+
+## Out of Scope
+
+- Any gate, pass or fail on a score; any reading handed to the adversarial, blind, performance or security reviewers or to the blind reader.
+- Questions Jev writes, questions an implementer writes for itself, and a question bank grown from reviewer findings.
+- Per-function windowing, a string-aware comment stripper, and languages beyond the five extension groups.
+- The fleet-block judge's situation, floors and policy; the persona plugin's own Jev questions.
+- A doctor check for the config or key, and a permission rule for the verb.
+- `docs/backlog.md`'s retire-or-keep item on branch `mechanism-cut/s9`, which this plan closes at its finishing pass once that branch has merged.
+
+## Assumptions
+
+- assumed 2026-10-01 (source: the operator's 2026-09-20 record, "anything over about 0.6 handed to a strong model to confirm"): the re-read line is 0.6; reversal: one number in two skill sentences, pending ruling 2.
+- assumed 2026-10-01 (default): a rise of 0.3 after a fix round earns a re-read; reversal: one number in one sentence.
+- assumed 2026-10-01 (default): the state cap is 120,000 UTF-16 code units, twice the coverage check's section cap, against an experiment that sent up to about 24,000 tokens; reversal: one constant.
+- assumed 2026-10-01 (default): the deadline is 30 seconds with retries at 1 and 4 seconds; reversal: three constants.
+- assumed 2026-10-01 (default): the credential shapes and the refused base names are the closed lists in the Approach, chosen from the shapes the kit's own tests plant and the files the kit's own docs name as holding secrets; reversal: edit the two lists, each a data constant with a per-entry test.
+- assumed 2026-10-01 (default): the plan runs after the mechanism cut closes, since two of its files are being cut; reversal: run it beside the cut and resolve the merge by hand at section 3.
+- assumed 2026-10-01 (source: the operator's 2026-09-20 ruling that source code may leave the LAN to TypeSafe): sending whole source files of any project on a configured machine needs no further egress ruling; reversal: the operator's word, and a per-project switch the first plan refused.
+
+## Operator Verification
+
+- After the pull request merges and the plugin updates, on a configured machine, write a promises file for one section of a live plan and run the verb over that section's files. What reopens the work: a line printing any part of the key, a refused credential file read, or a request taking longer than a few seconds on a state under the cap.
+
+## Open Questions
+
+- Rulings 1 to 4 under `## Intent` are the operator's, asked on the architect's thread on 2026-10-01.
+
+## Chapters
