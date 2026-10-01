@@ -1,5 +1,5 @@
 {
-  "corpus-cap": 111152,
+  "corpus-cap": 111270,
   "home/CLAUDE.md": 71,
   "home/claude-kit-doctrine.md": 6459,
   "plugins/claude-kit/agents/adversarial-reviewer.md": 3121,
@@ -32,8 +32,8 @@
   "plugins/claude-kit/skills/csharp-style/SKILL.md": 1018,
   "plugins/claude-kit/skills/csharp-style/references/csharp-style.md": 1896,
   "plugins/claude-kit/skills/csharp-style/references/rationale-ledger.md": 17353,
-  "plugins/claude-kit/skills/curating-docs/SKILL.md": 1809,
-  "plugins/claude-kit/skills/curating-docs/references/rationale-ledger.md": 15656,
+  "plugins/claude-kit/skills/curating-docs/SKILL.md": 1927,
+  "plugins/claude-kit/skills/curating-docs/references/rationale-ledger.md": 15705,
   "plugins/claude-kit/skills/curating-docs/references/templates.md": 382,
   "plugins/claude-kit/skills/design-council/SKILL.md": 426,
   "plugins/claude-kit/skills/design-council/references/rationale-ledger.md": 6280,
