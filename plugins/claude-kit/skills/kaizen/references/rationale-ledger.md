@@ -180,7 +180,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 
 - verdict: rewrite
 - landed: 764f342 section 35
 - reason: The cap stays at the capture rule, but its footing ("because the inbox is a repository surface that may be public") is the derivation form the parity suite bars at the three pinned cap sites in favour of the standard docs/security-model.md states, so a session could reason the cap away if the repo went private; the rewrite states the cap as that standard. Lands at line 21 (section 35's close) as two sentences after the cap's clause list, "The cap is the standard executing-work's first-line paragraph states, and it does not move with where the inbox sits. `docs/security-model.md` carries the readership analysis and the coordinator skill owns the precondition it names.", the footing clause gone. The implementer's first landing copied four of the five elements of the standard the parity suite pins at three sites this skill is not among (executing-work's expert-ask and first-line paragraphs and peer-sessions' Worker bullet, which no sweep extends); round 1 read that unpinned partial copy as the drift the one-owner rule bars, so the close pass landed a pointer at the standard's owner instead, which states the cap as that standard without copying its form. No relaxation word sits in those two sentences or in the cap sentence before them; line 21's "only where" sits in the exemption's own sentence three sentences earlier.
-- passage: The cap is a standard and does not move with where the inbox sits.
+- passage: The cap is the standard executing-work's first-line paragraph states, and it does not move with where the inbox sits.
 
 ### C019
 - key: Spell any absolute path in a note repo-relative or home-relative.
@@ -264,7 +264,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 
 - source: plugins/claude-kit/skills/kaizen/SKILL.md:26
 - provenance: 830ff28 2026-06-17, the capture bar.
 - verdict: retire
-- reason: row 805 (Worth-a-note bar) merge. The doctrine's capture bullet carries it as "A kit rule that proved ambiguous or wrong ... earns a one-line kaizen inbox note". The landed pointer is "The doctrine's capture bullet states the bar, the lesson's level and that zero notes is normal.".
+- reason: row 805 (Worth-a-note bar) merge. The doctrine's capture bullet carries it as "A kit rule that proved ambiguous or wrong ... earns a one-line kaizen inbox note". The landed sentence is "The doctrine's capture bullet carries its core: kit friction is worth a note, a project gotcha goes to memory, a one-off mistake of your own is not a note, the lesson is stated one level above its incident, and zero notes is normal."
 - passage: - a kit rule or skill instruction was ambiguous, contradicted the situation, or let you rationalize around it
 
 ### C028
@@ -328,7 +328,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 
 - provenance: 6b3cbec 2026-07-26, a relocated lesson given its point-of-action home in the capture rule.
 - verdict: retire
 - landed: 764f342 section 35
-- reason: row 806 (Lesson over incident) merge. The doctrine's capture bullet carries it as "State any lesson, wherever it lands, one level more general than its incident." The landed pointer is "The doctrine's capture bullet states the bar, the lesson's level and that zero notes is normal.".
+- reason: row 806 (Lesson over incident) merge. The doctrine's capture bullet carries it as "State any lesson, wherever it lands, one level more general than its incident." The landed sentence is "The doctrine's capture bullet carries its core: kit friction is worth a note, a project gotcha goes to memory, a one-off mistake of your own is not a note, the lesson is stated one level above its incident, and zero notes is normal."
 - proposed: Keep the bold lead and the instruction with its gloss; drop the metaphor sentence.
 - passage: **State the lesson, not the incident.** Capture every note one level more general than the incident that taught it: the incident is the evidence, the lesson is the note.
 
@@ -611,7 +611,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 
 - source: plugins/claude-kit/skills/kaizen/SKILL.md:52
 - provenance: 7701ec5 2026-09-02, with the rule.
 - verdict: retire
-- reason: . C062's landed sentence carries it: "since producers append at any time and a line the pass did not read must survive".
+- reason: C062's landed sentence carries it: "since producers append at any time and a line the pass did not read must survive".
 - passage: Producers append at any time and nothing coordinates them with a running pass, so rewriting the whole surface is never safe.
 
 ### C064
@@ -732,7 +732,7 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 
 - provenance: 830ff28 2026-06-17, installed with the hook it describes.
 - verdict: retire
 - landed: 764f342 section 35
-- reason: . This merges a duplicate statement into the predicate paragraph. Survivor: "That predicate gates every offer, and the SessionStart nudge in `hooks/session-start.js` applies it in the kit repo.".
+- reason: This merges a duplicate statement into the predicate paragraph. Survivor: "That predicate gates every offer, and the SessionStart nudge in `hooks/session-start.js` applies it in the kit repo.".
 - proposed: Replace the sentence with a pointer: the SessionStart nudge in `hooks/session-start.js` applies this predicate in the kit repo.
 - passage: The SessionStart nudge in `hooks/session-start.js` applies the pending-items predicate in the kit repo.
 - flag: stale

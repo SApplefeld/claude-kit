@@ -33,7 +33,7 @@ Send the brief with the persona plugin's `agentic_say` tool, its `persona` argum
 
 ## Relaying Answers
 
-Relay the architect's answer and the coordinator's status in the client-briefing register. The seat requests that status from the coordinator persona as it sends a brief. The doctrine's bullet leading "Write every decision ask to the client-briefing register", under How We Work in `skills/operating-instructions/SKILL.md` under the kit plugin root, owns that register.
+Relay the architect's answer and the coordinator's status in the client-briefing register. The seat requests that status from the coordinator persona the way it sends a brief. The doctrine's bullet leading "Write every decision ask to the client-briefing register", under How We Work in `skills/operating-instructions/SKILL.md` under the kit plugin root, owns that register.
 
 Name a plan by its bare filename beside a plain-words reminder of what the plan does.
 

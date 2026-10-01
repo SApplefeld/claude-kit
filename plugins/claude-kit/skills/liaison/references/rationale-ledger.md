@@ -102,7 +102,7 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30.
 - verdict: keep
 - reason: The section's third acceptance bullet has the relay rule point at the doctrine's client-briefing bullet rather than restate it, since the register has one owner and a restatement would drift from it. The sentence naming how both arrive tells the seat which records it relays, since both return by the same route the brief left on.
-- passage: Relay the architect's answer and the coordinator's status in the client-briefing register. The seat requests that status from the coordinator persona as it sends a brief. The doctrine's bullet leading "Write every decision ask to the client-briefing register", under How We Work in `skills/operating-instructions/SKILL.md` under the kit plugin root, owns that register.
+- passage: Relay the architect's answer and the coordinator's status in the client-briefing register. The seat requests that status from the coordinator persona the way it sends a brief. The doctrine's bullet leading "Write every decision ask to the client-briefing register", under How We Work in `skills/operating-instructions/SKILL.md` under the kit plugin root, owns that register.
 
 ### C011
 - key: Relay to the thread's readers as the outsider the client-briefing bullet writes for, and name a plan by its bare filename beside a plain-words reminder of what it does.

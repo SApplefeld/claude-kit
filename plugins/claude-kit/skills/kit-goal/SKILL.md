@@ -9,7 +9,7 @@ description: "Arm or clear a tree-scoped completion leash for a plan run or an o
 
 Several plan paths in one invocation arm an ordered queue under one binding. Each plan runs to Complete or to a recorded `BLOCKED:`, then the leash advances by itself. Only the last plan's terminal state releases the session.
 
-Only the operator arms a leash, by typing `/kit-goal` in an interactive session. A session ignores a leash in its tree that is bound to another session. A run that finds no leash never arms or re-arms one for itself, and proceeds unleashed, as a supervised persona does.
+Only the operator arms a leash, by typing `/kit-goal` in an interactive session. Both arm forms refuse unless the calling session's own transcript shows that typed `/kit-goal` naming each plan. A session ignores a leash in its tree that is bound to another session. A run that finds no leash never arms or re-arms one for itself, and proceeds unleashed, as a supervised persona does.
 
 ## Arm
 
@@ -43,7 +43,7 @@ Arming is also approval. The arming act approves the armed plan as written, with
 
 ## Dispatch Authorization
 
-A plan doc can record its approval in a `## Dispatch Authorization` section: who approved the run, when, and which sessions the grant covers, by default "any session holding this plan". The section approves and never arms. A plan arriving by peer message runs under it once the receiver has traced the grant to the operator. The peer-sessions skill owns the trace, the chain handoff, the message's standing and the reply states. A section supplies no live steering, so anything the plan does not cover goes to the operator.
+A plan doc can record its approval in a `## Dispatch Authorization` section: who approved the run, when, and which sessions the grant covers, by default "any session holding this plan". The section approves and never arms. A plan arriving by peer message runs under it once the grant stands as the peer-sessions skill states, by a trace to the operator or a chain handoff. The peer-sessions skill owns the trace, the chain handoff, the message's standing and the reply states. A section supplies no live steering, so anything the plan does not cover goes to the operator.
 
 The CLI records only the section's **first sentence**, so state the grant's essential claim there. The curating-docs skill places the section.
 

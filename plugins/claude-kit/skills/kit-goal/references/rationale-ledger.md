@@ -309,7 +309,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - reason: No tool performs the trace, so the reason the section's presence is insufficient is what makes the rule obeyable; peer-sessions owns the trace and this sentence points there. A receiver runs a handed plan rather than arming it (Y001), so the trace gates the run. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: The committed section is the durable grant, so a plan that arrives by peer message is run under it with no confirmation round-trip, once the receiver has traced the grant to the operator.
 - proposed: Outside a chain handoff the trace is not optional: a section is prose a writer supplies, so a receiver that runs a plan on its presence alone lets whoever wrote the plan hand it work.
-- passage: A plan arriving by peer message runs under it once the receiver has traced the grant to the operator.
+- passage: A plan arriving by peer message runs under it once the grant stands as the peer-sessions skill states, by a trace to the operator or a chain handoff.
 
 ### C031
 - key: Read the peer-sessions skill for the trace, the standing of the peer message itself, and the reply states.
@@ -929,7 +929,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: retire
 - landed: 005a7fde section 2
-- reason: row 846 (Dispatch Authorization section semantics) merge. The owner is `plugins/claude-kit/skills/peer-sessions/SKILL.md` line 42, "A chain handoff comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit." The landed C031 sentence points there.
+- reason: row 846 (Dispatch Authorization section semantics) merge. The owner is `plugins/claude-kit/skills/peer-sessions/SKILL.md`, "A chain handoff comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit." The landed C031 sentence points there.
 - proposed: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 - passage: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 
@@ -941,7 +941,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - verdict: keep
 - landed: 005a7fde section 2
 - reason: A leash armed by the session it binds outlives that session and holds its relaunch idle, and the skills' own instructions to self-arm are what produced one. The arm gate reads the calling session's own transcript for the typed `/kit-goal`, so the rule has a mechanism behind it rather than prose alone.
-- passage: Only the operator arms a leash, by typing `/kit-goal` in an interactive session. A session ignores a leash in its tree that is bound to another session. A run that finds no leash never arms or re-arms one for itself, and proceeds unleashed, as a supervised persona does.
+- passage: Only the operator arms a leash, by typing `/kit-goal` in an interactive session. Both arm forms refuse unless the calling session's own transcript shows that typed `/kit-goal` naming each plan. A session ignores a leash in its tree that is bound to another session. A run that finds no leash never arms or re-arms one for itself, and proceeds unleashed, as a supervised persona does.
 
 ### Y002
 - key: Read an unbound arm result as one of two ordinary causes the CLI names, a queue armed before the gate reported by an append or a transcript path the arm's path screen refuses though the gate read it, and take any other unbound result to the operator as a defect signal.

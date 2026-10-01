@@ -187,7 +187,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa; the doctor honesty plan (2026-09-23) narrowed it to the one temp file a failed signpost write leaves.
 - verdict: keep
 - reason: The doctor does all of this itself, but the sentence is the content of the ask C017 requires: nothing shows the operator what `-Fix` will write before the word is asked, so the prose is the informed consent. Keep the inventory in step with the doctor's section headers when a repair is added or removed. Finishing fix: the inventory gained the `autoCompactWindow` write into user `settings.json`, behind its own consent prompt, which the doctor's own header lists and the sentence had omitted.
-- passage: it prompts before installing anything. Its repairs include installing the local embedding stack and committing the store's sync through its gated allowlist. It deletes only the temp file its own failed signpost write left.
+- passage: it prompts before installing anything. Its repairs include installing the local embedding stack and committing the store's sync through its gated allowlist. It runs `memq db-sync` unprompted where the memory database step warns. It deletes only the temp file its own failed signpost write left.
 
 ### C019
 - key: Use `-Fix -Yes` only when the operator says the run is unattended.
