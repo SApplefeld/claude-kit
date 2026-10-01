@@ -430,6 +430,9 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
     // standing amendment: the read, the two routes it decides between, and the
     // re-read that closes the check-then-act gap are each a token a prose
     // pass would keep while it reworded the sentence around it.
+    assert.match(bullet, /Before every push to a branch with a pull request, read its state, and send a merged one's change to a new branch/,
+        'the freeze bullet no longer reads the pull request\'s state before a push, '
+        + 'which executing-work\'s per-section push meets before finishing-work is loaded');
     assert.match(bullet, /Step 7 of `finishing-work`, Apply the commit model, owns/,
         'the freeze bullet no longer points at finishing-work step 7, which '
         + 'carries the reads this bullet once stated');
@@ -561,9 +564,9 @@ test('the Chapter template carries the gate field the doctrine requires', () => 
         + 'though the other never happened');
     assert.ok(field.includes(exitCodeDuty),
         'the Chapter template\'s Gate field no longer asks for ' + exitCodeDuty
-        + ', the phrase the doctrine\'s chapter-close bullet states the duty '
-        + 'in. The two surfaces are pinned on this one shared string so a '
-        + 'reword of either reddens rather than leaving them asking for '
+        + ', the phrase the Gate duty is stated in. The template is that duty\'s '
+        + 'one carrier since the doctrine\'s chapter-close bullet points at '
+        + 'executing-work, so a reword here leaves the Chapter asking for '
         + 'different things');
     assert.ok(field.includes('the code itself rather than a statement that it '
         + 'was read'),
@@ -596,15 +599,15 @@ test('executing-work runs the section close gate after the review fixes', () => 
         + 'the step that states it');
 });
 
-// The two liveness bullets defer their whole operative content to
+// The probe bullet defers its whole operative content to
 // finishing-work: the wedge hallmark, the cadence, and the windows all live
 // there, and standing-watch:75 makes a committed pointer back at the doctrine
-// for the probe habit. Whole-body identity would pass with either bullet
+// for the probe habit. Whole-body identity would pass with the bullet
 // deleted from BOTH copies, leaving that pointer aimed at nothing and the
 // always-on layer silent on the one rule that keeps a session from killing a
 // working agent. The deferral is what earns the pin: a rule carrying its own
 // content fails visibly when deleted, where this one fails by going quiet.
-test('the liveness bullets defer to finishing-work in each copy', () => {
+test('the probe bullet defers to finishing-work in each copy', () => {
     const leads = [
         '- **Probe a dispatched agent with a message',
     ];
@@ -773,9 +776,9 @@ test('the authoring bullet routes its cost shapes to the testing-discipline skil
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one gate bullet in the doctrine mirror');
     assert.ok(inSkill[0].includes("a test's cost shapes live in `skills/testing-discipline/SKILL.md`"),
-        'the test-authoring bullet must route to testing-discipline by path: the '
-        + 'spawn pricing, the wall-clock capture, and the comparable-contention '
-        + 'rule live in that skill and in no clause of this bullet');
+        'the gate bullet must route a test\'s cost shapes to testing-discipline '
+        + 'by path, since the authoring bullet that carried them is merged '
+        + 'into that skill and no clause of the doctrine states them');
 });
 
 // The box-check rule is stated in full in both the doctrine and the skill, on
