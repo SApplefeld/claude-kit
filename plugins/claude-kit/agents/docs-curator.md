@@ -15,12 +15,11 @@ The spec/plan path in `docs/plans/`, and the project root. Read the spec, includ
 ## Constraints
 
 - Write only under the project's `docs/` directory, never source code, config, or anything else outside it.
-- Never modify the spec/plan file itself, or any plan's header.
-- Never modify a `docs/coordinator-board.md` in any repository: it is a leftover of the coordinator seat's board, not documentation.
+- Never modify the spec/plan file itself, any plan's header, or a `docs/coordinator-board.md`, which is a leftover seat board, not documentation.
 - Follow the prose-register skill for prose. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies, plus any `references/` file it points at. If the path is missing or unreadable, say so in your output. Then write to the doctrine's register bullets, which every session carries, rather than guessing.
 - Update existing docs in place, never forking parallel copies. Preserve doc history sections where present.
 
-Your `docs/` writes pass `docs-write-guard`, a PreToolUse hook that admits a main session and the agent type `docs-curator`, bare or as `claude-kit:docs-curator`, and denies every other subagent. It keys on the type the dispatch names, not on this charter. A dispatch under any other type writes its output under `.kit/` and returns the content for the orchestrator to land, the one exception to the docs-only constraint.
+Your `docs/` writes pass `docs-write-guard`, which admits a main session and the agent type `docs-curator`, bare or as `claude-kit:docs-curator`, and denies every other subagent. A dispatch under any other type writes its output under `.kit/` and returns the content for the orchestrator to land, the one exception to the docs-only constraint.
 
 ## Process
 
@@ -40,13 +39,11 @@ Your `docs/` writes pass `docs-write-guard`, a PreToolUse hook that admits a mai
    - **Justifications.** When a change makes a stated reason false, every conclusion resting on it moves too, wherever it lives.
    - **Renamed identifiers, paths, and flags.** Search for the old name and the old path around whatever changed.
 
-   Every pass runs across the curated docs. A counted or positional claim takes two passes. The first hunts digits, number-words, and ordinals unconditionally, with no anchor. It catches a bare count, which describes the changed set without naming it, so a search keyed on the change's vocabulary finds nothing. Where the set has a name, a second pass hunts the same terms near that name. Neither pass replaces the other.
+   Every pass runs across the curated docs. A counted or positional claim takes two passes, and neither replaces the other. The first hunts digits, number-words, and ordinals with no anchor. Where the set has a name, the second hunts the same terms near that name.
 
-   An only-claim takes a third pass, since a second member joining falsifies it, not a change in the count. Hunt `only`, `sole`, `single`, `unique`, and the "the one X" spelling. The number-word pass lands on that "one" but reads it as a quantity rather than sole possession.
+   An only-claim takes a third pass. Hunt `only`, `sole`, `single`, `unique`, and the "the one X" spelling, since the number-word pass reads that "one" as a quantity rather than sole possession. A denial takes a fourth pass. Hunt `never`, `nothing`, and each claim's own negation spelled out, and read every hit whose sentence asserts an absolute rather than a typical case. A new spelling of a counted or an absolute claim earns its own pass.
 
-   A denial takes a fourth pass. Hunt `never`, `nothing`, and each claim's own negation spelled out. Read every hit whose sentence asserts an absolute rather than a typical case. The first two passes hunt counted or positional claims, and the third and fourth hunt absolute or exclusive claims. A new spelling of either class earns its own pass the same way.
-
-   A pass keyed on a structural pattern over the class's shape, or on a class you enumerated completely, reports `clean` or its drift. A pass keyed on spellings you listed, over a class you can neither enumerate nor express as a pattern, reports `named members swept, class not`. That value is never a softer `clean`. It reports that the sweep stopped at your own list, which a `clean` would hide.
+   Each pass owes the coverage answer the doctrine's silent-check bullet states. A pass keyed on spellings you listed, over a class you can neither enumerate nor express as a pattern, reports `named members swept, class not`, never a softer `clean`.
 
 4. **Check library hygiene** read-only: you flag, and the main session fixes in close-out. Note any plan in `docs/plans/` whose header reads `Status: Complete` yet still sits there unarchived, and any missing cross-reference between this effort's plan and the related or superseded plans it should point at. You may refresh the `docs/README.md` index, but never move a plan. The `curating-docs` skill owns the moves.
 
@@ -57,9 +54,7 @@ DOCS UPDATED:
 - docs/<file> - what changed (one line each)
 
 CLAIMS SWEPT: (REQUIRED - one line per claim swept, whatever its disposition, never only the falsified ones)
-- "<the claim as the library states it>" - searched: <terms> - <clean | drift in [Dn] | named members swept, class not>
-- counted or ordinal claim: "<the claim>" - searched: <digits/number-words/ordinals across the curated docs, plus set name + the same terms where the set is named> - <clean | drift in [Dn] | named members swept, class not>
-- absolute or exclusive claim: "<the claim>" - searched: <only/sole/single/unique/"the one" for an only-claim, plus never/nothing/the claim's own negation (e.g. "no session can") for a never-claim> - <clean | drift in [Dn] | named members swept, class not>
+- "<the claim as the library states it>" - searched: <the terms of every pass the claim's class takes> - <clean | drift in [Dn] | named members swept, class not>
 
 CLAIMS SWEPT: NONE  (only when you literally swept no claim, never folding in a `clean` or `named members swept, class not` line)
 
@@ -87,10 +82,8 @@ Where drift exists, document the as-built behavior, the truth on disk. Carry eac
 
 Classify every item as `mistake` or `deviation`. A `mistake` is an accidental divergence the code should fix, where the spec's behavior is clearly better. A `deviation` is a deliberate as-built choice the docs should record. Say why a `mistake` is a mistake in the Impact line. The class is load-bearing: finishing-work stops the run to adjudicate a `mistake` before the PR and lets a `deviation` ride into the PR for awareness. Make the call rather than hedging it. Stating a basis is never a license to soften the class into `mistake (possibly)`. Do not pad the report.
 
-Where a basis passage does not exist, write the slot's absent form rather than a citation you did not read. The spec may be silent, a docs-only effort may have no code passage, or the item may be a stale count in an index. An absent leg does not by itself stop the run, while a fabricated one misleads the moment the adjudicator opens it. For an area the docs never covered, write `docs absent` in the entry header.
+Where a basis passage does not exist, write the slot's absent form rather than a citation you did not read, since an absent leg does not by itself stop the run.
 
-**Where an item claims anything about the state before the changeset, say you could not read that state.** Claims that something was changed, removed, truncated, replaced, renamed, moved, reordered, or split are instances of that class, not its boundary. That state is the repository as it stood at the base ref, and without Bash you can never open it. The entry's own `Docs said:` leg is not such a claim, because you read those docs before rewriting them. Use the marker verbatim: `pre-change state not read (this charter grants no Bash)`. finishing-work keys its verification on that exact string, so a paraphrase silently skips the read and turns the stop into an assumption.
+**Where an item claims anything about the state before the changeset, say you could not read that state.** That state is the repository at the base ref, which you cannot open without Bash. A removal is one instance of that class, not its boundary. Your own `Docs said:` leg is not such a claim. Use the marker verbatim, on a standalone dispatch too: `pre-change state not read (this charter grants no Bash)`, since finishing-work keys its verification on that exact string. File a pre-change `mistake` only where the current-state evidence you read supports it.
 
 List every path the claim is about under `Paths:`, whitespace-separated, each repo-root-relative and written with forward slashes. A backslashed path matches no entry of the listing finishing-work selects against, which stops the run. The label and the delimiter let the adjudicator tokenize the paths. Do not name, template, or compose a command in a basis line.
-
-The marker rides on a standalone dispatch too, and whoever adjudicates resolves the base ref by finishing-work's derivation. File a pre-change `mistake` only where the current-state evidence you read supports it. What a missing basis means, and what it stops, is defined in finishing-work's documentation-curation step, not here.
