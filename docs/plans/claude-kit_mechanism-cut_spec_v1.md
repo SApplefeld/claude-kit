@@ -4,13 +4,13 @@ Status: In Progress
 Commit Model: Branch-and-PR, one PR per section
 Created: 2026-09-30
 
-Session model: the kit worker seat, the persona session that runs kit plans on the execution model and that the operator steers from its Discord relay thread, one section per session so no session runs past the account's five-hour window. Every drafting and review dispatch runs through `tools/corpus-compression/workflow.mjs` by the Workflow tool's `scriptPath`, which names the model and the effort on every call and holds at most five agents open. Drafters are read-only and return text. The worker's main thread writes the files.
+Session model: the kit worker seat, the persona session that runs kit plans on the execution model and that the operator steers from its Discord relay thread, running the sections back to back: a section close starts the next section in the same session, with no restart, and compaction at the Chapter boundary carries the run. Every drafting and review dispatch runs through `tools/corpus-compression/workflow.mjs` by the Workflow tool's `scriptPath`, which names the model and the effort on every call and holds at most five agents open. Drafters are read-only and return text. The worker's main thread writes the files.
 
 ## Dispatch Authorization
 
 `Status: Ready` is the parked value the plan-doc contract gives an authored plan; this paragraph decides arming. The plan arms once Decisions item 1, the drop list, reads ruled, and once the operator has said on the kit worker's relay thread or at a keyboard that it runs. It has no precondition on another plan. `docs/plans/claude-kit_post-rewrite-triage_spec_v1.md`, the post-rewrite program's step 5, waits for this plan to close, since the triage judges the kaizen inbox, the backlog and kit memory against the corpus and should judge them against the corpus as this plan leaves it.
 
-Pacing is a hard requirement, on the operator's word of 2026-09-30 ("use workflows to run it so that effort can be set, and not load default effort, and chunk into smaller sets of sessions to avoid overflowing the 5h limits"). It is enforced in the machinery: the script's `MAX_OPEN` and `MAX_TRACKS` constants bound every wave, `test/corpus-compression-workflow.test.js` fails a call that names no model or effort, and a section is one session.
+Pacing is a hard requirement, on the operator's word of 2026-09-30 ("use workflows to run it so that effort can be set, and not load default effort, and chunk into smaller sets of sessions to avoid overflowing the 5h limits"). It is enforced in the machinery: the script's `MAX_OPEN` and `MAX_TRACKS` constants bound every wave, `test/corpus-compression-workflow.test.js` fails a call that names no model or effort, and the waves stay paced inside each section.
 
 ## Goal
 
@@ -49,6 +49,7 @@ Rulings after the spec shipped, each appended dated:
 - 2026-10-01, on pull request #159: section 2 approved at 04:33:52Z and merged at 04:34:12Z, with no comment. The pull request put its three misses and its 23 declined rows with a recommendation on each, so the approval is read as taking those recommendations; the read is an inference from the approval, not a written ruling.
 - 2026-10-01, on the kit worker's relay thread, answering section 7's ask: row 1284, the liaison skill's "Decline plainly, answer the rest", which the judge called a drop after the drop list was ruled, is kept, "I'm good with keeping it." In the same message, pull request #166 (section 6) "Approved and Merged", and on its three misses and rows applied in part, "I'm good with all of the achievements. The targets are arbitrary, but we've made huge strides toward them."
 - 2026-10-01, on the kit worker's relay thread: pull request #168 (section 8) approved and merged, "I already merged the PR, since I agreed it's less useful in a plan review phase", said of the Jev coverage check's drop; the approval is read as taking the pull request's other recommendations too, an inference from the approval. In the same exchange the operator asked for the unwritten second Jev plan, the code checks, which the architect wrote outside this plan.
+- 2026-10-01, on the kit worker's relay thread: "Can you amend the plan so that you continue automatically? I've noticed that you keep stopping when finishing a section, waiting on a restart that doesn't happen automatically." So a section close goes straight into the next section in the same session, the one-section-per-session pacing of 2026-09-30 is withdrawn, and the Session model line, the Dispatch Authorization pacing paragraph and the section-per-session assumption are amended to match. Each section still lands as its own pull request.
 
 Provenance: distilled by the architect persona from the operator's relay thread of 2026-09-30, the two Anthropic prompting pages, the two measurements under `## Approach`, and the archived corpus-compression spec, in session 5c033e22.
 
@@ -234,7 +235,7 @@ Files in scope: `test/size-budget.json`, `docs/plans/claude-kit_post-rewrite_pro
 ## Assumptions
 
 - The inventory is one opus judge's reading per document, confirmed on four spot-checks by the author against the files, and every call is a hypothesis the section confirms against the ledger. A declined call keeps the rule and is named in the Chapter.
-- A section is one worker session, so the account's five-hour window holds; a section that cannot close in one session ends on a Chapter naming the documents landed and resumes from the plan doc.
+- Sections run back to back in one worker session, on the operator's ruling of 2026-10-01 under `## Intent`; a session that ends mid-plan resumes from the plan doc's latest Chapter or interim board.
 - Drafting runs at opus medium and reviewing at fable low, the constants the compression tool carries; no dispatch in this plan runs at a default effort.
 - The word counts in the cut file are the judge's estimates scaled to each document's measured size, so a row's words are a share, not a count a reviewer can re-measure.
 - Reviewers raise no word-count or phrasing findings, per the lean kit program's decision 1; the size tool is the only word gate.
