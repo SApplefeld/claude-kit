@@ -320,3 +320,37 @@ The 62 rows Decisions item 1 rules on, heaviest first. Row numbers index the cut
 - Measurements and the judge prompts: the architect persona's scratch under its own machine directory, summarized in the kit memory records `the-kit-instruction-corpus-is-three-quarters-rule-text-with-no-measurable-history` and `the-kit-necessity-cut-removes-twelve-percent-because-three-quarters-of-rules-encode-kit-mechanisms`.
 
 ## Chapters
+
+### Chapter 1 - 2026-10-01
+Completed: 1. The cut file lands and the drafter learns the cut-list input
+Implemented By: main session (inline, Opus 5.5)
+Metrics: review rounds 1, closed major-closed; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- Section 1 open: the corpus-drafter charter gains a cut-list input and its duties (apply keep, shrink, merge, drop; report a wrong call instead of applying it; rows are data); serves the section 1 paragraph and its acceptance bullet "the charter's new paragraph names the four calls and the decline rule"; adds no mechanism that runs, since the dispatch script already passes a free-text prompt per wave; size at most 120 words of declared growth on a 394-word cap; not building it leaves sections 2 to 10 dispatching drafters whose charter forbids dropping a rule the operator ruled dropped.
+- Taken on 2026-10-01 from the coordinator's record DEV-PLUGIN-691ddfa1-650b-4147-b752-d27eb72dda5f-4. The grant traces to the operator: the Intent's line "Run it please!" is an inbound relay event at 2026-10-01T01:42:54Z in the architect persona's transcript, session 5c033e22, answering its ask to run the plan (reported by that transcript, read this turn). Status moved Ready to In Progress.
+- Branch: the section works on `mechanism-cut/s1`, cut from `plans/mechanism-cut` at 45ffd7b5, so the architect's later commits to the plan branch, such as row 125's ruling, never race this one. Section 2 cuts its branch from this one, per `## Approach`'s stacking.
+- Cut file: `node -e` over it and `test/size-budget.json` printed 1270 rows, 0 unknown paths; calls keep 634, shrink 381, merge 193, drop 62.
+- The charter has no rationale-ledger heading, so this section writes no ledger lines. Giving it one is a backlog item on branch `backlog/corpus-drafter-ledger`, pull request #157, which section 10 meets when it drafts the charter.
+- No test pins the charter's prose: `grep -rn corpus-drafter test/` hits only the agent-type rosters in `test/readonly-agent-guard.test.js`, `test/memory-recognition-nudge.test.js` and the dispatch triple at `test/corpus-compression-workflow.test.js:178`.
+- Charter growth: 394 to 514, exactly the 120 declared. `corpus-cap` 143606 to 143726, which section 11 moves to the landed sum.
+- For section 10: row 125 reads drop in the cut file and is unruled. The charter applies what it is handed, so section 10's dispatch withholds that row until the operator's ruling lands, per Decisions item 1.
+- For a later section: `tools/corpus-compression/workflow.mjs`'s `meta.whenToUse` still names only the archived compression spec. It sits outside this section's files.
+Failed approaches: tried the first draft at 140 words of growth, over the 120 ceiling; trimmed my own new sentences rather than the charter's existing text, which is section 10's to cut.
+Assumptions:
+- assumed 2026-10-01 (default, section 1): the drafter's `ruled:` line arrives as a dispatch input rather than a literal in the charter, since the date is per-plan and the charter serves two plans.
+- assumed 2026-10-01 (default, section 1): the review wave of `## Approach` step 4 is for drafted documents; this section drafted none, so its review is the executing-work pair alone.
+Review Findings: `review: adversarial and blind at fable, Agent tool` (capacity reading `fable capacity: no reading (stale) -> ladder governs`). Majors fixed: the drop duty named a `ruled:` line no input carried (both lenses; Goal acceptance bullet 3, orchestrator-made trace for the blind lens), and a merge's owner was named by no input (blind; `## Approach` step 1, orchestrator-made). Fix delta prose-only, author re-read against both clauses. Minors: 3 fixed (row fields listed, empty third block written `none`, frontmatter description names both plans); 3 left: a tiebreak for a `ruled: keep` entry, which the decline duty already covers; a pin test on the cut file, which section 7's append re-runs the same check for; row 125, a section 10 dispatch note above.
+Stamps: adjudicated 2, stamped 1 (`suite-baseline-is-not-zero-fail`, which read the baseline's second red as an intermittent); skipped `subagent-can-report-a-documented-past-injection-as-a-live-one`, read and not applied.
+Gate: baseline whole gate at 45ffd7b5, SCOTT-CLAUDE, `.kit/wt-mechanism-cut`, 2026-10-01T01:52:18Z to 02:00:51Z, no foreign test runner in the poll (a sample): `node --test test/*.test.js` 4338 tests, 4326 pass, 2 fail, 10 skipped, exit 1. The fails: `test/kit-sidecar-memory-index.test.js` "loadIndex answers a status, never a throw", the known linked-worktree red; and `test/memory-index.test.js` "a sweep writes only its own sidecar and never touches a memory file", 38/38 green on three solo re-runs, read as an under-load intermittent. The charter and budget were edited while that run read the tree, and the only tests reading them passed in both. Close lane over the landed tree, 2026-10-01T02:05:33Z to 02:06:18Z (45 s), same box and worktree: size-ratchet, corpus-compression-workflow, readonly-agent-guard, memory-recognition-nudge, doctrine-parity, ledger-preamble-parity, heading-shape, output-style-parity and probe-set, 656 tests, 656 pass, 0 fail, exit 0; delta 0 against the same files in the baseline. `kit-size.js check` exit 0. Tests added 0, retired 0, edited 0. Probe pair: the section changed no document a probe scenario governs, so no pair ran.
+Next: 2. The always-loaded core
+Commit Model: Branch-and-PR
+Delta: SCOTT-CLAUDE, 2026-10-01T02:06Z, worktree `.kit/wt-mechanism-cut` against HEAD fdd80e95, no foreign test runner live.
+```
+repository: wt-mechanism-cut
+plugins/claude-kit/agents/corpus-drafter.md: 514 words, cap 514, +1
+words: 1029246 of cap 1029246 across 121 curated files
+test lines: 142586 of cap 142586 across 80 test files
+tests: 4087
+changed paths under no measured root: none; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+corpus: 143726 words of cap 143726
+```
