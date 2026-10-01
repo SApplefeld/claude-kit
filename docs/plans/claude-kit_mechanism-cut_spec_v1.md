@@ -1,6 +1,6 @@
 # Every kit mechanism is kept, shrunk to its rule and one reason, merged into its owner, or dropped, so the loaded corpus lands near half
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR, one PR per section
 Created: 2026-09-30
 
