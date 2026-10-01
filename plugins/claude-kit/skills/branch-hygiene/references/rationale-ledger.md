@@ -26,7 +26,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - proposed: Move the why-they-pile-up sentence to the ledger and merge the remainder into A001's one-sentence lead.
 - proposed: Folded into A001's lead sentence.
 - baseline-test: yes
-- passage: This skill sweeps local branches and worktrees whose work has already landed, under the conditions Safe Set and Hard Rules state, and leaves everything else alone.
+- passage: This skill sweeps local branches and worktrees whose work has landed, under Safe Set and Hard Rules, and leaves everything else alone.
 
 ### C002
 - key: Auto-remove only what you can verify is merged.
@@ -143,7 +143,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - verdict: rewrite
 - landed: 617317a section 43
 - reason: Step 2 restates C007's list with no command of its own; it becomes a pointer at the safe set's definition, which is safe because the list survives whole in C007 and the nudge hook. Lands at line 21 (section 43's close) as "2. Resolve the integration ref in the order The safe set above gives.", the list surviving whole on line 14 and in hooks/branch-reaper-nudge.js.
-- passage: 2. Resolve the integration ref in the order Safe Set gives.
+- passage: 2. Resolve the integration ref per Safe Set.
 
 ### C013
 - key: Compute the merged set with `git branch --merged <integration-ref>`, then drop the protected names and the current branch's `*` line.
@@ -152,7 +152,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1 (the merged set as the only trigger) and Chapter 3 (the set verified to drop `develop` and `main` on a fixture).
 - verdict: keep
 - reason: No finding. This is the mechanical test the whole safe set rests on, and the nudge hook computes the same set (`branch --merged <integ>`).
-- passage: 3. Compute the merged set: `git branch --merged <integration-ref>`, minus the protected names and the current branch (the `*` line).
+- passage: 3. Compute the merged set: `git branch --merged <integration-ref>`, minus the protected list.
 
 ### C014
 - key: Record each merged branch's tip SHA with `git rev-parse <name>` before removing anything.
@@ -161,7 +161,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Approach: every removal reports its restore command because the commits are already on the integration branch.
 - verdict: keep
 - reason: No finding. The SHA is what makes `git branch -D` recoverable and is the rollback line the doctrine's stop rule asks for; after the rewrite this step and C018 are the only statements of it.
-- passage: 4. For each merged branch, record its tip SHA first (`git rev-parse <name>`).
+- passage: 4. For each merged branch, record its tip SHA (`git rev-parse <name>`) before any delete.
 
 ### C015
 - key: Remove a merged branch's worktree with `git worktree remove <path>` and no `--force`.
@@ -171,7 +171,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - verdict: rewrite
 - landed: 617317a section 43
 - reason: The command and the `status --porcelain` test stay; the restated location and branch conditions leave, since the safe set (C008) owns them. Without `--force` git itself refuses a dirty tree, which is the safety this step rests on. Lands at line 23 (section 43's close) as "If it has a worktree the safe set admits and that tree is clean (`git -C <path> status --porcelain` is empty), `git worktree remove <path>` without `--force`.", the location bound 'under `.claude/worktrees/`' having left for a pointer at the safe set, which owns it, after round 1's blind lens read the bare clause as removing any clean worktree; C014's and C016's sentences on the line are unchanged.
-- passage: If it has a worktree the safe set admits and that tree is clean (`git -C <path> status --porcelain` is empty), `git worktree remove <path>` without `--force`.
+- passage: If the safe set admits its worktree, remove it
 
 ### C016
 - key: Delete the branch with `git branch -D <name>` after the worktree step.
@@ -180,7 +180,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1: `-D` is safe only because the trigger was tightened to verified-merged membership.
 - verdict: keep
 - reason: The doctrine's stop-for-a-yes does not bar this delete: the ownership map assigns what may be deleted without asking to this skill, the operator's Chapter 4 ruling licensed the auto-reap, the SHA from step 4 is the rollback, and test/probes/merged-plan-branch-delete-on-an-armed-run.md resolves the moment to delete without asking. The `-D` (not `-d`) is deliberate: the worktree removal has already happened and the merged check was done in step 3.
-- passage: Then `git branch -D <name>`.
+- passage: then `git branch -D <name>`.
 
 ### C017
 - key: Report in two parts: what was reaped, and what was left for the operator with the reason.
@@ -238,7 +238,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - provenance: c800e05 2026-06-26 (the diff, not the message), as the manual recovery the merge-strand-guard plan left out of scope ("Auto-recovering stranded commits... Scott releases it").
 - verdict: keep
 - reason: Branch-hygiene owns recovering stranded commits per the ownership map; the lead-in is three words and the executable condition is step 5, so there is nothing to compress. The delete of a stranded branch is the one act in this skill that destroys commits held nowhere else.
-- passage: A stranded branch holds commits the merged PR never carried to the trunk. Recover them before deleting:
+- passage: Recover a stranded branch's commits before deleting it:
 
 ### C023
 - key: Confirm the stranded commits with `git log --oneline <integration-ref>..<branch>`.
@@ -258,7 +258,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - landed: 617317a section 43
 - reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: `git switch <integration-ref>` fails on the remote-tracking refs line 14 names (probed in a throwaway clone, `git switch origin/main` exits 128 with "a branch is expected, got remote branch"), so the command is the one-command form below, which exits 0 and tracks the ref. The phrase "Branch fresh from the current integration ref" is an INTEGRATION_EXEMPT anchor in test/doctrine-parity.test.js, whose note records an open backlog decision on the recovery path's gate; the anchor phrase stays.
 - proposed: `git switch -c <branch>-recover <integration-ref>`
-- passage: 2. Branch fresh from the current integration ref: `git switch -c <branch>-recover <integration-ref>` (or cherry-pick onto a new branch off it).
+- passage: 2. Branch fresh from the current integration ref: `git switch -c <branch>-recover <integration-ref>`.
 
 ### C025
 - key: Never reuse the merged branch, which is frozen.
@@ -276,7 +276,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - provenance: c800e05 2026-06-26.
 - verdict: keep
 - reason: No finding. "Bring the commits over" is a parity-test anchor (test/doctrine-parity.test.js INTEGRATION_EXEMPT); the cherry-pick produces new SHAs, which is why the original never enters the merged set afterward and why the contested delete row exists.
-- passage: 3. Bring the commits over: `git cherry-pick <sha>...` for each, or `git cherry-pick <integration-ref>..<branch>` for the range.
+- passage: 3. Bring the commits over: `git cherry-pick <integration-ref>..<branch>`.
 
 ### C027
 - key: Push the recovery branch and open a new PR against the integration branch.
@@ -306,7 +306,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - verdict: rewrite
 - landed: 5a3a6c2 section 2
 - reason: The condition is the only thing between recovery and an unrecoverable delete. Ruled 2026-09-13 (batch 2 ruling 21 part A of the corpus rewrite's rulings, docs/backlog.md): the delete is licensed on two conditions stated whole in Hard rule 1 (C030), the recovery branch pushed and `git cherry <recovery> <stranded>` printing no `+` line, which shows every stranded commit has an equivalent patch on the recovery branch; the "ideally merged" softener goes, since the cherry read is the check. Lands at line 36 as the pointer at Hard rule 1's exception with both conditions named, which closes the contest the ownership map carried between this step and that rule.
-- passage: 5. Delete the stranded original only under Hard rule 1's exception: the recovery branch pushed and `git cherry <recovery> <stranded>` printing no `+` line.
+- passage: 5. Delete the stranded original only under Hard rule 1's exception.
 
 ### C030
 - key: Auto-delete a branch only on membership in `git branch --merged <integration-ref>`, and never `git branch -D` one outside that set.
@@ -353,13 +353,14 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`). Redra
 - class: rule
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:47
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Approach paragraph 3 and Out of Scope ("a one-time repo-settings change Scott makes").
-- verdict: rewrite
+- verdict: retire
 - landed: 617317a section 43
-- reason: The sentence addresses the operator, not the session, and the doctrine's stop on writes to shared state is therefore not in tension with it; the passage does not say so, and a session holding a host CLI could read the imperative as its own act, so the rewrite names the addressee. Lands at line 46 (section 43's close) as "The operator can turn on 'auto-delete head branch on merge' in the repo settings, a one-time choice that keeps the remote side tidy.", the setting name carrying double quotes in the file where this record's quoting shows single ones, the second sentence unchanged.
+- reason: row 506 (Remote auto-delete setting note), dropped under the mechanism cut.
 - proposed: Reword line 47 so the setting is named as the operator's one-time repo-settings choice, not an act the session performs.
 - baseline-test: yes
 - passage: The operator can turn on "auto-delete head branch on merge" in the repo settings, a one-time choice that keeps the remote side tidy. It is optional here (regular merges make `--merged` reliable on its own), but it removes the merged remote branches and gives the SessionStart nudge a second signal.
 - flag: stale
+- ruled: cut 2026-09-30
 
 ### C035
 - key: Treat deleting the stranded original as safe once its commits are on the recovery branch, because the delete cannot strand anything.

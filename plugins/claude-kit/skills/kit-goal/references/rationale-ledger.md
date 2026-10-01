@@ -38,8 +38,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:12
 - provenance: 6806b04 2026-07-16 placed the kit leash beside native `/goal`; dbf5e6a 2026-08-16 added that a queue is what `/kit-goal` takes.
-- verdict: keep
-- reason: No finding. The split keeps plan runs on the deterministic hook the kit tests.
+- verdict: retire
+- reason: row 840 (Native goal versus kit-goal), merged into the skill's own frontmatter `description`, which already says "The kit-native, deterministic alternative to native /goal for plan-based runs.".
 - passage: Native `/goal` is for goals that are not plan-based, and `/kit-goal` is the tool that sequences plans.
 
 ### C004
@@ -247,7 +247,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 2993ac4 2026-08-25 made the bare replace warn when it drops a non-empty queue.
 - verdict: keep
 - reason: No finding. Reading the warning is the session's act and the warning is silent when nothing dropped.
-- passage: The bare form replaces the queue and warns on stderr naming every plan it drops. Read any such warning before the next step, since it means work left the queue.
+- passage: The bare form replaces the queue and warns on stderr naming every plan it drops, so read any such warning before the next step.
 
 ### C025
 - key: Under an operator-typed arming, reduce wall-clock time by parallelizing the plan's work through subagent dispatch and Workflows wherever the sections and their gates allow.
@@ -256,7 +256,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: de0d887 2026-08-15: sessions were not deriving the parallelization authorization from the standing doctrine, so the arming act carries the per-run request without widening the doctrine.
 - verdict: keep
 - reason: The authority is the arming act, scoped to this run, and the cross-reference to the doctrine's reading of the harness line is how the injected Workflow line is satisfied; the gate on deep-research and other Workflow use is blast-radius and stays.
-- passage: An arming the operator typed requests parallelizing the run: cut wall-clock time by running at once whatever the sections and their gates allow, via subagent dispatch and Workflows. For this run it is the request an injected `Do not use workflows or deep-research unless the user requested it` line waits on, read as the operating-instructions dispatch bullet reads the Agent-tool line. The authority is the arming act, not this skill's text, so nothing here widens the doctrine's standing grant. Deep-research, and any Workflow use beyond parallelizing this run, still needs asking.
+- passage: An arming the operator typed requests parallelizing the run through subagent dispatch and Workflows, wherever the sections and their gates allow. For this run it is the request an injected `Do not use workflows or deep-research unless the user requested it` line waits on. Deep-research, and any other Workflow use, still needs asking.
 
 ### C026
 - key: On a self-armed run, parallelize through subagents without asking, but ask before any Workflow use beyond dispatching a read-only agent at an effort the Agent tool cannot set.
@@ -277,7 +277,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - landed: 005a7fde section 2
 - reason: kit-goal owns the rule by 04277e1's own placement. With the self-armed source of approval gone (Y001), every armed plan is approved by the operator's typed arming, so the sentences name that one source. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Arming is also approval. An armed plan is approved as written by the arming act itself, which carries the same authority as a typed "proceed". So a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing.
-- passage: Arming is also approval. The arming act approves the armed plan as written, with the authority of a typed "proceed". So an armed run never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing.
+- passage: Arming is also approval. The arming act approves the armed plan as written, with the authority of a typed "proceed". So an armed run never waits for a separate approval message and never reads the plan's `Status:` header as missing approval.
 
 ### C028
 - key: Do not treat a `Status:` value the kit does not define as gating arming; executing-work's run-start step normalizes it.
@@ -286,7 +286,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 04277e1 2026-08-21.
 - verdict: keep
 - reason: Already the pointer at executing-work, which owns the normalization.
-- passage: A `Status:` value the kit does not define does not gate arming, and executing-work's run-start step normalizes it.
+- passage: A `Status:` value the kit does not define gates nothing, and executing-work's run-start step normalizes it.
 
 ### C029
 - key: Record a plan's arming authority in a `## Dispatch Authorization` section naming who authorized the run, when, and which sessions the grant covers, defaulting to "any session holding this plan".
@@ -309,8 +309,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - reason: No tool performs the trace, so the reason the section's presence is insufficient is what makes the rule obeyable; peer-sessions owns the trace and this sentence points there. A receiver runs a handed plan rather than arming it (Y001), so the trace gates the run. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: The committed section is the durable grant, so a plan that arrives by peer message is run under it with no confirmation round-trip, once the receiver has traced the grant to the operator.
 - proposed: Outside a chain handoff the trace is not optional: a section is prose a writer supplies, so a receiver that runs a plan on its presence alone lets whoever wrote the plan hand it work.
-- passage: A plan arriving by peer message runs under the committed section with no confirmation round-trip, once the receiver has traced the grant to the operator.
-- passage: Outside a chain handoff the trace is required, because anyone can write a section, so running a plan on its presence alone lets the plan's writer hand the receiver work.
+- passage: A plan arriving by peer message runs under it once the receiver has traced the grant to the operator.
 
 ### C031
 - key: Read the peer-sessions skill for the trace, the standing of the peer message itself, and the reply states.
@@ -319,7 +318,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 2993ac4 2026-08-25.
 - verdict: keep
 - reason: No finding. The pointer the ownership map requires.
-- passage: The peer-sessions skill owns the chain handoff, the trace, the message's standing and the reply states, and executing-work owns how a run takes an inbound plan on.
+- passage: The peer-sessions skill owns the trace, the chain handoff, the message's standing and the reply states.
 
 ### C032
 - key: Put the grant's essential claim in the `## Dispatch Authorization` section's first sentence rather than spreading it over several.
@@ -349,7 +348,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - landed: 3bd50a3 section 27
 - reason: An authoring rule whose reason (the scan window's edge) is recorded here rather than in the skill. Flipped from keep to rewrite at section 27's close: C033's and C035's retires took the sentence this clause was joined to, so the clause opens its own sentence with a capital, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Keep the section above `## Sections of Work` where the placement rule already puts it.
-- passage: Keep the section above `## Sections of Work`, where the placement rule puts it.
+- passage: The curating-docs skill places the section.
 
 ### C035
 - key: Expect a section the scan window does not reach whole, or one whose heading carries anything after the title, to record as no authorization at all in `status`.
@@ -504,7 +503,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 72309c6 2026-08-29: the append refusal was re-keyed on the path and names no command over an unreadable state, because a bare arm there would overwrite a live leash.
 - verdict: keep
 - reason: The one keying that keeps a replacement off a live leash the CLI cannot parse; the 2026-09-05 kaizen note records that state as still reachable by a hand edit.
-- passage: Choose the bare form only when the goal state is genuinely absent, never because an append refused. The append also refuses, naming no command, where `.kit/goal-state.json` holds something the CLI cannot read as a goal state, since a bare run there would overwrite a live leash.
+- passage: Choose the bare form only when the goal state is genuinely absent, never because an append refused. Over a `.kit/goal-state.json` the CLI cannot read, a bare run would overwrite a live leash.
 
 ### C050
 - key: Arm from the tree where you will run, treating a worktree as its own place with its own `.kit/goal-state.json` rather than a spelling of the main checkout.
@@ -513,7 +512,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: e22cff5 2026-09-02 (WORKTREE-GOALS §3) stated the tree-scoped principle once here; memory kit-goal-inert-when-session-cwd-is-not-project-root records a leash armed from a tool call's cwd that every hook then ignored.
 - verdict: keep
 - reason: Incident-born and unenforced: nothing reconciles the arm's cwd with the hooks' payload cwd, so the prose is the only guard. The git rationale, memq contrast and test citation leave the skill.
-- passage: Arm where you will run. A worktree, a bare-repo worktree included, is its own place with its own `.kit/goal-state.json`, not a spelling of the main checkout.
+- passage: Arm where you will run. A worktree, a bare-repo worktree included, has its own `.kit/goal-state.json`, not the main checkout's.
 - flag: weak-reason
 
 ### C051
@@ -526,7 +525,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - reason: The CLI half is C050's bound and stays as "run them from the session's own tree root"; the memq half is memory-system's reference and the test pins the code, so it leaves. Lands as 'A session working a worktree reads and writes that tree's own `.kit/goal-state.json`, a bare-repo worktree included. The goal and checkpoint CLIs answer the directory they are run from, so run them from the session's own tree root.' after C050's sentence word for word, the bare-repo case as its own clause rather than the proposal's one compressed spelling; the git rationale, the memq contrast and the test citation leave with it and the doctor sentence with C052.
 - proposed: (via A067) Line 68 keeps "arm where you will run; a worktree is its own place with its own goal state, a bare-repo worktree included; the goal and checkpoint CLIs answer the directory they are run from, so run them from the session's own tree root", and drops the git rationale, the memq contrast, the test citation and the doctor sentence.
 - baseline-test: yes
-- passage: The goal and checkpoint CLIs answer the directory they are run from, so run them from the session's own tree root.
+- passage: The goal and checkpoint CLIs answer the directory they run from, so run them from the session's own tree root.
 - flag: stale
 
 ### C052
@@ -555,7 +554,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 6806b04 2026-07-16 installed status; dbf5e6a, 2993ac4 and 61a9825 grew what it reports.
 - verdict: keep
 - reason: The status command is kit-goal's; park points at it.
-- passage: `/kit-goal` with no argument, or `/kit-goal status`, reports the current plan and its queue position, the plans remaining, each queued plan's arming and recorded authorization, each finished plan's outcome, and the session holding the leash or that it is unbound:
+- passage: `/kit-goal` with no argument, or `/kit-goal status`, reports what is armed and the session holding the leash:
 
 ### C055
 - key: Use the status-line widget `scripts/kit-goal-statusline.js`, which prints one line for the project the status line shows in the form `🎯 <plan> · Sections: <done>/<total> (Next §N) · Plans: <i>/<n>`.
@@ -592,7 +591,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 3db65f2 2026-08-24: the tool's own shell decides whether `%USERPROFILE%` or `$HOME` expands.
 - verdict: keep
 - reason: Incident-born operator wiring, unenforced; it stands as its own sentence once the cache prose leaves.
-- passage: Wire a status-line tool that runs shell commands with `node "<absolute path to ~/.claude>/bin/kit-statusline.js"`. Use the literal path, since the tool's own shell decides whether a variable such as `$HOME` expands.
+- passage: Wire it with the literal path, `node "<absolute path to ~/.claude>/bin/kit-statusline.js"`, since the tool's shell decides whether `$HOME` expands.
 - flag: weak-reason
 
 ### C059
@@ -619,9 +618,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:92
 - provenance: 3db65f2 2026-08-24 stated the blank-until-update behavior; e1613d8 2026-08-25 met it live when the installed copy predated the new exports.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: Folds into C062's bound as the old-payload cause of a blank widget and the operator's remedy; the launcher-newer-than-payload note is reference. Lands folded into C062's bound at line 92 as 'either the installed payload predates the widget, so the launcher prints nothing at exit 0, or something faulted' and 'Updating the plugin is what brings the widget in, since the doctor's `-Fix` copies only the launcher.'; the launcher-newer-than-payload note leaves as reference. C062 records the respell. Its landing respelled C062's keep sentence; C062 records the flip.
+- reason: row 851 (Status-line widget wiring and reading) shrink. The landed C062 sentence "So read a blank widget beside a plan run as a fault or a stale payload, never as an unleashed run." still carries the stale-payload cause. Per the brief, the payload-and-update troubleshooting leaves the skill.
 - passage: Blank means the widget said nothing: either the installed payload predates the widget, so the launcher prints nothing at exit 0, or something faulted, such as an unreadable goal-state file. Updating the plugin brings the widget in, since the doctor's `-Fix` copies only the launcher.
 
 ### C062
@@ -642,9 +641,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rationale-example
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:94
 - provenance: e1613d8 2026-08-25 (budget fallback); 72309c6 2026-08-29 placed it beside the three readings.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: The one case where a non-blank armed line is untrustworthy; the class is live on any saturated box and nothing marks a retired line. Flipped from keep to rewrite at section 27's close: C060's retire took the cache sentences 'the retired line the paragraph above describes' pointed at, so the antecedent reads 'a retired line', and the sentence was respelled to stand as landed. Landed as the proposal below. Fixed at section 27's close: 'the cache' and 'the budget' respelled as 'the launcher's render cache' and 'the launcher's time budget' (`RENDER_BUDGET_MS` in `scripts/kit-statusline.js`), their defining sentences having left under C059 and C060; the proposal below is the landed sentence.
+- reason: row 851 (Status-line widget wiring and reading) shrink. The brief drops the refresh-overrun detail. `docs/architecture.md`'s Status line section states the launcher's cache behavior.
 - proposed: A fourth reading sits outside the three, a retired line: only a render reaches the launcher's render cache, so on a box saturated enough that every refresh overruns the launcher's time budget it keeps drawing the last line it cached, and a goal cleared under that load still shows its armed line until one refresh comes in under the budget.
 - passage: On a box where every refresh overruns the launcher's time budget, the launcher keeps drawing its last cached line. A goal cleared under that load shows its armed line until one refresh renders in time.
 
@@ -687,7 +686,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - reason: The session's act and the one thing the binding machinery cannot do for it; it stands as its own sentence once the predicate description leaves. Flipped from keep to rewrite at section 27's close: C064's and C066's retires took the predicate description this clause hung from as 'so arm from the session that should hold the leash', so the clause stands as its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the operator's typed `/kit-goal` is what binds (Y001), so the sentence names the operator as the one who arms from that session.
 - proposed: Arm from the session that should hold the leash.
 - proposed: The operator arms from the session that should hold the leash, since the typed `/kit-goal` is what binds it.
-- passage: The operator arms from the session that should hold the leash, since the typed `/kit-goal` is what binds it.
+- passage: The operator arms from the session that should hold the leash, since the typed `/kit-goal` binds it.
 
 ### C068
 - key: Expect one binding to ride the whole queue and to survive auto-compaction, with no other session leashed however often it mentions the plan, and a bystander told at session start that the leash is another session's, with the re-arm path given.
@@ -710,7 +709,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - proposed: Line 98's re-arm sentence names the remaining plans, says a typed `/kit-goal` is the operator's re-arm and a run re-arming for itself uses `arm --self-armed`, and keeps "a re-arm replaces the queue rather than resuming it".
 - proposed: Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: the operator types `/kit-goal <plan paths>` in the new session, and until then that run arms nothing for itself and proceeds unleashed. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
 - baseline-test: yes
-- passage: Re-arming resets the binding, which is the recovery when a bound session died: the operator types `/kit-goal <plan paths>` in the new session, and until then that run proceeds unleashed. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
+- passage: Re-arming resets the binding, which recovers a run whose bound session died: the operator types `/kit-goal <plan paths>` in the new session, and until then the run proceeds unleashed. Mid-sequence the re-arm names the remaining plans, since it replaces the queue rather than resuming it.
 
 ### C070
 - key: Expect conditions (a) and (b) to release the stop on the last plan, and on any earlier plan to record the outcome, advance the leash, and block the stop with a reason naming the finished plan, the new current plan, and the instruction to continue it.
@@ -783,7 +782,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - proposed: naming what is pending, one of the two occasions executing-work's third stop shape states: the dispatched background work it awaits, or a park at a safe boundary per the park skill.
 - proposed: "naming what is pending, one of the two occasions executing-work's third stop shape states: the dispatched background work it awaits, or a park at a safe boundary taken on a request."
 - proposed: The same literal-leading-prefix rule applies.
-- passage: (c) the last assistant message opens with `WAITING:` as its very first characters, naming one of the two occasions executing-work's third stop shape states: an awaited background dispatch, or a park at a safe boundary taken on a request. The same literal-leading-prefix rule applies. The goal stays armed. An awaited dispatch's completion re-invokes the session, and the first stop after the wake re-enters enforcement.
+- passage: (c) the last assistant message opens with `WAITING:` as its very first characters, naming one of the two occasions executing-work's third stop shape states: an awaited background dispatch, or a park at a safe boundary taken on a request. The same literal-leading-prefix rule applies. The goal stays armed.
 
 ### C077
 - key: Expect the hook to refuse a `WAITING:` for context, compaction or a fresh session, which is not background work.
@@ -804,7 +803,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - landed: 869b978 section 2
 - reason: The consequence a session must know to not fake a WAITING, reported by no program; the coordinator wake is the park working, not the stall. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, whose Decision 2 cuts that conduct with the drain rather than re-homing it, leaving it with the coordinator skill, which states what its own parked seat does on a wake, so the carve-out points there rather than restating the conduct.
 - proposed: "A parked session has nothing that will re-invoke it, save a parked coordinator seat, which its own armed reconciliation wake re-invokes into the conduct the coordinator skill states for that seat, and that is the park working rather than a stall;"
-- passage: A parked session has nothing to re-invoke it, save a parked coordinator seat, whose armed reconciliation wake re-invokes it into the conduct the coordinator skill states. A `WAITING:` that is neither a park nor an awaited dispatch stalls the run rather than releasing it. The armed goal stays visible at session start and to the doctor, and re-arming is the recovery.
+- passage: A `WAITING:` that is neither a park nor an awaited dispatch stalls the run rather than releasing it, and re-arming is the recovery. The coordinator skill states what wakes a parked coordinator seat.
 
 ### C079
 - key: Expect the hook otherwise to block the stop with a reason naming the plan, re-evaluating the conditions on every stop attempt including inside a stop-hook continuation.
@@ -830,9 +829,10 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:106
 - provenance: 6806b04 2026-07-16.
-- verdict: keep
-- reason: The anti-drift pointer that makes retiring the condition descriptions safe; the literal has one owner.
+- verdict: retire
+- reason: row 855 (Condition text pointer), dropped under the mechanism cut.
 - passage: `composeCondition` in `hooks/kit-goal-lib.js` owns the canonical condition text, which this skill does not restate.
+- ruled: cut 2026-09-30
 
 ### C082
 - key: Expect `goal-complete` and `goal-blocked` to append one line each to `~/.claude/kit-events.jsonl`, every line carrying `ts`, `event`, `project`, `plan` and `session`, with `detail` (`plan-complete` or `plan-archived`) where there is one and `run` only where the environment names a well-formed `KIT_RUN_ID`.
@@ -860,7 +860,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 050da02 2026-08-29: the coordinator funnel claimed one event per blocked stop, which the spent-key suppression falsifies.
 - verdict: keep
 - reason: A consumer's reading rule no emitter enforces; the emitter's statelessness and probe inflation are its reason and live here.
-- passage: Read a `goal-blocked` count as turn-ends under a standing blocker, not as distinct blockers. The emitter holds no state across stops, so each stop on one blocker adds a line, a probe-woken one included. The count is neither a blocker count nor a complete record of every blocked stop.
+- passage: A `goal-blocked` count is turn-ends under a standing blocker, so dedup on the blocker's own identity to count blockers.
 
 ### C085
 - key: To count blockers, dedup on the blocker's own identity, the recorded note where one survives or the plan and session it names, never on how many lines the stream holds.
@@ -869,7 +869,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 050da02 2026-08-29.
 - verdict: keep
 - reason: The consumer's dedup policy, which the operator memory also states as the consumer's own.
-- passage: To count blockers, dedup on the blocker's own identity, the recorded note where one survives or else the plan and session it names, never on the line count.
+- passage: A `goal-blocked` count is turn-ends under a standing blocker, so dedup on the blocker's own identity to count blockers.
 - flag: weak-reason
 
 ### C086
@@ -927,9 +927,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: pointer
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:56
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
-- verdict: rewrite
+- verdict: retire
 - landed: 005a7fde section 2
-- reason: Pointer at the peer-sessions rule, placed where a session looks for what approves a plan. A chain handoff approves the run and never arms a leash (Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- reason: row 846 (Dispatch Authorization section semantics) merge. The owner is `plugins/claude-kit/skills/peer-sessions/SKILL.md` line 42, "A chain handoff comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit." The landed C031 sentence points there.
 - proposed: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 - passage: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 
@@ -941,7 +941,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - verdict: keep
 - landed: 005a7fde section 2
 - reason: A leash armed by the session it binds outlives that session and holds its relaunch idle, and the skills' own instructions to self-arm are what produced one. The arm gate reads the calling session's own transcript for the typed `/kit-goal`, so the rule has a mechanism behind it rather than prose alone.
-- passage: Only the operator arms a leash, by typing `/kit-goal` in an interactive session. Both arm forms refuse unless the calling session's own transcript shows that typed `/kit-goal` naming each plan. A session ignores a leash in its tree that is bound to another session. A run that finds no leash never arms or re-arms one for itself, and proceeds unleashed, as a supervised persona does.
+- passage: Only the operator arms a leash, by typing `/kit-goal` in an interactive session. A session ignores a leash in its tree that is bound to another session. A run that finds no leash never arms or re-arms one for itself, and proceeds unleashed, as a supervised persona does.
 
 ### Y002
 - key: Read an unbound arm result as one of two ordinary causes the CLI names, a queue armed before the gate reported by an append or a transcript path the arm's path screen refuses though the gate read it, and take any other unbound result to the operator as a defect signal.
@@ -951,4 +951,4 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - verdict: keep
 - landed: 005a7fde section 2
 - reason: The gate makes a bound arm the expected result, so an unbound one is worth reading. The two ordinary causes are the ones the CLI's own notes print, the append's `(still unbound)` and the path-screen note, and each has a route that binds it; anything else has no route and reaches the operator.
-- passage: The result names the binding, ordinarily `(bound to this session)`. An unbound result has two ordinary causes, and the sentence the CLI prints names which. An append reports the binding the queue already carries, so a queue armed before the gate existed can read unbound. `armingSessionClaims` in `hooks/kit-goal-lib.js` owns the route that claims such a queue. An arm also lands unbound where its path screen refuses the transcript path, and the Stop hook or the compaction gate then binds the goal at the next stop or compaction offer. Any other unbound result is a defect signal, and it goes to the operator as one.
+- passage: The result names the binding, ordinarily `(bound to this session)`. An unbound result's printed sentence names which of two ordinary causes it has. Any other unbound result is a defect signal for the operator.
