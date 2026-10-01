@@ -249,8 +249,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: mechanic
 - source: plugins/claude-kit/skills/consult/SKILL.md:31
 - provenance: 1d9c467 2026-08-15, the plan's brief template.
-- verdict: keep
-- reason: The doctrine owns where transient artifacts live and this sentence names that destination in pointer form; the consult-specific rule (by path, never inline) is stated nowhere else for the session.
+- verdict: retire
+- reason: row 517 (Bulky evidence to scratch path), merged. The owner text is executing-work's "**Hand bulky inputs over as files,** not pasted inline" (`plugins/claude-kit/skills/executing-work/SKILL.md` line 462) and the doctrine's `.kit/` scratch rule.
 - passage: Bulky evidence goes to the gitignored `.kit/` scratch path and rides in the brief as a path, never inline.
 
 ### C027
@@ -280,7 +280,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, the operator's ruling that the cost hold dies and Opus at `max` is the standing stand-in; 42599a6 2026-08-24 aligned the condition to finishing-work's gate-level fact, pinned by test/doctrine-parity.test.js line 3769; docs/plans/claude-kit_capacity-gate_spec_v1.md section 4 2026-09-24 added the measured downgrade as a separate condition.
 - verdict: keep
 - reason: The contention with brainstorming's wait rule is two intentional semantics: memory `model-tier-substitution-for-review` (operator, 2026-08-18) draws the line at design and planning work, which waits, while a gate-shaped mid-execution seat substitutes. The condition's wording is pinned, so any edit to this line must keep "the stand-in is Opus at `max`" and "could not be run at the fable tier".
-- passage: Where this consult could not be run at the fable tier in this environment, per finishing-work's unavailability rule, or where that reading returned `-> downgrade`, the stand-in is Opus at `max` through `Workflow`'s `agent()`.
+- passage: Where this consult could not be run at the fable tier in this environment, per finishing-work's unavailability rule, or where that reading returned `-> downgrade`, the stand-in is Opus at `max` through `Workflow`'s `agent()`,
 
 ### C030
 - key: Fill executing-work's Reviewer Dispatch template naming all three fields explicitly: `agentType` as `claude-kit:consultant`, `model`, and `effort`.
@@ -290,15 +290,15 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - verdict: rewrite
 - landed: 433c23d section 39
 - reason: Executing-work owns the Reviewer Dispatch template and its three required fields (line 384), so the enumeration here is a partial copy the ownership map calls a defect; the consult-specific value (`agentType` `claude-kit:consultant`) rides with the pointer. Safe because the template already marks all three REQUIRED and the pointer remains; flagged for baseline-testing. Lands at line 37 (section 39's close) as "filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`.", the consult-specific value riding on a pointer, with C031's sentence, the Fable-at-high default, the unavailability clause and the standing-dispatch sentence word for word.
-- passage: The stand-in fills executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`,
+- passage: filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`.
 
 ### C031
 - key: Read executing-work's Reviewer Dispatch template for why each dispatch field is required; a consult dispatch only fills it in.
 - class: pointer
 - source: plugins/claude-kit/skills/consult/SKILL.md:37
 - provenance: 1d9c467 2026-08-15, the plan's model rule.
-- verdict: keep
-- reason: This is the pointer the ownership map asks the non-owner to carry; C030's rewrite folds into it.
+- verdict: retire
+- reason: row 519 (Fable high with Opus fallback), shrink. Executing-work's Reviewer Dispatch template carries why each field is required, and C030's landed pointer still names the template.
 - passage: and that template owns why each field is required.
 
 ### C032
@@ -306,8 +306,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:37
 - provenance: d6cd30d 2026-08-15: both reviewers found the fallback route citing an authorization that excluded it; the doctrine's covered class was widened first and this sentence was added to point at it.
-- verdict: keep
-- reason: The doctrine owns the standing dispatch request and this sentence names it as the source, which is the pointer form; the contention with design-council's never-auto-run is two instruments with opposite opt-in by design (council opt-in from f62fc16 2026-06-15).
+- verdict: retire
+- reason: row 519 (Fable high with Opus fallback), shrink, standing-dispatch restatement. The doctrine's "**Dispatch is requested standing...**" bullet carries the act: "so is a consult at the consult skill's triggers, with no per-session ask" (`home/claude-kit-doctrine.md` line 169).
 - passage: The doctrine's standing-dispatch bullet covers both routes, so a consult at the triggers needs no per-plan or per-session ask.
 
 ### C033
@@ -359,7 +359,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15; the incident was a ruling adopted on a wrong premise.
 - verdict: keep
 - reason: The consult skill owns how a ruling is adjudicated (executing-work line 473 says so by name), so this is the doctrine's hypothesis rule applied at the owned moment rather than a copy; the charter's version binds the consultant's own evidence.
-- passage: The ruling is a hypothesis until checked against the real code.
+- passage: Check the ruling against the real code,
 
 ### C038
 - key: Adopt what holds, and record in the Chapter both the ruling and what was discarded and why.
@@ -368,7 +368,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, the plan's adjudication section.
 - verdict: keep
 - reason: The Chapter destination is consult-specific and executing-work's Chapter template (Review Findings, Metrics) reads what this tells the session to record.
-- passage: Adopt what holds, and record in the Chapter both the ruling and what was discarded and why.
+- passage: adopt what holds, and record in the Chapter both the ruling and what was discarded and why.
 
 ### C039
 - key: When the ruling leaves a genuine preference fork, send that fork to the operator as the BLOCKED with the ruling attached.
@@ -384,8 +384,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rationale-example
 - source: plugins/claude-kit/skills/consult/SKILL.md:47
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set, born of the incident where the right instrument was not found mid-execution.
-- verdict: keep
-- reason: The anchor of the four-line sibling set; the three lines below it are the pointers the ownership map asks a non-owner to carry, so the set stands together.
+- verdict: retire
+- reason: row 522 (Consult versus sibling instruments), merged. The frontmatter carries it, and so does executing-work line 452: "Use the consult for a question whose framing may be wrong".
 - passage: **The consult** checks the frame: fresh context, a single seat, convenable mid-execution.
 
 ### C041
@@ -393,8 +393,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rationale-example
 - source: plugins/claude-kit/skills/consult/SKILL.md:48
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set.
-- verdict: keep
-- reason: The body's pointer at design-council, which owns the multi-lens fork, and the only place this document says what marks a moment design-time.
+- verdict: retire
+- reason: row 522 (Consult versus sibling instruments), merged into the frontmatter's R005: "not design-time divergence (design-council)".
 - passage: **design-council** is multi-lens divergence at design time, with the operator present to adjudicate.
 
 ### C042
@@ -411,8 +411,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rationale-example
 - source: plugins/claude-kit/skills/consult/SKILL.md:50
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set.
-- verdict: keep
-- reason: The body's pointer at the reviewers, who own diffs; the frontmatter's exclusion is a match surface a session that loaded the skill by name never re-reads.
+- verdict: retire
+- reason: row 522 (Consult versus sibling instruments), merged. R005 in the frontmatter carries it: "Not a diff review (the adversarial and blind reviewers)". So does executing-work line 452: "the reviewers for a diff".
 - passage: **The reviewers** judge diffs, not questions.
 
 ### R001
@@ -431,7 +431,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09, the design stop: a judge that must never receive the querent's lean, so its seat is the scope adjudicator or the live Expert seat rather than the consultant.
 - verdict: keep
 - reason: The seat carve-out stated on the match surface so a session at a design stop does not dispatch the consultant with a lean the judge must not see; executing-work step 4 owns the design stop and this is the pointer-sized statement.
-- passage: the consultant agent at every shape the floor sends to a consult but the design stop, which executing-work convenes its own judge for instead.
+- passage: the consultant agent at every floor shape but the design stop, whose judge executing-work convenes.
 
 ### R003
 - key: Convene a consult mid-execution at any trigger-floor shape this skill takes, and when the operator asks for a consult or a second opinion.
@@ -440,7 +440,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09 rewrote the line; the instruction is 1d9c467 2026-08-15, the consult plan's trigger philosophy.
 - verdict: keep
 - reason: The HEAD form of C001; the four enumerated triggers are the match terms the harness keys on, and d6cd30d records that the description is the trigger surface.
-- passage: Use mid-execution at the floor shapes this skill takes - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'.
+- passage: Use mid-execution at a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end or a weighty decision the spec does not cover, and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'.
 
 ### R004
 - key: Decide whether to consult by checking the trigger floor, never by whether the session feels stuck.
@@ -449,7 +449,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09 rewrote the line; the instruction is 1d9c467 2026-08-15, the trigger philosophy.
 - verdict: keep
 - reason: The HEAD form of C002; the load decision itself, placed where the session decides whether to load, and the 2026-09-08 kaizen note shows the under-firing class is still live.
-- passage: The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling.
+- passage: The session that needs this feels almost done rather than stuck, so check the floor, not the feeling.
 
 ### R005
 - key: Do not use a consult to review a diff or to run design-time divergence; those go to the reviewers and to design-council.
@@ -467,7 +467,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09 added the design-stop carve-out; the rule is 1d9c467 2026-08-15, with the read-only half enforced by plugins/claude-kit/hooks/readonly-agent-guard.js.
 - verdict: keep
 - reason: The HEAD form of C005 with the carve-out executing-work step 4 owns; the no-transcript half has no machinery behind it and is what the blindness rationale (R007) keeps obeyed.
-- passage: One read-only fresh judge rules on one question the session could not settle. Its seat is the `consultant` agent at every floor shape but the design stop, whose judge executing-work's step 4 names.
+- passage: One read-only fresh judge, the `consultant`, rules on one question the session could not settle.
 
 ### R007
 - key: Keep the judge blind to this session's transcript, because a framing that arrives as text can be tested rather than merely extended.
@@ -476,7 +476,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09 rewrote the line; the rationale is 1d9c467 2026-08-15, "Why the consult exists": the advisor confirmed the wrong framing because it shared the transcript.
 - verdict: keep
 - reason: The HEAD form of C007. Withholding the transcript is an omission whose value is invisible from the act, no hook reads brief contents, and the incident (a shared-context judge ratifying a wrong frame) recurs the first time a session pastes its reasoning in.
-- passage: The consultant never sees this session's transcript, so it can test the framing rather than extend it.
+- passage: It never sees this session's transcript, so it can test the framing rather than extend it.
 
 ### R008
 - key: Have the consult rule rather than survey, test the querent's framing rather than ratify it, and end implementable.
@@ -512,7 +512,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09, the design stop, added so a re-reader counting second-attempt shapes finds it. goal-fit section 3 2026-09-19 moved it out of bullet (a) into its own bullet (e), the stop no longer being a second failed attempt but a question put before the first one.
 - verdict: keep
 - reason: The one shape on the floor whose seat is not the consultant; stated here because a session counting the floor would otherwise dispatch the consultant with the lean that judge must never receive. Executing-work step 4 owns the stop and this is the pointer.
-- passage: Its seat is the judge executing-work's step 4 names, never the `consultant`, because that judge must never receive the querent's lean.
+- passage: Executing-work's step 4 convenes its judge, never the `consultant`.
 
 ### R012
 - key: Expect the design stop not to be the only shape routing elsewhere, since the repeating-class Critical branch goes to the tier ladder.
@@ -532,15 +532,15 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 9f1ed1b 2026-09-09 rewrote the line; the deferral is the 1d9c467 review fix that resolved trigger (a)'s conflict with the ladder.
 - verdict: keep
 - reason: The HEAD form of C011; without it a second failed review round with a repeating Critical class would draw a consult on framing where the ladder's tier bump is the remedy.
-- passage: Where executing-work's tier-escalation ladder owns the moment, it governs, so a second failed review round whose Criticals repeat a class goes to the ladder. The consult takes the branch where no class repeats and the spec's own premise is the generator.
+- passage: A second failed review round whose Criticals repeat a class goes to executing-work's tier-escalation ladder instead.
 
 ### R014
 - key: Fire the design stop beside the tier ladder rather than deferring to it.
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:18
 - provenance: 9f1ed1b 2026-09-09; executing-work states the same from the owner's side (the ladder keys on Criticals, the stop on the add-decision). goal-fit section 3 2026-09-19 re-keyed the stop and moved this bound onto bullet (e) with it.
-- verdict: keep
-- reason: The bound on this document's own deferral rule (R013), without which R013 reads as sending the design stop to the ladder too; one sentence, and the owner's text agrees.
+- verdict: retire
+- reason: row 514 (Design stop routing), merged. Executing-work step 4 carries it at line 363: "It fires on that line alone, never on severity, provenance or a round count, at the adjudication that wrote it and before anything is built.".
 - passage: It fires beside the tier-escalation ladder rather than deferring to it.
 
 ### R015
@@ -548,20 +548,21 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 9f1ed1b 2026-09-09, the design stop.
-- verdict: rewrite
+- verdict: retire
 - landed: 433c23d section 39
-- reason: Scopes the brief, model, adjudication and siblings sections to the consultant so the design stop's judge is not briefed with a lean or its bucket re-verified as a hypothesis; the scoping is this document's to state. Flipped to rewrite at section 39's close by R016's rewrite, which split the sentence at the comma after "the design stop": the kept clause's comma became a period, its words unchanged.
+- reason: row 518 (Section scope excludes design stop), dropped under the mechanism cut.
 - proposed: This section and the three below it are the `consultant`'s, so none of them reaches the design stop.
 - passage: This section and the three below it are the `consultant`'s, so none of them reaches the design stop.
+- ruled: cut 2026-09-30
 
 ### R016
 - key: For the design stop, take the brief from the scope adjudicator's charter, dispatch as executing-work's step 4 states, and adopt its bucket as a ruling.
 - class: mechanic
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 9f1ed1b 2026-09-09, the design stop.
-- verdict: rewrite
+- verdict: retire
 - landed: 433c23d section 39
-- reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 410) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing. Lands at line 33 (section 39's close) as "Executing-work's step 4 owns that stop's brief, its dispatch and its ruling.", a pointer carrying none of the three particulars; the kept opening clause now closes on a period, which is R015's respell.
+- reason: row 514 (Design stop routing), merged. Bullet (e) now carries the pointer at step 4 (R011's landed text). The owner text is executing-work line 363: "The held-finding judge rules, never the `consultant`... Its brief is the charter's fixed one".
 - proposed: Keep "This section and the three below it are the `consultant`'s, so none of them reaches the design stop" and replace the rest of the sentence with a pointer at executing-work step 4 as the owner of the design stop's brief, dispatch and ruling.
 - baseline-test: yes
 - passage: Executing-work's step 4 owns that stop's brief, dispatch and ruling.

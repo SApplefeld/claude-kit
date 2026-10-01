@@ -100,7 +100,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; 830ff28 2026-06-17 genericized the ELEOS.ErrorLog reference in the same bullet.
 - verdict: keep
 - reason: The doctrine's red-is-a-signal bullet gates calling a red a flake; this gates the investigation's first read of the error, a different act. The bullet is re-cut so this instruction and the server-side check (C010) stand as two sentences.
-- passage: **Read the actual error**: the whole message, stack and log lines, not a summary.
+- passage: **Read the actual error** whole.
 
 ### C010
 - key: Check the project's server-side error log or audit table for the server-side view of the failure.
@@ -130,9 +130,10 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:19
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
-- verdict: keep
-- reason: The doctrine's Judgment bullet sends a reader to git history to ground a recommendation; this sends a debugger to it to locate a regression's onset, and the skill owns the investigation moment. The base-rate sentence beside it (C013) moves here.
+- verdict: retire
+- reason: row 1213 (Check what changed recently), dropped under the mechanism cut.
 - passage: **Check what changed**: git log and diff around the onset, and deployment history.
+- ruled: cut 2026-09-30
 
 ### C013
 - key: Assume most bugs are regressions from a recent, findable change.
@@ -152,7 +153,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. The backward trace is the investigation's method for locating the divergence point and nothing else in the corpus states it.
-- passage: **Trace the data flow backward** from the symptom to where reality first diverges from expectation.
+- passage: **Trace the data flow backward**, dispatching the Explore subagent for unfamiliar territory rather than guessing.
 
 ### C015
 - key: Dispatch the Explore subagent for unfamiliar territory rather than guessing at the structure.
@@ -161,7 +162,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: No finding. The doctrine's standing dispatch request covers the Explore dispatch; this names the moment in the investigation where structure is unknown and guessing is the failure mode.
-- passage: Dispatch the Explore subagent for unfamiliar territory rather than guessing.
+- passage: **Trace the data flow backward**, dispatching the Explore subagent for unfamiliar territory rather than guessing.
 
 ### C016
 - key: Check for deployment drift by comparing the deployed object against source via `sys.sql_modules` and the file.
@@ -190,7 +191,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, whose message names data shape as one of this stack's recurring root causes.
 - verdict: keep
 - reason: No finding. The doctrine's Root-cause bullet says to interrogate the actual data at the principle level; this is the owner's checklist item with the shapes that recur (NULLs, duplicates, empty string versus NULL).
-- passage: Actual data: query it. The bug is often a data shape nobody believed existed (NULLs, duplicates, empty strings vs NULL).
+- passage: Actual data: query it for the shape nobody believed existed, such as NULLs, duplicates, or empty strings vs NULL.
 
 ### C019
 - key: Confirm the procedure's declared isolation level matches its use.
@@ -260,7 +261,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("fix the cause not the symptom").
 - verdict: keep
 - reason: A different moment from the iron rule: C002 gates when a fix may be proposed and this says what the fix must target, and a session can satisfy the first while violating the second. Stands verbatim while the sentence after it is re-cut.
-- passage: Fix the cause, not the symptom.
+- passage: Fix the cause, not the symptom, and verify the repro now passes.
 
 ### C026
 - key: After the fix, verify the reproduction now passes.
@@ -269,7 +270,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: keep
 - reason: Phase 4's exit condition; the doctrine's watch-it-pass step is the same act, but a phase workflow that names no exit is not followable, so this is the one repro step the skill keeps beside its C005 pointer.
-- passage: Verify the repro now passes
+- passage: Fix the cause, not the symptom, and verify the repro now passes.
 
 ### C027
 - key: After the fix, run the surrounding tests to confirm nothing else moved.
@@ -281,7 +282,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - reason: A real conflict: "surrounding tests" is looser than the targeted lane (the changed files' tests plus any whole-tree pin whose subject those files are), so a session obeying this line can skip a family pin the doctrine requires at a fix round. The doctrine owns which lane each moment takes, so this line names the targeted lane and points at that bullet; baseline-test the reworded step. Lands at line 33 (section 44's close) as "run the targeted lane the doctrine's After-each-step bullet names for a fix round", the proposal's words; the bullet it points at opens 'After each step, run the lane the moment calls for, and report the delta.' at line 100 of `plugins/claude-kit/skills/operating-instructions/SKILL.md` (line 95 of the frontmatter-free doctrine copies), and C026's and C029's sentences beside it are unchanged.
 - proposed: Replace "run the surrounding tests to confirm nothing else moved" with "run the targeted lane the doctrine's After-each-step bullet names for a fix round".
 - baseline-test: yes
-- passage: run the targeted lane the doctrine's After-each-step bullet names for a fix round.
+- passage: The doctrine's After-each-step and Close-each-section bullets own the lane, the kit memory store write and the Chapter that follow.
 - flag: stale
 
 ### C028
@@ -300,8 +301,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:33
 - provenance: 51e8c42 2026-06-11 installed it pointing at "auto memory"; eb7d29d 2026-08-09, from a kaizen inbox note on harness-injection claims, re-pointed it at the kit memory store, which the kit is independent of auto-memory by design.
-- verdict: keep
-- reason: Already pointer-length, and the history shows the destination word is what goes wrong: the clause must name the kit memory store, since a bare pointer at the doctrine would be no shorter and would drop the fix eb7d29d made. The "gotcha, not the incident" bar copies the doctrine's one-level-more-general rule in four words.
+- verdict: retire
+- reason: row 1217 (Fix cause, verify, bank learning), merged. The doctrine's "Close each section with a Chapter" bullet carries "Durable codebase learnings go to memory, not the Chapter". Its Kaizen Capture bullet carries "State any lesson, wherever it lands, one level more general than its incident". C027's pointer sentence keeps the words "kit memory store", which eb7d29d fixed as the destination.
 - passage: Bank any durable learning to the kit memory store as the gotcha, not the incident.
 
 ### C030
@@ -309,8 +310,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:33
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
-- verdict: keep
-- reason: Not in conflict with the doctrine's memory clause: the same line routes the general lesson to memory (C029) and the section's finding to the Chapter, which the doctrine's Chapter bullet asks to carry decisions and surprises. Two destinations for two different records.
+- verdict: retire
+- reason: row 1217 (Fix cause, verify, bank learning), merged. The doctrine's "Close each section with a Chapter" bullet owns the Chapter, and executing-work owns its format. C027's pointer sentence points there.
 - passage: In a planned effort, record the finding in the plan doc's Chapter.
 
 ### C031
@@ -407,8 +408,8 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:41
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
-- verdict: keep
-- reason: No finding. The carve-out that keeps the four phases from being ceremony on a typo; it is bounded by C041 in the same paragraph, which is why the two are kept together.
+- verdict: retire
+- reason: row 1220 (Trivial-fix exemption and re-entry), shrunk. The frontmatter description's "Skip only for trivial fixes where the cause is directly visible." still carries the act.
 - passage: A directly visible cause with a trivial fix, such as a typo, skips the phases and is fixed under the doctrine's rules.
 
 ### C041
@@ -427,4 +428,4 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 9, 2026-09-26, the classify-first step the operator approved from the Supreme review, declared growth of about forty words.
 - verdict: keep
 - reason: A failure read as code by default gets a code fix, and an environment, tool or external-service failure fixed in code leaves working code bent around a problem that is not in it. The sort comes before reproduction because the bin decides whether a repro in this tree can show the cause at all. The four implementer charters point their BLOCKED status here (A004 to A007 under the executing-work ledger), so this step is the one owner of the sort.
-- passage: Before reproducing, sort the failure into one of five bins: code, environment, tool, external service, or unknown. Never change working code to route around an environment problem.
+- passage: Before reproducing, decide whether the failure lives in the code or outside it. Never change working code to route around an environment problem.

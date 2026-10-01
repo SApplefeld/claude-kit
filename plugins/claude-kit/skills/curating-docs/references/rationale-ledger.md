@@ -60,28 +60,29 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan: the backlog grew without bound because items were struck through in place.
 - verdict: keep
 - reason: The owner's row; the doctrine states the principle and names this skill as owner. session-start.js reports the backlog's counts but prunes nothing.
-- passage: | `docs/backlog.md` | The living handoff and next-steps doc, active items only | Pruned-live: completed items move to a dated snapshot |
+- passage: | `docs/backlog.md` | The living handoff doc for cross-effort next-steps, active items only | Pruned-live: completed items move to a dated snapshot |
 
 ### C006
 - key: Do not zone or move `docs/coordinator-board.md` during a curating pass; it belongs to the coordinator seat.
 - class: rule
 - source: plugins/claude-kit/skills/curating-docs/SKILL.md:21
 - provenance: 33c0bed 2026-08-26, the coordinator plan: without a taxonomy row a curating pass reads the board as a stray, and without the charter line a finishing pass rewrites the seat's state; ebf5ee0 2026-08-28 reworded it when the board moved into the memory store.
-- verdict: rewrite
+- verdict: retire
 - landed: 368ae03 section 33
-- reason: The act and its seat-state reason stay on both surfaces because the skill reaches the main session and the charter reaches a blank-start curator. The memory-store provenance clause and the "charter says so in the same words" note are history and drop without changing the act. Lands at line 21 as "A curating pass neither zones nor moves a `docs/coordinator-board.md` in a project's `docs/`: that file is the machine coordinator's own state and belongs to the seat." The opener "One file is deliberately outside the taxonomy rather than missing from it." left with the provenance clause and the same-words note, the taxonomy table directly above carrying the placement. Finishing fix: the landed sentence and the charter line each gained the clause that the file is a leftover of the board from before it moved to the machine directory the role skill's directory contract names, since the bare seat-state claim contradicted the coordinator and role skills' placement of the live board.
+- reason: row 621 (Coordinator-board file carve-out), dropped under the mechanism cut.
 - proposed: Reduce the paragraph to the hands-off instruction and the seat-state reason, dropping the memory-store provenance and the same-words cross-note.
 - baseline-test: yes
 - passage: A curating pass neither zones nor moves a `docs/coordinator-board.md` in a project's `docs/`. That file belongs to the coordinator seat. It is a leftover of the seat's board from before it moved to the machine directory the role skill's directory contract names.
+- ruled: cut 2026-09-30
 
 ### C007
 - key: Keep the two append disciplines separate: a plan's Chapters are append-only and travel into the archive, while the backlog is pruned live.
 - class: rule
 - source: plugins/claude-kit/skills/curating-docs/SKILL.md:23
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan's Approach, which states the two disciplines verbatim and names conflating them as the endless-append cause.
-- verdict: rewrite
+- verdict: retire
 - landed: 368ae03 section 33
-- reason: The split is stated twice in the document (here and the tail of line 54) and only the second copy carries the backlog's positive scope; one paragraph carries both halves after the merge. The "endless-append" diagnosis is the incident's why and lives here. Lands at line 23 as "Two append disciplines stay separate. A plan's Chapters are append-only history and travel with the plan into the archive. The backlog is pruned-live and holds cross-effort next-steps only." The two proposed lines read as complementary, the first naming the act and the second the resulting shape, so the later-governs tie-break did not fire; the endless-append diagnosis is gone, as this reason places it here. C061's tagged proposal is word for word the first line, so the two entries landed as one edit.
+- reason: row 622 (Separate append disciplines) merge. The taxonomy table carries both halves. The `docs/archive/` row has "Finished and abandoned plans (Chapters intact)" and "Immutable history", close path step 2 has "The Chapters travel untouched.", and the `docs/backlog.md` row (C005) has "Pruned-live" with its cross-effort scope.
 - proposed: Fold the cross-effort scope of the backlog into the line 23 paragraph and drop the restatement at the end of line 54.
 - proposed: One paragraph: Chapters are append-only and travel with the plan; the backlog is pruned live and holds cross-effort next-steps only.
 - baseline-test: yes
@@ -112,7 +113,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: b49a47b 2026-06-19 (the docs-lifecycle plan's "git mv, history preserved"), reworded by aeffbb2 2026-08-09.
 - verdict: keep
 - reason: The owner's mechanic with its non-git fallback; finishing-work and the templates skeleton restate the `git mv` only. A kaizen note of 2026-09-04 records a project whose archive is nested (`docs/archive/plans/`), which the flat path here does not describe; that is a gap for the rewrite plan to weigh, not a reason to drop the step.
-- passage: 2. Move the file with `git mv docs/plans/<file> docs/archive/<file>` in a git-tracked repo, so history is preserved, or a plain move otherwise. The Chapters travel untouched.
+- passage: 2. Move the file with `git mv docs/plans/<file> docs/archive/<file>` in a git repo, or a plain move otherwise. The Chapters travel untouched.
 
 ### C011
 - key: Re-run `git add` on the moved file whenever it carries unstaged edits, so the finalized content is what commits.
@@ -301,7 +302,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - landed: 368ae03 section 33
 - reason: The surfacing layer ages an item from the first date on its line (templates.md:85), so the order of the two dates is load-bearing and the form must be stated where the keep call is made. Flipped from keep at section 33's close, a respell forced by C027: C027's split made the keep outcome its own sentence with a capital and a period; the date form and its order are untouched. Landed as the proposal below.
 - proposed: Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays, so it ages from the adjudication.
-- passage: Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays, so it ages from the adjudication.
+- passage: Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays.
 
 ### C029
 - key: Treat an undated active item as past the threshold: give it a parked date from git history or today's marked `backfilled`, and adjudicate it in the same pass.
@@ -310,7 +311,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan (undated backfill).
 - verdict: keep
 - reason: The rule stands because the templates skeleton states the same duty, sharing the operative phrase and the closing act: both surfaces read "past the threshold by definition" and both end in backfilling the date and adjudicating the item in the same pass. That is one duty stated once and echoed, not two readings to reconcile.
-- passage: An undated active item is past the threshold by definition. Give it its parked date, from git history, or today's marked `backfilled`, and adjudicate it in the same pass.
+- passage: An undated active item is past the threshold: give it its parked date from git history, or today's marked `backfilled`, and adjudicate it in the same pass.
 
 ### C030
 - key: Offer the prune pass in one line when the session-start block reports an oldest item past the threshold and no close-out is near.
@@ -343,7 +344,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - reason: The gate is a blast-radius stop over a library-wide batch of moves and it stays, because which plans leave the live library is the operator's call over the library's own shape; the stop is stated twice and collapses to one sentence that carries its reason. The gate is the material-decision member of executing-work's closed blocker set rather than the doctrine's stop-for-a-yes rule, whose two-part test a move inside the working tree meets on neither part, so a leashed session reaching this stop has a member to declare it under. No standing grant covers a retrofit, so this is not a loop-maintenance gate. Landed at `368ae03` as the step ending "Move nothing until it is confirmed; this is a destructive-enough batch to earn the confirmation."; "Present it and stop." is gone.
 - proposed: State the proposal contents and one stop sentence that names the batch as destructive enough to earn the confirmation.
 - baseline-test: yes
-- passage: 2. **Propose the migration.** Name the plans that move to the archive, what the index and backlog will hold, and which READMEs get seeded. Move nothing until it is confirmed. Which plans leave the live library is the operator's call over the library's shape. Where a plan has not already made that call, the stop is the material decision executing-work's blocker set names.
+- passage: 2. **Propose the migration.** Name the plans that move to the archive, what the index and backlog will hold, and which READMEs get seeded. Move nothing until it is confirmed.
 - flag: stale
 
 ### C033
@@ -391,6 +392,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - verdict: keep
 - reason: kit-goal-lib.js classifyPlanStatus and session-start.js read the value and nothing writes it, so the exact-value duty is still the author's. The skeleton and brainstorming restate the values by design because 897d921 found "readers and no producer".
 - passage: must equal `Complete` exactly, whole string and case-insensitive, for the plan to read as terminal. `Complete (archived)` or any other trailing text does not terminate.
+- passage: A plan headed `Complete (archived)` or with any other text after `Complete` still reads complete to the session-start push and the Stop hook's docs-hygiene check, so write the value exactly.
 
 ### C038
 - key: Write `Commit Model: <value>` above the first `##` heading, opening with `Commit-and-Push`, `Branch-and-PR`, or `Review-Only`.
@@ -408,7 +410,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: 3dc5d86 2026-08-03, the engine's reading of the trailing prose.
 - verdict: keep
 - reason: No finding on this claim; it states how the engine parses the value. Its default's kit-side meaning is C065's question. Whole at the clause grain at line 68 at section 33's close: the claim's words are unchanged, and the sentence's tail after "the draft-per-plan default" is C065's landed passage.
-- passage: Under `Branch-and-PR` the trailing prose is also load-bearing. Prose naming a pull request per section opens each section's pull request ready for review. That prose reads `per-section PR` or `one PR per section`, in either word order, with `pull request` spelled out or not. Every other reading, absent prose included, is the draft-per-plan default.
+- passage: Under `Branch-and-PR`, trailing prose reading `per-section PR` or `one PR per section`, in either word order, with `pull request` spelled out or not, opens each section's pull request ready for review. Every other reading, absent prose included, is the draft-per-plan default, one draft pull request for the whole plan.
 
 ### C040
 - key: Write `Disjoint: yes` above the first `##` heading to declare a plan independent of other in-flight work; anything else or an absent header means not disjoint.
@@ -547,7 +549,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - reason: The position and its two failure modes (inside the block drops later sections; after `## Chapters` freezes the Chapters parse) are the rule and stay; the closing argument that naming one position is the whole rule is this entry's job. No template reserves a place for this heading, which is why the position must be stated. Lands at line 86 opening "`## Dispatch Authorization` goes **above** `## Sections of Work`, the one position that bounds nothing, which is stricter than outside it. Two blocks here are bounded by the next `##` heading of any kind, so a heading dropped in the wrong place truncates one with no error.", the two failure-mode sentences unchanged after it and the closing argument gone; "the one position that bounds nothing" moved into the rule sentence from the dropped argument, and the sentence was split at its reason at round 1.
 - proposed: The position plus the two failure modes as its bound; drop the closing argument.
 - baseline-test: yes
-- passage: `## Dispatch Authorization` goes **above** `## Sections of Work`, the one position that bounds nothing, which is stricter than merely outside it. Two blocks end at the next `##` heading of any kind, so a heading in the wrong place truncates one with no error. Inside `## Sections of Work` it drops every later `### N.` section from the parse. After `## Chapters` it ends the Chapters block, so every Chapter below it stops registering its `Completed:` line and the section count and `Next` pointer freeze.
+- passage: `## Dispatch Authorization` goes **above** `## Sections of Work`. `## Intent` and `## Assumptions` go outside `## Sections of Work` and above `## Chapters`. A misplaced heading truncates the parse silently. Inside `## Sections of Work` it drops every later `### N.` section, and after `## Chapters` every Chapter below it stops registering.
 
 ### C054
 - key: Place `## Assumptions` outside `## Sections of Work` and above `## Chapters`.
@@ -560,7 +562,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - proposed: Two sentences: the position, and that the template's placement after `## Out of Scope` already satisfies it.
 - baseline-test: yes
 - superseded-by: C067
-- passage: `## Intent` and `## Assumptions` take the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template in `skills/brainstorming/SKILL.md` satisfies it for both: `## Intent` sits between `## Goal` and `## Approach`, above the sections block, and `## Assumptions` after `## Out of Scope`, below the sections block and above `## Chapters`.
+- passage: `## Intent` and `## Assumptions` go outside `## Sections of Work` and above `## Chapters`.
 
 ### C055
 - key: Add either heading to an approved plan deliberately and name the addition in the Chapter, since it reads as approval drift.
@@ -622,16 +624,16 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: b49a47b 2026-06-19, the Antipatterns list, alongside the archive README skeleton's identical rule.
 - verdict: keep
 - reason: The skill's only statement of the act that C004's immutability implies, and the rule the create path (C023) now defers to for an archived older plan.
-- passage: - Editing an archived plan to reflect new work. New work gets a new plan, cross-referenced to the one it builds on.
+- passage: - Editing an archived plan for new work. New work gets a new plan, cross-referenced to the one it builds on.
 
 ### C061
 - key: Keep the backlog scoped to cross-effort next-steps only, kept lean, distinct from per-plan Chapter history.
 - class: rule
 - source: plugins/claude-kit/skills/curating-docs/SKILL.md:54
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan's Approach (the backlog is cross-effort next-steps; Chapters are the effort-level history).
-- verdict: rewrite
+- verdict: retire
 - landed: 368ae03 section 33
-- reason: The scope survives but moves into the line 23 paragraph beside the two-disciplines split it completes; the half-sentence at line 54 goes. The templates skeleton keeps its copy for the project reader. Lands at line 23 inside C007's paragraph, "holds cross-effort next-steps only"; the half-sentence at the old line 54 is gone.
+- reason: row 622 (Separate append disciplines) merge. The backlog's cross-effort scope now sits in the taxonomy table's `docs/backlog.md` row (C005): "The living handoff doc for cross-effort next-steps, active items only".
 - proposed: (via A020) Fold the cross-effort scope of the backlog into the line 23 paragraph and drop the restatement at the end of line 54.
 - baseline-test: yes
 - passage: The backlog is pruned-live and holds cross-effort next-steps only.
@@ -663,9 +665,9 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/curating-docs/SKILL.md:73
 - provenance: 897d921 2026-08-29, the plan-lifecycle plan; the stand-down itself is the external-engine-standdown plan's (2026-07-22), which names executing-work's Run Mode check as the rule's owner.
-- verdict: rewrite
+- verdict: retire
 - landed: 368ae03 section 33
-- reason: Not a conflict with the close-out flip or the Ready move: an external-engine worker runs its directed section only and never reaches the finishing pass, so those are a kit-native session's acts. The rule is executing-work's (":73: leaves the header to its engine") and this cell keeps a pointer rather than a copy. Lands at line 67, the Status row's value cell ending "and a worker under an external engine leaves the header to its engine, per that skill's arming-is-approval paragraph, which points at its External-engine stand-down", re-aimed at round 1 from the stand-down alone, whose paragraph states no header rule. Amendment 2 note: the ":73" cite describes executing-work before section 4; at HEAD "leaves the header to its engine" sits at line 75 and the stand-down at line 83, under the bold lead "External-engine stand-down."
+- reason: row 634 (Status header value rules) shrink removed the pointer. The act is carried by `plugins/claude-kit/skills/executing-work/SKILL.md:69`, "A worker under an external engine (the stand-down below) leaves the header to its engine.".
 - proposed: (via A115) Replace the cell's stand-down clause with a pointer at executing-work's external-engine stand-down.
 - baseline-test: yes
 - passage: A worker under an external engine leaves the header to its engine, per that skill's arming-is-approval paragraph, which points at its External-engine stand-down
@@ -681,7 +683,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - reason: The sentence describes what the engine does with the trailing prose, but read as a kit instruction it contradicts executing-work:469 ("The PR happens in finishing-work") and finishing-work:89, and the ownership map lists the tension under Unowned or contested. Word it as the engine's value rule and point at finishing-work for the kit's own PR moment; the operator's ruling on the contested row is what closes it. Lands at line 68 under Decisions 3.1, the Commit Model row's value cell reading "is the draft-per-plan default, under which the engine opens one draft pull request at the first section close, refreshes it each section, and flips it ready at the finishing pass. A kit session opens its own pull request at `finishing-work`'s close, per that skill's Apply the commit model step." Ruling 4 of the corpus rewrite's rulings batch (docs/backlog.md, 2026-09-13) extends that sentence to the three acts finishing-work now performs, and it reads "A kit session opens its own pull request at `finishing-work`'s close where none is open, marks it ready for review and arms auto-merge, per that skill's Apply the commit model step.", the arm stated flat because finishing-work arms with no precondition, so a clause conditioning it here would restate the act narrower than its owner performs it. The engine's draft-per-plan clause before it is unchanged, and whether a kit session's draft opens earlier than finishing is undecided under that ruling. Amendment 2 note: "executing-work:469" is line 450 at HEAD, inside step 7's Branch-and-PR bullet, and "finishing-work:89" is line 93, inside step 7 "Apply the commit model" (lead at line 91). The ownership map's contested row for this moment is gone, its owned row naming `finishing-work` with this row in the pointer column.
 - proposed: Word the draft-per-plan sentence as what the engine does with the value, and point at finishing-work for when a kit session opens its pull request; the operator's ruling on the map's contested row closes it.
 - baseline-test: yes
-- passage: Under it the engine opens one draft pull request at the first section close, refreshes it each section, and flips it ready at the finishing pass. A kit session opens its own pull request at `finishing-work`'s close where none is open, marks it ready for review and arms auto-merge, per that skill's Apply the commit model step.
+- passage: A kit session's own pull request follows `finishing-work`'s Apply the commit model step
 - flag: stale
 
 ### C066
@@ -700,7 +702,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the weaker rule and its reason are C054's.
 - verdict: keep
 - reason: C054's weaker rule holds for both headings, and the two satisfy it from opposite sides of the sections block. The sentence names each placement so neither is read as the other's: a reader mirroring `## Assumptions`'s after-Out-of-Scope position onto `## Intent` would put a plan's why below its sections, so anyone reading the plan top to bottom meets the how before the why the how exists to serve. The other direction breaks nothing, since above the sections block also satisfies the weaker rule, so the sentence names it only to keep the template's order in one place.
-- passage: `## Intent` and `## Assumptions` take the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template in `skills/brainstorming/SKILL.md` satisfies it for both: `## Intent` sits between `## Goal` and `## Approach`, above the sections block, and `## Assumptions` after `## Out of Scope`, below the sections block and above `## Chapters`.
+- passage: `## Intent` and `## Assumptions` go outside `## Sections of Work` and above `## Chapters`.
 
 ### C068
 - key: Add any of the three headings to an approved plan mid-run deliberately, as an edit above `## Chapters` recorded in the Chapter.
@@ -762,9 +764,10 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - class: mechanic
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:12
 - provenance: b49a47b 2026-06-19.
-- verdict: keep
-- reason: no finding. Body text of a generated file, addressed to a project's own contributors.
+- verdict: retire
+- reason: row 657 (Stable-doc and plan purpose prose), dropped under the mechanism cut.
 - passage: This directory is the working library and project history for <project>: the documents about the solution, the active plans, and the archived record of finished work.
+- ruled: cut 2026-09-30
 
 ### C006
 - key: Give the index a `## Folder map` section.
@@ -782,7 +785,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, the taxonomy's root zone shipped together with the skeleton that states it to a project.
 - verdict: keep
 - reason: the SKILL's taxonomy table is the rule and this fenced line is the artifact the rule produces, read by contributors who never load the kit. A pointer here would be a dangling reference in every seeded project.
-- passage: - **Root (`docs/`)** holds the stable documents about the solution and this index. Architecture, design rationale, and any security model live here.
+- passage: - **Root (`docs/`)** holds this index and stable solution documents.
 
 ### C008
 - key: Keep only open or in-progress plans in `plans/`, and move a plan to `archive/` the moment it is Complete or abandoned.
@@ -791,7 +794,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: shipped index text, not a second statement of the SKILL's rule; and the index, the plans README and the plans README's Rules list are three different generated files with three different readers. The line's three sentences carry three distinct things, so the proposed compressions each drop one.
-- passage: - **`plans/`** holds active plans only: specs that are open or in progress. A plan moves to `archive/` the moment it is Complete or abandoned.
+- passage: - **`plans/`** holds active plans only.
 
 ### C009
 - key: Read `plans/README.md` for the active-plans folder's own rules.
@@ -809,7 +812,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: as C008: shipped index text whose reader has no kit on the shelf. Its relation to C032 and C037 is one rule and, in two other generated files, the move that satisfies it and the act that violates it.
-- passage: - **`archive/`** holds finished and abandoned plans (Chapters intact) and dated backlog snapshots. It is immutable history.
+- passage: - **`archive/`** holds finished and abandoned plans and backlog snapshots.
 
 ### C011
 - key: Read `archive/README.md` for the archive folder's own rules.
@@ -836,7 +839,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: shipped index text; it tells a contributor why the backlog is short, where the seeded `backlog.md` itself tells the person about to edit it what to do. Two files, two readers.
-- passage: - **`backlog.md`** is the single living handoff and next-steps doc. It carries only active items; completed items are pruned to a dated snapshot in `archive/`.
+- passage: - **`backlog.md`** is the living handoff and next-steps doc.
 
 ### C014
 - key: Give the index an `## Active plans` section.
@@ -854,7 +857,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the SKILL owns when the list is refreshed and this owns what the seeded section looks like, including its empty form; delete it and a seeded index carries a heading with no instruction. The close path requires both this list and the plans README's to be refreshed, so the pair is duplication between two outputs by design.
-- passage: (List each active plan in `plans/` with a one-line description. "None at present." when empty.)
+- passage: (List active plans, or "None at present.")
 
 ### C016
 - key: Give the index an `## Archive` section.
@@ -872,7 +875,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: no finding.
-- passage: See `archive/` for completed plans and backlog snapshots.
+- passage: See `archive/`.
 
 ### C018
 - key: Title `docs/plans/README.md` with the heading `# Active Plans`.
@@ -888,8 +891,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - class: rule
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:40
 - provenance: b49a47b 2026-06-19.
-- verdict: keep
-- reason: the plans README states its own folder's rule to whoever opens that folder, which is not the same reader as the index's. Rule versus its output against the SKILL's taxonomy row.
+- verdict: retire
+- reason: one folder role stated twice (row 646). The survivors are C008's index line "- **`plans/`** holds active plans only." and C022's move rule.
 - passage: This folder holds active plans only: specs that are open or in progress.
 
 ### C020
@@ -897,9 +900,10 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - class: rationale-example
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:40
 - provenance: b49a47b 2026-06-19; the failure it guards is recorded in the SKILL's own excuses table, which says archiving-later is "where this rule died before".
-- verdict: keep
-- reason: this is rationale the rule cannot be obeyed without: C019 is under-motivated on its own, and a contributor who does not know the plan is the resume surface treats `plans/` as scratch space and leaves finished plans in it. Keep it in the document rather than moving it here.
+- verdict: retire
+- reason: row 657 (Stable-doc and plan purpose prose), dropped under the mechanism cut.
 - passage: A plan is the single source of truth for one effort's intent and state, and a fresh or post-compaction session resumes from it.
+- ruled: cut 2026-09-30
 
 ### C021
 - key: Give the plans README a `## Rules` section.
@@ -917,15 +921,15 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19; the same-close-out timing is the rule the SKILL's excuses table records as having died once already to "I will archive it later, or in a batch."
 - verdict: keep
 - reason: the seeded Rules list is what a session reads at the moment it is about to defer the move, which is exactly when the rule fails. Deleting it for a pointer removes the sentence from the only place the failure happens.
-- passage: - A plan lives here while it is being worked. When it reaches `Status: Complete` or is abandoned, it moves to `../archive/` in the same close-out that finished it
+- passage: - A plan moves to `../archive/` the moment it reaches `Status: Complete` or is abandoned.
 
 ### C023
 - key: Perform the move to the archive with `git mv` so history is preserved.
 - class: mechanic
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:44
 - provenance: b49a47b 2026-06-19.
-- verdict: keep
-- reason: the SKILL and the skeleton are deliberately unequal: the SKILL carries the non-git fallback and the re-add duty because it instructs the session, while the parenthetical here tells a project's reader only that history survives. The skeleton is already the reduced form.
+- verdict: retire
+- reason: row 649 merge. The owner is curating-docs SKILL.md, Archiving a Completed Plan step 2, "Move the file with `git mv docs/plans/<file> docs/archive/<file>` in a git-tracked repo, so history is preserved". No pointer is left, because a seeded project file's reader has no kit to follow it to.
 - passage: (via `git mv`, so history is preserved).
 
 ### C024
@@ -953,7 +957,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: 897d921 2026-08-29, the section that added `Ready` after two finished plans on another machine went invisible to every recovery surface because their authors wrote `Draft`, a value the kit does not define.
 - verdict: keep
 - reason: no program writes the Status value, so nothing supersedes this; the surfacing layers only read it. The apparent clash with the external-engine stand-down is producer versus consumer, not two instructions: that rule says who may write the header, this says what every reader does with whatever value is there.
-- passage: - The `Status` header drives the lifecycle. `Ready` plans are surfaced as authored and parked, with no resume push; `In Progress` plans are surfaced for resume; `Complete` plans still sitting here are flagged as unarchived.
+- passage: - The `Status` header drives the lifecycle. `Ready` plans surface as authored and parked, with no resume push. `In Progress` plans surface for resume. A `Complete` plan still here is flagged as unarchived.
 
 ### C027
 - key: Cross-reference a plan that relates to or supersedes another in a `## Related` section.
@@ -988,8 +992,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - class: mechanic
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:61
 - provenance: b49a47b 2026-06-19.
-- verdict: keep
-- reason: no finding. Body text of a generated file whose reader is standing in the archive.
+- verdict: retire
+- reason: one immutability rule stated three times (row 651). The survivor is the archive README Rules line "- Edit or delete nothing here." (C037).
 - passage: This folder is immutable history. Nothing here is live or pending.
 
 ### C031
@@ -1008,7 +1012,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: this is the archive README's `## Contents` line, and a contents section that points elsewhere for its contents is not a contents section. Rule versus its output against the taxonomy row.
-- passage: - **Completed and abandoned plans**, moved here from `../plans/` with their Chapters intact.
+- passage: - **Completed and abandoned plans**.
 
 ### C033
 - key: Name a backlog snapshot file `backlog-YYYY-QN.md`.
@@ -1024,8 +1028,8 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - class: rule
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:66
 - provenance: fa5df56 2026-08-09.
-- verdict: keep
-- reason: the archive README tells a reader of `archive/` how items arrive and `backlog.md` tells a reader of the backlog how they leave; neither reader holds the other file. The bar on striking through sits here because this is where the older habit is reached for.
+- verdict: retire
+- reason: the backlog move rule stated four times (row 652). The survivor is C046's Snapshots line "A done or retired item moves to `archive/backlog-YYYY-QN.md`, never struck through in place.".
 - passage: Completed and retired backlog items are moved into the quarter's snapshot rather than struck through in place.
 
 ### C035
@@ -1044,7 +1048,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, original to the document's archive-immutability discipline.
 - verdict: keep
 - reason: the apparent clash with the supersession-note rule is already carved out in `curating-docs` itself, whose close path says the pointers run one way when the other plan is archived. It is a real clash with `brainstorming` step 9, which states both directions with no carve-out; history and the ownership map put the archive rule on the right side, so brainstorming is the side that gives way, outside this unit.
-- passage: - Do not edit archived plans to reflect new work. A new effort gets a new plan in `../plans/`, cross-referenced to the archived one it builds on or supersedes.
+- passage: New work gets a new plan in `../plans/`, cross-referenced to the archived plan it builds on or supersedes.
 - flag: stale
 
 ### C037
@@ -1054,7 +1058,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: the retrofit prohibition governs a pass over a whole tree and this governs the archive folder for all time, so neither states the other's scope and a retrofit can relocate a file this rule never sees. Both cold readers reached the same conclusion independently.
-- passage: - Nothing is deleted here.
+- passage: - Edit or delete nothing here.
 
 ### C038
 - key: Title `docs/backlog.md` with the heading `# Backlog`.
@@ -1072,7 +1076,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19, with the snapshot filename added by fa5df56 2026-08-09.
 - verdict: keep
 - reason: the seeded backlog is the file a contributor edits, so the rule about where done items go has to be in it. Both proposed compressions drop "handoff and next-steps", which is the scoping C040 then builds on, so neither is loss-free.
-- passage: The living handoff and next-steps doc. It carries active items only. When an item is done, it moves out to a dated snapshot in `archive/` (`backlog-YYYY-QN.md`) rather than being struck through in place.
+- passage: Active cross-effort next-steps and handoffs only.
 
 ### C040
 - key: Keep per-plan history out of the backlog and let a plan's Chapters travel with the plan into `archive/`; use the backlog only for cross-effort next-steps belonging to no single open plan.
@@ -1081,7 +1085,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - provenance: b49a47b 2026-06-19; the SKILL names conflating the two append disciplines as what produces the endless-append problem.
 - verdict: keep
 - reason: this states the split in the file where the conflation actually happens, rather than in the skill a person editing a project backlog is not reading. Its three sentences are the exclusion, where that history goes and when, and the positive scope; both compressions drop the "when it closes" timing.
-- passage: Per-plan history does not live here. A plan's Chapters travel with the plan into `archive/` when it closes. This file is for cross-effort next-steps that do not belong to any single open plan.
+- passage: Per-plan history stays in the plan's Chapters.
 
 ### C041
 - key: Write every active backlog item in the dated shape `- **<item> (YYYY-MM-DD).** <body>`.
@@ -1101,7 +1105,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - verdict: rewrite
 - landed: 5f8b9b7 section 49
 - reason: the rule survives verbatim and moves into its own sentence in the line-85 split. Keep the first-date-ages clause beside it: without that reason the order is arbitrary and a session writes the dates the other way round, which silently resets the item's age. Lands at line 85 (section 49's close) as the split's second sentence, its text from 'The surfacing layers' through the closing parenthesis word for word, the trailing ', and' become a period.
-- passage: The surfacing layers age an item from the first date on its line, so a keep decision at the aging check writes its fresh adjudication date first and preserves the original beside it (`(2026-11-07, parked 2026-05-01)`).
+- passage: Items age from the first date on their line, so a keep at the aging check writes its fresh date first and keeps the original beside it (`(2026-11-07, parked 2026-05-01)`).
 
 ### C043
 - key: Backfill the date on an undated backlog item and adjudicate that item in the same prune pass.
@@ -1113,7 +1117,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - reason: the duty is unchanged and becomes the third sentence of the split. The change is safe because it moves no rule across a boundary and drops only the surfacing-layer account beside it, which C044 covers. Lands at line 85 (section 49's close) as three sentences on the one line: the item form, the first-date-ages rule with its keep-date order, and 'An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: split line 85 into three sentences, one for the item form, one for the first-date-ages rule with the keep-date order it motivates, and one for the undated backfill duty, keeping every rule intact.
 - baseline-test: yes
-- passage: An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.
+- passage: An undated item is past the threshold by definition, so the prune pass backfills its date and adjudicates it in the same pass.
 
 ### C044
 - key: Treat an undated backlog item as counted but ageless: the session-start block reports it only in the undated tally and the aging check cannot age it.
@@ -1125,7 +1129,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - reason: the half that says the surfacing ages an item from the first date on its line stays, because C042's ordering depends on it; the undated-tally half is an account of a hook's output that C043 is obeyable without, and its why now lives in this entry. Lands at line 85 as a substitution of the extracted clause rather than a plain deletion: the colon clause (': the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date') is dropped and replaced with ', so', and the state-naming phrase is substituted from 'counted but ageless' to 'past the threshold by definition', together producing 'An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: keep the first-date-ages clause beside the keep-date rule and drop the undated-tally clause, whose why now lives in this ledger.
 - baseline-test: yes
-- passage: The surfacing layers age an item from the first date on its line
+- passage: Items age from the first date on their line
 
 ### C045
 - key: Give the backlog an `## Active` section holding the active next-steps and handoffs, each in the dated item shape.
@@ -1145,7 +1149,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - verdict: keep
 - reason: this is what tells a contributor reading a short backlog where the rest of its history went; the pointer it would be replaced by is not a document the project holds.
 - passage: ## Snapshots
-- passage: Completed and retired items are archived to `archive/backlog-YYYY-QN.md`.
+- passage: A done or retired item moves to `archive/backlog-YYYY-QN.md`, never struck through in place.
 
 ### C047
 - key: Title a dated backlog snapshot with the heading `# Backlog Snapshot YYYY QN` and state that it holds the completed and retired cross-effort items moved out of `../backlog.md` during that quarter.
@@ -1155,7 +1159,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - verdict: keep
 - reason: no finding.
 - passage: # Backlog Snapshot YYYY QN
-- passage: Completed and retired cross-effort items moved out of `../backlog.md` during this quarter.
+- passage: Items moved out of `../backlog.md` this quarter.
 
 ### C048
 - key: Treat a quarter's backlog snapshot as append-only within that quarter.
@@ -1180,6 +1184,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - class: rationale-example
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:71
 - provenance: b49a47b 2026-06-19, whose stated purpose is a seamless record of what is open, what was planned and what was done.
-- verdict: keep
-- reason: the rationale-retirement rule governs rationale propping up an instruction to the session; this is body text of a shipped artifact, the archive README's own six-word statement of what the folder is for. Retiring it changes what every seeded project says to its readers and saves six words.
+- verdict: retire
+- reason: row 657 (Stable-doc and plan purpose prose), dropped under the mechanism cut.
 - passage: The archive is the project's memory.
+- ruled: cut 2026-09-30

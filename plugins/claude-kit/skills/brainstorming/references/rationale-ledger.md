@@ -137,7 +137,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: f8c0649 2026-06-10 founding text, sequenced after the backlog read at fa5df56 2026-08-09.
 - verdict: keep
 - reason: The step in the owned sequence, carrying the Explore vehicle; the doctrine's read-the-files bullet is the principle it instantiates.
-- passage: Then read the relevant code,
+- passage: Then read the relevant code per the doctrine's "Analyze, surface concerns, then propose before you build" bullet,
 
 ### C014
 - key: Use the built-in Explore subagent for broad reconnaissance so the main context stays lean.
@@ -154,8 +154,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:12
 - provenance: f8c0649 2026-06-10, founding text.
-- verdict: keep
-- reason: Wider than the doctrine's library-docs clause (it also bars imagined repository architecture), eight words long, and the council-member copy binds a different seat.
+- verdict: retire
+- reason: row 461 (Read real code via Explore), merge. The doctrine's "Analyze, surface concerns, then propose before you build" bullet carries it ("read the involved files and docs first. Check current library docs rather than guessing an unfamiliar signature"). The read-the-involved-files clause also covers imagined architecture.
 - passage: Never design against guessed signatures or imagined architecture.
 
 ### C016
@@ -174,7 +174,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 830ff28 2026-06-18, the scope check ported from a sibling fork plus session mining.
 - verdict: keep
 - reason: Nothing mechanical sizes a request, and a spec that should have been three is caught only here.
-- passage: Gauge the request's size before drilling into questions.
+- passage: Before drilling into questions, split a request spanning independent subsystems, each with its own data and lifecycle and useful alone, into sub-project specs.
 - flag: weak-reason
 
 ### C018
@@ -184,7 +184,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 830ff28 2026-06-18, the scope check.
 - verdict: keep
 - reason: The split's trigger and act; obeyable as written and enforced by no machinery.
-- passage: A request spanning independent subsystems is too big for one spec. An independent subsystem has its own data and lifecycle and is useful alone. Name the pieces, how they relate and the build order, then split into sub-project specs.
+- passage: Before drilling into questions, split a request spanning independent subsystems, each with its own data and lifecycle and useful alone, into sub-project specs. Name how they relate and the build order,
 - flag: weak-reason
 
 ### C019
@@ -194,7 +194,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 830ff28 2026-06-18, the scope check.
 - verdict: keep
 - reason: The clause the readers' compressions dropped; it is what stops a split from producing one umbrella spec with sub-headings.
-- passage: Brainstorm the first through this process, and give each its own spec and its own execute and finish cycle.
+- passage: then brainstorm the first through this process, and give each its own spec and its own execute and finish cycle.
 
 ### C020
 - key: Decompose first because refining the details of something that should have been three specs is wasted.
@@ -274,7 +274,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: f8c0649 2026-06-10, founding text.
 - verdict: keep
 - reason: No finding.
-- passage: **Feel out the corners.** Edge cases, failure modes, integration points, performance characteristics, who consumes the output, what happens on re-run (idempotency matters in this codebase), what already exists that solves a similar shape.
+- passage: **Feel out the corners.** Ask what happens on re-run (idempotency matters in this codebase).
 - flag: environment
 
 ### C028
@@ -284,15 +284,15 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: f8c0649 2026-06-10, founding text.
 - verdict: keep
 - reason: "A real decision" is the route (c) gap; the same step's C026 already sends a low-blast default to decide-and-declare, so the doctrine's low-blast pick draws the same act under both surfaces.
-- passage: **Present options with tradeoffs** when a real decision exists.
+- passage: **Present options with tradeoffs** when a real decision exists, per the doctrine's "At a fork, lead with your recommendation and the alternatives you weighed" bullet.
 
 ### C029
 - key: State a recommendation and the reason for it.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:20
 - provenance: f8c0649 2026-06-10, founding text.
-- verdict: keep
-- reason: The design conversation's own move at a fork, six words, owned by the skill that owns the conversation.
+- verdict: retire
+- reason: row 466 (Options, recommendation, open disagreement), merge. The doctrine's Judgment bullet "At a fork, lead with your recommendation and the alternatives you weighed. Say why the others lose." carries it.
 - passage: State a recommendation and the reason.
 
 ### C030
@@ -300,8 +300,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:20
 - provenance: f8c0649 2026-06-10, founding text.
-- verdict: keep
-- reason: Design-specific instance of the doctrine's directness rule, stated where the framing to disagree with arrives.
+- verdict: retire
+- reason: row 466, merge. The doctrine's Directness bullet "Disagree up front. If my plan or code is wrong, say so first, with the reason." carries it.
 - passage: Disagree openly with my framing when warranted; I want the arguments, not agreement.
 
 ### C031
@@ -415,7 +415,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19, the boundary-cadence-and-spec-scope plan, from the 2026-08-18 spec-scope kaizen note: a seven-surface contract change shipped scoped to two, and probes showed a bare-change session finds 17 of 18 surfaces unprompted, so the fix site is spec authoring.
 - verdict: keep
 - reason: No hook derives Files in scope from the tree; the incident recurs on every contract change authored from memory.
-- passage: Where the design changes a contract or a shared surface, one scout sweep runs before the sketch and returns every surface that speaks that contract.
+- passage: Where a name, rule, or shape the change touches appears in more than one file, one scout sweep runs before the sketch and returns every surface that speaks that contract.
 
 ### C042
 - key: Write the sections' "Files in scope" lists from what the sweep returns.
@@ -424,7 +424,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19, the spec-scope section.
 - verdict: keep
 - reason: The derivation duty at the step where the sweep returns; the template's annotated field is the slot 83b81ac's review required, not a second owner.
-- passage: The sections' "Files in scope" lists are written from what the sweep returns.
+- passage: Write the sections' "Files in scope" lists from its return, and cite its searches and the surfaces they found in the Approach.
 
 ### C043
 - key: Evaluate the sweep trigger without running the sweep: it fires when a name, rule, or shape the change touches appears in more than one file, and unsure counts as yes.
@@ -433,7 +433,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19; its review had found a trigger "undecidable at the moment it had to fire" in the sibling section, and this trigger is written to evaluate before the sweep.
 - verdict: keep
 - reason: The trigger's decidability is the reason it reads as it does; dropping the doubt rule re-opens the undecidable trigger.
-- passage: The trigger is decided without the sweep: a name, rule, or shape the change touches appears in more than one file. Unsure counts as yes.
+- passage: Where a name, rule, or shape the change touches appears in more than one file, one scout sweep runs before the sketch and returns every surface that speaks that contract. Unsure counts as yes.
 
 ### C044
 - key: Run the coverage sweep as its own second pass even where Explore already mapped the area; never substitute step 1's reconnaissance for it.
@@ -442,7 +442,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19, the spec-scope section.
 - verdict: keep
 - reason: Step 1 reads to understand and this reads for coverage; the incident's shape was a scope authored from what the author remembered from reconnaissance.
-- passage: The sweep is its own second pass, reading for coverage, never step 1's reconnaissance recalled. It runs even where Explore already mapped the area.
+- passage: The sweep is its own second pass, reading for coverage, and runs even where Explore already mapped the area.
 
 ### C045
 - key: Band the scout and state its return contract per `executing-work/SKILL.md`'s "Band the scout by question shape, and state its return contract".
@@ -451,7 +451,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19; the plan directed a pointer at executing-work's banding rather than a restatement.
 - verdict: keep
 - reason: Already the pointer at the owner the ownership map names for scouts.
-- passage: Band it and state its return contract per `executing-work/SKILL.md`'s "Band the scout by question shape, and state its return contract", which owns both.
+- passage: Band it and state its return contract per `executing-work/SKILL.md`'s "Band the scout by question shape, and state its return contract", on the built-in Explore subagent carrying that band's explicit model override.
 
 ### C046
 - key: Run the sweep through the built-in Explore subagent carrying that band's explicit model override.
@@ -460,7 +460,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19.
 - verdict: keep
 - reason: Names the vehicle and that the band's override rides, without naming a model, so it cannot drift from executing-work's banding.
-- passage: The vehicle is the built-in Explore subagent carrying that band's explicit model override.
+- passage: Band it and state its return contract per `executing-work/SKILL.md`'s "Band the scout by question shape, and state its return contract", on the built-in Explore subagent carrying that band's explicit model override.
 
 ### C047
 - key: Cite the sweep's return in the spec's Approach: the searches run and the surfaces they found.
@@ -469,7 +469,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19; the citation is what lets the self-review check coverage.
 - verdict: keep
 - reason: The step's duty to fill the Approach slot the template carries; the template line is the field's shape, not a second rule.
-- passage: Cite its return in the spec's Approach: the searches run and the surfaces they found.
+- passage: Write the sections' "Files in scope" lists from its return, and cite its searches and the surfaces they found in the Approach.
 
 ### C048
 - key: Send the sweep's returned surfaces back through step 2's split check before any sketch where they span independent subsystems.
@@ -478,7 +478,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 83b81ac 2026-08-19.
 - verdict: keep
 - reason: The route by which a sweep that reveals an oversized effort reaches the split rule instead of a bloated spec.
-- passage: Where those surfaces span independent subsystems, they go back through step 2's split check before any sketch.
+- passage: Surfaces spanning independent subsystems go back through step 2's split check before any sketch.
 
 ### C049
 - key: Authoring scope from memory is the anti-pattern: a contract change ships scoped to a fraction of the surfaces that speak it, the rest arriving one review round at a time.
@@ -595,15 +595,15 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: c18afce 2026-09-03, the gating-definitions plan: a coordination ledger reached 201 KB against a 35 KB ceiling because its admission rule was read as a membership test by one party and a description of state by the other, and the two readings paraphrased identically (operator memory test-a-gating-definition-by-crossing-not-by-disjoint-exclusions).
 - verdict: keep
 - reason: The class sentence is a parity-pinned copy shared with the blind-reader charter (test/doctrine-parity.test.js:6195) because a dispatched reader loads no skill; no hook checks a definition's exclusions. The test/doctrine-parity.test.js:6195 cite sits at the test named `the bounded-artifact class sentence reads the same on both gating surfaces` at the landing (declared near line 6218, the compared sentence built just below it); prefer the test name over the line.
-- passage: One class of sentence is written against its exclusions rather than its paraphrase: the gating definition.
+- passage: A gating definition is written against its exclusions rather than its paraphrase. A gating definition is a phrase deciding what a bounded artifact admits, where a bounded artifact is a thing that holds content, keeps other content out, and cannot grow without limit, so a class of actions or of conditions is not one however cleanly it divides.
 
 ### C060
 - key: A document, a ledger, a board, and a spec's own scope lists are instances of a bounded artifact rather than its boundary, so an artifact none of them names is still covered where it meets the definition.
 - class: rationale-example
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:28
 - provenance: c18afce 2026-09-03; the real run found the class sentence loose enough to stretch over classes of actions, and the bound was narrowed.
-- verdict: keep
-- reason: The disambiguation the rule demands of every enumeration with a trailing clause, applied to the rule's own class sentence; delete it and the definition fails its own bar.
+- verdict: retire
+- reason: row 472 (Gating definition drafting rule), shrink. The instance list is argument. The class sentence in C059's landed passage still states the bound, and that bound covers any artifact meeting it.
 - passage: A document, a ledger, a board and a spec's own scope lists are instances of that class rather than its boundary, and an artifact none of them names is covered wherever it meets the definition.
 
 ### C061
@@ -613,7 +613,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: c18afce 2026-09-03, the authoring form.
 - verdict: keep
 - reason: The blind reader's bar on printed exclusions was designed against this rule on purpose (a reader copying the printed list would make agreement automatic), so the two are one instrument, not a conflict.
-- passage: A gating definition either closes its set in the repo's idiom (`the set is closed at`, `a closed list of`), or names in place at least three things it excludes.
+- passage: It either closes its set in the repo's idiom (`the set is closed at`, `a closed list of`), or names in place at least three things it excludes.
 
 ### C062
 - key: Where a gating definition is an enumeration followed by a trailing general clause, say whether that clause summarizes the examples or extends past them.
@@ -631,7 +631,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: c18afce 2026-09-03 (archived plan principle 1).
 - verdict: keep
 - reason: The backstop for the definition neither form fits; obeyable with C064's verdicts beside it.
-- passage: Where a definition resists both forms, ask what a reader would do differently if the line were deleted.
+- passage: Where a definition resists both forms, ask what a reader would do differently if the line were deleted: nothing marks decoration, and behavior you did not intend marks the defect.
 
 ### C064
 - key: A line that changes nothing is decoration, and one that changes behavior the author did not intend is the defect this rule catches.
@@ -640,7 +640,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: c18afce 2026-09-03.
 - verdict: keep
 - reason: The backstop asks a question and this sentence classifies its two answers; without it the backstop returns no verdict.
-- passage: A line that changes nothing is decoration, and one that changes behavior the author did not intend is the defect this rule catches.
+- passage: Where a definition resists both forms, ask what a reader would do differently if the line were deleted: nothing marks decoration, and behavior you did not intend marks the defect.
 
 ### C065
 - key: Read the spec once with fresh eyes before handing it to executing-work and fix inline: placeholders, contradicting sections, two-way-readable requirements, and scope that drifted past the goal.
@@ -649,7 +649,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 830ff28 2026-06-18, the spec self-review ported from session mining.
 - verdict: keep
 - reason: Names the defect classes and the timing; the doctrine's check-your-own-plan sentence is the principle, and no gate reads a spec for placeholders.
-- passage: **Spec self-review.** Before handing the spec to executing-work, read it once with fresh eyes and fix inline: placeholders (TBD, TODO, "handle appropriately"), sections that contradict each other, scope that drifted past the goal, and requirements readable two ways, which take one reading made explicit.
+- passage: **Spec self-review.** Before handing the spec to executing-work, read it once and fix inline placeholders, contradictions, scope drift past the goal and requirements readable two ways, with no second inline pass.
 
 ### C066
 - key: Check that every surface the step 7 sweep returned appears in some section's Files in scope or under `## Out of Scope`, and place any that appears in neither before the spec ships.
@@ -711,7 +711,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: e872098 2026-08-18, the intake-gap-check plan's fresh read.
 - verdict: keep
 - reason: Bounds the inline pass so the blind read, not a second self-read, is what catches the gaps the session filled.
-- passage: The inline pass gets no second inline pass: fix and move on.
+- passage: **Spec self-review.** Before handing the spec to executing-work, read it once and fix inline placeholders, contradictions, scope drift past the goal and requirements readable two ways, with no second inline pass.
 
 ### C072
 - key: Run the blind read that follows the inline pass; it is separate and not optional.
@@ -740,9 +740,10 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03; the plan's rulings moved the author's record before the dispatch and then reduced it to locations when the comparison became crossing rather than list-versus-list.
-- verdict: keep
-- reason: The recorded set is what the one-sided comparison (C080, C081) reads; nothing mechanical records it.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Before dispatching it, record which phrases in the spec you count as gating definitions, their locations and nothing more.
+- ruled: cut 2026-09-30
 
 ### C075
 - key: You wrote the definitions, so an exclusion list drafted now would be neither independent of them nor forgettable, and the comparison is built to need neither.
@@ -771,7 +772,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: e872098 2026-08-18, the three routes of the intake gap check applied to the reader's return.
 - verdict: keep
 - reason: The owner of the three-way adjudication that the plan-review sentence cites; the third route's hold is the operator's own design call.
-- passage: Adjudicate each question it returns one of three ways: answer it in the spec, declare it under `## Assumptions` and in the recap, or put it to me with a recommendation.
+- passage: Adjudicate each question it returns, and each pair its charter returns per gating definition, one of three ways: answer it in the spec, declare it under `## Assumptions` and in the recap, or put it to me with a recommendation.
 
 ### C078
 - key: Record `blind read: <n> questions, <a> answered, <b> assumed, <c> asked` in the handoff recap.
@@ -789,44 +790,48 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: c18afce 2026-09-03; the plan ruled the litmus is carried by no dispatch field because three surfaces close the dispatch to paths and the `Reader:` line.
 - verdict: keep
 - reason: Says the contract lives in the charter, forbids the dispatch field a session might add, and supplies the vocabulary the comparison that follows uses.
-- passage: The reader's charter, not the dispatch, has it return three pairs per gating definition: a thing the rule admits, the nearest thing it keeps out, and the feature separating them.
+- passage: and each pair its charter returns per gating definition
 
 ### C080
 - key: Compare your recorded set of gating definitions against the reader's set first.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03.
-- verdict: keep
-- reason: The one-sided phrase is the litmus's loudest result and is found only by this comparison.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: First compare the two sets of definitions.
+- ruled: cut 2026-09-30
 
 ### C081
 - key: Where one side counted a phrase as a gating definition and the other did not, rewrite that phrase until it either reads as a rule or plainly decides nothing, before the spec ships.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03.
-- verdict: keep
-- reason: The act for the one-sided result; obeyable and unenforced.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Rewrite a phrase only one side counted, before the spec ships, until it either reads as a rule or plainly decides nothing.
 - flag: weak-reason
+- ruled: cut 2026-09-30
 
 ### C082
 - key: For each shared definition, place all six of the reader's members against your own reading, writing beside each a verdict of in, out, or cannot place, plus the clause of the definition that decides it.
 - class: mechanic
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03; two review rounds and a consult replaced disjoint exclusion lists with crossing, since two readers who agree still draw disjoint samples from an unbounded complement.
-- verdict: keep
-- reason: The placement with its clause citation is the crossing test itself; the clause requirement is what stops the author reading the reader's member into the rule after the fact.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Then place all six members of each shared definition against your own reading: in, out, or cannot place, with the clause that decides it.
+- ruled: cut 2026-09-30
 
 ### C083
 - key: Read each pair's separating feature and ask whether your own rule turns on that feature.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03; the real run reported that two readers differ in examples while converging on separating features.
-- verdict: keep
-- reason: The second net for the instrument's known residual (pairs that miss where readings differ); nothing else exposes a reading when the samples coincide.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Then ask whether your rule turns on each pair's separating feature.
+- ruled: cut 2026-09-30
 
 ### C084
 - key: Cite the deciding clause because nothing mechanical stops you reading the reader's member into your rule after the fact, and a placement you cannot tie to a clause is a result rather than a pass.
@@ -844,11 +849,12 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03; crossing is the founding incident's signal (each side's exclusions sat inside what the other admitted).
-- verdict: rewrite
+- verdict: retire
 - landed: 16c5e61 section 28
-- reason: The act for the discriminating result; obeyable and unenforced. Flipped from keep to rewrite at section 28's close: C086's retire took the two-rules-wearing-one-sentence clause between this sentence's colon and its act, so the act follows the colon directly; the round's blind lens found the keep standing on a changed sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - proposed: Crossed, meaning any member you place on the side opposite the reader, or a separating feature your rule does not turn on: the definition is rewritten before the spec ships.
 - passage: Crossed: a member you place opposite the reader, or a separating feature your rule does not turn on. Rewrite the definition before the spec ships.
+- ruled: cut 2026-09-30
 
 ### C086
 - key: A crossed result is two rules wearing one sentence, which is the defect the whole check exists to catch.
@@ -866,47 +872,52 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03; the gating plan's principle 5 (narrowing a rule is not complete until the narrowed-away case is placed) is the same doubt-falls-out rule.
-- verdict: keep
-- reason: The act for the underdetermined definition, with the immaterial-member route so doubt falls out rather than in; obeyable and unenforced.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Unplaced: a member you cannot place, or place only without a clause to cite. Place it by intent and rewrite the definition until its own text places it too. An immaterial member is recorded instead as excluded under `## Assumptions` and in the recap, in the spec format's bullet form, so doubt falls out rather than in.
+- ruled: cut 2026-09-30
 
 ### C088
 - key: On an under-length result, rewrite the definition as well.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03, the gating-definitions plan installed the litmus's four results after a coordination ledger reached 201 KB against a 35 KB ceiling because its admission rule was read two ways.
-- verdict: keep
-- reason: no finding. One of the litmus's four closed results; the reader's stated stopper is the signal that the boundary was not reachable.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Under-length: fewer than three pairs with the reader's stated stopper. Rewrite the definition.
+- ruled: cut 2026-09-30
 
 ### C089
 - key: A pass, meaning all six placed as the reader placed them with clauses cited and features matched, is the ordinary result and costs nothing.
 - class: rationale-example
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03, installed with the litmus as the fourth of its four results.
-- verdict: keep
-- reason: The rule cannot be obeyed without it: it is the only result with no act, so it is the terminating condition of the check rather than an argument for it.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Pass: all six placed as the reader placed them, clauses cited and features matched. It is the ordinary result and costs nothing.
+- ruled: cut 2026-09-30
 
 ### C090
 - key: Record `gating litmus: <n> definitions, <s> one-sided, <x> crossed, <p> unplaced, <u> under-length` in the handoff recap beside the blind-read line.
 - class: mechanic
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03, the litmus's record line, mirroring the blind-read line e872098 installed.
-- verdict: keep
-- reason: no finding. The record is what makes the litmus auditable in the recap; nothing mechanical reads or writes it.
+- verdict: retire
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - passage: Record `gating litmus: <n> definitions, <s> one-sided, <x> crossed, <p> unplaced, <u> under-length` in the handoff recap beside the blind-read line.
+- ruled: cut 2026-09-30
 
 ### C091
 - key: Record `gating litmus: none` for a spec carrying no gating definition.
 - class: mechanic
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
 - provenance: c18afce 2026-09-03, installed with the record line so a silent absence is distinguishable from a skipped check.
-- verdict: rewrite
+- verdict: retire
 - landed: 16c5e61 section 28
-- reason: no finding. A recap that says nothing about the litmus cannot be told from one that forgot it. Flipped from keep to rewrite at section 28's close: C092's rewrite moved the skip clause that followed this sentence's comma to C103's site, so the comma becomes a period, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: row 478 (Gating litmus with paired members), dropped under the mechanism cut.
 - proposed: a spec carrying no gating definition records `gating litmus: none`.
 - passage: A spec carrying no gating definition records `gating litmus: none`.
+- ruled: cut 2026-09-30
 
 ### C092
 - key: A spec that skipped the blind read skips the gating litmus too, and says so.
@@ -918,7 +929,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - reason: ead49db appended an identical skip clause for the plan review five days later; one sentence naming both dependents carries the same trigger and the same say-so duty without loss (A002). Lands merged with C103 at C103's site as 'A spec that skipped the blind read skips the gating litmus and the plan review with it, and says so;', the site chosen because the sentence names the plan review, which this entry's own site precedes; this entry's site keeps 'a spec carrying no gating definition records `gating litmus: none`.' and loses the skip clause after it, the comma becoming a period, which C091 records. Its landing respelled C091's keep sentence; C091 records the flip.
 - proposed: (via A002) Merge C092 and C103 into one sentence: a spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
 - baseline-test: yes
-- passage: A spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
+- passage: A spec that skipped the blind read skips the plan review with it, and says so.
 
 ### C093
 - key: The instrument's known residual is that the reader's pairs may fall elsewhere than where two readings differ, passing silently; the separating feature is the second net, and the pairs' coverage of the boundary is not measured.
@@ -938,7 +949,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: ead49db 2026-09-08, section 2 of the plan-review-and-recap plan, which added a fresh-context read of a spec against its own Goal before arming.
 - verdict: keep
 - reason: no finding. The order is the design: the litmus fixes the definitions the reviewer will read against, and the recap reports the review's result.
-- passage: **The plan review follows the litmus and precedes the handoff recap.**
+- passage: **The plan review follows the blind read and precedes the handoff recap.**
 
 ### C095
 - key: Dispatch the `plan-reviewer` agent with the spec path alone, never the design conversation, at fable and effort high, through Workflow's `agent()` on executing-work's Reviewer Dispatch template.
@@ -969,7 +980,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: ead49db 2026-09-08, the fallback route the frontmatter low exists for.
 - verdict: keep
 - reason: no finding. The record of the lower effort is what keeps the section from reading as reviewed at the tier the skill names.
-- passage: Without Workflow, use the Agent tool at `model: 'fable'` and the charter's frontmatter effort, `low`, and record the review as run at lower effort.
+- passage: Without Workflow, use the Agent tool at `model: 'fable'` and record the review as run at lower effort.
 
 ### C098
 - key: Where fable cannot be run at all, or executing-work's capacity reading returned `-> downgrade`, wait rather than substitute a lower model, and record the wait.
@@ -1024,7 +1035,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - verdict: rewrite
 - landed: 16c5e61 section 28
 - reason: Merges with C092 into one skip sentence naming both dependents (A002); the trigger and the say-so duty are identical. Lands as the merged skip sentence at this entry's site, 'A spec that skipped the blind read skips the gating litmus and the plan review with it, and says so;', C092's tagged proposal supplying the wording and this reason the merge; the external-engine clause after the semicolon stands.
-- passage: A spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
+- passage: A spec that skipped the blind read skips the plan review with it, and says so.
 
 ### C104
 - key: A session that cannot dispatch records the plan-review skip under `## Assumptions`, and the external engine's own review stands in.
@@ -1053,8 +1064,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: mechanic
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:33
 - provenance: 830ff28 2026-06-17, the fork port that made the three commit models the kit's set; a8770b3 reworded it to first person.
-- verdict: keep
-- reason: The definition serves the chooser at step 11; executing-work owns the per-section act and the doctrine names Review-Only as an override of the push default. The commit it holds is an outward act, so the gate is blast-radius and stays (A019).
+- verdict: retire
+- reason: row 481 (Commit model in header), merge. Executing-work's step 7 bullet "**Review-Only:** stage the section's changes (`git add`); never commit. ... `git diff --staged` is my review surface." carries it, beside `curating-docs/SKILL.md`'s Commit Model contract row.
 - passage: **Review-Only:** changes accumulate staged as sections complete, and `git diff --staged` is my review surface before anything is committed.
 
 ### C107
@@ -1062,8 +1073,8 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: mechanic
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:34
 - provenance: ebd12d2 2026-09-02, which removed the repository-ownership routing from this entry after reviewers found two adjacent list members each declaring themselves the default.
-- verdict: keep
-- reason: The definition serves the chooser; the curating-docs draft-per-plan cadence describes the external engine's reading of the header prose, and the ownership map lists who opens the PR as contested for the operator to rule (A021).
+- verdict: retire
+- reason: row 481, merge. Executing-work's step 7 bullet "**Branch-and-PR:** commit the section's code with its Chapter to the feature branch" and finishing-work's step 7 "Apply the commit model" carry it.
 - passage: **Branch-and-PR:** work happens on a feature branch and finishing-work opens a pull request.
 
 ### C108
@@ -1076,7 +1087,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - reason: The worktree-merge clause is finishing-work's integration act, restated whole by executing-work at its step; a chooser does not need it (A023). The motto "land it on main and leave no mess" is referenced at test/doctrine-parity.test.js:5444 and stays. Lands as '"land it on main and leave no mess." Commit and push to origin as sections complete.', the worktree-merge clause gone; the motto stays on the one line that performs the integration, which is what the `INTEGRATION_EXEMPT` anchor `land it on main and leave no mess` in `test/doctrine-parity.test.js` requires (the test named `every kit procedure performing a git integration names that action's lane or states its exemption`), and the test/doctrine-parity.test.js:5444 cite in this reason and its proposal sits at that anchor at the landing; prefer the anchor over the line.
 - proposed: (via A023) Drop "if concurrency forced a worktree branch, finishing-work merges to main and tears it down" from the Commit-and-Push definition; keep the quoted motto and the commit-and-push-as-sections-complete clause, since test/doctrine-parity.test.js:5444 references the motto.
 - baseline-test: yes
-- passage: **Commit-and-Push:** "land it on main and leave no mess." Commit and push to origin as sections complete.
+- passage: Commit-and-Push is "land it on main and leave no mess."
 - flag: stale
 
 ### C109
@@ -1084,9 +1095,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:35
 - provenance: ebd12d2 2026-09-02, the operator's ruling that commit and push are the default with no repository-ownership test, placed here because a header rule reaches an author only in the skill loaded at writing time (662e5e3).
-- verdict: rewrite
+- verdict: retire
 - landed: 16c5e61 section 28
-- reason: The default stays as the authoring copy the doctrine's grant is written for; the closing sentence splits once C110's clause leaves it (A026). Lands as 'The default choice when authoring a plan, which the header then records; another model takes a header or a direction that names it.', the proposal word for word.
+- reason: row 481, merge. C105's landed lead "Commit-and-Push unless I name another" carries the default, as does the doctrine's "Commit and push are the default".
 - proposed: End the Commit-and-Push bullet with "The default choice when authoring a plan, which the header then records; another model takes a header or a direction that names it."
 - baseline-test: yes
 - passage: It is the default when authoring a plan, and the header records it. Another model needs a header or a direction that names it.
@@ -1205,7 +1216,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - reason: Absorbs C129's "at any tier" so the briefability-decides-locus mechanic is stated once with its two failure cases (A035). Lands at line 42 as 'A section that cannot be briefed at any tier (the spec itself is likely to evolve in contact with the code, or the section is so small the brief would cost more than the work) carries `Locus: inline` beneath its `Model:` line.', C129's 'at any tier' folded in, and C129's clause gone from line 46. Its landing respelled C128's keep sentence; C128 records the flip.
 - proposed: (via A035) Fold "at any tier" into C121's sentence at line 42 and delete C129's clause from line 46, leaving "Write to that standard or assign a higher tier" to follow the briefability test directly.
 - baseline-test: yes
-- passage: A section that cannot be briefed at any tier carries `Locus: inline` beneath its `Model:` line. A section cannot be briefed where the spec is likely to evolve in contact with the code, or where it is so small the brief would cost more than the work.
+- passage: A section that cannot be briefed at any tier, because the spec will evolve in contact with the code or the brief would cost more than the work, carries `Locus: inline` beneath its `Model:` line, and is otherwise dispatched.
 
 ### C122
 - key: Dispatch a section that carries no `Locus:` line.
@@ -1214,7 +1225,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: c2114e9 2026-08-01, the omission semantics executing-work routes on.
 - verdict: keep
 - reason: The template field states its own omission meaning for the author and the process rule states the routing default; both were installed together (A047).
-- passage: Absent that line, the section is dispatched.
+- passage: A section that cannot be briefed at any tier, because the spec will evolve in contact with the code or the brief would cost more than the work, carries `Locus: inline` beneath its `Model:` line, and is otherwise dispatched.
 
 ### C123
 - key: Treat inline as the deliberate exception and the escalation ceiling, never the comfortable default, because the main thread is the most expensive place to write code.
@@ -1237,7 +1248,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - landed: 16c5e61 section 28
 - reason: The specific rule for the inline case; the tier bands describe dispatched work (A040). Flipped from keep to rewrite at section 28's close: C125's rewrite recast line 44 as three rules and states this one's first as its proposal words it, so the 'Opus-led' naming and the main-thread-is-the-session clause leave this sentence (the first surviving at line 54, the second leaving the document with C147), and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: `Model:` names the model that will actually run, so an inline section on the execution session is `Model: opus`.
-- passage: `Model:` names the model that will actually run, so an inline section on the execution session is `Model: opus`.
+- passage: `Model:` is a bare token naming the model that will actually run, with the reasoning in the section body, so an inline section on the execution session is `Model: opus`.
 
 ### C125
 - key: Question rather than write the combination of `fable` plus `inline`.
@@ -1249,7 +1260,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - reason: The paragraph recasts as its three rules once C126's parser rationale moves here (A051); the rule itself stands. Lands as line 44's three sentences: '`Model:` names the model that will actually run, so an inline section on the execution session is `Model: opus`. `fable` plus `inline` is a combination to question rather than write, since a Fable main thread exists only on a design session. Keep the value a bare token and put the reasoning in the section body.' The framing sentence 'Two reasons the two axes stay on separate lines, and both bite in practice.', the ordinals 'First,' and 'Second,' and the tail ', where a reader wants it anyway' leave with the recast, C126's sentence leaving beside them. Its landing respelled C124's keep sentence; C124 records the flip. Its landing respelled C127's keep sentence; C127 records the flip.
 - proposed: Recast line 44 as three rules: Model: names the model that will actually run, so an inline section on the execution session is Model: opus; fable plus inline is a combination to question rather than write, since a Fable main thread exists only on a design session; keep the value a bare token and put the reasoning in the section body.
 - baseline-test: yes
-- passage: `fable` plus `inline` is a combination to question rather than write, since a Fable main thread exists only on a design session.
+- passage: Question `fable` plus `inline`, since a Fable main thread exists only on a design session.
 
 ### C126
 - key: An external engine parses the `Model:` line and accepts only bare tokens, silently substituting a default, so a decorated value or trailing rationale downgrades the section with no error anywhere.
@@ -1271,7 +1282,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - landed: 16c5e61 section 28
 - reason: The instruction stays in the skill loaded at writing time (662e5e3's reasoning); curating-docs owns the values, and C126's rationale leaves (A054). Flipped from keep to rewrite at section 28's close: C125's recast of line 44 dropped the tail ', where a reader wants it anyway' after this sentence's last clause, so the sentence ends at 'section body'; the round's blind lens found the keep standing on a changed sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Keep the value a bare token and put the reasoning in the section body.
-- passage: Keep the value a bare token and put the reasoning in the section body.
+- passage: `Model:` is a bare token naming the model that will actually run, with the reasoning in the section body, so an inline section on the execution session is `Model: opus`.
 
 ### C128
 - key: Give a section a cheap tier only if its spec is precise enough for an implementer with no conversation context to build it from the section text alone.
@@ -1292,7 +1303,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - verdict: rewrite
 - landed: 16c5e61 section 28
 - reason: Its only addition to C121 is "at any tier", which folds into C121; the third statement of briefability-decides-locus leaves line 46 (A035). Lands folded into C121's sentence at line 42 as 'at any tier'; its own clause, '; the same test decides locus, and a section that fails it at any tier is the one that earns `Locus: inline`', leaves line 46, 'Write to that standard or assign a higher tier' following the briefability test directly. Its landing respelled C128's keep sentence; C128 records the flip.
-- passage: A section that cannot be briefed at any tier carries `Locus: inline` beneath its `Model:` line.
+- passage: A section that cannot be briefed at any tier, because the spec will evolve in contact with the code or the brief would cost more than the work, carries `Locus: inline` beneath its `Model:` line, and is otherwise dispatched.
 
 ### C130
 - key: Write the section to that briefable standard, or assign it a higher tier.
@@ -1337,7 +1348,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: da1a895 2026-07-14, the first of the three constraints keeping implementer judgment intact.
 - verdict: keep
 - reason: Ruled with C132 (A059); the constraint is the rule's boundary, not its argument.
-- passage: It states **intent, never design**: what to lock, never fixtures, seams or structure, which the plan does not know.
+- passage: It states **intent, never design**: what to lock, never fixtures, seams or structure.
 
 ### C135
 - key: Treat the `Tests:` line as a floor over the named contracts and a ceiling on neither which behaviors are covered nor how much coverage each takes.
@@ -1346,7 +1357,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: da1a895 2026-07-14, the second constraint; d2e2f37 2026-09-05 split the ceiling into its two axes.
 - verdict: keep
 - reason: Ruled with C132 (A059); the two-axis ceiling is what keeps testing-discipline's shape bar in force past the line.
-- passage: It is a **floor over the named contracts, and a ceiling on neither which behaviors are covered nor how much coverage each takes**, and testing-discipline's shape bar governs coverage past it.
+- passage: It is a floor over the named contracts and a ceiling on nothing, and it is amendable on contact with the code, with the delta flagged in the Chapter.
 
 ### C136
 - key: Treat the `Tests:` line as amendable on contact with the code like any other spec claim, with the delta flagged in the Chapter.
@@ -1355,7 +1366,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: da1a895 2026-07-14, the third constraint.
 - verdict: keep
 - reason: Ruled with C132 (A059); amendability with a flagged delta is the drift rule applied to this line.
-- passage: It is **amendable on contact with the code** like any other spec claim, with the delta flagged in the Chapter.
+- passage: It is a floor over the named contracts and a ceiling on nothing, and it is amendable on contact with the code, with the delta flagged in the Chapter.
 
 ### C137
 - key: The cheaper the tier the more the `Tests:` line matters: haiku already requires its gate named, sonnet inherits judgment it need not re-derive, and at fable it is planning-Fable orienting implementing-Fable.
@@ -1394,9 +1405,9 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:50
 - provenance: a5fce80 2026-08-18, seventeen days after c2114e9's bare-token rule, which the sentence itself cites as already forbidding the decoration.
-- verdict: rewrite
+- verdict: retire
 - landed: 16c5e61 section 28
-- reason: The operative content is that the inputs ride in the section body; the never-on-the-Model:-line clause is a self-declared copy of C127 and trims (A041). Lands as 'All of these ride in the section body.', the never-on-the-`Model:`-line clause gone; C120's lead and C127's bare-token rule stand.
+- reason: row 486 kept the inputs. The meaning "ride in the section body" is carried by C138's landed "its body carries the review inputs" and "the body also carries a `Disclosure:` list".
 - proposed: (via A041) Reduce C140's sentence to "All of these ride in the section body", dropping "never on the Model: line, whose bare-token contract above already forbids decorating it"; C120 and C127 stay.
 - baseline-test: yes
 - passage: All of these ride in the section body.
@@ -1439,7 +1450,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - reason: The header it served is gone and every reviewer-rule change since has had to carry this copy, which is the drift the one-owner decision exists to stop; it becomes a pointer at executing-work's reviewer rule, finishing-work's reviews and consult's model rule (A064). Lands as 'A normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.', the enumeration gone.
 - proposed: (via A064) Replace the enumeration with a pointer: a normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.
 - baseline-test: yes
-- passage: A normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.
+- passage: Executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule state which dispatches draw Fable.
 
 ### C145
 - key: Use a Fable-led session for design work: brainstorming, specs, adjudication, and the finishing pass of a high-stakes effort.
@@ -1690,7 +1701,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: 662e5e3 2026-08-01, which declared the plan-doc machine contract in curating-docs with a pointer from brainstorming because a header rule reaches an author only in the skill loaded at writing time.
 - verdict: keep
 - reason: no finding. The pointer is the mechanism that commit chose; the contract is frozen v1 and owned there.
-- passage: `curating-docs/SKILL.md`'s machine contract section states the frozen shape and the values it accepts, including `Model:`.
+- passage: The header and structure above are a machine contract: `curating-docs/SKILL.md`'s machine contract section states its frozen shape and the values it accepts, including `Model:`.
 
 ### C171
 - key: Keep `## Assumptions` outside `## Sections of Work`, whose block any foreign `##` heading ends early.
@@ -1746,7 +1757,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the plan's Approach paragraph "The record." states the design.
 - verdict: keep
 - reason: The conversation is the only source of the operator's words and it is gone at the next session, so the write is anchored to the one step that still holds it. The what-and-why bound keeps the record out of the Approach's job, which the scope-adjudicator is blind to by design.
-- passage: The `## Intent` section is written here, while the design conversation is still in the window. It carries what and why, never how, which is the Approach's.
+- passage: The `## Intent` section is written here, while the design conversation is still in the window. It carries what and why, never how.
 
 ### C177
 - key: Write the record's parts in order: the frame in the operator's words, what done does and does not need to do, the refused alternatives one per line with their reasons, the dated rulings made after the spec ships, and a provenance line.
@@ -1755,7 +1766,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; that plan's own `## Intent` is the first instance.
 - verdict: keep
 - reason: Each part answers a reader the Approach does not serve. The plan reviewer reads the not-done half and the refusals to tell service to the Goal from an addition, and the provenance line stands in for a transcript reference, which the plan refused as machine-local and too large.
-- passage: Its parts, in order: the frame in my words where the session has them; what done does and does not need to do; the alternatives refused, each on one line with its reason; the rulings I make after the spec ships, each dated and appended the same turn; and a provenance line naming the session it was distilled from.
+- passage: Its parts, in order: the frame in my words where the session has them; what done does and does not need to do; the alternatives refused, each on one line with its reason; the rulings I make after the spec ships, each dated and appended the same turn; and a provenance line naming the session.
 
 ### C178
 - key: Say in the refused-alternatives part that the conversation refused nothing where it did, and still make the not-done half refuse something.
@@ -1764,7 +1775,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19.
 - verdict: keep
 - reason: An omitted part reads the same as a forgotten one, so the empty case is stated for both parts that can be empty at the write. The rulings part is the usual empty one, since most rulings come after the spec ships, and step 10 would otherwise read its stated emptiness as the placeholder it removes. The not-done half is the half the add-decision reads against, and one that keeps nothing out makes every addition look like service to the Goal.
-- passage: An empty refusals or rulings part says so rather than being left out, and that sentence is its content, not a placeholder for step 10 to remove. The not-done half still has to refuse something.
+- passage: An empty part says so rather than being left out. The not-done half still has to refuse something.
 
 ### C179
 - key: Write the record in the client-briefing register and bound it to about 4,000 bytes, read with `wc -c` over the section.
@@ -1773,7 +1784,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19, on the operator's ruling of 2026-09-18 on the relay thread that the record takes the register the operator reads.
 - verdict: keep
 - reason: The operator reads and approves this section, so it takes the register the doctrine fixes for what the operator decides from. The bound is one screen because a fresh reader reads the record whole before the spec, and a longer one becomes the design story that reader must not hold. The bound is read once, at the write, because a ruling is the operator's word and cutting one to fit would lose exactly what the rulings part exists to keep; trimming the earlier parts instead would rewrite an approved record on ordinary progress, which the freeze bars.
-- passage: The record takes the client-briefing register the doctrine's decision-ask bullet names, since I read and approve it. It is bounded to about 4,000 bytes, roughly one screen, read with `wc -c` over the section at the write. A ruling appended later may carry it past the bound and is never cut to fit. Such a ruling is the deliberate amendment the freeze paragraph under `## Assumptions` records as drift.
+- passage: The record takes the doctrine's client-briefing register. It is bounded to about 4,000 bytes, read with `wc -c` over the section at the write. A ruling appended later may carry it past the bound and is never cut to fit.
 
 ### C180
 - key: Append a ruling made after approval to `## Intent` the same turn, dated, as a deliberate amendment recorded in the Chapter as drift.
@@ -1798,19 +1809,21 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:52
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; the plan-reviewer's `[unrefusable-frame]` question is the same check run by a fresh reader afterwards.
-- verdict: keep
-- reason: C178 requires the not-done half to refuse something and nothing at the write tested whether it does. Naming a mechanism is that test, since a record refuses only what an author can hold an addition against. The check runs before the blind read so the author fixes their own record rather than spending a dispatch on it, and the plan review stays the outside read of a record the author already tried to break.
+- verdict: retire
+- reason: row 475 (Intent refusal naming test), dropped under the mechanism cut.
 - passage: Read the `## Intent` record's not-done half, with the refused alternatives beside it, and name one mechanism it would refuse. Where you can name none, rewrite the record before the blind read.
+- ruled: cut 2026-09-30
 
 ### C183
 - key: In the spec self-review, run the Jev coverage tool over the spec between the inline pass and the blind read, re-read the thinnest sections against their lowest topics, and record its closing line in the handoff recap as it printed, or the by-hand not-run form where it printed none.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:54
 - provenance: docs/plans/claude-kit_jev-coverage-check_spec_v1.md section 3 2026-09-21; the operator's six rounds of experiments on 2026-09-20 found that Jev answers a precise question cheaply and repeatably and cannot invent the question.
-- verdict: keep
-- reason: The check is the cheapest read the self-review has, a few seconds and no dispatch, so it sits before the two fable reads where a thin section is cheapest to fix. The line is recorded as printed because a not-checked or not-configured reading is a fact about the machine, and a retry into a pass would make the recap say a check ran that did not. It stays out of C092's skip chain because that chain keys on the blind read's dispatch cost, which this check does not carry. The blind reader and the plan reviewer never see a score, so their reads stay blind to it and the tool advises the author alone.
+- verdict: retire
+- reason: row 476 (Jev coverage check), dropped under the mechanism cut.
 - passage: Record the tool's closing line in the handoff recap beside the blind-read line, in whichever of its three forms it printed: `jev coverage: <n> sections, thinnest <N> at <mean>`, `jev coverage: not checked (<reason>)`, or `jev coverage: not configured`. A not-checked or not-configured line is recorded as it printed and never retried into a pass. Where the tool printed no closing line, because the session could not run it or it refused its arguments, write the fourth form by hand: `jev coverage: not run (<why>)`.
 - passage: No score reaches the blind reader or the plan reviewer. A spec that skips the blind read may still run this check.
+- ruled: cut 2026-09-30
 
 ### W001
 - key: Treat a paragraph's phrasing as design: have a `Tests:` line or an acceptance bullet name the direction, token or agreement a pin holds, never the sentence that carries it.
@@ -1819,7 +1832,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; one of the four single-lens additions the operator accepted on 2026-09-17.
 - verdict: keep
 - reason: Extends C134's intent-never-design constraint to wording. A spec that quotes a sentence as the thing to lock hands the implementer a wording pin by plan, which the testing-discipline skill retires as a pin on a choice, and the implementer would then be amending the line on contact at every such section. Naming the direction, token or agreement keeps the plan's `Tests:` line on the requirement. C135 and C136 stand unchanged: the floor over the named contracts and the line's amendability already agree with the dispatch brief's field as executing-work now states it.
-- passage: A paragraph's phrasing is design too. So a `Tests:` line or an acceptance bullet names the direction, token or agreement a pin holds, never the sentence that carries it.
+- passage: Like an acceptance bullet, it names the direction, token or agreement a pin holds, never the sentence that carries it.
 
 ### P001
 - key: State that a section's `Voice:` value names a voice reference in the `prose-register` skill or names none.
