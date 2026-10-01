@@ -257,7 +257,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // role/SKILL.md states the delegation instance's scope and its exclusions,
     // so the doctrine names the instance and assigns both to role rather than
     // restating either.
-    assert.match(bullet, /proceeds only on the surface its owning skill names/,
+    assert.match(bullet, /a proceed-ahead only for the surface its owning skill names/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
     assert.match(bullet, /The rail's delegation instance names no surface this test gates/,

@@ -444,7 +444,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - proposed: Add to the live-word tier a pointer naming the coordinator skill as the owner of the closed list of warranted channels.
 - proposed: The fourth tier reads "this doctrine, for principles and for the scope of the authorizations it states itself", leaving a standing grant's surfaces to its owning skill as the third tier already says.
 - baseline-test: yes
-- passage: Highest first: the harness's own instructions, which this doctrine may satisfy and never discounts. Second, my live word on a warranted channel, for what it names. The coordinator skill owns the closed list of those channels. Third, a positional grant, for exactly the scope its owner assigns: a plan's Commit Model or Dispatch Authorization section, a standing-grant record under the role skill's rail, or the arming act for the plan it arms. Fourth, this doctrine, for principles and the authorizations it states. Its text holds a closed list of three standing grants: the dispatch request, kaizen capture, and the commit-and-push default. Fifth, the skill owning the moment, for its mechanics. Last, any other surface, which may restate, narrow or point but never widen or contradict.
+- passage: Highest first: the harness's own instructions, which this doctrine may satisfy and never discounts. Second, my live word on a warranted channel, for what it names. The coordinator skill owns the closed list of those channels. Third, a positional grant, for exactly the scope its owner assigns: a plan's Commit Model header or Dispatch Authorization section, a standing-grant record under the role skill's rail, or the arming act for the plan it arms. Fourth, this doctrine, for principles and the authorizations it states. Its text holds a closed list of three standing grants: the dispatch request, kaizen capture, and the commit-and-push default. Fifth, the skill owning the moment, for its mechanics. Last, any other surface, which may restate, narrow or point but never widen or contradict.
 
 ### c1.C045
 - key: When a lower surface contradicts a higher one, follow the higher surface now and send the contradiction to the kaizen inbox.
@@ -494,7 +494,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 5cd8f22 2026-09-01, on the standing-grants plan's diagnosis that no wording could convey a grant more strongly and the fix had to be positional.
 - verdict: keep
 - reason: A blast-radius gate over the acts the stop-for-a-yes rule gates, kept by every reader; the commit-and-push default is its carve-out. The lead reads 'an act the stop-for-a-yes rule gates', since the class of act needing a positional authorization is that rule's two-part test; the bullet carries no worked case (c1.C051) and its grant list closes at three (c1.C050).
-- passage: An act the stop-for-a-yes rule gates is authorized only from the second or third tier, and any other text only describes where an authorization sits.
+- passage: An act the stop-for-a-yes rule under Scope and Safety gates is authorized only from the second or third tier, and any other text only describes where an authorization sits.
 
 ### c1.C050
 - key: Treat exactly two standing grants as living in this doctrine's own text: the dispatch request under Orchestrating fan-out work, and kaizen capture.
@@ -1710,7 +1710,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 70b1f73 2026-09-04, subtraction-bars plan section 1: the doctrine points at the new "What retires a test" section from both copies.
 - verdict: keep
 - reason: A pointer held by path in test/doctrine-parity.test.js:737-748, whose comment says the always-loaded layer must name the owner of the retire classes; the ownership map's row is the same pointer from the map's side.
-- passage: `skills/testing-discipline/SKILL.md` under the kit plugin root owns which tests retire and when a writer and a reader earn a cross-component pin.
+- passage: `skills/testing-discipline/SKILL.md` under the kit plugin root owns which tests retire and when a writer and a reader earn a cross-surface pin.
 
 ### c2.C016
 - key: Before trusting a silent check, run it against a state known to hold the thing and watch it speak.
@@ -2082,7 +2082,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: rewrite
 - landed: a2ca9e5 section 1
 - reason: The clause is the pinned always-loaded copy of the role skill's record-is-a-switch rule (test/doctrine-parity.test.js:199 pins "read at the act rather than assumed from the record" and "whose body can neither widen nor narrow"), so it stays whole; it only moves into its own sentence when the opening sentence is split under c2.C053's rewrite. The ranking at line 42 states the precedence principle and this states the at-the-act reading, which is a deliberate layering (5cd8f22), not a duplicate.
-- passage: A standing-grant record under the rail in `skills/role/SKILL.md` under the kit plugin root proceeds only on the surface its owning skill names, read at the act, and the record can neither widen nor narrow it.
+- passage: A standing-grant record under the rail in `skills/role/SKILL.md` under the kit plugin root is a proceed-ahead only for the surface its owning skill names, read at the act, and the record can neither widen nor narrow it.
 
 ### c2.C055
 - key: Land work on the branch you are working from and push it by default, letting branch protections decide what may merge.
@@ -3188,7 +3188,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md, Decisions item 8, the operator's ruling of 2026-09-26 relayed by the assistant persona with the five traits confirmed in the operator's own words, merged to main in pull requests 133 and 134; items 9 and 10 set the case.
 - verdict: keep
 - reason: Session-written headings arrived as the section's thesis sentence ending in a period, because the answer-first bullet puts the thesis first and the heading bullet set no bound, so the thesis climbed into the heading. The prose-register ledger's C018 and C066 had carried the operator's own noun-phrase rule and five-word ceiling, and the bound went missing when they retired into this bullet. Plan item 8 records the operator's hand rewrite of seven pull request headings as the source of the five traits.
-- passage: It names the effect, what the thing does or why it matters, in plain words an outsider reads. It is shaped like a title: no article, no period, two or three words and never more than five, label-colon-value allowed. A recurring section takes a standard name, and the section carrying the piece's own change takes its own topic name. The thesis is the first sentence under the heading. A commit title is a sentence, not a heading.
+- passage: It names the effect, what the thing does or why it matters, in plain words an outsider reads. It is shaped like a title: no article, no period, usually two or three words and never more than five, label-colon-value allowed. A recurring section takes a standard name, and the section carrying the piece's own change takes its own topic name. The thesis is the first sentence under the heading. A commit title is a sentence, not a heading.
 
 ### A001
 - key: On the relay thread, open a reply that waits on the operator with an `ASK:` line naming the answer or act in one sentence, under any `BLOCKED:` or `WAITING:` lead.
@@ -4413,7 +4413,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`). Amended on 2026-10-01
 - proposed: Replace the sentence with a pointer naming the graph as one more secondary source under the doctrine's verify rules.
 - proposed: Ruled under A003; one pointer sentence covers C005 and C007 together.
 - baseline-test: yes
-- passage: Its claims fall under the doctrine's "A finding is a hypothesis" and "A summary outlives its source" bullets.
+- passage: The graph's claims fall under the doctrine's "A finding is a hypothesis" and "A summary outlives its source" bullets
 
 ### C006
 - key: Treat the graph as a map rather than the territory it describes.
@@ -4437,7 +4437,7 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`). Amended on 2026-10-01
 - proposed: Fold into the single pointer sentence of A003, naming the graph's last build as the record the doctrine's staleness signals apply to.
 - proposed: Ruled under A006.
 - baseline-test: yes
-- passage: Commits after its last build mark it stale.
+- passage: commits after its last build mark it stale.
 
 ### C008
 - key: Query an existing graph freely, but never build a new graph unprompted; leave that call to the user.
