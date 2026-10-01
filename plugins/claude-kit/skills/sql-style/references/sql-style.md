@@ -1,6 +1,6 @@
 # SQL Style Reference
 
-This is the detailed pattern reference for writing SQL in my style, modeled on a numbered-folder deployment-script library. `<schema>`, `usp_AuditError` and `WITH EXECUTE AS '<schema_owner>'` are one project's names, so substitute the project's own names rather than copying them. Inside such a repo, open a sibling file in that library and follow its layout exactly.
+This is the T-SQL pattern reference for my style, modeled on a numbered-folder deployment-script library. `<schema>`, `usp_AuditError` and `WITH EXECUTE AS '<schema_owner>'` are one project's names, so substitute the project's own names rather than copying them. Inside such a repo, open a sibling file in that library and follow its layout exactly.
 
 ## 1. Folders and File Names
 
@@ -17,12 +17,7 @@ The library uses numeric prefixes to enforce execution order during deployment:
 
 Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave them open.
 
-Files are named `<schema>.<object>.sql`. Table files omit the type prefix:
-- `<schema>.usp_GetBackgroundMessages.sql`
-- `<schema>.udf_DocumentFields.sql`
-- `<schema>.ApiCalls.sql`
-
-§18 carries the variant procedure suffixes. Helper sub-procedures of a parent use `_Data`, `_Sort`, `_Stops`, `_Trips`.
+Files are named `<schema>.<object>.sql`, and table files omit the type prefix: `<schema>.usp_GetBackgroundMessages.sql` beside `<schema>.ApiCalls.sql`. Helper sub-procedures of a parent use `_Data`, `_Sort`, `_Stops`, `_Trips`.
 
 ## 2. Procedure Deployment
 
@@ -30,7 +25,7 @@ Files are named `<schema>.<object>.sql`. Table files omit the type prefix:
 
 - Indent the shell `EXEC` line 2 spaces, not a tab.
 - `WITH EXECUTE AS '<schema_owner>'` goes before `AS` only where the project uses owner-impersonation. There it goes on every proc and on scalar or multi-statement functions. Drop it where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), so never put it there.
-- `BEGIN	-- PROCEDURE` takes a tab before its label comment, a signature of my style.
+- `BEGIN	-- PROCEDURE` takes a tab before its label comment.
 - The file ends with `GO` after the `END`.
 
 ## 3. Function Deployment
@@ -45,7 +40,7 @@ Tables guard with a **defensive existence check on `sys.schemas` joined to `sys.
 - Wrap the semicolon-led `;CREATE TABLE` in `BEGIN` and `END`.
 - The first column takes a leading space before `[`, and each later column a leading comma.
 - Tab-align name → type → nullability → default.
-- Group related columns under `/* Group Name */` comments (Request Fields, Response Fields, Tracking Fields, Error Fields, Audit Fields). Put a blank line between groups.
+- Group related columns under `/* Group Name */` comments, such as Request Fields or Audit Fields. Put a blank line between groups.
 - **Audit fields** `CreatedDt` and `UpdatedDt` go at the bottom, defaulted to `SYSDATETIMEOFFSET()`, not `GETDATE()`.
 - Default constraints are inline `DEFAULT(...)`, never named.
 - Computed columns use `AS ( expression ) PERSISTED`.
@@ -61,25 +56,9 @@ Indexes live in their table's file. Each sits in its own `IF NOT EXISTS` block, 
 
 ## 6. Procedure Header Banner
 
-Every procedure carries this metadata banner inside `BEGIN -- PROCEDURE`, giving its purpose, author, version and history. Never skip it.
+Every procedure carries the metadata banner the §19 template shows, inside `BEGIN -- PROCEDURE`, giving its purpose, author, version and history. Never skip it.
 
-```sql
-    /********************************************************************************************
-    *********************************************************************************************
-        SCRIPT:		<schema>.usp_GetBackgroundMessages
-        AUTHOR:		<Author Name>
-        DATE:		February 16th, 2025
-        VERSION:	v1.0
-    *********************************************************************************************
-        NOTES:		v1.0 - 02/16/2025 - <AUTHOR NAME> - <COMPANY>
-                            Procedure to return background messages ready for re-processing into
-                            the documents library or email outputs.
-    *********************************************************************************************
-    ********************************************************************************************/
-```
-
-- Top and bottom rows run about 92 asterisks, counted by eye.
-- Two adjacent asterisk lines bookend SCRIPT/AUTHOR/DATE/VERSION. One asterisk line separates them from NOTES.
+- Two asterisk rows of about 92, counted by eye, open and close it, and one separates VERSION from NOTES.
 - DATE is **ordinal English** ("February 16th, 2025", not "2025-02-16").
 - Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY`, its body indented under it.
 - AUTHOR is `<Author Name>` or `<Author Name> / <Company>`.
@@ -103,7 +82,7 @@ Every procedure body opens with a banner section holding two paired, semicolon-l
 
 - **`SET NOCOUNT ON`** is mandatory.
 - **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs and the default for `Get*`. It is `READ COMMITTED` for write, transactional and audit procs, and the default for `Save*` and `Process*`.
-- The banner names their purpose in varying words, such as "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT."
+- The banner names their purpose in its own words, such as "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT."
 
 `SET XACT_ABORT` is **not used**. TRY/CATCH handles errors.
 
@@ -143,41 +122,11 @@ Sub-sections take a single-line `/* Sub-Section Title. */` comment ending in a p
 
 ## 11. TRY/CATCH and Error Logging
 
-Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`. The CATCH logs through `usp_AuditError` and does **not** re-throw. The caller does not fail.
-
-```sql
-    /********************************************************************************************
-        UPSERT THE INFORMATION TO THE API CALLS TABLE.
-    ********************************************************************************************/
-    ;BEGIN TRY
-        /* Validate Upsert Operation. */
-        ;IF ( @p_ApiCallId > 0 )
-        BEGIN
-            /* Update the Existing Record. */
-            ;UPDATE C   
-            SET     [RequestMethod]     = COALESCE(@p_RequestMethod, C.[RequestMethod])
-                    -- ...
-            FROM    <schema>.APICalls C
-            WHERE   C.[ApiCallId] = @p_ApiCallId
-        END ELSE BEGIN
-            /* Insert a New Audit Record. */
-            ;INSERT INTO <schema>.APICalls ( ... )
-            SELECT ...
-
-            /* Get Identity for Insert. */
-            ;SELECT  @p_ApiCallId = SCOPE_IDENTITY()
-        END
-    END TRY
-    BEGIN CATCH
-        /* Audit and Report Error. */
-        ;IF ( OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL )
-            EXECUTE <schema>.usp_AuditError @p_ErrorData = @p_ApiCallId
-    END CATCH
-```
+Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`, as the §19 template shows. The CATCH logs through `usp_AuditError` and does **not** re-throw, so the caller does not fail.
 
 - `;BEGIN TRY`, `END TRY`, `BEGIN CATCH` and `END CATCH` each take their own line.
-- The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.
-- `END ELSE BEGIN` on one line, one space each side of `ELSE`, is a signature of my style.
+- Guard the logging call with `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)`.
+- `END ELSE BEGIN` sits on one line, one space each side of `ELSE`.
 - `THROW` is rare, for a nested CATCH whose error must propagate.
 
 ## 12. Leading Commas and Tabs
@@ -265,7 +214,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 - **COALESCE** over `ISNULL` for defaulting, especially with 3+ fallbacks.
 - **`IS NULL`** for existence checks in WHERE.
 - **TRY_PARSE / TRY_CONVERT** for safe casts, which return NULL on failure.
-- **FORMAT** for user-facing strings (`FORMAT(@OrderNumber, 'F0')`, `FORMAT(@Date, 'dddd, MMMM d, yyyy, h:mm tt')`).
+- **FORMAT** for user-facing strings, such as `FORMAT(@Date, 'dddd, MMMM d, yyyy, h:mm tt')`.
 - **CONVERT** for internal conversions. It outperforms FORMAT.
 - **SYSDATETIMEOFFSET()** for audit timestamps, over `GETDATE()`.
 - **GETDATE()** only for transient or comparison logic where timezone does not matter.
@@ -289,7 +238,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 
 **A comment that is a sentence ends with a period, and a label or title does not.** So `/* Request Fields */` takes none and `/* Validate Upsert Operation. */` takes one. Banner titles follow the same rule.
 
-Sentence comments, the `/* Sub-Section Title. */` blocks and inline `-- Comment.` lines, are short imperative statements of what the next block does, a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way. A WHY comment is rare and exceptional.
+Sentence comments, the `/* Sub-Section Title. */` blocks and inline `-- Comment.` lines, are short imperative statements of what the next block does. A WHY comment is rare, and no comment carries history, under the doctrine's "Documents ship the current state" rule.
 
 ## 18. Naming Conventions
 
@@ -301,8 +250,6 @@ Sentence comments, the `/* Sub-Section Title. */` blocks and inline `-- Comment.
 | Function | `udf_<PascalCase>` | `udf_DocumentFields` |
 | Trigger / Job | `JOB.<schema>.<Name>` | `JOB.<schema>.WorkflowReport` |
 | Parameter | `@p_<PascalCase>` | `@p_ApiCallId` |
-| Local variable | `@<PascalCase>` | `@DriverCode`, `@OrderNumber` |
-| Boolean local | `@True`, `@False` (BIT 1, 0) | declared at top of procs that use them |
 | Primary key | `PK_<TableName>` | `PK_ApiCalls` |
 | Index | `IX_<TableName>_<ColList>` | `IX_ApiCalls_RequestUriDate` |
 | Type | `<schema>.<PascalCase>` | `<schema>.FormFieldType` |

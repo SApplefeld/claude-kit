@@ -12,19 +12,19 @@ A skill is behavior-shaping prose, not documentation. If it does not change what
 - **Create when** the technique is non-obvious, recurs across efforts, and is general. A single project's convention goes in that project's CLAUDE.md.
 - **Do not create** for a one-off, a restatement of standard practice, or anything a hook or regex can enforce. Automate the mechanical and keep skills for judgment.
 - **The kit stays lean.** A new skill must beat one more paragraph in an existing skill. When in doubt, fold it in rather than add a file.
-- **The size budget is a ledger rather than a ceiling.** In the kit's own repository, `test/size-budget.json` holds the caps and `test/size-ratchet.test.js` makes growth visible, not forbidden. A file that grows raises its cap in the same change, and one that shrinks lowers it. Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched. A new curated file, tracked or not, gets its first cap the same way. The bare form with no paths moves every cap and belongs to an audit over a clean tree. The net is read on the Chapter's Delta line. A raise is never a finding by itself, and a reviewer weighs only whether the added words earn their place. A rewording takes the shrink where one is available.
+- **The size budget is a ledger rather than a ceiling.** A file that grows raises its cap in `test/size-budget.json` in the same change, and one that shrinks lowers it. Move the caps with `node <plugin-root>/scripts/kit-size.js sync --repo <the project's root> <path>...`, naming the files the change touched, a new file's first cap included, tracked or not. The bare form with no paths belongs to an audit over a clean tree. A reviewer weighs only whether the added words earn their place, and a rewording takes the shrink where one is available.
 
 ## Anatomy
 
 - One SKILL.md in the kit's voice: direct, opinionated, anti-dogma. Add a reference file only when the body outgrows the kit's other skills, gated the way csharp-style and sql-style gate theirs.
 - **Frontmatter: always quote the description.** `name` and `description` are the two fields that matter.
-- Body: the principle, the rules that carry judgment, the antipatterns. Tables and lists for what gets scanned, prose for the why. A flowchart only for a decision the agent might genuinely get wrong, never for linear steps.
-- **One owner per rule.** The doctrine's one-owner bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) owns the principle and the forms a mention may take. The ownership map it names gives each moment's owner. When editing a rule, grep its key phrases across the kit and fix the owner, not the nearest copy.
-- The plan-doc header and structure belong to `curating-docs/SKILL.md`'s "Plan Doc Machine Contract" section. Point at it rather than restating any of its lines.
+- Body: the principle, the rules that carry judgment, the antipatterns. Tables for what gets scanned, prose for the why, and a flowchart only for a decision the agent might genuinely get wrong.
+- **One owner per rule.** The doctrine's one-owner bullet and its ownership map own the principle and the forms a mention may take. When editing a rule, grep its key phrases across the kit and fix the owner, not the nearest copy.
+- Point at `curating-docs/SKILL.md`'s "Plan Doc Machine Contract" section for the plan-doc header and structure, never restating its lines.
 
 ## Description Field
 
-The description is how a future session decides whether to load the skill. Write it as "Use when..." plus the symptoms that pull it in, and stop. Do not summarize the skill's process there.
+Write it as "Use when..." plus the symptoms that pull it in, and stop. Do not summarize the skill's process there.
 
 ## Rule Forms by Failure
 
@@ -45,20 +45,19 @@ Three rules govern any rule you write:
 
 ## Checkable Facts
 
-- **Of two true framings of a fact, ship the one the reader can verify from where they sit.** Name the file, command, observable event or artifact the fact lives in, and pick the framing that makes it findable.
-- **A list drawn from observed instances is stated as open unless a contract closes it.** Closure comes from a contract (a schema, an enum, a validated surface with a published shape), never from the sample agreeing with itself. So write the list as open and say what would close it, or cite the contract that already does.
+Framing a fact so the reader can check it is the doctrine's "A claim is written in the form a reader can check" bullet.
 
-Those two are instances rather than the boundary. Any fact a rule rests on that the reader cannot check, or whose edges they cannot see, is inside the rule.
+- **A list drawn from observed instances is stated as open unless a contract closes it.** Closure comes from a contract (a schema, an enum, a validated surface with a published shape), never from the sample agreeing with itself. So write the list as open and say what would close it, or cite the contract that already does.
 
 ## What a Sentence Must Earn
 
-Whether a sentence belongs at all is the doctrine's call, in its "Documents ship the current state; the journey lives in git" bullet. How an accepted lesson enters standing prose is the kaizen skill's disposition step (`skills/kaizen/SKILL.md` under the kit plugin root): the owning passage is rewritten with the lesson in mind, never appended to. The bars below shape the surviving sentences at authoring, read over that rewrite's result.
+Whether a sentence belongs at all is the doctrine's "Documents ship the current state; the journey lives in git" bullet's call. An accepted lesson lands by the kaizen skill's rewrite-not-append rule (`skills/kaizen/SKILL.md` under the kit plugin root).
 
 Curated prose in the kit's own voice meets three sentence-shape bars:
 
-- **One idea.** A sentence is one idea, about twenty words. A rule and the bound that limits it are two sentences, the bound right after the rule. They share one sentence only where the split would leave the rule readable alone. A count past twenty is the diagnostic that finds a second idea, not the bar itself. Uniform length is its own defect, so the count is read per sentence and never as a target. A paragraph makes one point, or says why its parts must be read together.
-- **The literal phrase.** Where a literal phrase for the thing exists, the sentence uses it. A metaphor stands only where it is the established term. Elsewhere it is mannered prose: metaphor and flourish in place of direct statement, written to display the writer, carrying connotations the writer did not choose. The fix is the literal phrase. The packed sentence, the nested qualification and the reasoning-first order are the same defect in other shapes, and the doctrine's plain-prose bullet names each.
-- **A pointer where another site owns the rule.** Anatomy's one-owner rule points at the doctrine's bullet for the forms a mention may take. This bar adds no form and no exception.
+- **One idea.** A sentence is one idea, about twenty words. A rule and the bound that limits it are two sentences, the bound right after the rule. They share one sentence only where the split would leave the rule readable alone. A count past twenty is the diagnostic that finds a second idea, read per sentence and never as a target. A paragraph makes one point, or says why its parts must be read together.
+- **The literal phrase.** Where a literal phrase for the thing exists, the sentence uses it. A metaphor stands only where it is the established term, and elsewhere it is mannered prose, flourish in place of direct statement, fixed by the literal phrase.
+- **A pointer where another site owns the rule.** The forms a mention may take are the doctrine's one-owner bullet's, and this bar adds none.
 
 The three are instances of one class: prose that costs the reader more to read than it changes for them. A form none of them names is inside the bar.
 
@@ -66,16 +65,16 @@ The three are instances of one class: prose that costs the reader more to read t
 
 **When an amendment corrects a claim a curated document states, the edit unit is the paragraph, never the sentence.** Re-derive the whole paragraph from the corrected claim. Then check the claim's other carriers: the neighbouring clauses that qualified or restated it, and any sibling surface stating the same behavior. The unit is the claim on every surface carrying it, whether or not anything here names that surface. Carriers this kit keeps producing include a doctrine parity copy, the output style's register block, an agent charter, a test's assertion message, a memory record and a README's payload map, and that list is not the boundary. An amendment that corrects no claim, such as a typo fix, an added bullet or a label rename, takes whatever edit it needs.
 
-An insertion anchored on a block's tail, or on the next entry's first line, restores every byte of that anchor in the replacement. It then re-greps the neighbour's lead-in, with a control at HEAD proving the pattern matches the intact form.
+An insertion anchored on neighbouring text restores that anchor byte for byte, re-grepped with a control at HEAD.
 
-A carrier on another surface is not automatically yours to edit in place. The four dispositions below are instances rather than the boundary, and a carrier fitting none is named as such and routed deliberately, never edited in place by default.
+A carrier on another surface is not automatically yours to edit in place:
 
 - Where the one-owner rule applies, fix the owner rather than the nearest copy.
-- A deliberate byte-identical set lands every copy in one edit or none. A partial edit reds the parity pin by design. The set is as large as the pin says, not the pair you first thought of.
+- A deliberate byte-identical set lands every copy in one edit or none, and the set is as large as the parity pin says.
 - A deliberate restatement across surfaces the section's scope already covers lands on all of them in the same edit.
 - A carrier in a file the section's `Files in scope:` never listed takes the fix-round step's route in `skills/executing-work/SKILL.md` under the kit plugin root, never an in-place edit.
 
-The rule binds every writer amending curated prose. Assume no downstream backstop, since what stands downstream differs by surface. Which pass reads which surface is finishing-work's and executing-work's to state (`skills/finishing-work/SKILL.md` and `skills/executing-work/SKILL.md` under the kit plugin root).
+A carrier fitting none of these is named as such and routed deliberately, never edited in place by default.
 
 ## Testing a Skill
 
@@ -89,30 +88,24 @@ Run several reps, since one sample lies. Read every flagged result yourself, sin
 
 ## Probe Runner Pair
 
-In the kit's own repository, a change to a passage a probe's scenario turns on, in a file that probe's shape under `test/probes/` names, runs the probe runner's before-and-after pair. Match the changed and untracked paths since the before leg's `<sha>` against the shapes' `files:` lists, then the changed hunks against those probes' scenarios. A hunk no scenario turns on runs nothing, and that is recorded where the reading is.
+In the kit's own repository, a change to a passage a probe's scenario turns on, in a file that probe's shape under `test/probes/` names, runs the probe runner's before-and-after pair. Match the changed and untracked paths since `<sha>` against the shapes' `files:` lists, then the changed hunks against those probes' scenarios. A hunk no scenario turns on runs nothing.
 
-For a `ruled` probe, the pair stands in for the reps above as the RED and GREEN. For a `proposed` probe, only the after leg runs, recorded as evidence for the operator's rulings batch, and the reps still run. A before leg that matches is not step 1's nothing-to-fix case.
+For a `ruled` probe, the pair stands in for the reps above as the RED and GREEN. For a `proposed` probe, only the after leg runs, as evidence for the operator's rulings batch, and the reps still run. A before leg that matches is not step 1's nothing-to-fix case.
 
-A pair reads exactly one of four ways. A match on a moment the change did not mean to move is a reading that held. A before-leg mismatch the after leg matches is the repair. A mismatch both legs carry is the corpus's, recorded as such. An after-leg mismatch the before leg lacks takes the intent test, as does a match on a moment the change meant to move, which is a finding rather than a reading that held.
+The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`, over the `ruled` moments the check kept. The after leg is the same command without `--before`, over every moment the check kept. `<sha>` is the parent of the change's first commit resolved to a sha, or `HEAD` for an uncommitted change. A root-commit change leaves the before leg unrun.
 
-An errored or unparsed pair, or one with a leg recorded unavailable, is none of these and is re-run as finishing-work's step 6 directs. If it errors again it stands in for nothing, and the reps run. A designed shape's rows and a designed-agreed row are none of these either and take step 6's dispositions. Rows from a shape naming no changed file are no reading at all.
-
-The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>`. The after leg is the same command without `--before`. The after leg's `<moments>` is every moment the check above kept, comma-joined, and the before leg's is that list narrowed to the `ruled` ones. `<sha>` is the parent of the change's first commit resolved to a sha, or `HEAD` for an uncommitted change. A root-commit change takes the `<sha>` finishing-work's pre-step-1 derivation yields, which leaves the before leg unrun as step 6 records it.
-
-The pair runs once at the section's close over its whole change, never at each fix round. Inside a finishing pass, only finishing-work's step 6 runs the set. `tools/probe-corpus/README.md` owns what each leg reads, in its "What the runner reads" section, and what each row status means. Finishing-work's step 6 owns the run's process standing, how it is spawned, when a leg is re-run and what each row counts for.
+Read each row by `tools/probe-corpus/README.md`'s "What a row counts for" section, after the re-runs finishing-work's step 6 directs. Rows from a shape naming no changed file are no reading at all. A before-leg mismatch the after leg matches is the repair. A match on a moment the change meant to move is a finding, and any other match held. A pair that errors again stands in for nothing, and the reps run. Rows from a shape naming no changed file are no reading at all.
 
 The intent test covers a ruled probe's after-leg mismatch the before leg lacks. A move the change intended is a re-ruling to ask the operator for, and any other is a finding.
 
-A change whose only shape-named files are the repo's `home/*.md` files is seen by neither leg, so it takes the reps with the cache staging below. A matching leg pair is one sample. Read the raw replies the runner keeps as you read flagged results. Record the reading, or both where a pair ran, on the line executing-work's Chapter template holds for it in `Decisions / Surprises`, or in the close-out status where no section Chapter exists.
+The pair runs once at the section's close over its whole change, never at each fix round, and inside a finishing pass only finishing-work's step 6 runs the set. A change whose only shape-named files are the repo's `home/*.md` files is seen by neither leg, so it takes the reps with the cache staging below. A matching leg pair is one sample. Record the reading, or both where a pair ran, on the line executing-work's Chapter template holds for it in `Decisions / Surprises`, or in the close-out status where no section Chapter exists.
 
 ## Doctrine Probes
 
 **A doctrine edit is invisible to same-session subagents.** A GREEN probe for a doctrine change runs in a fresh session (a headless `claude -p`), never as a subagent of the session that made the edit. Do not stage probe wording in `~/.claude/claude-kit-doctrine.md`. Where the probe pair does not supply the GREEN, stage the candidate wording in the installed plugin cache's copy of the operating-instructions skill for the probe run and restore it after. The real change ships through the normal commit and goes live when the plugin updates.
 
-**Doctrine-adjacent rules have a contaminated RED.** Where the harness's subagent inheritance is off, a RED is genuine. Where it is on, the contamination is production-faithful rather than a test defect. Absence of failure there is weak evidence, not proof the rule is dead weight. Judge such a rule on its distinct value: point-of-action encoding survives compaction and reaches contexts the doctrine does not (a headless worker mid-loop, a session whose doctrine was summarized away). If you ship a rule whose RED did not reproduce, record that it stands on that rationale, not on a demonstrated failure. A rule with neither a reproduced RED nor that rationale is the guidance-from-imagination antipattern, so leave it out.
+**Doctrine-adjacent rules have a contaminated RED.** Where the harness's subagent inheritance is off, a RED is genuine. Where it is on, absence of failure is weak evidence, not proof the rule is dead weight. Such a rule may ship on its point-of-action value, surviving compaction and reaching contexts the doctrine does not, and the record says it stands on that rationale. A rule with neither a reproduced RED nor that rationale is left out.
 
 ## Antipatterns
 
-- A narrative ("the time we fixed X") instead of a reusable technique.
-- A harness-injection fact stated as unconditional ("subagents load X") when it hinges on a user setting. A settings flip falsifies it silently, and no test catches that. State the safe assumption, and where the fact must be stated, name the setting it depends on.
-- Guidance written from imagination instead of an observed failure.
+- A harness-injection fact stated as unconditional ("subagents load X") when it hinges on a user setting. State the safe assumption, and where the fact must be stated, name the setting it depends on.

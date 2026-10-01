@@ -39,7 +39,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT; 058e3a3 2026-07-24 rewrote the surrounding sentences from the operator's hand-edit review of Claude-authored C# in the PrePass plugin.
 - verdict: keep
 - reason: The signature trait of the style and the thing no formatter produces; the reference §6 is this skill's own detail layer, not a second owner, so the philosophy statement stays whole.
-- passage: A short `// Title.` comment above a block is a section header marking where one thing ends and the next begins.
+- passage: A short `// Title.` comment heads each block as its section header.
 
 ### C004
 - key: End every section comment with a period.
@@ -57,7 +57,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 058e3a3 2026-07-24, the operator's hand-edit review of Claude-authored C# (PrePass plugin, 2026-07-21) sharpened the comment voice; installed in the philosophy and reference §6 together.
 - verdict: keep
 - reason: Incident-born (wrong comment voice in shipped code), the incident recurs on every C# task, and no machinery checks voice. The antipattern bullet C038 is the observed-habit side of the same rule and was installed for that purpose.
-- passage: 1. **Comments are visual structure.** A short `// Title.` comment above a block is a section header marking where one thing ends and the next begins. **Every section comment ends with a period.** It states imperatively what the next block does: "Validate Parameters." not "Now we check the inputs" or "This handles the case where...". Judge intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. A comment never explains history, decisions, alternatives weighed or issues met. Under the doctrine's prose register, a section comment is the rule alone. A WHY comment is rare, and there the reason follows as its own sentence, with at most one case. XML `/// <summary>` docs on public members are welcome when well written, never when they only restate the signature.
+- passage: 1. **Comments are visual structure.** A short `// Title.` comment heads each block as its section header. **Every section comment ends with a period.** It states imperatively what the next block does: "Validate Parameters." not "Now we check the inputs". Judge intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. A comment never explains history, decisions, alternatives weighed or issues met. A WHY comment is rare, and its reason follows as its own sentence.
 
 ### C006
 - key: Judge a comment by intent rather than vocabulary, so `// Abort if we don't have a Valid VIN, make no changes.` counts as in-voice while "Now we check the inputs" does not.
@@ -83,8 +83,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:12
 - provenance: 7964c7e 2026-06-28, "Style Cleanups", which deleted the INIT antipattern banning XML doc comments and installed this qualified stance in the philosophy and checklist together; the message states no reason.
-- verdict: keep
-- reason: A deliberate reversal of an earlier ban; the checklist line C063 is its gate. A session that removes either restores the ambiguity the reversal resolved.
+- verdict: retire
+- reason: row 593 (XML docs only when earned), merged into one owner. The checklist line C063 carries it: "- [ ] XML `/// <summary>` docs on public members only where they earn their keep, never boilerplate".
 - passage: XML `/// <summary>` docs on public members are welcome when well written, never when they only restate the signature.
 
 ### C009
@@ -92,8 +92,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:13
 - provenance: f8c0649 2026-06-10, INIT.
-- verdict: keep
-- reason: Philosophy principle whose detail is reference §3 and whose gate is checklist line C051; one owner, three surfaces installed together. Whole at section 37's close: line 13 reads `2. **Group related items; separate groups with whitespace and a label.**`, this sentence byte for byte and C010's sentence gone after it.
+- verdict: retire
+- reason: row 575 (Group and label related items), merged into the checklist. C051 "grouped with `// Group.` labels" and C061 "grouped by domain label" carry it.
 - passage: 2. **Group related items; separate groups with whitespace and a label.**
 
 ### C010
@@ -112,8 +112,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:14
 - provenance: f8c0649 2026-06-10, INIT.
-- verdict: keep
-- reason: The one concrete C# instance of the idempotence principle in the philosophy; strip it and point 3 is the bare word "idempotent". The checklist C061 adds the file and the grouping as the gate.
+- verdict: retire
+- reason: row 576 (Idempotent DI registration), merged into the checklist. C061 carries the call: "`.AsImplementedInterfaces().PreserveExistingDefaults()`".
 - passage: DI registration uses `.AsImplementedInterfaces().PreserveExistingDefaults()`.
 
 ### C012
@@ -141,7 +141,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT; bounded to code already in this style by 830ff28 2026-06-17.
 - verdict: keep
 - reason: The "highly self-similar" clause is the premise that a sibling exists and the search is worth running; the Precedence section bounds it. The SQL twin is per-language.
-- passage: The codebase is highly self-similar, so when in doubt follow the layout of an existing file of similar shape exactly.
+- passage: When in doubt, follow the layout of an existing file of similar shape exactly.
 
 ### C015
 - key: In a greenfield repo with no sibling to mimic, follow the exemplar in this document and the full template in the reference.
@@ -159,7 +159,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 830ff28 2026-06-17, "Fork Improvements and Session Mining", which installed style precedence in the doctrine and both style skills as one change.
 - verdict: keep
 - reason: The doctrine owns the principle; the skill's Precedence section is a deliberate whole copy for the path where a subagent holds this skill by path and not the doctrine (the 2026-07-30 kaizen brief records a reviewer that had neither). A pointer fails that path. The map's form for a copy is a parity pin, and none pins this section: that is a pin to add, not wording to cut.
-- passage: A repo's mechanically enforced contract, such as a committed formatter config (CSharpier, `dotnet format`), an `.editorconfig` or a CI lint gate, overrides this style. Nothing softer does.
+- passage: The doctrine's house-style rule under Defaults decides when a repo's own contract overrides this style.
 - flag: weak-reason
 
 ### C017
@@ -167,8 +167,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:20
 - provenance: 830ff28 2026-06-17, as C016.
-- verdict: keep
-- reason: As C016: doctrine principle, deliberate copy for the subagent path, SQL twin per-language.
+- verdict: retire
+- reason: row 579 (Style precedence over repo), merged to the doctrine's Defaults text "My house style is the default authority. It beats sibling code and implicit local convention." C018's landed sentence also carries it.
 - passage: Otherwise this style is the default authority, and a legacy sibling is no authority by itself.
 
 ### C018
@@ -178,7 +178,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 830ff28 2026-06-17, as C016; the session mining found sessions dropping the style to match a foreign repo's siblings.
 - verdict: keep
 - reason: This clause closes the loophole philosophy point 5 opens; the SQL reference's unbounded sibling sentence is not a runtime conflict for a C# decision and sits under its own SKILL.md bound.
-- passage: Point 5, mimic a sibling, keeps code consistent within this style and is never a reason to abandon it in a foreign repo.
+- passage: A sibling never takes you out of this style in a foreign repo.
 
 ### C019
 - key: Write the section comments so that the comments alone tell the story of the method, as the exemplar method shows.
@@ -196,7 +196,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: ddd6c72 2026-08-23, the process-rule-repairs plan: the doctrine's own language patterns failed against the corpus, a consult found language anchors cannot live in a language-agnostic surface, and the anchors moved here under a two-ended parity pin.
 - verdict: keep
 - reason: The ownership map assigns the principle to the doctrine and the recipe to this skill (rows 44 and 45); test/doctrine-parity.test.js:465-490 pins that the doctrine routes here and this section exists. The trigger clause is the minimum a recipe says about when it applies.
-- passage: To find one thing in a C# file past roughly 1,000 lines, take the outline in three greps rather than reading it, each with line numbers:
+- passage: To find one thing in a C# file past roughly 1,000 lines, outline it with three greps, each with line numbers:
 
 ### C021
 - key: Grep types with `^\s*((public|private|protected|internal|sealed|static|abstract|partial|readonly|file)\s+)*(class|interface|record|struct|enum)\s+\w`.
@@ -230,101 +230,110 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23; the plan's review demanded each load-bearing detail be stated with what breaks without it, and c6f08c5 re-measured the figures with the shipped patterns.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The rule and its failure shape stay; only the measured counts in the paragraph move here (A050). Safe because the shapes, which are what stop a later session from simplifying the regex, remain in the document. Lands at line 65 (section 37's close) as one paragraph carrying the three rules with their failure shapes and no measurement or file size; the landed sentences are recorded on C025 to C029.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - proposed: Keep each of the three rules with its failure shape (body-line collision, default-parameter destruction, modifier-less nested type dropped); move the measured counts and file sizes to this ledger.
 - baseline-test: yes
 - passage: Three details fail quietly. Keep the member pattern's `\b`:
+- ruled: cut 2026-09-30
 
 ### C025
 - key: Without the `\b`, `^\s*(public).*\(` matches a body line reading `publicKey.Validate(id);` and neither filter removes it.
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23; c6f08c5 records that this illustrative line came from the author's probe file rather than the corpus.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The collision example stays as the shape; the clause moving here: the identifier has to open with a modifier's own letters for the collision to happen, so the shape is rarer than it looks rather than absent, and the boundary costs nothing to keep. Lands at line 65 (section 37's close): the collision example stays byte for byte and its sentence ends at "and neither filter removes that.", the rarer-than-it-looks clause gone.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - proposed: Keep the collision example; move the "rarer than it looks, costs nothing to keep" clause to the ledger.
 - baseline-test: yes
 - passage: without it `^\s*(public).*\(` matches `publicKey.Validate(id);`, and neither filter removes that.
+- ruled: cut 2026-09-30
 
 ### C026
 - key: Anchor the member filter before the paren rather than using a bare `grep -v '= '`.
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23, as C024.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The rule and the default-parameter failure shape stay; the measurement moves here (C027). The bare filter is the obvious mechanization and the one a session reaches for first, which is why the shape must stay in the text. Lands at line 65 (section 37's close) as "The member filter has to anchor before the paren rather than being the bare `grep -v '= '` a session reaches for first.", C027's sentence following it.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - passage: Anchor the member filter before the paren.
+- ruled: cut 2026-09-30
 
 ### C027
 - key: A bare `grep -v '= '` destroyed 32 real signatures on a 4,347-line API client because default parameter values such as `CancellationToken cancellationToken = default` are this style's own idiom.
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23, measured on a real file; c6f08c5 confirmed the figures were re-measured with the shipped patterns.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The default-parameter clause stays as the failure shape; the measurement moves here: on a 4,347-line API client the bare filter removed 32 real signatures, every one carrying `= default` or a similar default value. Lands at line 65 (section 37's close) as "That bare filter destroys every method carrying a default parameter value, `CancellationToken cancellationToken = default` being the idiom this very style mandates.", the 32 signatures and the 4,347-line client gone.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - proposed: Keep the default-parameter failure shape; move the count and file size to the ledger.
 - baseline-test: yes
 - passage: A bare `grep -v '= '` drops every method with a default parameter value, such as this style's own `CancellationToken cancellationToken = default`.
+- ruled: cut 2026-09-30
 
 ### C028
 - key: Keep the modifier group in the type pattern optional so modifier-less nested types are found.
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23; c6f08c5 corrected the accessibility statement (a nested type with no modifier is implicitly private, not internal) after the reviewers caught it.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The rule and its legality bound stay; the measurement moves here (C029). The accessibility correction is the reason the bound reads "only a top-level type defaults to internal", so do not "simplify" it back. Lands at line 65 (section 37's close) as "And the type pattern's modifier group has to be optional, since a nested class with no modifier is legal and takes the implicit private accessibility (only a top-level type defaults to internal).", the bound and its parenthetical word for word.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - passage: Keep the type pattern's modifier group optional. A nested class with no modifier is legal and implicitly private (only a top-level type defaults to internal)
+- ruled: cut 2026-09-30
 
 ### C029
 - key: Requiring a modifier dropped `class RateLimitedClient` from a 3,290-line service, leaving an outline showing one owner for two types.
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23, measured on a real file.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The nested-type failure shape stays; the instance moves here: with the modifier group required, `class RateLimitedClient` vanished from a 3,290-line service and the outline showed one owner for two types' members. Lands at line 65 (section 37's close) as "Requiring a modifier drops such a type out of the outline, leaving one owner for two types.", the shape in the present tense with the class name and the file size gone.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - proposed: Keep the nested-type failure shape; move the class name and file size to the ledger.
 - baseline-test: yes
 - passage: and requiring a modifier drops it, leaving one owner for two types.
+- ruled: cut 2026-09-30
 
 ### C030
 - key: On an interface file, take members with `^[[:space:]]+[A-Za-z_][^;=]*[[:space:]]+[A-Za-z_][A-Za-z0-9_<>]*[[:space:]]*\(` instead of the modifier-anchored member grep.
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, the finishing pass of the process-rule-repairs plan, added because the anchored grep gives no sign that it missed anything on an interface.
-- verdict: keep
-- reason: No finding on this claim. The hole is silent (an empty member list looks like a complete outline), so the bound "where the type grep shows the file is an interface" is the only trigger a session has. Whole at the clause grain at section 37's close: line 67's sentence reads byte for byte through "instead", the regex literal included, and ends there; the ", which finds all 67 there" tail carried C064's measurement and went with it.
+- verdict: retire
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - passage: Interface members carry no access modifier, so on an interface file the member grep silently finds none. There, take members with `^[[:space:]]+[A-Za-z_][^;=]*[[:space:]]+[A-Za-z_][A-Za-z0-9_<>]*[[:space:]]*\(` instead.
+- ruled: cut 2026-09-30
 
 ### C031
 - key: Do not use the interface member pattern on an ordinary class file.
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, as C030.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The prohibition and its declaration-versus-call reason stay; the paragraph's two measurements move here (C032, C064). Safe because the hole statement, the pattern, the bound and the modifier-less-member note all remain. Lands at line 67 (section 37's close) as one paragraph carrying the hole statement, the interface pattern, the class-file prohibition with its reason and the modifier-less-member note, both measurements gone (C032, C064).
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - proposed: Keep the hole, the interface pattern, the class-file prohibition with its declaration-versus-call reason, and the modifier-less-member note; move both measurements to the ledger.
 - baseline-test: yes
 - passage: A modifier-less class member is implicitly private and equally invisible to the anchored grep.
+- ruled: cut 2026-09-30
 
 ### C032
 - key: On a class file the interface pattern cannot tell a declaration from a call and returned 262 lines against 202 real members.
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, measured.
-- verdict: rewrite
+- verdict: retire
 - landed: b608667 section 37
-- reason: The declaration-versus-call clause stays; the measurement moves here: on an ordinary class file the unanchored pattern returned 262 lines against 202 real members, the excess being call sites. Lands at line 67 (section 37's close) as "Do not reach for that one on an ordinary class file, where it cannot tell a declaration from a call.", the 262-against-202 count gone.
+- reason: row 582 (Regex pitfall explanations), dropped under the mechanism cut.
 - proposed: Keep the declaration-versus-call clause; move the count to the ledger.
 - baseline-test: yes
 - passage: Never use that on a class file, where it cannot tell a declaration from a call.
+- ruled: cut 2026-09-30
 
 ### C033
 - key: When a declaration appears in both the type and member lists, read the repeat as confirmation rather than as two separate things.
@@ -333,7 +342,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The positional-record and primary-constructor clause is the bound that tells a session when a repeat is expected; without it a repeat reads as a duplicate declaration.
-- passage: A positional record or primary constructor appears in both the type and member lists. Read the repeat as confirmation, not two things.
+- passage: A positional record or primary constructor shows in both lists, and the repeat is one thing.
 
 ### C034
 - key: Take the `#region` labels verbatim rather than summarizing them.
@@ -351,7 +360,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: Half of it is a reading instruction (on a canonical file the region grep alone suffices) and the other half tells a session what summarizing would lose; neither is a bare why.
-- passage: They carry intent and spec cross-references the code never states, and in canonical region order they are the whole map.
+- passage: In canonical region order they are the whole map.
 
 ### C036
 - key: Declare a namespace file-scoped (`namespace X;`) in a new file, and leave existing block-scoped files alone.
@@ -377,8 +386,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:74
 - provenance: f8c0649 2026-06-10, INIT, in the "common AI habits" list; 058e3a3 confirmed the bans stand beside the sharpened voice rule.
-- verdict: keep
-- reason: The antipattern is the observed-habit side of C005 with its specimen; the list exists to name the habits a model falls into, which is the incident class.
+- verdict: retire
+- reason: shrink of row 574. The second specimen was an instance of a class already named. C005's landed sentence carries the act: "It states imperatively what the next block does: "Validate Parameters." not "Now we check the inputs".".
 - passage: Validate Parameters." not "Now we check the inputs" or "This handles the case where
 
 ### C039
@@ -386,8 +395,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:75
 - provenance: cabbf89 2026-06-28, the doc-closeout-discipline plan (docs/archive/claude-kit_doc-closeout-discipline_spec_v1.md): the doctrine's current-state rule, the two style-skill antipatterns and the implementer-brief forwarding, baseline-tested under mimicry and deferral pressure.
-- verdict: keep
-- reason: The bullet already cites the doctrine and adds the C# instance for the subagent path; the wording was baseline-tested, so cutting it to a bare pointer discards that evidence.
+- verdict: retire
+- reason: row 585 (No change-narrative comments), merged to the doctrine's "Documents ship the current state" bullet: "Code comments and shipped artifacts state what is true now, never how or when it was learned." C007's landed sentence also carries it in this document.
 - passage: - ❌ Change-narrative comments ("Updated to...", "Now we...", "per the new spec") - the doctrine's current-state rule applies: a comment states what the code does now, never the session, the change, or the prior version
 
 ### C040
@@ -406,7 +415,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
 - reason: Antipattern surface; checklist C056 is its gate and widens it to all `Task` methods.
-- passage: - [ ] `Async` suffix on every `Task` and `Task<T>` method; `CancellationToken` last in the parameter list and passed down the chain
+- passage: - [ ] `Async` suffix on every `Task` and `Task<T>` method; `CancellationToken` last and passed down the chain
 
 ### C042
 - key: Place `CancellationToken` last in the parameter list.
@@ -415,7 +424,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
 - reason: Antipattern surface; checklist C056 is its gate and adds the pass-down-the-chain clause.
-- passage: `CancellationToken` last in the parameter list and passed down the chain
+- passage: `CancellationToken` last and passed down the chain
 
 ### C043
 - key: Never remove `#region` blocks on the grounds that modern style dislikes them.
@@ -537,7 +546,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: 058e3a3 2026-07-24, grounded in a real data-loss bug: a discarded `Enumerable.Append` result in the source session.
 - verdict: keep
 - reason: Incident-born (a discarded `Append` return silently lost data) and the spread form makes that shape impossible; no analyzer enforces it.
-- passage: - [ ] Collection expressions and spreads: `[.. source.Where(...)]` not `.ToArray()`, `[item]` not `new[] { item }`, `[.. existing, item]` not `Append`/`Concat` + `ToArray`
+- passage: - [ ] Collection expressions and spreads, such as `[.. existing, item]` not `Append`/`Concat` + `ToArray`
 
 ### C056
 - key: Put the Async suffix on all `Task` methods and pass `CancellationToken` last and down the whole chain.
@@ -546,7 +555,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
 - reason: The gate for C041 and C042, and the only SKILL.md statement of pass-down-the-chain and of the widening from `Task<T>` to all `Task`.
-- passage: - [ ] `Async` suffix on every `Task` and `Task<T>` method; `CancellationToken` last in the parameter list and passed down the chain
+- passage: - [ ] `Async` suffix on every `Task` and `Task<T>` method; `CancellationToken` last and passed down the chain
 
 ### C057
 - key: Order `using` lines with System.* first, then project and third-party namespaces with third-party placed where convenient, and no blank lines between groups.
@@ -563,9 +572,10 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:94
 - provenance: f8c0649 2026-06-10, INIT (the line's last touch, adf3d51, changed only the using order beside it).
-- verdict: keep
-- reason: Gate line; reference §1 enumerates the banned header kinds as the detail layer.
+- verdict: retire
+- reason: row 598 (No file header), dropped under the mechanism cut; the reference loses the rule, so the checklist gate line goes with it.
 - passage: no file-header comments
+- ruled: cut 2026-09-30
 
 ### C059
 - key: Log via `ILogger<T>` as the preferred pattern, or the static Serilog `Log` where existing code uses it.
@@ -630,7 +640,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which made the register govern every piece written for a reader and pointed each style skill's comment rules at it.
 - verdict: keep
 - reason: C005 and C007 fix what a comment says and this fixes the order it says it in, which no rule in this skill stated. The doctrine owns the register, so the pointer form keeps this skill from becoming a second owner of a rule that governs every piece. A section comment carries the rule alone, so the pointer adds an order without loosening the rare-WHY bound the same item states.
-- passage: Under the doctrine's prose register, a section comment is the rule alone. A WHY comment is rare, and there the reason follows as its own sentence, with at most one case.
+- passage: A WHY comment is rare, and its reason follows as its own sentence.
 
 ## plugins/claude-kit/skills/csharp-style/references/csharp-style.md
 
@@ -645,7 +655,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 830ff28 2026-06-17, the fork-improvements commit that genericized the repo-specific example names (ASR.Eleos) after the reference had been written against one real library; a8770b3 2026-06-28 only reworded it to first person.
 - verdict: keep
 - reason: Nothing mechanical checks a generated file for copied placeholder names, so the copy-the-example-literally failure recurs; the SQL reference states the same rule for its own identifiers because neither document is loaded when the other language is written.
-- passage: Substitute the project's own namespaces and type names rather than copying the example names.
+- passage: Substitute the project's own names for the `Acme` examples.
 
 ### C002
 - key: Open a sibling file in the library and follow its layout exactly.
@@ -734,9 +744,10 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: rule
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:45
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The three named header kinds are the habitual additions the rule exists to stop and no hook strips one from a written file, so the enumeration keeps.
+- verdict: retire
+- reason: row 598 (No file header), dropped under the mechanism cut.
 - passage: Write no file header: no copyright, author block or license. Files begin with `using`.
+- ruled: cut 2026-09-30
 
 ### C012
 - key: Put interfaces in an `Interfaces/` folder, never co-located with their implementations.
@@ -753,8 +764,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:49
 - provenance: f8c0649 2026-06-10; 830ff28 2026-06-17 genericized the names inside it.
-- verdict: keep
-- reason: The specimen is the only place the "third-party where convenient" slot is actually placed (Serilog mid-list, a trailing `System.Threading`), which the prose explicitly leaves loose.
+- verdict: retire
+- reason: row 596 (Using-directive ordering) shrink removed the example block, which stated the order a second time. C003's landed sentence still carries the order, with Serilog mid-list and `AutoMapper` and `MediatR` after the project namespaces.
 - passage: Example:
 - passage: using System.Threading;
 
@@ -967,8 +978,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:177
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
-- verdict: keep
-- reason: The only place the inline `MapperConfiguration` block C035 mandates is actually shown; the §2 skeleton's constructor omits it.
+- verdict: retire
+- reason: row 602 (Single constructor layout) shrink removed the constructor example, which repeated the section 2 skeleton's constructor. C035's landed sentence "Construct AutoMapper inline under `// Save Mapper.`." carries the act, and the section 2 skeleton carries the layout.
 - passage: Example:
 - passage: var mapConfig = new MapperConfiguration(c =>
 
@@ -1006,8 +1017,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:203
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: No finding; it is what makes the `default`-return rule legal.
+- verdict: retire
+- reason: merged into C079, which quotes the same landed sentence and whose key covers both returns and parameters. One rule was stated by two entries.
 - passage: Annotate returns and parameters nullable where null is a valid value: `Task<FilledForm?>`, `Stream?`.
 - flag: stale
 
@@ -1207,9 +1218,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:243
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
-- verdict: rewrite
+- verdict: retire
 - landed: 1dd5bee section 46
-- reason: The prose names the parts; only this specimen shows the cadence (one section comment per block, the `// Return Value.` slot before try), and cadence drift is exactly what the 2026-07-24 hand-edit review found. Flipped to rewrite at section 46's close by C052's proposal, which names this block's line 251: the block at landed lines 219 to 267 is byte-identical to its source but for that guard, which reads `is null`; the cadence this reason keeps is unchanged.
+- reason: row 606 (Worked method body example) shrink removed the worked example, since one example would do. The csharp-style SKILL's `## Method Exemplar` block (row 580, keep) carries the same cadence: validate, `// Return Value.`, work inside try under section comments, log in catch, return at the bottom.
 - proposed: The block is unchanged but for its guard line, which reads `if (document is null) return default;` per C052.
 - passage: Example:
 - passage: // Document Form is only known by "FormCode", Validate.
@@ -1428,15 +1439,15 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §11 carries the file placement, the uniformity requirement and the code block; the checklist carries eleven words.
-- passage: `Assembly/RegisterServices.cs` is the library's Autofac module, and every type registers the same way:
+- passage: `Assembly/RegisterServices.cs` is the library's Autofac module, and every type registers the same way.
 
 ### C085
 - key: Chain `.AsImplementedInterfaces()` on each registration so interfaces are inferred from the implementation.
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:344
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
-- verdict: keep
-- reason: The reference says what the call does; the SKILL says why (idempotent by default), and both halves are needed at different moments.
+- verdict: retire
+- reason: row 611 (Autofac registration shape) shrink. The landed section 11 block, under C088's landed sentence, carries the act of chaining `.AsImplementedInterfaces()`. What the call does is an explanation of the API, not a duty.
 - passage: `.AsImplementedInterfaces()` infers interfaces from the implementation.
 
 ### C086
@@ -1444,8 +1455,8 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:345
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
-- verdict: keep
-- reason: Same split as C085; this call is what makes re-execution safe.
+- verdict: retire
+- reason: row 611 (Autofac registration shape) shrink. The same section 11 block carries the act of chaining `.PreserveExistingDefaults()`. What the call does is an explanation of the API, not a duty.
 - passage: `.PreserveExistingDefaults()` respects any prior registration.
 
 ### C087
@@ -1497,7 +1508,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; the suffix table is the naming contract the DI and folder rules assume.
-- passage: | `Service` | Core operations and orchestration | `DocumentService`, `FormService`, `PdfService` |
+- passage: Type suffixes: `Service` for core operations and orchestration
 
 ### C092
 - key: Suffix MediatR notification handlers with `Handler`.
@@ -1506,7 +1517,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; paired with the `Handlers/` folder rule.
-- passage: | `Handler` | MediatR notification handlers | `AzureFileSaveHandler`, `NetworkFileSaveHandler` |
+- passage: `Handler` for MediatR notification handlers
 
 ### C093
 - key: Suffix static utility method containers with `Helper`.
@@ -1515,7 +1526,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is what keeps a static utility from being named `Service` and registered in DI.
-- passage: | `Helper` | Static utility methods | `DocumentHelper`, `FieldHelper`, `FormHelper` |
+- passage: `Helper` for static utility methods
 
 ### C094
 - key: Suffix MediatR notifications with `Notification`.
@@ -1524,7 +1535,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; part of the same suffix table.
-- passage: | `Notification` | MediatR notifications | `DocumentProcessedNotification`, `FileSaveNotification` |
+- passage: `Notification` for MediatR notifications
 
 ### C095
 - key: Use the `Repository` suffix only for older data-access objects.
@@ -1533,7 +1544,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding, and the legacy-only bound is the working part: it stops a session introducing a repository layer against the stored-procedure default.
-- passage: | `Repository` (Legacy only) | Older data-access objects | `DocumentBatchRepository` |
+- passage: and `Repository` only for legacy data-access objects.
 
 ### C096
 - key: Prefix method names by verb: `Get*` to read or fetch, `Process*` to orchestrate a pipeline, `Create*` to build a new value, `Extract*` to pull data from a structure, `Build*` to construct a complex output, `Save*` or `Set*` to write or assign.
@@ -1551,7 +1562,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the naming rule the SKILL's example only demonstrates.
-- passage: Interfaces take an `I` prefix matching the implementation: `IDocumentService` for `DocumentService`.
+- passage: Interfaces take an `I` prefix matching the implementation.
 
 ### C098
 - key: Keep MediatR notifications as simple data holders.
@@ -1661,27 +1672,30 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:443
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: No finding; the format-on-edit hook runs CSharpier only when it is installed and does nothing otherwise, so the prose is the only guarantee.
+- verdict: retire
+- reason: row 616 (Whitespace basics), dropped under the mechanism cut.
 - passage: Indent four spaces, never tabs.
+- ruled: cut 2026-09-30
 
 ### C110
 - key: Put one blank line between methods within a region.
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:444
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: No finding; the only statement of method spacing.
+- verdict: retire
+- reason: row 616 (Whitespace basics), dropped under the mechanism cut.
 - passage: Put one blank line between methods in a region
+- ruled: cut 2026-09-30
 
 ### C111
 - key: Put one blank line between regions, after `#endregion` and before the next `#region`.
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:445
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: No finding; region spacing is not something a formatter decides, since preprocessor directives are left where the author put them.
+- verdict: retire
+- reason: row 616 (Whitespace basics), dropped under the mechanism cut.
 - passage: and between regions.
+- ruled: cut 2026-09-30
 
 ### C112
 - key: Put one blank line between field groups, after the labeled comment's group finishes.
@@ -1729,15 +1743,15 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is what makes the §16 template the greenfield path the SKILL points at when no sibling exists.
-- passage: For a brand-new service in `Services/Build/` or `Services/Process/`, use this skeleton:
+- passage: For a brand-new service in `Services/Build/` or `Services/Process/`, start from the section 2 skeleton.
 
 ### C117
 - key: Build a new service as the `WidgetService` template shows: usings, file-scoped namespace, Variables, Constructor, a named processing region with validate/return-value/try/catch/return, and a Private Methods region.
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:455
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: C116 says to use "this skeleton", so the template is the rule's object rather than an illustration of it.
+- verdict: retire
+- reason: row 617 (New service template) merge. The section 2 skeleton (C022, passage "Skeleton:") is the one canonical skeleton, and C116's landed sentence names it.
 - passage: public class WidgetService : IWidgetService
 
 ### C118
@@ -1747,7 +1761,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §16 is a procedure, and this is the step that keeps a new service from being written and never wired; §11 owns the registration form it points at.
-- passage: Register it in `Assembly/RegisterServices.cs` under the appropriate label, such as `// SERVICES.`:
+- passage: Register it in `Assembly/RegisterServices.cs` under a label such as `// SERVICES.`.
 
 ### C119
 - key: Declare the new service's interface in `Interfaces/I<Name>Service.cs`.
@@ -1756,4 +1770,4 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 7964c7e 2026-06-28 trimmed it to its current form when the XML-doc ban was withdrawn; the line itself dates from f8c0649 2026-06-10.
 - verdict: keep
 - reason: Seven words closing the §16 procedure; C012 owns the placement rule and this is the step that applies it, so removing it would end the walkthrough with the service unusable.
-- passage: Declare its interface in `Interfaces/IWidgetService.cs`.
+- passage: Declare its interface in `Interfaces/`.
