@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the completion leash, which only the operator's typed `/kit-goal` arms, and taking on a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (Y003 and Y004 below, with c4.C051, c4.C064 and V001 amended in place). Redrafted on 2026-09-26 by section 3 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `e73b9ed3` with its fix round at `e50de2a1`, so every live entry's `passage:` line quotes the text at `e50de2a1`, the `flag:` lines record that pass's flags, and A001 below is the Chapter field that section added.
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (Y003 and Y004 below, with c4.C051, c4.C064 and V001 amended in place). Redrafted on 2026-09-26 by section 3 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `e73b9ed3` with its fix round at `e50de2a1`, so every live entry's `passage:` line quotes the text at `e50de2a1`, the `flag:` lines record that pass's flags, and A001 below is the Chapter field that section added. Redrafted on 2026-10-01 by section 3 of `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, which applied that plan's cut list, so every live entry's `passage:` line quotes the text that section landed, and the entries its two drop rows retired carry `ruled: cut 2026-09-30`.
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -602,7 +602,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 09c91a4 2026-08-06, the faked foreground blocks the kaizen note recorded.
 - verdict: keep
 - reason: Reaches only the occasion c1.C059 defines; a synchronous dispatch is not background and the in-turn loop while readings are pending is the hold c1.C064 orders, so neither contradicts it once c1.C011's discriminator is stated.
-- passage: The first is the completion contract's dispatch row: a turn whose only remaining work is dispatched background subagents ends with `WAITING:` as its very first characters, naming the pending dispatch, never a foreground wait or a pause dressed as a blocker.
+- passage: The first is the completion contract's dispatch bullet: a turn whose only remaining work is dispatched background subagents ends with `WAITING:` as its very first characters, naming the pending dispatch, never a foreground wait or a pause dressed as a blocker.
 
 ### c1.C061
 - key: Take a park at a safe boundary only on a request, never on the run's own judgment of its own work.
@@ -1183,7 +1183,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: The doctrine owns staging on a shared checkout; this fifteen-word prohibition is the pointer-with-content form and states no mechanics, and :465 defers to the doctrine's hold rule for the one case that needs them.
-- passage: Sibling sessions' files and uncommitted work take the doctrine's Scope and Safety rules, so never stage them or carry them in a commit of yours.
+- passage: Own a disjoint set of files from sibling sessions in the same repo. Their uncommitted work takes the doctrine's Scope and Safety rules, so never stage it or carry it in a commit of yours.
 
 ### c1.C118
 - key: Run each Section of Work in order, running sections concurrently only where the disjoint-files rule in "Delegating to subagents" permits.
@@ -4757,7 +4757,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: rewrite
 - landed: 3a09c25 section 4
 - reason: The mechanic stays; its why moves here: every branch commit is a durable recovery point for a crash-interrupted run, and the merge stays gated by review, the finishing pass, and the PR (A048, A052, A053).
-- passage: The verified state commits at first green, the first-green commit: once it passes step 2 and before the step 3 round goes out, with review fixes following as further commits under step 1's staging discipline.
+- passage: The verified state commits at first green, the first-green commit: once it passes step 2 and before the step 3 round goes out, with review fixes following as further commits, and step 1's staging discipline holds at every one of them.
 
 ### c4.C033
 - key: Have the controller stage exactly the section's files, and keep implementers from committing or staging.
@@ -4769,7 +4769,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Step 1's staging bullet owns the discipline; this site keeps only the bound that it holds whichever moment the commit lands at, as a pointer, which closes the composition defect the sentence was installed for (A054, A055, A056).
 - proposed: (via A054) Replace "The staging discipline is unchanged, whichever moment the commit lands at: the controller stages exactly the section's files, and implementers still neither commit nor stage" with "Step 1's staging discipline holds whichever moment the commit lands at".
 - baseline-test: yes
-- passage: The verified state commits at first green, the first-green commit: once it passes step 2 and before the step 3 round goes out, with review fixes following as further commits under step 1's staging discipline.
+- passage: The verified state commits at first green, the first-green commit: once it passes step 2 and before the step 3 round goes out, with review fixes following as further commits, and step 1's staging discipline holds at every one of them.
 
 ### c4.C034
 - key: Do not open the pull request here; it happens in finishing-work.
@@ -7461,7 +7461,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: c7e5f64 2026-07-09 installed the line; fb5d4fe added closed; f26619c 2026-09-08 and 9f1ed1b 2026-09-09 added the provenance and ruling tokens for the review-loop provenance plan.
 - verdict: keep
 - reason: The HEAD carrier of c4.C109; the field feeds the backlog's experiments and the new tokens are what lets the design stop's firing rate be queried.
-- passage: Metrics: <review rounds <n>, closed <clean | claim-exit | major-closed>; provenance <s> spec-traceable, <f> fix-introduced, <r> new-requirement, rulings (<a> refused, <b> declared, <c> asked); advisory: <v> findings, <w> fixed, <d> deferred, <e> refused; NEEDS_CONTEXT count; escalations; consults <n>>
+- passage: Metrics: <review rounds <n>, closed <clean | claim-exit | major-closed>; provenance <s> spec-traceable, <f> fix-introduced, <r> new-requirement, rulings (<a> refused, <b> declared, <c> asked); advisory: <v> findings, <w> fixed, <d> deferred, <e> refused; NEEDS_CONTEXT count; escalations; consults <n>, counting consultant dispatches alone; `closed` is read off the last round that carried findings: `major-closed` where it carried an owed Major, `claim-exit` where it carried a claim finding and no such Major, else `clean`>
 
 ### R186
 - key: Write the Chapter's Review Findings field opening with any held finding and what it awaits, and any design stop with its mechanism, ruling bucket and seat, before the review dispatch lines.
@@ -8253,7 +8253,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09, the bucket dispositions folded into the terminal condition; line touched by abfa98d 2026-09-09. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: The disposition vocabulary the condition is read against; a declare re-enters and an ask holds, neither disposing.
-- passage: It leaves no owed Major, a behavior finding or a claim an exception holds to that bar, undisposed. A Major is disposed when fixed, routed out of scope, recorded in the Chapter as justified-not-fixed, or bucketed refuse with its record placed, a design stop's refuse only by the fix written within its form or on a negative-half ground. A declare still owes its fix, and an ask holds the section until I answer.
+- passage: It leaves no owed Major, a behavior finding or a claim held to that bar, undisposed. A Major is disposed when fixed, routed out of scope, recorded in the Chapter as justified-not-fixed, or bucketed refuse with its record placed, a design stop's refuse only by the fix written within its form or on a negative-half ground. A declare still owes its fix, and an ask holds the section until I answer.
 
 ### S071
 - key: Let a finding still held when the section's other work reaches the close gate fall to the adjudicator then.
@@ -8309,7 +8309,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: fb5d4fe 2026-09-07 for the same-fix-round rule; abfa98d 2026-09-09 split it by class after a consult ruled the class-keyed split, the rating-keyed wording having proved dead on a misrated security claim, with a Standing Brief Amendments entry stating the rule.
 - verdict: keep
 - reason: The owner of the claim split; S011 at line 423 points here, and a change to the split lands in this sentence first.
-- passage: A claim an exception holds is dispositioned in the same fix round, and every other claim finding joins the Minors whatever its rating.
+- passage: A claim held to the behavior bar is dispositioned in the same fix round, and every other claim finding joins the Minors whatever its rating.
 
 ### S077
 - key: Disposition a claim finding one of four ways: delete the false sentence, add a cheap mechanical check, write a Chapter line naming the sentence left standing, or take the out-of-scope route.
@@ -8402,7 +8402,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The split keeps and its "since an amendment steers the writer" clause moves here: an amendment steers the writer, and the writer is the one who cannot see the class in a sentence just written.
 - proposed: Keep the split sentence and drop its "since an amendment steers the writer" clause; the ledger holds the ground.
 - baseline-test: yes
-- passage: Only a behavior class takes an amendment. A claim an exception holds to the behavior bar counts as behavior here. Any other second instance of a claims class takes a mechanical check or a deletion sweep.
+- passage: Only a behavior class takes an amendment. A claim held to the behavior bar counts as behavior here. Any other second instance of a claims class takes a mechanical check or a deletion sweep.
 
 ### S087
 - key: Apply the amendment to a sibling section already in flight at its next review round.
@@ -9210,20 +9210,18 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the pathspec and exclusions shaped in that commit's three review rounds; 0103483 2026-09-09 appended the untracked-file group after it; 6983398 2026-09-10 moved the moment from "before each fix round" to the review round's return, before adjudication, after finishing round 4's adversarial lens found the two capture sentences contradicting each other on when capture n exists (interim board 16).
-- verdict: retire
-- reason: row 718, Per-round fix diff captures, dropped. Fix-introduced is now read from the round the orchestrator just ran.
-- passage: So capture the section's delta when each review round returns, before its adjudication and any fix round it owes, with `git diff <base> -- <the section's Files in scope> ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**' > .kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`.
-- ruled: cut 2026-09-30
+- verdict: keep
+- reason: No hook produces the capture, so the command is the mechanism, and the pin over the excluded-root set (test/review-loop-provenance.test.js subject 8) holds the spelling rather than the timing; its load-bearing ground (T034) lives here: a capture reaching `docs/plans/**` hands a later judge the plan's Chapters its charter refuses, one unscoped to the section's files carries a sibling's unstaged work as this section's lines, and a path unkeyed on the section is overwritten by whichever sibling reaches the same round number second.
+- passage: Its provenance fact is the base ref with the fix commits where the section's work is committed, else a capture taken at the adjudication that holds the finding, `git diff <base> -- <the section's Files in scope> ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**' > .kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`, with each untracked in-scope path appended by `git diff --no-index -- /dev/null <path>` from the repository root and a path under those three roots skipped by hand, and the brief names that latest capture alone.
 
 ### T023
 - key: Append each in-scope path absent from the index, established by `git ls-files --error-unmatch <path>` failing, with `git diff --no-index -- /dev/null <path> >> <capture>`, one call per path.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: 0103483 2026-09-09, review-loop provenance plan section 9 (surfaced by section 7's review, 950723b): the tracked-only diff left a file the section created invisible until the scope-check add, which sits after the last fix round; the operator memory a-fingerprints-coverage-is-its-query-not-its-hash records the class; line touched by 6983398 2026-09-10 without changing this clause.
-- verdict: retire
-- reason: row 718, Per-round fix diff captures.
-- passage: So append each in-scope path absent from the index, as `git ls-files --error-unmatch <path>` failing establishes, with `git diff --no-index -- /dev/null <path> >> <capture>`, one call per path.
-- ruled: cut 2026-09-30
+- verdict: keep
+- reason: The only way a created file reaches the capture before something tracks it; its incident (T026) lives here: a created file is invisible to every capture until Branch-and-PR's first-green commit, which lands before the round, or step 4's scope-check `git add`, which sits after the loop's last fix round.
+- passage: Its provenance fact is the base ref with the fix commits where the section's work is committed, else a capture taken at the adjudication that holds the finding, `git diff <base> -- <the section's Files in scope> ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**' > .kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`, with each untracked in-scope path appended by `git diff --no-index -- /dev/null <path>` from the repository root and a path under those three roots skipped by hand, and the brief names that latest capture alone.
 
 ### T024
 - key: Run that append from the repository root with the path spelled repo-relative and carrying no `..` segment.
@@ -9240,10 +9238,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: 0103483 2026-09-09, the exclusions bypass raised as a round-1 Major by both lenses per Chapter 9; line touched by 6983398 2026-09-10 without changing this clause.
-- verdict: retire
-- reason: row 718, Per-round fix diff captures.
-- passage: Skip a path under the three excluded roots, since `--no-index` honors no exclusion pathspec.
-- ruled: cut 2026-09-30
+- verdict: keep
+- reason: `--no-index` honors no exclusion pathspec, so without the skip the append carries exactly what T022's exclusions keep from a judge; the pin over the excluded-root set holds the set and not the skip.
+- passage: Its provenance fact is the base ref with the fix commits where the section's work is committed, else a capture taken at the adjudication that holds the finding, `git diff <base> -- <the section's Files in scope> ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**' > .kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`, with each untracked in-scope path appended by `git diff --no-index -- /dev/null <path>` from the repository root and a path under those three roots skipped by hand, and the brief names that latest capture alone.
 
 ### T026
 - key: A file the section created is invisible to every capture until something tracks it, whether Branch-and-PR's first-green commit or step 4's scope-check `git add`.
@@ -9300,10 +9297,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08 for the brief-names-a-capture clause, which named the pair; 6983398 2026-09-10 replaced the pair with the latest capture alone after finishing round 3 found the pair unsatisfiable at a section's first round and the pre-BLOCKED consultant pinned that the charter's and this skill's single-finding wording move in one delta (interim boards 13 and 14). goal-fit section 3 2026-09-19, the add-decision trigger.
-- verdict: retire
-- reason: row 718, Per-round fix diff captures. The judge's brief no longer names a capture.
-- passage: A judge's brief names the latest capture alone, read whole for the finding's lines.
-- ruled: cut 2026-09-30
+- verdict: keep
+- reason: A held finding's value is read wherever its lines sit and the round's own capture already holds them; the charter's input line states the same rule, so a brief naming a range would contradict the seat it dispatches. Its why (T032) lives here.
+- passage: Its provenance fact is the base ref with the fix commits where the section's work is committed, else a capture taken at the adjudication that holds the finding, `git diff <base> -- <the section's Files in scope> ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**' > .kit/scratch/<plan-slug>/<section>/fix-round-<n>.diff`, with each untracked in-scope path appended by `git diff --no-index -- /dev/null <path>` from the repository root and a path under those three roots skipped by hand, and the brief names that latest capture alone.
 
 ### T032
 - key: One capture suffices there, since a new-requirement value is read wherever the lines sit and the round's own capture already holds them.
@@ -10962,7 +10958,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, review round 1.
 - verdict: keep
 - reason: T182 sends a fix-now advisory fix through the design stop, and that stop's negative-half refuse disposes a Major justified-not-fixed while its ask is a BLOCKED hold. Without this sentence a confirmed cited Critical whose fix adds an unnamed mechanism could close the section neither fixed nor raised, which T179 forbids.
-- passage: Where that stop answers a confirmed cited Critical's fix with a negative-half refuse or an ask, the Critical is raised, never justified-not-fixed.
+- passage: Where that stop answers a confirmed cited Critical's fix with a negative-half refuse, one grounded on what the plan keeps out (its `## Out of Scope` list, or the Intent record's not-done clauses and refused alternatives), or an ask, the Critical is raised, never justified-not-fixed.
 
 ### T193
 - key: On the relevance shape read a quoted sentence of the project's `## Threat model` section as the positive ground, or, where the model is absent, the deployment sentence the Intent record and the Goal state.
@@ -11124,7 +11120,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 09c91a4 2026-08-06, the kaizen note that gave the goal leash its `WAITING:` release; the first-turn gate on the yield was lifted by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
 - verdict: keep
 - reason: The yield no longer waits on a resolved first-turn reading, so a never-started dispatch is caught one growth window later where a timer is armed and at session start where none is. The plan's Assumptions record that cost as accepted.
-- passage: The first is the completion contract's dispatch row: a turn whose only remaining work is dispatched background subagents ends with `WAITING:` as its very first characters, naming the pending dispatch, never a foreground wait or a pause dressed as a blocker. Take the first-turn reading at the first wake at or after its window closes, per finishing-work's cadence paragraph.
+- passage: The first is the completion contract's dispatch bullet: a turn whose only remaining work is dispatched background subagents ends with `WAITING:` as its very first characters, naming the pending dispatch, never a foreground wait or a pause dressed as a blocker. Take the first-turn reading at the first wake at or after its window closes, per finishing-work's cadence paragraph.
 - flag: weak-reason
 
 ### W017
