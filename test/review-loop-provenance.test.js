@@ -629,11 +629,10 @@ test('control: removing scope-adjudicator from the effort-pin map fails naming t
     });
 });
 
-// Subject 8: the excluded-root set the judge must never read is spelled in four
-// places, the charter's two git diff spellings, its by-hand hunk-skip list, and
-// executing-work's fix-round capture command; one drifting from the others is
-// how a root the others exclude reaches the judge, so the four are pinned equal.
-// Prose carriers of the same set (executing-work's "three excluded roots", the
+// Subject 8: the excluded-root set the judge must never read is spelled in three
+// places, the charter's two git diff spellings and its by-hand hunk-skip list;
+// one drifting from the others is how a root the others exclude reaches the
+// judge, so the three are pinned equal. Prose carriers of the same set (the
 // charter's "those two roots and the kaizen inbox", finishing-work's named
 // trio) are not swept here.
 const CHARTER_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'scope-adjudicator.md');
@@ -642,19 +641,16 @@ function rootsOfSpelling(spelling) {
     return [...spelling.matchAll(/\(exclude\)([^'*]+)\*\*'/g)].map((m) => m[1]).sort();
 }
 
-function checkExcludedRootSets(charterText, executingText) {
+function checkExcludedRootSets(charterText) {
     const spellings = [...charterText.matchAll(/`git diff [^`]*\(exclude\)[^`]*`/g)].map((m) => m[0]);
     if (spellings.length !== 2) return `scope-adjudicator.md: expected two git diff spellings carrying exclusions, found ${spellings.length}`;
     const skipMatch = charterText.match(/skip any hunk under ([^\n]*?), and say in your report/);
     if (!skipMatch) return 'scope-adjudicator.md: hunk-skip list not found';
     const skipRoots = [...skipMatch[1].matchAll(/`([^`]+)`/g)].map((m) => m[1]).sort();
-    const capture = executingText.match(/`git diff <base> -- <the section's Files in scope>[^`]*`/);
-    if (!capture) return 'executing-work/SKILL.md: fix-round capture command not found';
     const sets = [
         ['scope-adjudicator.md two-ref spelling', rootsOfSpelling(spellings[0])],
         ['scope-adjudicator.md whole-changeset spelling', rootsOfSpelling(spellings[1])],
         ['scope-adjudicator.md hunk-skip list', skipRoots],
-        ['executing-work/SKILL.md capture command', rootsOfSpelling(capture[0])],
     ];
     const reference = sets[0][1].join(',');
     if (!reference) return 'scope-adjudicator.md two-ref spelling: no excluded roots parsed';
@@ -664,15 +660,15 @@ function checkExcludedRootSets(charterText, executingText) {
     return null;
 }
 
-test('the excluded-root set is one value across the charter\'s two spellings, its skip list, and the capture command', () => {
-    assert.strictEqual(checkExcludedRootSets(fs.readFileSync(CHARTER_FILE, 'utf8'), fs.readFileSync(EXECUTING_WORK_FILE, 'utf8')), null);
+test('the excluded-root set is one value across the charter\'s two spellings and its skip list', () => {
+    assert.strictEqual(checkExcludedRootSets(fs.readFileSync(CHARTER_FILE, 'utf8')), null);
 });
 
 test('control: dropping kaizen from the charter\'s skip list fails, naming the skip list', () => {
     const original = fs.readFileSync(CHARTER_FILE, 'utf8');
     const mutated = original.replace('`docs/archive/` or `kaizen/`', '`docs/archive/`');
     assert.notStrictEqual(mutated, original, 'test fixture assumption: the skip list named kaizen');
-    const result = checkExcludedRootSets(mutated, fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'));
+    const result = checkExcludedRootSets(mutated);
     assert.ok(result, 'a skip list missing a root must fail');
     assert.match(result, /hunk-skip list/, 'the failure must name the skip list');
 });
@@ -682,7 +678,7 @@ test('control: dropping kaizen from the whole-changeset spelling fails, naming t
     const needle = "`git diff <base> -- . ':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**'`";
     const mutated = original.replace(needle, "`git diff <base> -- . ':(exclude)docs/plans/**' ':(exclude)docs/archive/**'`");
     assert.notStrictEqual(mutated, original, 'test fixture assumption: the whole-changeset spelling named kaizen');
-    const result = checkExcludedRootSets(mutated, fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'));
+    const result = checkExcludedRootSets(mutated);
     assert.ok(result, 'a spelling missing a root must fail');
     assert.match(result, /whole-changeset spelling/, 'the failure must name the spelling');
 });
