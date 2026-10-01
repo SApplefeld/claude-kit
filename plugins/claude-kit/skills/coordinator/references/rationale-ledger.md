@@ -254,7 +254,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28 in step 2; the no-board rule at line 95 (3fb2f4b 2026-08-26) carries the same sentence with the off-Windows bound.
 - verdict: retire
 - landed: fe0f812 section 23
-- reason: shrink row 526 (Cold-start tick order). The no-board rule's sentence "The wait is paid once rather than at every session" carries it. This entry's own reason names that rule as the one statement.
+- reason: shrink row 526 (Cold-start tick order). The no-board rule's sentence "That wait is paid once, since every later session reads the board on disk" carries it. This entry's own reason names that rule as the one statement.
 - proposed: (via A029) Drop "That report is paid once and not at every session: what every later session on this box reads here is the board on disk" from step 2; line 95 carries it.
 - baseline-test: yes
 - passage: The report is paid once, per the no-board rule.
@@ -523,7 +523,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:25
 - provenance: fb0f194 2026-08-28, the inbox added to the pass's sources with the fourth function.
 - verdict: retire
-- reason: merge row 529 (Kaizen inbox dispositioning). The reconciliation pass's source list carries the read: "The last is the kaizen inbox in the kit repo, the `kaizen/notes-*.md` files and `kaizen/briefs/`, which the kaizen skill owns.".
+- reason: merge row 529 (Kaizen inbox dispositioning). The reconciliation pass's source list carries the read: "the kaizen inbox in the kit repo, the `kaizen/notes-*.md` files and `kaizen/briefs/`".
 - passage: The reconciliation pass reads the inbox as a source to feed this function.
 
 ### c1.C051
@@ -592,7 +592,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, every field of the record given a disposition so none rides without one, closing a security Major on the funnel's inputs.
 - verdict: keep
 - reason: The table stays in the compressed funnel (A086) because a field with no stated reader was itself the finding; it is read against the record kit-goal-lib.js writes.
-- passage: An event names the incident, and its `detail` and `run` fields have no reader.
+- passage: Each record field is dispositioned here, stated so no field rides without one: `project` takes the path screen below, `plan` the same screen at its own point of use, `session` the string-match join below, `event` the `goal-blocked` filter, `ts` the dedup key below, and `detail` and `run` no reader at all.
 
 ### c1.C058
 - key: Read the recorded note by running `node <plugin-root>/hooks/kit-goal.js status` from the blocked project's directory, never by opening `.kit/goal-state.json` by hand.
@@ -798,7 +798,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f07b9f0 2026-08-26, the brief's channel drawn from the closed list of warranted channels.
 - verdict: keep
 - reason: No finding; the channel choice is the seat's own.
-- passage: sent on the seat's own allowlisted relay thread where a broker runs for its session, else at the operator's keyboard there.
+- passage: sent on the seat's own allowlisted relay thread where a broker runs for its session, else at the operator's keyboard in the seat's own session.
 - flag: weak-reason
 
 ### c1.C079
@@ -1310,7 +1310,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f07b9f0 2026-08-26, the recorded note the funnel reads through the goal CLI.
 - verdict: keep
 - reason: No finding; the fact c1.C058's read depends on.
-- passage: The blocker is the declaration's first line, which a mid-queue advance records in the project's goal state.
+- passage: A mid-queue advance does record the declaration's first line in the blocked project's goal state.
 
 ### c1.C127
 - key: Treat a worktree's own goal state as the real state for that worktree, since the resolver joins the named project directory with no redirection to another checkout.
@@ -1679,7 +1679,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28 the default; 30993d0 2026-08-28 the no-field rule, after a cadence pointer in the Admin bullet would have pruned the entry it named as proof of life.
 - verdict: keep
 - reason: A cadence in the entry would be a self-declared lever on a victim's prune threshold; the default is this runbook's because this runbook is the one that states one.
-- passage: else this seat's own 4 hours. It is never read from the entry
+- passage: Every other seat takes this seat's own 4 hours. It is never read from the entry
 
 ### c2.C033
 - key: Read which seat an entry is from its own `Role:` field, matched against the peer-sessions Roles table's rows.
@@ -1688,7 +1688,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 30993d0 2026-08-28, Section 7 of the seat-infrastructure plan, when the Roles table gained per-seat cadences.
 - verdict: keep
 - reason: The Admin's cadence is single-sourced in the table under a parity pin that asserts the coordinator resolves against it by name and carries no figure of its own.
-- passage: The cadence is the figure the peer-sessions Roles table names for the entry's `Role:`, the Admin's among them, else this seat's own 4 hours.
+- passage: The peer-sessions Roles table names a cadence for the Admin seat, which takes that stated figure. Every other seat takes this seat's own 4 hours.
 
 ### c2.C034
 - key: Read an absent, unparseable or table-unmatched `Role:` value as the default cadence and never a shorter one; take a row's figure only where the `Role:` matches a row stating its own cadence.
@@ -1706,7 +1706,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 30993d0 2026-08-28; a seat that runs no loop arms no wake, ruled from the system.
 - verdict: keep
 - reason: The Expert and Worker state no loop deliberately; the Admin's figure is pinned to the table row. No finding.
-- passage: The cadence is the figure the peer-sessions Roles table names for the entry's `Role:`, the Admin's among them, else this seat's own 4 hours.
+- passage: The peer-sessions Roles table names a cadence for the Admin seat, which takes that stated figure. Every other seat takes this seat's own 4 hours.
 
 ### c2.C036
 - key: Read an absent `Heartbeat:` line, and the `none` the takeover shape writes, as unknown rather than stale.
@@ -2416,7 +2416,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, shipped as a deliberate deviation from the spec: absence is never the seat's to conclude, and the unestablished state is the one every seat starts in.
 - verdict: keep
 - reason: The public default is what makes the line bars sufficient on any install; the role skill applies the same default to `Workdir:` and points here.
-- passage: The board is written as a public surface wherever the premise fails or is unestablished, the starting state, or a seat cannot say which state it is in.
+- passage: Where the premise fails or is unestablished, the starting state, or a seat cannot say which state it is in, the board is written as a public surface.
 
 ### c3.C008
 - key: Treat silence as establishing nothing, and where you cannot say which state you are in, write for the public case.
@@ -2593,7 +2593,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the registry entry's identifier was given the readership route the claim file's enumeration already took, closing an enumeration rather than a leak.
 - verdict: keep
 - reason: no finding; the sentence already defers to the role skill for the disclosure route.
-- passage: Its identifier takes the role skill's disclosure route
+- passage: Its identifier rides on the line, or where the operator would not publish it, the sensitivity stub below naming the repo
 
 ### c3.C027
 - key: Where a pruned entry's identifier is one the operator would not publish, write the sensitivity stub naming the repo rather than the entry, and report the readership question to the operator.
@@ -2900,7 +2900,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:79
 - provenance: 3074425 2026-08-31, codified from the seat's own finding that a ledger tested on re-derivability alone fills with its own journey; the founding incident is the 201-kilobyte board 6c725a0 records.
 - verdict: keep
-- reason: The admission test for a candidate line; the readability test at line 89 is the whole-board test that earns a homing round, and the park handoff's contextless-reader standard is another artifact's.
+- reason: The admission test for a candidate line; the readability test at line 89 is the whole-board test, whose failure runs the board's lines through the routing, and the park handoff's contextless-reader standard is another artifact's.
 - passage: Each line answers the chassis's admission test, only what a successor with no context needs to resume the seat, so a candidate is routed at the moment of writing rather than pruned at a cleanup later.
 - flag: stale
 
@@ -3634,7 +3634,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:89
 - provenance: b09a392 2026-09-02, the readability test installed as the board's health rule after a sweep proved no byte ceiling existed to replace, eight review rounds and a consult converging on this minimal form.
 - verdict: keep
-- reason: Pinned verbatim at test/doctrine-parity.test.js:2247; it is the test a pass acts on and the only thing that earns a homing round. The readability-test pin sits at test/doctrine-parity.test.js:2236 at the landing (cited :2247).
+- reason: Pinned verbatim at test/doctrine-parity.test.js:2247; it is the test a pass acts on, and its failure is what runs the board's lines through the routing. The readability-test pin sits at test/doctrine-parity.test.js:2236 at the landing (cited :2247).
 - passage: **The board's readability test is that a cold successor takes the seat from one read of it.**
 
 ### c4.C040
@@ -3778,7 +3778,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f25bbf9 2026-09-02, the cut invariant at its point of use.
 - verdict: keep
 - reason: The order's statement of c4.C043; unconfirmed is unknown rather than absent, so it holds the line.
-- passage: A line comes off the board only once its destination write is confirmed landed.
+- passage: A board failing it has its lines run through the routing above as though written now, and a line comes off the board only once its destination write is confirmed landed.
 
 ### c4.C054
 - key: Make a confirming read establish that the returned record is the one this round wrote, on the tier it was written to, carrying the content the round composed.

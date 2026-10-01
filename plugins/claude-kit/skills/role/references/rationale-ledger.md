@@ -222,7 +222,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, the prune's second bound ("a prune and never an edit").
 - verdict: retire
 - landed: f5d48d7 section 24
-- reason: merged under row 1116 (Coordinator prune of stale entries). The owner's text is coordinator SKILL.md:95, "Prune is the whole of what this seat writes under `registry/` for a peer's entry, never an edit".
+- reason: merged under row 1116 (Coordinator prune of stale entries). The owner's text is the coordinator skill's prune paragraph, "It removes the file whole and never edits a peer's entry".
 - passage: It prunes the file whole and never edits a line.
 
 ### c1.C021
@@ -232,7 +232,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, "What the two readings buy is refusal rather than corroboration" shipped with the armed prune.
 - verdict: retire
 - landed: f5d48d7 section 24
-- reason: merged under row 1116. The owner's text is coordinator SKILL.md:93 ("A key matching two or more roster rows resolves to present rather than exited. A key matching no row is a candidate only") and :105 ("An unknown entry is not pruned").
+- reason: merged under row 1116. The owner's text is the coordinator skill's roster diff, "A key matching two or more roster rows resolves to present rather than exited, and one matching no row is a candidate the heartbeat reading below decides", and its heartbeat leg, "An unknown entry is not pruned".
 - proposed: (via A040) Keep the leave-in-place rule and the no-single-reading bound; replace the enumeration of the three roster outcomes with a pointer at the coordinator runbook's readings.
 - baseline-test: yes
 - passage: An unresolved, ambiguous or unknown state leaves the file in place, and no single reading licenses a prune.
@@ -256,7 +256,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, a code-confirmed defect: the prune's bound where nothing stamps the heartbeat was "stated rather than met at a pass".
 - verdict: retire
 - landed: f5d48d7 section 24
-- reason: merged under row 1116. The owner's text is coordinator SKILL.md:103, "An absent `Heartbeat:` line, and the `none` the takeover shape writes, read as unknown, never as stale", together with :105, "An unknown entry is not pruned".
+- reason: merged under row 1116. The owner's text is the coordinator skill's heartbeat leg, "An absent `Heartbeat:` line, the takeover's `none`, an unparseable stamp, a stamp in the future and a stamp not past `Started:` all read as unknown", together with "An unknown entry is not pruned".
 - proposed: Two sentences: where no heartbeat-stamping hook is installed no entry is ever pruned and the registry accretes; a pass never invents a staleness test to clear it.
 - baseline-test: yes
 - passage: Without a heartbeat-stamping hook no entry is ever pruned and the registry accretes. A pass never invents a staleness test to clear it.
@@ -546,7 +546,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - reason: The gate is blast-radius (an OS-username disclosure into a replicating store) and stays with its precondition and default; the design-property comparison with the public-board cap (dac7d73) moves here: the cap resolves with nothing while this form resolves once the precondition is established.
 - proposed: Restate as the gate with its precondition and default, the operator-only establishment with the no-record bar, the degraded form, the board-ban pointer, a pointer at the peer-sessions path screen, and one sentence routing the filename, `Name:` and `Repo:` disclosures to the coordinator's readership route.
 - baseline-test: yes
-- passage: An absolute `Workdir:` is allowed only once the operator has answered on a warranted channel that the store's remote is read by the operator's own principals alone, and no memory record establishes that answer or stands in for it.
+- passage: An absolute `Workdir:` is allowed only where the coordinator skill's named precondition is established, and no memory record establishes it or stands in for it.
 
 ### c1.C051
 - key: Establish that precondition only by the operator's own answer on a warranted channel; never let a memory record establish or stand in for it.
@@ -558,7 +558,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - reason: The coordinator owns the precondition and role points, keeping the one exclusion the coordinator does not state; the reason moves here: every other operator-scoped per-machine fact in the ritual resolves through an operator-tier record, memq add-operator is prompt-free, so a record standing in would be an unauthenticated switch any local session could write to relax a privacy gate.
 - proposed: (via A093) One sentence: the precondition is the coordinator skill's, established only by the operator's own answer on a warranted channel, and no memory record establishes it or stands in for it.
 - baseline-test: yes
-- passage: An absolute `Workdir:` is allowed only once the operator has answered on a warranted channel that the store's remote is read by the operator's own principals alone, and no memory record establishes that answer or stands in for it.
+- passage: An absolute `Workdir:` is allowed only where the coordinator skill's named precondition is established, and no memory record establishes it or stands in for it.
 
 ### c1.C052
 - key: Until the precondition is established, write `Workdir:` as the repo's name plus a repo-relative or worktree name where needed, or omit it, and never an absolute path.
@@ -575,7 +575,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - source: plugins/claude-kit/skills/role/SKILL.md:44
 - provenance: fb0f194 2026-08-28, stated so the registry's permission is not read as relaxing the board's ban.
 - verdict: retire
-- reason: row 1121 (Workdir privacy gate), shrink. This is a rule restated in a second place. The coordinator's board bars carry it, including coordinator SKILL.md:149, "The row never carries a working directory in any spelling".
+- reason: row 1121 (Workdir privacy gate), shrink. This is a rule restated in a second place. The registry entry's own shape carries it, its `Status:` line reading "what a public board could carry", and the coordinator's roster bullet bars "a working directory in any spelling".
 - passage: The board's ban on working directories and every board line bar still stand, since the registry is not a second board.
 
 ### c1.C054
@@ -1850,7 +1850,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 5b7dba3 2026-09-02, after three review rounds found defects in prose about the digest command's behaviour and replaced every such claim with a pointer at the owner.
 - verdict: keep
 - reason: A takeover announced as informed on a failed read is a false claim about the seat's state; the announcement clause is the only place it is caught.
-- passage: A seat taken on a digest the verb could not produce says so in its announcement.
+- passage: A seat taken on a digest the verb could not produce says so in its announcement, the memory-system skill stating how to tell that from a clean read of an empty store.
 
 ### c3.C034
 - key: Consult the memory-system skill for what empty recall output means and how to tell it from a clean read of an empty store.
@@ -1884,7 +1884,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - reason: Step 5 as written applies to every seat while line 91 says `/role Admin` resolves no record and always announces undelegated; the model's chain excludes Admin and the live opt-in record says so in its body, so step 5 gains the Admin carve-out. 30993d0 records this exact failure shape (a numbered step contradicting an unnumbered rider, the executed copy wrong).
 - proposed: Rewrite step 5 to resolve the record for a seat in the chain only, with `/role Admin` skipping the resolution and announcing undelegated, pointing at the chain bullet.
 - baseline-test: yes
-- passage: **Resolve the standing-delegation record** as the model's switch paragraph below states, so the takeover knows whether it announces delegated or undelegated.
+- passage: **Resolve the standing-delegation record** as the model's switch paragraph and chain bullet below state, so the takeover knows whether it announces delegated or undelegated.
 
 ### c3.C037
 - key: Write the registry entry in the shape the skill gives above.

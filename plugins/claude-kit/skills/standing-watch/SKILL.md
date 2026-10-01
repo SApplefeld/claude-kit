@@ -35,7 +35,7 @@ Every situational sentence carries two things: the time of the evidence behind i
 
 A **read protocol** sits at the top of the ledger, stating what a constrained pass reads and in what order. A pass that cannot read the whole file still reads the parts that stop it doing damage.
 
-**Prune on a quiet tick**, never on a busy one, shifting superseded history to a dated archive. Prohibitions and do-not-reopen traps stay on the ledger, however old, until their source retires them. Re-derive any section offsets or line pointers after the last edit of the pass, not before.
+**Prune on a quiet tick**, never on a busy one. Move superseded history to a dated archive byte-identical to what it replaced, and verify the hash at the destination rather than at the source. Prohibitions and do-not-reopen traps stay on the ledger, however old, until their source retires them. Re-derive any section offsets or line pointers after the last edit of the pass, not before.
 
 ## Tick Order
 

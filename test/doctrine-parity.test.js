@@ -2402,9 +2402,8 @@ test('the coordinator board default faces outward at both forks', () => {
 //   deliberate: a window naming the board scopes almost nothing here (the word
 //   occurs over two hundred times), so the honest form is the wider sweep plus
 //   this note that a legitimate size figure added anywhere in this file reddens
-//   the leg. That direction is accepted, since the file states no board size figure
-//   today; the one size figure it does state is a 40-character cap on a hostname,
-//   which is not a board ceiling and is why this note reads board rather than any.
+//   the leg. That direction is accepted, since the file states no size figure
+//   today.
 //   The tier-locator leg names one spelling, the memory index filename, and it
 //   does not reach the class of every way a locator could be spelled; the
 //   exclusion sentence pinned beside it is what carries that claim.
@@ -2463,8 +2462,8 @@ test('the coordinator skill\'s four counted routing, cut, readability and source
     // confirmed. The span opens on "only once" because that is where the
     // safety lives: a rewrite cutting first and writing after keeps every
     // later word.
-    assert.ok(body.includes('A line comes off the board only once its destination write is '
-        + 'confirmed landed.'),
+    assert.ok(body.includes('a line comes off the board only once its destination write is '
+        + 'confirmed landed'),
         'the coordinator skill no longer bounds taking a line off the board on a confirmed '
         + 'landing at its destination; without it a cut whose destination write failed removes '
         + 'the board\'s only copy');
