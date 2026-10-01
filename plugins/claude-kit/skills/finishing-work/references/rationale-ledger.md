@@ -39,7 +39,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 830ff28 2026-06-17 installed the prior-coverage brief rule; 0faeb51 2026-09-06 added the below-Fable and ungated carve-outs when the hybrid tier ladder made some per-section rounds clear nothing.
 - verdict: keep
 - reason: The brief-content rule and step 3's charge are two surfaces of one rule and no hook composes a finishing brief; the carve-outs are the hybrid ladder's own consequence and go stale only if that ladder changes.
-- passage: When per-section reviews cleared parts of the changeset, tell the finishing reviewers what they covered and what changed since. Their budget then goes to cross-section cohesion and deltas rather than to cleared code.
+- passage: When per-section reviews cleared parts of the changeset, tell the finishing reviewers what they covered and what changed since, so their budget goes to cross-section cohesion and deltas. A round the rule aimed below Fable, or one that ended ungated, cleared nothing.
 
 ### c1.C004
 - key: Eliminate true duplication of review effort, never coverage.
@@ -57,7 +57,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 0faeb51 2026-09-06, written with the hybrid tier rule as the small-effort allowance; line 32 names the folded pass as an `adversarial-reviewer` dispatch carrying that scope; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which folds both advisory lenses where it folded the security lens alone (W005 carries what the folded pass prints and how those lines route).
 - verdict: keep
 - reason: Step 2's default and this allowance are one document's default and exception, not a conflict; a reader adding a pointer at step 2 changes the c2 list's claim, not this one.
-- passage: For a small effort with no meaningful per-section reviews, fold the two advisory lenses into one adversarial dispatch carrying their scope, and never manufacture separate passes for a handful of files.
+- passage: For a small effort with no meaningful per-section reviews, fold the two advisory lenses into one adversarial dispatch carrying their scope.
 
 ### c1.C006
 - key: Dispatch every finishing reviewer at model `fable` and effort `high`.
@@ -120,7 +120,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e2752d1 2026-08-11, "a harness that quietly substitutes a model is the same fact without a signal".
 - verdict: keep
 - reason: Trigger one arriving without a signal; the reading it needs is line 16's, and nothing mechanical takes it.
-- passage: A harness that silently substitutes a model is this trigger with no error, so read the model the round actually ran at, per the resolved-model paragraph below.
+- passage: A silent substitution is this trigger with no error, read per the resolved-model paragraph below.
 
 ### c1.C013
 - key: For the second trigger, treat a pair of consecutive stopped dispatches at the model in question as confirming unavailability.
@@ -138,7 +138,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, the sidecar was measured to carry no model key for an inheriting dispatch, so trigger two reads the dispatch record instead.
 - verdict: keep
 - reason: No finding. The requested reading is the only reading a never-started dispatch has.
-- passage: The model is the requested one, read from the dispatch record you hold: the override you passed, or the session's own model where you passed none.
+- passage: Read the model from the dispatch record you hold, never from the `.meta.json` sidecar.
 
 ### c1.C015
 - key: Do not substitute the transcript's `.meta.json` sidecar for the dispatch record.
@@ -147,7 +147,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, measured: the sidecar carries a `model` key only where an override was passed, silent in exactly the Fable-led case.
 - verdict: keep
 - reason: Three sidecar-related bars (this, c1.C054, c1.C074) each stop a reading a session took; the Fable-led instances are the class that bit and stay.
-- passage: The transcript's `.meta.json` sidecar cannot stand in for the dispatch record.
+- passage: Read the model from the dispatch record you hold, never from the `.meta.json` sidecar.
 
 ### c1.C016
 - key: Count the pair only where the single allowed re-dispatch at that model was itself stopped by this rule.
@@ -187,7 +187,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the pair narrows to a fact about this tier only when both members are at it.
 - verdict: keep
 - reason: The exit that keeps a stop at another model out of the ladder; nothing else routes it.
-- passage: A stop at another model, or a lone first stop, says nothing about this tier and takes its dispatch class's own disposition.
+- passage: A stop at another model, or a lone first stop, takes its dispatch class's own disposition.
 
 ### c1.C020
 - key: Expect no error from an exhausted allotment, since it creates a dispatch that waits on an authorization that never arrives.
@@ -216,8 +216,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26; the operator memory `subagent-output-file-is-empty-read-the-jsonl` records that these files reach megabytes within minutes.
 - verdict: keep
 - reason: Stated here for the distribution read with a pointer at line 24's reason, and at line 24 for the count pipelines; two instruments over one unsafe file.
-- passage: Read it line by line, never with a whole-file Read.
-- passage: Take both counts line-filtered and spelled as counts, never as a whole-file Read, since printing one assistant line pulls a whole model turn into the session.
+- passage: Take both counts line-filtered, never with a whole-file Read
 
 ### c1.C023
 - key: Take the resolved-model reading as a distribution over lines rather than as a single value.
@@ -226,7 +225,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, a healthy fable-override run was measured mixing models turn by turn.
 - verdict: keep
 - reason: The bound ("substitution is not all-or-nothing") states the measured fact; the specimen numbers move to c1.C037's entry.
-- passage: Take it as a distribution, because substitution is not all-or-nothing across a run.
+- passage: Tally it per line from a finished run
 
 ### c1.C024
 - key: Take the recorded distribution from a run that has finished, treating a tally read mid-run as diagnostic only.
@@ -235,7 +234,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The counts sum to the assistant-line count only once nothing is appended; a mid-run figure in the Chapter is a false record.
-- passage: Record the tally from a finished run, since its counts sum to the assistant-line count only once nothing more is appended, and a mid-run tally is diagnostic only.
+- passage: Tally it per line from a finished run
 
 ### c1.C025
 - key: Report every distinct `message.model` value with its count, excluding the `<synthetic>` placeholder.
@@ -244,7 +243,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The record form the close-out's partial-substitution proportion is computed from.
-- passage: Report every distinct `message.model` value with its count, excluding the `<synthetic>` placeholder, which names no model.
+- passage: Record every value it prints with its count.
 
 ### c1.C026
 - key: Spell the reading as a per-line parse printing one `message.model` per assistant line and tallying those, using `node -e '...' <transcript> | grep -v '<synthetic>' | sort | uniq -c` or the host equivalent, never a substring extraction or a grep that prints matches.
@@ -253,7 +252,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, a substring match counted 266 `"model":"` occurrences over 262 assistant lines on a real transcript because turns quote model names in their content.
 - verdict: keep
 - reason: No finding. The per-line parse is what makes the tally a tally over turns; the 266/262 figure is the evidence and lives here.
-- passage: Spell the reading as a per-line parse that prints one `message.model` value per assistant line and tallies them, never as a substring extraction or a grep that prints matches.
+- passage: Tally it per line from a finished run, never with a whole-file Read or a grep that prints matches: `node -e 'require("fs").readFileSync(process.argv[1],"utf8").split("\n").filter(Boolean).forEach(l=>{try{const o=JSON.parse(l);if(o.type==="assistant"&&o.message)console.log(o.message.model)}catch{}})' <transcript> | grep -v '<synthetic>' | sort | uniq -c`, or the host equivalent.
 
 ### c1.C027
 - key: Map the requested alias and the resolved versioned id into one vocabulary before reading any difference between them.
@@ -262,7 +261,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The example ids are the vocabulary the prefix rule maps between; without them a session cannot tell an upward substitution from a lost tier.
-- passage: Map the two vocabularies before comparing.
+- passage: An id such as `claude-opus-4-8` satisfies the requested alias when it carries that family's prefix or a stronger family's.
 
 ### c1.C028
 - key: Treat a resolved id as satisfying a requested alias when it carries that family's prefix or a stronger family's.
@@ -271,7 +270,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. Neither a version difference nor an upward substitution loses tier, which keeps trigger one off a healthy run.
-- passage: An id satisfies an alias when it carries that family's prefix or a stronger family's, so neither a version difference nor an upward substitution loses tier.
+- passage: An id such as `claude-opus-4-8` satisfies the requested alias when it carries that family's prefix or a stronger family's.
 
 ### c1.C029
 - key: Compare a dispatch that passed no override against the session's own model.
@@ -280,7 +279,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. Inheriting is requesting the session model.
-- passage: A dispatch that passed no override is compared against the session's own model.
+- passage: A dispatch that passed no override requested the session's own model.
 
 ### c1.C030
 - key: Route a tally showing zero counts satisfying the requested alias to trigger one.
@@ -289,7 +288,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. The at-least-one-parsed-line bound is what makes the zero mean a model that answered with another model.
-- passage: A tally with zero counts satisfying the requested alias, and at least one parsed non-synthetic line, is a round that never ran at its tier, and it takes trigger one.
+- passage: A tally with no count satisfying the alias, and at least one parsed non-synthetic line, takes trigger one.
 
 ### c1.C031
 - key: Settle an empty tally against the `<synthetic>` count: route to the never-started paragraph where that count accounts for every `"type":"assistant"` line, and call the distribution unreadable where the assistant lines outnumber it.
@@ -298,8 +297,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. An empty tally has two causes (the synthetic exclusion, a moved `message` object) and the bound separates neither.
-- passage: Where the `<synthetic>` count accounts for every `"type":"assistant"` line, it routes to the never-started paragraph below.
-- passage: Where the assistant lines outnumber that count, the parse found no `message` object, and the distribution is unreadable.
+- passage: An empty tally goes to the never-started paragraph below where `<synthetic>` accounts for every assistant line, and is unreadable otherwise.
 
 ### c1.C032
 - key: Treat an `undefined` entry as naming no model, entering no comparison, and read a tally mixing `undefined` with parsed entries on the parsed entries alone.
@@ -308,7 +306,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. A moved `message.model` field would otherwise fire trigger one against a healthy run.
-- passage: An `undefined` entry is the parse missing `message.model` on that line, so it names no model and enters no comparison. A tally mixing `undefined` with parsed entries is read on the parsed entries alone.
+- passage: Ignore `undefined` entries, and call an all-`undefined` tally unreadable.
 
 ### c1.C033
 - key: Call the distribution unreadable, not a substitution, only where `undefined` is the whole tally.
@@ -317,7 +315,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. The instrument-failure disposition, distinct from the zero branch.
-- passage: Only an all-`undefined` tally is unreadable rather than a substitution, so a moved field never fires trigger one against a healthy run.
+- passage: Ignore `undefined` entries, and call an all-`undefined` tally unreadable.
 
 ### c1.C034
 - key: Record a distribution mixing the requested model with another as a partial substitution, stated as a proportion, in the final Chapter and the close-out status.
@@ -335,7 +333,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No threshold splits the mixed case on purpose; the decision reaches the operator rather than the record.
-- passage: The close-out names a majority-substituted round as one that ran mostly below its tier, so the operator decides whether to re-run it.
+- passage: Name a majority-substituted round as one that ran mostly below its tier, so the operator decides on a re-run.
 
 ### c1.C036
 - key: Record a compensating dispatch whose own distribution is mixed the same way rather than compensating it again.
@@ -344,7 +342,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The loop bound for the mixed case under an armed leash.
-- passage: A compensating dispatch whose own distribution is mixed is recorded the same way, never compensated again.
+- passage: A mixed compensating dispatch is recorded the same way, never compensated again.
 
 ### c1.C037
 - key: Expect a healthy fable-override run to mix models turn by turn, as in one holding 12 `claude-fable-5` and 250 `claude-opus-4-8` across 262 assistant lines with no error.
@@ -439,7 +437,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, growth as a one-way short-circuit because a probe answer is itself an append.
 - verdict: keep
 - reason: The synthetic-only exclusion (c1.C048) is this rule's named exception, not a contradiction.
-- passage: Growth inside the class's growth window proves the agent took a step and ends the inquiry with no probe spent.
+- passage: Byte growth inside the class's growth window ends the inquiry with no probe spent, even with no assistant line in it.
 
 ### c1.C047
 - key: Keep the growth reading a byte reading taken without reading the file, and count growth even where it holds no assistant line.
@@ -448,7 +446,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: A healthy run appends tool results as `user` lines between turns; a qualifier demanding an assistant line loses the short-circuit for a live agent.
-- passage: The growth reading is a byte reading, taken without reading the file. Growth counts with no assistant line in it, since a healthy run appends tool results as `user` lines between turns.
+- passage: Byte growth inside the class's growth window ends the inquiry with no probe spent, even with no assistant line in it.
 
 ### c1.C048
 - key: Qualify growth against the never-started pair of counts as a separate cheap read, never by inspecting what the grown bytes contain.
@@ -457,16 +455,15 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: Read only where no turn is established; inspecting the bytes would Read the file whole.
-- passage: Where no turn is yet established, qualify growth with the never-started paragraph's pair of counts, a separate cheap read, never by inspecting the grown bytes.
+- passage: The one exclusion is the synthetic-only shape: where no turn is yet established, read the never-started paragraph's pair of counts, never the grown bytes.
 
 ### c1.C049
 - key: Where the pair shows a zero non-synthetic count beside a non-zero `<synthetic>` count, treat the growth as the transient fault's placeholder and route to the re-dispatch at the first-turn window's close, never before it.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:20
 - provenance: 8a2daa8 2026-08-26; the timing is 6d2e6cc 2026-08-29's cadence rule, pointed at here.
-- verdict: keep
-- reason: The growth paragraph needs the routing because its short-circuit would otherwise read a placeholder append as health.
-- passage: A zero non-synthetic count beside a non-zero `<synthetic>` count makes the growth the fault's placeholder rather than a step. That shape routes to the never-started re-dispatch at the first-turn window's close, never before, on the timing the cadence paragraph below sets.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): c1.C069 now carries the synthetic-only routing ("A zero non-synthetic count beside a non-zero `<synthetic>` count is a transient fault."), and c1.C085 carries the timing ("No pair routes anywhere before the first-turn window closes."). The growth paragraph keeps only the pointer that c1.C048 records.
 
 ### c1.C050
 - key: Open the growth window at the last observed growth, or at dispatch where no growth has been observed, and never reopen it on a probe's own append.
@@ -475,7 +472,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The owner of the window's opening; c1.C079's restatement at line 24 is the later claim.
-- passage: The growth window opens at the last observed growth, or at dispatch where none has been observed. The byte reading retires at the probe send, so the probe's own append never reopens it.
+- passage: The window opens at the last observed growth, or at dispatch where none has been observed.
 
 ### c1.C051
 - key: Retire the byte reading at the probe send and read liveness from then on as a rise in the non-synthetic assistant-line count above its value at the send.
@@ -484,7 +481,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the round's Critical: a byte baseline taken at the first look after the send, up to ten minutes out, reads flat over an answer that already arrived and TaskStops a live agent, feeding trigger two a false stop.
 - verdict: keep
 - reason: The count reads through both failures a byte reading has (a swallowed answer, a window reset by the probe's own append); anyone restoring a byte reading after the send re-opens the Critical.
-- passage: From the send on, liveness is a rise in the non-synthetic assistant-line count above its value at the send.
+- passage: From then on, liveness is a rise in the non-synthetic assistant-line count above its value at the send.
 
 ### c1.C052
 - key: Do not read cause from a flat byte count, which is identical for a dispatch that never took a turn and one that stalled after forty.
@@ -505,7 +502,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: rewrite
 - landed: d549e65 section 5
 - reason: The path is spelled at lines 16, 22 and 24; line 16 keeps it and this site refers to it. The artifact does not change.
-- passage: Read it at the agent's own transcript, at the path the resolved-model paragraph above spells.
+- passage: Take it as a byte count at the agent's own transcript, never by reading the file and never at a task's `.output` path.
 - flag: stale
 
 ### c1.C054
@@ -515,7 +512,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, several dispatches of one agent type were measured writing byte-identical sidecars.
 - verdict: keep
 - reason: A distinct misuse from c1.C015 (the sidecar as the requested model) and c1.C074 (prompt text as the tie).
-- passage: Dispatches of one agent type write byte-identical sidecars, so tell a fan-out's transcripts apart by the dispatch record you hold.
+- passage: Tell a fan-out's transcripts apart by the dispatch record you hold, never by the `.meta.json`.
 
 ### c1.C055
 - key: Never measure liveness at a task's `.output` path.
@@ -524,7 +521,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23; the operator memories `agent-growth-reading-artifact` and `subagent-output-file-is-empty-read-the-jsonl` record the zero-byte placeholder.
 - verdict: keep
 - reason: Reading there produces exactly the never-started shape for a healthy agent, which licenses a TaskStop.
-- passage: Never measure at a task's `.output` path, which reads zero bytes for a healthy agent and a dead one alike.
+- passage: Take it as a byte count at the agent's own transcript, never by reading the file and never at a task's `.output` path.
 
 ### c1.C056
 - key: Read the byte count without reading the file, using .NET IO through PowerShell on Windows and whatever reads a size without contents elsewhere.
@@ -533,7 +530,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: No finding. The transcript is unsafe to Read whole.
-- passage: Read the byte count without reading the file: .NET IO through PowerShell on Windows, and elsewhere whatever reads a size without contents.
+- passage: Take it as a byte count at the agent's own transcript, never by reading the file
 
 ### c1.C057
 - key: Where you hold both the subagents directory and the agent id and find no file at the path, call the instrument unreadable rather than the agent idle.
@@ -542,7 +539,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26; the project memory `first-turn-reading-path-is-the-subagents-dir` records a wrong path printing the never-started shape for a healthy agent.
 - verdict: keep
 - reason: No hook classifies a missing transcript; the harness creating the file at dispatch is the fact the classification rests on.
-- passage: So where you hold both and find no file, the instrument is unreadable rather than the agent idle.
+- passage: Where you hold the directory and the agent id and find no file, the instrument is unreadable.
 
 ### c1.C058
 - key: Before a zero-growth reading counts, show the instrument observing growth at a live sibling whose transcript's byte count moves between two readings.
@@ -551,16 +548,15 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the doctrine's silent-check bar applied to the growth instrument.
 - verdict: keep
 - reason: The lead sentence points at the doctrine; the live-sibling control is the instance's own mechanics.
-- passage: Before a zero counts, show the instrument observing growth at a live sibling, one whose byte count moves between two readings.
+- passage: Before a zero counts, show the instrument observing growth at a live sibling whose byte count moves between two readings.
 
 ### c1.C059
 - key: Never accept a bare non-zero size as the control.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:22
 - provenance: 8a2daa8 2026-08-26.
-- verdict: keep
-- reason: The transcript exists from dispatch with the prompt in it, so a size reading is never zero and such a control cannot fail.
-- passage: A bare non-zero size is no control, since the transcript holds the prompt from dispatch.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): c1.C058 carries it. A control that must move between two readings already excludes a bare non-zero size.
 
 ### c1.C060
 - key: Where no control is available, call the instrument unproven rather than the agent dead.
@@ -569,7 +565,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The ordinary case for a lone early dispatch; the doctrine's general rule cannot say what reading replaces it (c1.C061).
-- passage: Where no control is available, the ordinary case for a lone early dispatch, the instrument is unproven rather than the agent dead.
+- passage: With no control, or a contradicted one, the instrument is unproven.
 
 ### c1.C061
 - key: On an unproven or unusable instrument, take elapsed time since dispatch for the same window, go to the probe, and record that the growth reading was unavailable.
@@ -578,7 +574,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The owner of the fallback; line 24's c1.C075 points at it as "the growth reading's own".
-- passage: On an unproven or unusable instrument, take elapsed time since dispatch for the same window, go to the probe, and record the growth reading as unavailable.
+- passage: On an unreadable or unproven instrument, take elapsed time since dispatch for the same window, go to the probe, and record the growth reading as unavailable.
 
 ### c1.C062
 - key: Probe an Agent-tool dispatch at its task id, and a Workflow round's agent at the agent id inside the run directory, since `SendMessage` to the run's task id reaches no agent.
@@ -623,7 +619,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26; the operator memory `a-model-override-the-account-cannot-serve-never-runs` records two finishing reviewers sitting 2h22m in this shape.
 - verdict: keep
 - reason: No finding. The parenthetical path here refers to line 16 under A038; the reading is unchanged.
-- passage: The reading is a pair of counts over the `assistant` lines: those whose `message.model` is not `<synthetic>`, and the `<synthetic>` lines themselves.
+- passage: Its reading is a pair of counts over the `assistant` lines: those whose `message.model` is not `<synthetic>`, the harness's placeholder for an API error, and the `<synthetic>` lines themselves.
 
 ### c1.C067
 - key: Route on the pair of counts, never on the single non-synthetic count.
@@ -632,7 +628,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the park predicate had conflated the two zero-non-synthetic shapes.
 - verdict: keep
 - reason: The single count returns an identical zero for two shapes that take opposite actions.
-- passage: Route on the pair, because the non-synthetic count alone returns the same zero for two shapes that take opposite actions.
+- passage: Route on the pair, since the non-synthetic count alone reads zero for both shapes.
 
 ### c1.C068
 - key: Treat both counts zero at the close of the first-turn window as the never-started shape.
@@ -650,7 +646,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The dispatch reached the API and failed mid-response; only the stopped retry completes trigger two's pair.
-- passage: A zero non-synthetic count beside a non-zero `<synthetic>` count is a transient fault, a dispatch that reached the API and failed mid-response. Its first remedy is a re-dispatch rather than the ladder's downgrade.
+- passage: A zero non-synthetic count beside a non-zero `<synthetic>` count is a transient fault. Its remedy is a stop-first re-dispatch rather than the ladder's downgrade
 
 ### c1.C070
 - key: TaskStop the faulted dispatch before dispatching its successor.
@@ -659,7 +655,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the doctrine's stop-first replacement rule applied to a fault whose status may still read `running`.
 - verdict: keep
 - reason: Pointer-shaped already ("the stop-first rule every replacement takes"); two agents at one brief's files is the cost.
-- passage: That re-dispatch takes the stop-first rule every replacement takes, since the faulted dispatch may still read `running` and a racing successor puts two agents at one brief's files.
+- passage: Its remedy is a stop-first re-dispatch
 
 ### c1.C071
 - key: Spend the ladder's one same-model retry on that re-dispatch; where this rule stops the successor in its turn, the pair is spent and trigger two is met.
@@ -668,7 +664,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: The synthetic-only route references the shared budget rather than restating it; executing-work:355 points here.
-- passage: It spends the ladder's one same-model retry rather than adding a second. Where this rule stops the successor in its turn, whatever its shape, trigger two above is met and the dispatch enters the ladder below at its class's route.
+- passage: and it spends the ladder's one same-model retry.
 - flag: stale
 
 ### c1.C072
@@ -678,8 +674,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26; the project memory `first-turn-reading-path-is-the-subagents-dir` records the wrong-path zero that reads like a real zero.
 - verdict: keep
 - reason: The counting pipeline prints a bare `0` and complains on stderr; the user-line count is the loud leg.
-- passage: Read the control before any zero counts.
-- passage: The control is a count of `"type":"user"` lines in the same file, which prints no count at all for a missing path.
+- passage: Read the control first: a count of `"type":"user"` lines in the same file
 
 ### c1.C073
 - key: Claim no more than the counts deliver, since a renamed `<synthetic>` placeholder inflates the non-synthetic count, masks a fault, and can fire trigger one against a faulted dispatch.
@@ -689,7 +684,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: rewrite
 - landed: d549e65 section 5
 - reason: The claim compresses to one sentence; the cascade lives here: a renamed placeholder is counted as non-synthetic by the `-v` filter, so a synthetic-only fault reads as turns taken and goes to the byte-growth health path, and in the resolved-model distribution the renamed id passes the at-least-one-non-synthetic bound, shows zero at the requested alias, and fires trigger one; the `undefined` handling catches the field-moved case and nothing catches this one, and the user-line control is silent throughout.
-- passage: So claim no more than the counts deliver: a renamed placeholder inflates the non-synthetic count, masks a synthetic-only fault, and can fire trigger one against a faulted dispatch.
+- passage: The control proves the path, never the `<synthetic>` spelling.
 
 ### c1.C074
 - key: Tie a transcript to its dispatch by the agent id from the dispatch record, never by the prompt text.
@@ -698,7 +693,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts plan Section 2 (the transcript is the instrument), which made the agent id the tie after the resolved-model tally and the never-started pair were shown to read a healthy sibling's transcript otherwise.
 - verdict: keep
 - reason: A fan-out of one agent type writes byte-identical sidecars, so content and sidecar both fail; no hook resolves a transcript to its dispatch, and a wrong tie feeds a false stop into trigger two's pair.
-- passage: Tie a transcript to its dispatch by the agent id from the dispatch record, never by the prompt text. One agent type's fan-out writes byte-identical sidecars, so a transcript picked by content can return a sibling's non-zero.
+- passage: on the transcript the dispatch record's agent id names.
 
 ### c1.C075
 - key: Where the instrument is unreadable, fall back to elapsed time since dispatch against the dispatch's own class growth window, then that class's probe window, recording the first-turn reading as unavailable.
@@ -707,7 +702,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, Chapter 4 of the verification-artifacts plan, one of the three routes closed there (a dispatch with neither reading nor probe had no exit); the hallmark it feeds is d66c58d 2026-08-23, the 4.7-hour wedge.
 - verdict: keep
 - reason: An unreadable instrument establishes no shape, so the short windows cannot be earned and the class windows are the only safe fallback; no machinery takes the reading.
-- passage: The fallback is the growth reading's own: elapsed time since dispatch against the class's growth window, then its probe window, with the first-turn reading recorded as unavailable.
+- passage: Where the agent id is unknown or no file sits at its path, fall back to elapsed time since dispatch against the class's growth window, then its probe window, never the short windows. Record the first-turn reading as unavailable.
 
 ### c1.C076
 - key: Where the probe itself is unsendable, go to the zero-growth paragraph's run-level stop, which owns the close of those windows.
@@ -716,7 +711,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the Workflow-agent-id-unrecoverable route closed in Chapter 4.
 - verdict: keep
 - reason: No finding; a pointer at the paragraph that owns the run-level stop.
-- passage: Where the probe is unsendable, a Workflow dispatch whose agent id cannot be recovered, the zero-growth paragraph's run-level stop owns the close of those windows.
+- passage: Where the probe is unsendable, the run-level stop above owns the close of those windows.
 
 ### c1.C077
 - key: Apply the short never-started windows only on evidence this reading itself produces, never on a guess.
@@ -725,7 +720,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Chapter 4, where a guessed short pair was traced to a TaskStop on a live agent at ten minutes.
 - verdict: keep
 - reason: A TaskStop on a live agent is the unrecoverable cost the windows exist to avoid, and a healthy agent inside a long first tool call cannot answer a probe either; the rule and its consequence stay together because the class recurs on every override dispatch.
-- passage: The short windows are earned only by evidence this reading produces. A healthy agent inside a first tool call longer than five minutes cannot answer a probe either, so a guessed short pair would stop a live agent and discard its work.
+- passage: then its probe window, never the short windows.
 
 ### c1.C078
 - key: Count a wedge diagnosed on the elapsed-time fallback toward trigger two's pair like any other.
@@ -763,7 +758,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2, where a NUL byte flipping grep to binary mode was found to undercount and misread a synthetic-only transcript as a live turn.
 - verdict: keep
 - reason: The general rule for every transcript grep; c1.C143's restatement of the same ground at the timestamp fallback is the duplicate, not this.
-- passage: Every grep over a transcript takes `-a`, because a NUL byte flips grep into binary mode and its one-line notice passes the `-cv` filter as a turn.
+- passage: Every grep over a transcript takes `-a`.
 
 ### c1.C082
 - key: Evaluate the wedge hallmark on a cadence, each time you re-block on an in-flight dispatch, whatever model it runs at, rather than only once someone suspects a wedge.
@@ -790,7 +785,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2.
 - verdict: keep
 - reason: No finding; a real turn takes the dispatch out of the shape this reading waits on.
-- passage: A non-zero non-synthetic count settles it whenever taken, since a real turn ends this shape.
+- passage: A non-zero non-synthetic count settles it.
 
 ### c1.C085
 - key: Route a synthetic-only pair nowhere until the first-turn window has closed, wherever in this rule that pair is read, and hold a both-zero pair the same way.
@@ -799,7 +794,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Chapter 4, after the park predicate was found to conflate the two zero-non-synthetic shapes and a pair read early could spend a TaskStop on a run still live.
 - verdict: keep
 - reason: The route opens with a TaskStop, and a stop spent on a recovering run is two agents at one brief; executing-work:59 applies the hold and points here.
-- passage: Neither a synthetic-only pair nor a both-zero pair routes anywhere before the first-turn window closes, wherever in this rule it is read. The synthetic-only route opens with a TaskStop, which could otherwise land on a run about to recover.
+- passage: No pair routes anywhere before the first-turn window closes.
 - flag: stale
 
 ### c1.C086
@@ -855,7 +850,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 5, "a synchronous-dispatch trade finishing-work delegated to executing-work which executing-work never took up".
 - verdict: keep
 - reason: No finding; the shape is out of this rule's reach and saying so is what sends the trade to executing-work.
-- passage: A synchronous dispatch (`run_in_background: false`) holds the session inside one tool call, where no probe can be sent and no status read, so it is diagnosed after it returns.
+- passage: A synchronous dispatch (`run_in_background: false`) is diagnosed after it returns
 
 ### c1.C091
 - key: Take the question of whether to accept a synchronous dispatch's blindness to executing-work, whose call it is.
@@ -874,7 +869,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2 and its round 3, where a dropped precondition halved the time to an irreversible kill.
 - verdict: keep
 - reason: The asymmetry is the ground for every number in the paragraph and the only guide for a class the paragraph does not list; nothing mechanical sizes a window.
-- passage: So err long everywhere and longer still for an unfamiliar class.
+- passage: so err long everywhere and longer still for an unfamiliar class.
 
 ### c1.C093
 - key: Give a review-class dispatch a fifteen-minute growth window and a twelve-minute probe window.
@@ -883,7 +878,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, measured over eleven opus review-class dispatches (operator memory agent-liveness-probe).
 - verdict: keep
 - reason: No finding; the class definition governs and the list is its membership.
-- passage: A review-class dispatch is a read-only advisory one that appends at every step and runs no build by charter, the reviewers, readers, consultant, council member and design facilitator, and any later charter of that shape. Its growth window is fifteen minutes and its probe window twelve.
+- passage: A review-class dispatch, read-only and advisory with no build by charter, takes a growth window of fifteen minutes and a probe window of twelve.
 
 ### c1.C094
 - key: Give the `qa-verifier` and the `docs-curator` a thirty-minute growth window and the same twelve-minute probe window, and set any other non-review class's windows from its own expected cadence with at least that much room.
@@ -892,7 +887,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2.
 - verdict: keep
 - reason: No finding; the verifier blocks inside its suite and the curator writes for long stretches, so review-class windows would kill them.
-- passage: The `qa-verifier` and the `docs-curator` are not review-class, since the verifier blocks inside its suite loop and the curator writes for long stretches. Their growth window is thirty minutes and their probe window twelve. Any other non-review class sets its windows from its own cadence, with at least that much room.
+- passage: The `qa-verifier` and the `docs-curator` take thirty and twelve. Any other non-review class sets its windows from its own cadence, with at least that much room.
 
 ### c1.C095
 - key: Run the first-turn window five minutes from the dispatch time you already hold, falling back to the transcript's first `timestamp` field read as `head -1 <transcript> | grep -ao '"timestamp":"[^"]*"' | tail -1`.
@@ -901,7 +896,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2, on the latency corpus recorded in that plan's Evidence.
 - verdict: keep
 - reason: No finding; the short pair is shared by every class because an agent that built nothing has nothing a stop can discard.
-- passage: The first-turn window is five minutes from the dispatch time the session holds, or, where that time is not to hand, from the transcript's first `timestamp` field, read as `head -1 <transcript> | grep -ao '"timestamp":"[^"]*"' | tail -1`.
+- passage: The first-turn window runs from the dispatch time the session holds, or else from the transcript's first `timestamp` field, read as `head -1 <transcript> | grep -ao '"timestamp":"[^"]*"' | tail -1`.
 
 ### c1.C096
 - key: At the first-turn window's close with both counts zero, send the probe, and run the probe window five minutes from that send.
@@ -910,7 +905,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2.
 - verdict: keep
 - reason: The never-started shape's figure, which the general send rule (c1.C088) does not carry.
-- passage: At that window's close with both counts zero, send the probe, and the probe window is five minutes from that send.
+- passage: With both counts zero at its close, send the probe.
 
 ### c1.C097
 - key: At the close of the probe window with both counts still zero, TaskStop the dispatch and enter the ladder.
@@ -919,7 +914,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2; the unchanged-hallmark clause answers process-rule-repairs round 4's "hallmark defined twice with different contents".
 - verdict: keep
 - reason: The one exit the never-started shape has, and the clause saying the predicate is unchanged is what keeps a reader from building a second hallmark.
-- passage: At its close with both counts still zero, TaskStop and enter the ladder below, which re-dispatches once at the same model.
+- passage: With both still zero five minutes after that send, TaskStop and enter the ladder below.
 
 ### c1.C098
 - key: Re-dispatch once at the same model, and where this rule stops that re-dispatch in its turn take the ladder's route for the dispatch's own class, which is compensation for a review-class dispatch and never for an implementer.
@@ -932,7 +927,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - proposed: After "TaskStop and enter the ladder below", keep only the clause naming which windows the retry runs on, and drop the restated route (compensation for review-class, never for an implementer), which line 30 owns.
 - proposed: Apply A030.
 - baseline-test: yes
-- passage: Where this rule stops that re-dispatch in its turn, trigger two above is met, on these short windows if it too never starts and on its own shape's windows otherwise.
+- passage: Its re-dispatch runs on these short windows if it too never starts, and on its own shape's windows otherwise.
 
 ### c1.C099
 - key: Read both windows only at an opportunity the session actually has, deferring the reading until a blocking call returns.
@@ -963,7 +958,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, trigger two "takes a confirming retry rather than firing on one wedge"; budget made shape-independent by 8a2daa8 on the operator's 2026-08-24 ruling.
 - verdict: keep
 - reason: The ladder owns the grant; executing-work:355 defers to it, and c1.C017, c1.C071 and c1.C098 are the trigger and the two routes that spend it rather than second grants.
-- passage: Every class gets one same-model re-dispatch first, because a first stop is a suspicion.
+- passage: Every class gets one same-model re-dispatch first
 - flag: stale
 
 ### c1.C102
@@ -973,7 +968,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, a first stop is a suspicion.
 - verdict: keep
 - reason: No finding; a transient stop that recovers says nothing about the tier.
-- passage: Where the retry runs, nothing is recorded against the model.
+- passage: where it runs, nothing is recorded against the model.
 
 ### c1.C103
 - key: Count the retry as one whatever route spends it, and never let a chain reach the third same-model dispatch executing-work forbids.
@@ -982,20 +977,19 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the chain that reached a third same-model dispatch before the budget was unified.
 - verdict: keep
 - reason: A limit the grant does not carry, already citing executing-work's bar as executing-work's.
-- passage: The retry is one whatever route spends it. Where this rule stops it in its turn, the pair meets trigger two whatever the two shapes. No chain reaches the third same-model dispatch executing-work forbids.
+- passage: The retry is one whatever route spends it. Stopped in its turn, it meets trigger two whatever the two shapes. No chain reaches the third same-model dispatch executing-work forbids.
 
 ### c1.C104
 - key: Name each dispatch's shape in the record, and have the Chapter record and the close-out surface a downgrade the budget's stated cost produced.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:30
 - provenance: 8a2daa8 2026-08-26, the operator's 2026-08-24 decision record ("which the Chapter records and the close-out surfaces, so the operator can re-run it"); the recording paragraph at line 36 owns the Chapter and close-out duties.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: Line 36 (c1.C122, c1.C124) states the Chapter and close-out duties whole; this sentence keeps one clause, that the record names each shape, and the cost argument moves here (c1.C145).
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): c1.C122 carries it ("each stopped dispatch's shape"). The record paragraph states the shape duty once.
 - proposed: Reduce C104 to "the record below names each dispatch's shape" and let line 36 carry the Chapter and close-out duties once.
 - proposed: Apply A040.
 - baseline-test: yes
-- passage: The record below names each dispatch's shape.
 
 ### c1.C105
 - key: For a review-class dispatch whose pair is met, compensate the round rather than falling back.
@@ -1014,7 +1008,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, Chapter 4: a review gate already at opus compensated at opus, a third dispatch at the tier the pair had just ruled out.
 - verdict: keep
 - reason: The chain-wide tier test is the only thing that stops the route from re-dispatching at a ruled-out tier; executing-work:361 cites this ladder for it.
-- passage: Compensation is open only at a tier the chain has not ruled out. A pair stopped at opus gets nothing from it, since the compensating dispatch and the bare fallback are both opus. That round ends ungated, recorded with the chain and each shape and surfaced in the close-out.
+- passage: Compensation is open only at a tier the chain has not ruled out, so a pair stopped at opus ends the round ungated.
 - flag: stale
 
 ### c1.C107
@@ -1024,7 +1018,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 4 ("no terminal exit when the compensating dispatch itself wedges"); both triggers enumerated by 8a2daa8.
 - verdict: keep
 - reason: The ladder's terminal rung; naming both triggers is what makes it terminal whatever ends the route, and the loop reason it prevents now lives at c1.C146 here.
-- passage: The compensating dispatch is the ladder's last rung. Whatever ends its route ends the round, trigger one or its own trigger-two pair, and it never re-enters the ladder. Record the step as ungated in the final Chapter, naming the shape that ended the round and every wedge, stall, fault or substitution in the chain.
+- passage: The compensating dispatch is the last rung, and whatever ends its route ends the round ungated.
 
 ### c1.C108
 - key: When a `qa-verifier` or `docs-curator` retry is stopped, hand the step to the orchestrator, run the step's own commands in the main thread, and record the step as self-run.
@@ -1033,7 +1027,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 4, "an ungated-QA exit that reached for the weakest remedy before the cheap inline one".
 - verdict: keep
 - reason: The inline remedy is cheap for these two classes and the verifier instance is what shows it; no machinery routes a stopped verifier.
-- passage: A stopped `qa-verifier` or `docs-curator` retry hands its step to the orchestrator, which runs the step's own commands in the main thread and records it as self-run.
+- passage: A stopped `qa-verifier` or `docs-curator` retry hands its step to the orchestrator, which runs the step's commands in the main thread, recorded as self-run.
 
 ### c1.C109
 - key: Record such a step as ungated only where the main thread cannot run those commands either.
@@ -1051,7 +1045,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2.
 - verdict: keep
 - reason: No finding of its own; a scout returns leads rather than a gate, so the ladder's compensation notch does not apply.
-- passage: A read-only scout returns leads rather than a gate, so re-dispatch it or drop it, naming the gap in the Chapter.
+- passage: Re-dispatch a stopped read-only scout or drop it, naming the gap in the Chapter.
 
 ### c1.C111
 - key: Send every other class back to its own skill's ladder, executing-work's for an implementer.
@@ -1060,7 +1054,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, executing-work keeps the implementer ladder.
 - verdict: keep
 - reason: No finding; the compensation notch is a gate instrument.
-- passage: Every other class returns to its own skill's ladder, executing-work's for an implementer, since compensation is a gate instrument.
+- passage: Every other class returns to its own skill's ladder, executing-work's for an implementer.
 
 ### c1.C112
 - key: Compensate by re-dispatching through `Workflow`'s `agent()` at `model: 'opus'` and `effort: 'max'`, naming `agentType` as the scoped agent the compensated dispatch ran as.
@@ -1168,7 +1162,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23 installed the recording sentence; 8a2daa8 2026-08-26 added the per-shape evidence so the operator can weigh the shape-independent budget's cost.
 - verdict: keep
 - reason: The owner of the Chapter and close-out duties that line 14 and line 30 restate; the evidence enumeration is the record's contract, not decoration.
-- passage: Record the compensation or fallback in the final Chapter with the trigger that led to it, the shape of each stopped dispatch, and the evidence.
+- passage: Record a compensation, a fallback or an ungated end in the final Chapter with the trigger, the chain, each stopped dispatch's shape and the evidence.
 
 ### c1.C123
 - key: Include the evidence in that record: the verbatim error, or the `message.model` distribution with counts for a substitution, the `<synthetic>` count pair for each synthetic-only fault, and for each wedge the dispatch, how long status read `running`, the artifact showing no growth or the growth reading recorded unavailable, the pair of zero counts at the first-turn window's close, the elapsed time with readings unavailable on the fallback, and the unanswered or unsendable probe.
@@ -1177,7 +1171,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, one evidence form per shape the unified budget admits.
 - verdict: keep
 - reason: No finding of its own; a downgrade the operator cannot re-run from is the silent downgrade e2752d1 removed.
-- passage: The evidence is the verbatim error, the `message.model` distribution with counts for a substitution, or the `<synthetic>` count pair for a synthetic-only fault. For a wedge it is the dispatch, how long it read `running`, and the unanswered or unsendable probe, plus its liveness reading. That is the artifact showing no growth or the reading unavailable, the zero pair at the first-turn close, or the elapsed time on the unreadable-instrument fallback.
+- passage: The evidence is the verbatim error, the `message.model` tally or the `<synthetic>` count pair, or for a wedge its time at `running`, its liveness reading and the probe.
 
 ### c1.C124
 - key: Name the compensation or fallback again in the close-out status so the operator can decide whether to re-run the gate where fable is reachable.
@@ -1186,7 +1180,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e2752d1 2026-08-11 ("the close-out records a compensated gate rather than a silent downgrade"); sentence form d66c58d 2026-08-23.
 - verdict: keep
 - reason: The close-out is where the operator reads; c1.C126 is the wider prohibition, not a duplicate.
-- passage: Name it again in the close-out status, so I can decide whether to re-run the gate where fable is reachable.
+- passage: Name it again in the close-out status, so I can decide on a re-run where fable is reachable.
 
 ### c1.C125
 - key: Say explicitly whether you compensated or fell back.
@@ -1195,7 +1189,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23.
 - verdict: keep
 - reason: The model in the record cannot tell the two apart, which is the rule's whole ground.
-- passage: Say whether you compensated or fell back, because the model alone does not tell a reader.
+- passage: Say whether you compensated or fell back.
 
 ### c1.C126
 - key: Never let an unavailable gate pass unremarked.
@@ -1204,7 +1198,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26.
 - verdict: keep
 - reason: Reaches an ungated end and a majority-substituted round, which c1.C124's compensation-or-fallback instruction does not name.
-- passage: Never let an unavailable gate pass unremarked: a downgrade nobody chose is exactly what a close-out exists to surface.
+- passage: Never let an unavailable gate pass unremarked.
 
 ### c1.C127
 - key: Capture `git status --porcelain` before dispatching each of steps 1 through 3 and compare it when the round returns, before acting on any finding.
@@ -1285,8 +1279,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, Chapter 4: the operator's ruling said two wedges "confirm it unreachable", round 8 had already weakened that to the gate-level fact, and the ruling was implemented in the weaker vocabulary; pinned by test/doctrine-parity.test.js 'the hand-off copies route on the gate-level conclusion'.
 - verdict: keep
 - reason: A retry cannot separate an exhausted allotment from a correlated brownout outlasting both attempts, and the parity pin makes any restoration of the stronger claim red.
-- passage: The pair establishes a fact about the gate rather than the model: this gate could not be run at this tier in this environment, across both attempts.
-- passage: A retry cannot tell an exhausted allotment from one brownout stalling both attempts, so the pair never shows the model unreachable on this account.
+- passage: The pair shows only that this gate could not be run at this tier in this environment, never that the model is unreachable.
 - flag: stale
 
 ### c1.C136
@@ -1294,9 +1287,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:22
 - provenance: d66c58d 2026-08-23, measured (operator memory agent-liveness-probe).
-- verdict: keep
-- reason: No finding in this range; the sidecar's fields are what it can and cannot tell a session.
-- passage: The `.meta.json` beside it names the agentType, plus a `description` and `toolUseId` where the dispatch carried them.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): c1.C054 carries it ("never by the `.meta.json`"). The list of fields the sidecar holds was only the ground for that bar.
 
 ### c1.C137
 - key: Treat a growth reading that a control contradicts as no reading at all, not as a value to act on.
@@ -1305,7 +1297,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the absence-proving control on the zero-growth reading.
 - verdict: keep
 - reason: No finding in this range; a contradicted control means the instrument, not the agent, is what read zero.
-- passage: Where either is unknown there is no reading, and a reading a control contradicts is no reading either.
+- passage: With no control, or a contradicted one, the instrument is unproven.
 
 ### c1.C138
 - key: Read the routing decision off the pair of counts, not the non-synthetic count alone, because that single count is identical for two opposite-action shapes.
@@ -1314,7 +1306,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the park predicate that conflated the two zero-non-synthetic shapes.
 - verdict: keep
 - reason: The clause is c1.C067's bound verbatim rather than a separable reason; without it the second count is unmotivated and a session reverts to the single count.
-- passage: Route on the pair, because the non-synthetic count alone returns the same zero for two shapes that take opposite actions.
+- passage: Route on the pair, since the non-synthetic count alone reads zero for both shapes.
 
 ### c1.C139
 - key: Know that the assistant-line counting pipeline prints a bare 0 to stdout and its error to stderr on a wrong path, so a wrong path is indistinguishable from a real zero without the control.
@@ -1323,7 +1315,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2.
 - verdict: keep
 - reason: No finding in this range; the reason the user-line control is read first.
-- passage: The counting pipeline prints a bare `0` for a missing path and complains only on stderr, so a wrong path reads as a real zero.
+- passage: since the pipeline prints a bare `0` for a missing path.
 
 ### c1.C140
 - key: Recognize that without the shared-retry-budget bound, the synthetic-only-fault shape is the one failure mode that could burn dispatches without limit under an armed leash.
@@ -1341,9 +1333,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23 for the trade; executing-work:25 carries the refusal.
-- verdict: keep
-- reason: No finding in this range; a parenthetical pointer at executing-work's rule.
-- passage: Executing-work's completion contract recommends that shape only for a single critical-path implementer and refuses it to any dispatch carrying a model override
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): the owner's text carries it. That is executing-work SKILL.md:229: "take it only for a short single critical-path dispatch whose turn continuity is worth that price ... as does a dispatch carrying a model override". c1.C091's pointer ("whether to take its trade is executing-work's call") is the survivor here.
 
 ### c1.C142
 - key: Trust the fifteen-minute review-class growth window against measured data: eleven real opus review-class dispatches showed a longest inter-append gap under three minutes and a longest healthy run under ten.
@@ -1373,7 +1364,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, read on a healthy dispatch whose tool-call line sits 69 s ahead of its result line.
 - verdict: keep
 - reason: The five-minute window kills on a zero count, and this property is the premise that makes the zero mean never-started; a session cannot check the premise from a ledger it does not load, so it stays beside the rule that hangs on it.
-- passage: The short windows rest on a measured harness property: the transcript appends an assistant line when a turn is produced, not when its first tool result returns. On a healthy dispatch the tool-call line sits 69 s ahead of its result's line. Without that property, an agent in a long first tool call would read as zero turns and be stopped at the 600 s kill point.
+- passage: since a turn's assistant line appends before its first tool result returns.
 
 ### c1.C145
 - key: Recognize that two unrelated transient faults landing back to back can meet the retry trigger and downgrade a gate one tier earlier than strictly necessary, which is why shapes are named for the operator.
@@ -1703,7 +1694,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: f8c0649 2026-06-10, the kit's initial consolidation; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which makes the step both advisory lenses' pass where it was the security lens's alone.
 - verdict: keep
 - reason: Finishing-work owns the pass; the charter points here for the waiver; line 10's folded pass for a small effort is a carve-out that still runs both lenses, not a conflict (A041 to A045). The whole-changeset scope is what each lens reads that no per-section round does, and W001 carries the dispatch shape.
-- passage: Dispatch the `performance-reviewer` and the `security-reviewer` agents over the whole changeset, not just the last section, at `fable` and `high` by the route above.
+- passage: Dispatch the `performance-reviewer` and the `security-reviewer` agents over the whole changeset at `fable` and `high` by the route above.
 
 ### c2.C035
 - key: Block completion on any Critical security finding.
@@ -1732,7 +1723,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 12ef61f 2026-07-09, review-tension plan (the prose-only waiver as a file-type predicate); a5fce80 2026-08-18, document-review battery (the audience predicate); amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which applies the waiver to both advisory lenses on the same two predicates.
 - verdict: keep
 - reason: The waiver is a predicate rather than a judgment so it cannot be argued; c2.C039 refines its definition of prose and c2.C040 states its failure consequence (A052 to A055).
-- passage: The first holds when every file in the changeset is prose: markdown or plain text, with no code, script, hook, config, query or schema file. The second holds when no document in it is written for an audience outside the operator and the operator's own sessions. When both hold, both dispatches may be skipped
+- passage: The waiver skips both dispatches only where two predicates hold, with the skip and the changed-file evidence recorded in the final Chapter. The first holds when every file in the changeset is prose: markdown or plain text, with no code, script, hook, config, query or schema file. The second holds when no document in it is written for an audience outside the operator and the operator's own sessions.
 
 ### c2.C038
 - key: Record the skip and the changed-file evidence in the final Chapter whenever the waiver is used.
@@ -1751,7 +1742,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ba1060b 2026-08-18, a Major at the document-review battery's finishing pass: the file-type predicate counted an agent charter as prose, so a changeset of nothing but charters, each granting tools through its frontmatter, would have skipped the security review by rule.
 - verdict: keep
 - reason: A charter's `tools:` line is a privilege grant and a skill body is an instruction set; the extension never settles it (A053, A056).
-- passage: **Markdown whose frontmatter is machine-read is not prose for this predicate.** An agent charter under `agents/`, a skill's `SKILL.md` and anything under `.claude-plugin/` are configuration, whatever their extension.
+- passage: **Markdown whose frontmatter is machine-read is not prose for this predicate.** An agent charter under `agents/` is one instance.
 
 ### c2.C040
 - key: Run both reviews, scoped to the non-prose files, whenever a single non-prose file appears, even a one-line edit.
@@ -1760,7 +1751,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 12ef61f 2026-07-09, review-tension plan; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which reads both advisory dispatches where the waiver governed one.
 - verdict: keep
 - reason: It is the predicate's contrapositive plus the scoping instruction the predicate does not carry (A052, A055).
-- passage: A single non-prose file, even a one-line edit, voids the waiver. Then run both reviews, scoped to the non-prose files when the rest is prose.
+- passage: A single non-prose file voids the waiver, and both reviews then run scoped to the non-prose files.
 
 ### c2.C041
 - key: Read the audience predicate off the spec's `Audience:` lines rather than off the documents.
@@ -1769,7 +1760,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a5fce80 2026-08-18 installed the Audience lines; ba1060b 2026-08-18 fixed the Major where reading the spec alone let one omitted line skip the document pair and the disclosure sweep both.
 - verdict: keep
 - reason: A document states its content, not its audience, so a grep finds none either way; the spec is what can hold the waiver, and c2.C042 is the deliberate one-way asymmetry, not a conflict (A057, A058).
-- passage: Read the audience predicate off the spec's `Audience:` lines rather than off the documents, since a document states its content and not its audience.
+- passage: Read the audience off the spec's `Audience:` lines
 
 ### c2.C042
 - key: Void the waiver where a document names or addresses an outside audience on its face, even where its spec section is silent.
@@ -1778,7 +1769,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ba1060b 2026-08-18, the same Major: a missing `Audience:` line is the authoring lapse the control exists to catch.
 - verdict: keep
 - reason: Either source voids, only the spec holds; that direction is what closes the single-omission defeat (A057, A059).
-- passage: **The spec alone holds the waiver, and either source voids it.** A document that names or addresses an outside audience on its face voids the waiver even where its spec section is silent.
+- passage: **The spec alone holds the waiver, and either source voids it.** Read the audience off the spec's `Audience:` lines, and a document that names or addresses an outside audience on its face voids the waiver even where its spec section is silent.
 
 ### c2.C043
 - key: Put the spec's `Disclosure:` list in the security brief with the instruction to sweep the documents in scope for any item on it.
@@ -1787,7 +1778,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a5fce80 2026-08-18, document-review battery: an outward-facing document's security risk is what it reveals; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which named the lens the sweep belongs to and the one Critical a hit blocks with (W004).
 - verdict: keep
 - reason: The disclosure sweep is the security lens's only handle on a prose deliverable; no finding of its own (A058).
-- passage: Run the security lens with the spec's `Disclosure:` list in its brief and the instruction to sweep the documents in scope for any item on it.
+- passage: The security lens's brief carries the spec's `Disclosure:` list and the instruction to sweep the documents in scope for any item on it
 
 ### c2.C044
 - key: Read executing-work's terminal condition at `skills/executing-work/SKILL.md` step 4 and end any fix round of this pass on it.
@@ -2543,9 +2534,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: pointer
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:68
 - provenance: ddcb28e 2026-09-07, the isolation section was documented with the narrowed run.
-- verdict: keep
-- reason: No finding. The runner README owns the isolation mechanics and the pointer is the correct form.
-- passage: The credential copy the run makes and its cleanup are the runner README's isolation section's.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's `## The isolation model` covers the credential copy and its cleanup: "The copy is removed when the run ends, when the process exits by any route, and when the run is interrupted".
 
 ### c3.C018
 - key: Read a leg only once it is whole.
@@ -2702,7 +2692,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: cceff11 2026-08-31 wrote the order out (append, archive, gate, fill); e0ef09c 2026-09-06 placed the probe run in it.
 - verdict: keep
 - reason: The order was written out because a reader left to infer it wrote the Chapter in a circle with the gate; "ahead of the whole gate" is a start order and is compatible with the gate running beside the backgrounded probe run (A021, K15 F123 not real).
-- passage: Append the Chapter with its `Gate:` line left open. Run the probe set where the paragraph opening `In the kit's own repository` calls for it, either side of the archive, the prune and the index refresh but ahead of the whole gate. Finish the archive, the prune and the index refresh. Then run the whole gate with the contention lane beside it over the tree as it then stands. Fill the `Gate:` line from those runs.
+- passage: Append the Chapter with its `Gate:` line left open. Start any probe run this step calls for ahead of the whole gate, either side of the archive, the prune and the index refresh. Finish those three, then run the whole gate with the contention lane beside it over the tree as it then stands. Fill the `Gate:` line from those runs.
 
 ### c3.C035
 - key: Place the probe run loosely because its parser admits shapes under the plugin and home directory alone, which the `docs/` edits cannot disturb, and ahead of the gate so the two never share the box.
@@ -2725,7 +2715,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The re-run rules stand; "under its own claim released before the gate starts" is e0ef09c's box-claim reading that ddcb28e superseded at line 68 without revising this sentence, so it drops (A021, A035). The safe change is to align this sentence with c3.C016.
 - proposed: Split into trigger, after-leg re-run, before-leg re-run and Gate-line replacement; drop "under its own claim, released before the gate starts".
 - baseline-test: yes
-- passage: A post-gate edit under a shape's files, or an update from origin that brings one across, stales the probe reading as it re-earns the gate. The after leg then runs again ahead of that gate. The before leg runs with it where the re-run's ruled mismatches name a moment the earlier before leg did not cover. The fresh readings replace the legs they re-ran on the `Gate:` line under the same fill rule.
+- passage: A post-gate edit under a shape's files, or an update from origin bringing one across, stales the probe reading as it re-earns the gate. The after leg then re-runs ahead of that gate, with the before leg for any `ruled` mismatch on a moment the earlier before leg did not cover. The fresh readings replace the re-run legs on the `Gate:` line.
 
 ### c3.C037
 - key: Treat the `Gate:` fill as the only safe post-gate edit because it records a run that already happened, where any other edit leaves the shipped tree one edit newer than the evidence clearing it.
@@ -2976,9 +2966,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:82
 - provenance: cabbf89 2026-06-28, the excuse table installed as the anti-deferral device and baseline-tested.
-- verdict: keep
-- reason: An excuse-table row is the pinned device, not a duplicate of the paragraph: cabbf89 tested the table under deferral pressure, and stripping the excuse column strips what was tested (A082).
-- passage: | "Review-Only means leave the doc open." | Review-Only defers the commit, not the truth. Flip the plan to Complete and stage it; I commit. |
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): the excuse table is dropped, per the dispatch's ruling on row 781. C057 carries the rule ("under Review-Only stage the doc with the code"), and C058 carries "My one review-commit then lands the code and a Complete, archived doc together."
 
 ### c3.C060
 - key: Mark the plan Complete once the work is delivered and the gates passed, without waiting for acceptance.
@@ -2987,25 +2976,23 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: cabbf89 2026-06-28.
 - verdict: keep
 - reason: As c3.C059: a row of the baseline-tested excuse table (A085, A087).
-- passage: | "The plan is not done until it is accepted, so leave it In Progress." | If the work is delivered and the gates passed, the plan is Complete now. A change I request reopens it as a new round. |
+- passage: The plan never rests In Progress, and a change I request reopens it as a new round with a new Chapter.
 
 ### c3.C061
 - key: Finalize the plan before you hand off, never after the commit.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:84
 - provenance: cabbf89 2026-06-28.
-- verdict: keep
-- reason: As c3.C059: the row's consequence sentences ("after the commit you are out of the loop") are the rebuttal the device was tested with (A088).
-- passage: | "Flip it to Complete after the commit." | After the commit you are out of the loop and nothing flips it. That is exactly how a finished plan sits stale. Finalize before you hand off. |
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): the excuse table is dropped per the row 781 ruling. C057 carries the rule: "so the resting state handed over is a closed, staged plan."
 
 ### c3.C062
 - key: Mark the plan Complete with the handoff list in the Chapter and the backlog even where an operator-only verification is still open.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:85
 - provenance: a00a4ea 2026-08-06, "the matching excuse-table row" for the operator-only case.
-- verdict: keep
-- reason: As c3.C059: the row extends the tested device to the incident a00a4ea recorded (A089).
-- passage: | "A verification only Scott can run is still open, so it stays In Progress." | An operator-only check can wait weeks. Complete plus the handoff list in the Chapter and backlog is the honest state; a failed operator check reopens it as a new round. |
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): the excuse table is dropped per the row 781 ruling. C038, C039 and C041 carry the rule in the operator-pending paragraph.
 
 ### c3.C063
 - key: Run the handoff gate before applying the commit model, over the tree as it now stands, and where steps 2 through 5 changed anything since step 1's dispatch reported, run the whole gate again first and carry its counts as the handoff evidence.
@@ -3402,7 +3389,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 1f4934e 2026-08-04 records that the intuition runs the wrong way (widening pulls applied stamps into range and masks freshly read records); f8067be 2026-08-25 added the disjoint-stretch case.
 - verdict: keep
 - reason: Kept in the document because the one-run-per-stretch rule is disobeyed without it: a session reasoning "more is safer" collapses the stretches into one query and gets a shorter list.
-- passage: since a wider window returns a shorter list, per executing-work's boundary rule. Run once per disjoint stretch, since a duration reaching back across them spans the swept stretches between and takes the shortening with it.
+- passage: since a wider window returns a shorter list. Run once per disjoint stretch, since one duration reaching back across them takes the shortening with it.
 
 ### c3.C106
 - key: Adjudicate what the sweep lists by stamping with `memq touch <name> --applied`, plus `--type` or `--operator` where the hit's tier needs it, or skipping, on the generous bar: did it plausibly steer what you did, and when in doubt, stamp.
@@ -3423,7 +3410,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 5e84677 2026-08-25, the interim board that gave the reading one owner after a three-surface statement was read as rebuilding the drift it closed.
 - verdict: keep
 - reason: A pointer at the owner; executing-work carries the matching pointer for its boundary.
-- passage: That skill owns reading the report against your own account of the stretch, and the hand walk a boundary owes when that account will not come out.
+- passage: Where that skill finds this stretch owes a hand walk
 
 ### c3.C108
 - key: Take the hand walk where this stretch owes one and name in the close-out status what it covered, why it was owed, and what it found.
@@ -3432,7 +3419,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 5e84677 2026-08-25, which landed finishing-work's record in the close-out status because step 7 runs after step 5 closed the final Chapter.
 - verdict: keep
 - reason: The surface is deliberate: executing-work reports on the Chapter's `Stamps:` line, finishing-work on the status, because the Chapter is already closed here.
-- passage: Where this stretch owes one, take it and name in the close-out status what it covered, why it was owed and what it found.
+- passage: take it and name in the close-out status what it covered, why it was owed and what it found.
 
 ### c3.C109
 - key: Order this step sweep, then after-query, then decay pass, then recap.
@@ -3467,7 +3454,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The query stays as a plain sentence. Its reason lives here: the recall that opened the effort ran with the vocabulary the session had before the change, so a record the work overtook sits behind names, paths, errors and constants nobody knew to search for at the start, and only a query run after the change reaches it.
 - proposed: State the query, the two remedies, the journal-key remedy and the cross-tier dispositions as plain sentences; move C112 to the ledger; reduce C115 to one clause plus a pointer.
 - baseline-test: yes
-- passage: Run `memq find <term>` over the terms this effort learned, against what the effort now knows.
+- passage: Run `memq find <term>` over the terms this effort learned.
 
 ### c3.C112
 - key: Run it because the effort's recall used the vocabulary the session had before the change, so a record the work has overtaken sits behind names nobody knew to search for at the start.
@@ -3508,7 +3495,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Not superseded by machinery (the hand-written project tier accepts a cross-tier pointer silently), but memory-system carries both halves whole (SKILL.md:30 the six refusals, :178 the hand-written hazard) and owns the pointer, so this reduces to one clause and a pointer.
 - proposed: Reduce to "The pointer is same-tier and the query is not; memory-system owns what that means for each tier" and point.
 - baseline-test: yes
-- passage: The pointer is same-tier and the query is not, and the memory-system skill owns what that means for each tier.
+- passage: The pointer is same-tier, so a hit in another tier takes that tier's own `--update` repair where it is wrong, or is recorded in the close-out and left where it is merely older.
 
 ### c3.C116
 - key: Take a hit outside the tier the effort's new fact belongs to through that tier's own `--update` repair where the record is wrong, or record it in the close-out and leave it where it is merely older.
@@ -3517,7 +3504,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6f26849 2026-08-26.
 - verdict: keep
 - reason: The cross-tier disposition follows from the pointer being same-tier; a session collapsing it into a `supersedes:` pointer writes a line that labels nothing.
-- passage: So a hit in a tier other than the new fact's takes that tier's own `--update` repair where it is wrong, or is recorded in the close-out and left where it is merely older.
+- passage: The pointer is same-tier, so a hit in another tier takes that tier's own `--update` repair where it is wrong, or is recorded in the close-out and left where it is merely older.
 
 ### c3.C117
 - key: Record a hit in another project's store and leave it, since nothing here can write it.
@@ -3526,7 +3513,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6f26849 2026-08-26.
 - verdict: keep
 - reason: The semantic channel reaches every store on the machine and memq writes only this project's; the record in the close-out is the only act available.
-- passage: A hit in another project's store is recorded and left, since nothing here can write it.
+- passage: A hit in another project's store is recorded and left.
 
 ### c3.C118
 - key: For a journal key whose latest summary this effort's outcome overtakes, run `memq log <key> pass|fail` rather than either memory remedy.
@@ -3535,7 +3522,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6f26849 2026-08-26, which named `memq log` for a journal key whose belief the effort overtook.
 - verdict: keep
 - reason: No finding. A journal key is neither a record to supersede nor one to repair; the outcome is what flips what the store believes.
-- passage: A journal key whose latest summary this effort's outcome overtakes takes `memq log <key> pass|fail` instead, the outcome that flips what the store believes.
+- passage: A journal key whose latest summary this effort's outcome overtakes takes `memq log <key> pass|fail` instead.
 
 ### c3.C119
 - key: Run the after-query before the decay pass because `decay-scan` cannot see a pointer written after it for at least another fourteen days, `find` withholds archived records and would hand a clean zero for the wrong reason, and `add-type` and `add-operator` refuse a `--supersedes` target only the archive holds.
@@ -3555,7 +3542,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6f26849 2026-08-26.
 - verdict: keep
 - reason: A skipped query and a clean one are the same silence in the record; the receipt is what makes the difference readable.
-- passage: Leave a receipt, since a skipped after-query and a clean one are otherwise the same silence. Name the terms queried, the outcome and the reading's strength in the close-out status, beside the recap digest.
+- passage: Name the terms queried, the outcome and the reading's strength in the close-out status, since a skipped after-query and a clean one otherwise read alike.
 
 ### c3.C121
 - key: Name the reading's strength, and record a zero read without the embedder as a partial after-query naming the absent embedder rather than as a clean one.
@@ -3564,30 +3551,28 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6f26849 2026-08-26.
 - verdict: keep
 - reason: Without the embedder `find` serves substring matches over this project's tiers alone, reaching neither a paraphrase nor another store, so the zero is partial by construction.
-- passage: Without the embedder, `find` serves substring matches over this project's tiers alone, so a zero read that way is recorded as a partial after-query naming the absent embedder, never as a clean one.
+- passage: Without the embedder, `find` serves substring matches over this project's tiers alone, so a zero read that way is a partial after-query naming the absent embedder, never a clean one.
 
 ### c3.C122
 - key: Run the decay pass when `memory/decay-stamp` in the project's memory directory is older than 14 days or does not exist; skip it and say nothing when it is fresher.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, the memory extension's decay lifecycle and its finishing-work pass.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The predicate stays and absorbs c3.C123's bar in the same sentence; the stamp is what `memq decay-done` touches, so the predicate is mechanical.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system `### Running the Decay Pass` carries it: "It is due when the decay stamp is older than 14 days, or absent".
 - proposed: Keep C122 to C130, C134, C137 and C138 as the pass; retire C133 and C136; move C132, C135, C139 to the ledger; point at memory-system for the `.bak` durability note.
 - proposed: (via A071) One sentence: run the pass when the stamp is older than 14 days or absent, skip it silently otherwise, and let the stamp decide rather than a read of the store.
 - baseline-test: yes
-- passage: Run it when `memory/decay-stamp` in the project's memory directory is older than 14 days or absent, and skip it silently otherwise.
 
 ### c3.C123
 - key: Let the predicate gate the pass, not your read of whether the store feels stale.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, copying the "predicate, not your read" pattern 830ff28 2026-06-17 set for the kaizen check.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: Merged into c3.C122's sentence; it adds a bar on overriding the predicate, not a second condition.
-- passage: The stamp decides, not your read of whether the store feels stale.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system `### Running the Decay Pass` states the due test mechanically, as above.
 
 ### c3.C124
 - key: Run `memq decay-scan` first; it changes no record and no stamp, so make every summarize-or-archive call yourself where the operator can see it.
@@ -3596,7 +3581,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8e22ff4 2026-07-31; 91111b3 2026-09-05 made the scan's only write its derived semantic index and corrected the sentences that said it writes nothing.
 - verdict: keep
 - reason: The scan is a read and the writes are the session's; nothing mechanical performs the calls the sentence assigns.
-- passage: `memq decay-scan` changes no record and no stamp, so every summarize-or-archive call is yours, made where I can see it.
+- passage: Every summarize-or-archive call in it is yours, made where I can see it.
 
 ### c3.C125
 - key: Second, summarize each summarize candidate keeping its index description: edit a project-tier candidate in place, and put a type- or operator-tier candidate through `add-type` or `add-operator` with `--update`, a body flag and `--confirm-shared`.
@@ -3605,7 +3590,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae2c70a 2026-08-22, which found the skill prescribing two hand edits the shared tiers bar.
 - verdict: keep
 - reason: No finding. The shared tiers refuse a hand edit under the tier lock, so the `--update` path is the only one that lands.
-- passage: The memory-system skill owns the rest of the pass whole: the summarize edit, the `decay-prune` calls and their `--confirm-shared` shape, pinned records, the bar on hand-editing `outcomes.jsonl` or `usage.jsonl`, tag hygiene and `memq decay-done`.
+- passage: The memory-system skill's Running the Decay Pass owns when it is due and the pass whole.
 
 ### c3.C126
 - key: Decide which archive candidates are done.
@@ -3614,49 +3599,45 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8e22ff4 2026-07-31.
 - verdict: keep
 - reason: The judgment step between the scan and the prune; the prune mutates only what its flags name, so this decision is the whole of the pass's authority.
-- passage: so every summarize-or-archive call is yours, made where I can see it.
+- passage: Every summarize-or-archive call in it is yours, made where I can see it.
 
 ### c3.C127
 - key: Third, run `memq decay-prune --rollup`, naming each archive call as `--archive <name>`, `--archive-type <name>` for a type-tier candidate, or `--archive-operator <name>` for an operator-tier one; the command mutates only what its flags name.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31; the operator-tier flag arrived with the shared-tier plan at ae2c70a 2026-08-22.
-- verdict: keep
-- reason: The command spelled with `--rollup` here is why c3.C136 retires; choosing the candidates and their flags is the session's, which no program makes.
-- passage: the `decay-prune` calls and their `--confirm-shared` shape
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system `### Running the Decay Pass` carries it: "`decay-prune --rollup` with the archive flags mutates".
 
 ### c3.C128
 - key: Shape the pass around `--confirm-shared` being one flag per invocation: give any `--archive-operator` its own `decay-prune` call, run `--archive-type` in a separate call without the flag, and put `--rollup` on the project-tier call alone.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22: `--confirm-shared` is consumed by two independent gates in one invocation, so passing it always waives the type tier's cross-project gate permanently; the commit states the split is prose-enforced with no mechanical check.
-- verdict: keep
-- reason: The hazard is the CLI's one-flag-per-invocation behavior and nothing in it splits the calls. Why not one call for both tiers (c3.C132): it pre-supplies the flag and waives the second look silently, while a call that needed the flag and omitted it refuses having changed nothing, so that mistake costs a round and no work.
-- passage: the `decay-prune` calls and their `--confirm-shared` shape
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system `### Running the Decay Pass` carries it: "`--confirm-shared` is one flag for the whole invocation ... give any operator-tier archive its own `decay-prune` call".
 
 ### c3.C129
 - key: Add `--confirm-shared` to the type-tier call only once the refusal has named the projects the retirement would reach.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22 and d7499c8 2026-08-22, the shared-tier effort's finishing pass.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The sentence stands; the paragraph around it loses c3.C133, c3.C136 and the rationale claims. The refusal is the gate's first half, the named reach is what the flag then consents to.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. The same memory-system paragraph carries it: "Add `--confirm-shared` to that type-tier call only once the refusal has named the projects".
 - proposed: (via A072) Keep C122 to C130, C134, C137 and C138 as the pass; retire C133 and C136; move C132, C135, C139 to the ledger; point at memory-system for the `.bak` durability note.
 - baseline-test: yes
-- passage: the `decay-prune` calls and their `--confirm-shared` shape
 
 ### c3.C130
 - key: Where the runner reports that the declaring-projects scan could not be established, surface it to the operator rather than supplying the flag.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22; the unestablished-scan report is memq's own (plugins/claude-kit/scripts/memq.js:13872).
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: Blast-radius gate, kept; the reason moves here: with the reach unknown, confirming past it buys exactly what the gate exists to ask about, a retirement reaching projects nobody has named.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. The same memory-system paragraph carries it: "Where the refusal says the scan of declaring projects could not be established ... ask the operator rather than add the flag".
 - proposed: State the trigger and the rule; move the reason to the ledger.
 - baseline-test: yes
-- passage: the `decay-prune` calls and their `--confirm-shared` shape
 
 ### c3.C131
 - key: Take the exact `--confirm-shared` condition from the memory-system skill.
@@ -3665,7 +3646,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae2c70a 2026-08-22.
 - verdict: keep
 - reason: No finding. A pointer at the owner of the flag's condition.
-- passage: The memory-system skill owns the rest of the pass whole
+- passage: The memory-system skill's Running the Decay Pass owns when it is due and the pass whole.
 
 ### c3.C132
 - key: Do not combine both shared tiers in one call, since that pre-supplies the flag and waives the second look silently, while a pass that needed the flag and omitted it refuses having changed nothing, costing a round and no work.
@@ -3694,12 +3675,11 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: f270e9c 2026-07-31 introduced the pin; ae2c70a 2026-08-22 stated that no memq path writes or removes the field and that the pin binds the decay pass and not the delete verbs.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The refusal by name (memq reads pin state as pinned, unpinned or unknown, memq.js:4974) and the hand edit stay; the never-delete bar's reasons live here: a delete drops the record's usage stamps and meets another machine's copy as a conflict, while an unpinned archive keeps both. The landed sentence carries the bound "the one hand edit those tiers admit", since the retired mechanism sentence was what reconciled this rule with the paragraph's bar on hand edits in the shared tiers.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system `### Pinning` carries it: "Revoke a pin by deleting the line ... Do not reach for `delete-type` or `delete-operator` to clear one".
 - proposed: Two sentences: the refusal and the hand edit; the never-delete bar with its reasons in the ledger.
 - baseline-test: yes
-- passage: pinned records
 
 ### c3.C135
 - key: Avoid the delete because it drops the record's usage stamps and meets another machine's copy as a conflict.
@@ -3728,18 +3708,16 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, the sidecars written under the store lock with a `.bak` beside every rewrite.
-- verdict: keep
-- reason: A hand edit races the stamp hook that appends on every memory read, including the editor's own; no guard refuses the edit, so the prose is the only bar.
-- passage: the bar on hand-editing `outcomes.jsonl` or `usage.jsonl`
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system's opening bullet carries it: "**Never hand-edit `outcomes.jsonl` or `usage.jsonl`.**"
 
 ### c3.C138
 - key: Fold in tag hygiene against the registry, then run `memq decay-done` to touch the stamp.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31.
-- verdict: keep
-- reason: `decay-done` touches `memory/decay-stamp`, the file c3.C122's predicate reads; without the touch the next close-out re-runs a finished pass (c3.C139).
-- passage: tag hygiene and `memq decay-done`
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 794 merge. Memory-system `## Tags and the Registry` carries "the decay pass folds in tag hygiene against the registry", and `### Running the Decay Pass` carries "`decay-done` stamps".
 
 ### c3.C139
 - key: Touch the stamp because without it the next close-out re-runs a pass you already finished.
@@ -3783,7 +3761,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The reporting rule stays; the sync architecture around it is memory-system SKILL.md:64-66's text verbatim, and 4c6787c recorded the two unpinned copies as having drifted once already, so this paragraph keeps its reporting rules and points for the mechanics. The landed pointer names the SessionStart background runner, since c3.C145's kept sentence ("Off Windows there is no runner to spawn") refers to it and would otherwise meet the reader cold.
 - proposed: Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
-- passage: So the close-out reports them as PENDING, not synced, unless you take the immediate path below.
+- passage: so the close-out reports them as PENDING, not synced, unless you take the immediate path.
 
 ### c3.C143
 - key: Carry the sync state into the status rather than driving it, and use the kit doctor's `-Fix` as the repair where the hook nags that the sync stood down.
@@ -3793,7 +3771,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: keep
 - reason: This is the close-out's own act, carry not drive; the sentence survives the paragraph's reduction as one of its four reporting rules.
 - passage: Carry that state into the status rather than driving it.
-- passage: The hook nags only when the sync stood down, and the kit doctor's `-Fix` is the repair there.
+- passage: It is also the repair where the hook nags that the sync stood down.
 
 ### c3.C144
 - key: Use `-Fix` as the initialization path on a fresh machine and as the way to commit this session's writes immediately; it commits and never pushes, the background sync runner at next session start or a hand path carrying the commit to the remote.
@@ -3805,16 +3783,15 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: A whole copy of memory-system SKILL.md:66, the owner of the store's sync path; finishing-work points there.
 - proposed: (via A091) Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
-- passage: It is also the immediate path, and it commits and never pushes.
+- passage: The kit doctor's `-Fix` is the immediate path, and it commits and never pushes.
 
 ### c3.C145
 - key: Off Windows there is no runner to spawn, so the sync is the `-Fix` commit plus the manual push, both hand-run.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:108
 - provenance: 945a75c 2026-08-19.
-- verdict: keep
-- reason: No finding of its own. It is a copy of memory-system SKILL.md:66 and rides in the pointer the c3.C142 rewrite leaves, which is a change to the paragraph rather than to this sentence's standing.
-- passage: Off Windows there is no runner to spawn, so the sync there is hand-run.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 796 shrink. Memory-system `## Session Recap` carries it: "off Windows, with no runner, the commit and the push are both hand-run".
 
 ### c3.C146
 - key: Running `-Fix` from a tool shell, tell the operator what it would do, a plain commit or also an embedder install, get their go-ahead, then pass `-Yes`.
@@ -3823,7 +3800,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e23b88a 2026-08-03, the memory sync's whole-changeset reviews: the doctor declines every prompt on a redirected stdin, and a session following the old wording committed nothing.
 - verdict: keep
 - reason: Blast-radius gate: `-Yes` consents to a commit to a store that syncs off-machine and possibly a native embedder install, standing in for a prompt the tool cannot show. The redirected-stdin reason stays in the document because a session without it runs a bare `-Fix` and reads its silent decline as success.
-- passage: The memory-system skill owns the hand paths, the gate each takes and the consent a `-Fix` run from a tool shell asks for
+- passage: The memory-system skill owns the hand paths and their gates.
 - flag: stale
 
 ### c3.C147
@@ -3836,7 +3813,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The hand path is memory-system SKILL.md:66's verbatim; finishing-work points, and c3.C150 keeps the FAIL-is-a-stop disposition at the close-out.
 - proposed: (via A091) Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
-- passage: The memory-system skill owns the hand paths, the gate each takes
+- passage: The memory-system skill owns the hand paths and their gates.
 - passage: A WARN is carried into the close-out rather than treated as a gate, and a FAIL is a stop.
 
 ### c3.C148
@@ -3849,16 +3826,15 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Verbatim in memory-system SKILL.md:66, the owner; the standing-grants close-out already called the two copies a liability. Finishing-work points.
 - proposed: (via A091) Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
-- passage: The memory-system skill owns the hand paths, the gate each takes
+- passage: The memory-system skill owns the hand paths and their gates.
 
 ### c3.C149
 - key: Read `docs/security-model.md` for what each hand sync path leaves exposed.
 - class: pointer
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:108
 - provenance: 4c6787c 2026-09-02.
-- verdict: keep
-- reason: No finding. A pointer at the document that enumerates the exposures.
-- passage: `docs/security-model.md` carries what each hand path leaves exposed.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 796 shrink. Memory-system `## Session Recap` carries it: "`docs/security-model.md` states what each hand path leaves exposed".
 
 ### c3.C150
 - key: Carry a WARN into the close-out rather than treating it as a gate, and treat a FAIL as a stop.
@@ -3966,7 +3942,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 9784239 2026-08-30 (the install-surface condition keys on the trunk) and 686b947 2026-09-07 (the sentence's present shape).
 - verdict: keep
 - reason: Executing-work already says the branch's whole gate is the merge's and finishing-work runs it; this is the owner's statement.
-- passage: That branch push lands on a PR branch rather than on a trunk consumers install from, so it does not fire the pre-push condition and rests on the merge's whole gate above.
+- passage: That branch push lands on a PR branch, not a trunk consumers install from, so it rests on the merge's whole gate above.
 
 ### c3.C162
 - key: The handoff gate reads the same tree that gets pushed, since only the Gate: line may change after it runs, so a second full suite would read identical bytes.
@@ -4298,8 +4274,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae62a4e 2026-08-27, after two documents and this skill described the check as comparing bytes when it compares two porcelain readings; 55c5abc 2026-09-09 left it unchanged.
 - verdict: keep
 - reason: docs/security-model.md defers to finishing-work's own account of what the bracket misses, so this passage owns the enumeration; the classes are what stop a clean bracket from being read as a clean round.
-- passage: The check compares two porcelain readings, not the bytes on disk, so it misses any write that leaves no tracked-file delta.
-- passage: Git's ref, config and remote plumbing rests on nothing, since the guard treats it as review work
+- passage: The check compares porcelain readings, so it misses any write leaving no tracked-file delta, any act moving HEAD with the worktree, any act outside the worktree, and git's ref, config and remote plumbing.
 
 ### S019
 - key: Keep step 5 outside the tree-state bracket.
@@ -4317,7 +4292,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: fead41e 2026-07-25, the incident itself; 55c5abc 2026-09-09 renumbered the step it names.
 - verdict: keep
 - reason: An exclusion with no stated ground reads as a gap in the guard's coverage that a later editor closes by bracketing step 5, which is the fead41e incident; c1.C002 retired the line 8 copy of this reason on the ground that this site keeps it.
-- passage: since the docs-curator's edits under `docs/` are its deliverable and bracketing them turns its own output into a phantom incident.
+- passage: since the docs-curator's edits under `docs/` are its deliverable.
 
 ### S021
 - key: Open the finishing pass's compaction boundary on the compaction gate's own recorded deferral, which needs no count.
@@ -4558,7 +4533,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan, the mistake being visible only at the derivation; 55c5abc 2026-09-09 renumbered "step 4" to "step 5" twice.
 - verdict: keep
 - reason: A wrong base produces no error and no reviewer can see the commits it was not given, so the derivation is checked where it is made or not at all; one-directional because the listing legitimately holds entries no scope line names.
-- passage: A wrong base raises no error, so check it before spending it. Take step 5's changeset listing against it and compare that listing one-directionally with the union of the plan's `Files in scope:` lines.
+- passage: A wrong base raises no error, so check it before spending it. Compare step 5's changeset listing, taken against it, one-directionally with the union of the plan's `Files in scope:` lines.
 
 ### S046
 - key: Surface only listing entries that fall outside that union and outside the bookkeeping set, the plan doc and `docs/README.md`.
@@ -4576,7 +4551,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24; 55c5abc 2026-09-09 left it unchanged.
 - verdict: keep
 - reason: Each is a listing entry a correct base still produces; without the list a session re-derives the base on a false alarm.
-- passage: Three further classes are expected surfacings rather than a wrong base: a sibling session's commit landed after the base, a persistent untracked file the repo does not ignore, and a plan with no `Files in scope:` lines.
+- passage: A sibling's later commit, an unignored untracked file and a plan with no `Files in scope:` lines surface entries without meaning a wrong base.
 - flag: weak-reason
 
 ### S048
@@ -4584,12 +4559,11 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24; 55c5abc 2026-09-09 left it unchanged.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The rule and its two bounds stay; the trailing design argument (S049) leaves the sentence.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S045's "one-directionally" carries the rule that equality is never the test. S045's own reason states the bound: the listing holds entries no scope line names.
 - proposed: End the sentence after "a scope line may name a non-path entry such as a memory tier".
 - baseline-test: yes
-- passage: Equality is never the test. The listing holds the plan doc, and a scope line may name a non-path entry such as a memory tier.
 
 ### S049
 - key: A check that fires on every healthy pass teaches its reader to wave it through, losing the wrong base it exists to catch.
@@ -4615,9 +4589,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: 9784239 2026-08-30, as S050; 55c5abc 2026-09-09 renumbered "before step 6" to "before step 7".
-- verdict: keep
-- reason: A pass that hands off on step 1's run hands off on evidence older than its own edits; step 7's copy names step 1 as owner. Shares c2.C026's supersession with S050.
-- passage: The whole gate runs again after the last step that changed the tree and before step 7, and the plan hands off on that later run.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): the doctrine's gate bullet carries this ("The whole gate runs at finishing, before the plan's handoff"). So does step 6's Gate-line rule ("Then run the whole gate with the contention lane beside it over the tree as it then stands"), which runs after the archive, the prune and the index refresh. The landed pointer is "Step 6 runs the second, the handoff gate."
 
 ### S052
 - key: Most of the pass's work lands after step 1 reports: steps 2 to 4 fix findings, step 5's curator writes under docs/, and step 6 rewrites the plan doc.
@@ -4664,27 +4637,24 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: 9784239 2026-08-30 and cceff11 2026-08-31, gate-cadence plan; 55c5abc 2026-09-09 renumbered "step 5" to "step 6".
-- verdict: keep
-- reason: The final Chapter is the one record of a whole-tree run where section closes ran a targeted lane.
-- passage: The re-run's counts, its exit code and the contention lane's are the handoff's evidence. Step 6 records them in the final Chapter's `Gate:` line
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): step 6 carries it in "Fill the `Gate:` line from those runs" and its `Gate:` template pointer.
 
 ### S057
 - key: Write the final Chapter with its `Gate:` line open ahead of the re-run and fill it afterwards, in the order step 6 sets out.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: cceff11 2026-08-31, a Critical that the Chapter's counts were owed from a run that had not happened; 55c5abc 2026-09-09 renumbered the owning step to 6 and repointed test/doctrine-parity.test.js with it.
-- verdict: keep
-- reason: Step 6 owns the rule and is pinned by the parity test; this clause is the pointer form and stays as such.
-- passage: which it writes open ahead of the re-run and fills afterwards.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): step 6's bold lead "The Chapter is written with its `Gate:` line open, and filling that line is the one edit permitted after the gate" carries it.
 
 ### S058
 - key: Add no gate beyond that re-run for the handoff, and leave step 7 to its own conditions.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: 9784239 2026-08-30, the corrected form after a Critical against wording that had the last steps run no gate at all; 55c5abc 2026-09-09 renumbered "step 6" to "step 7".
-- verdict: keep
-- reason: Testing-discipline owns the moment and this owns the pass's ordering; the two conditions named are step 7's points of action.
-- passage: The handoff earns no gate beyond the re-run. Step 7's merge and install-surface push earn theirs on their own conditions, named at that step.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): step 7's opening sentence carries it ("the merge and install-surface gates the bullets below name stand beside it rather than in place of it"). So does the doctrine's gate bullet.
 
 ### S059
 - key: Split an UNVERIFIABLE criterion on who could ever verify it.
@@ -4732,7 +4702,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a00a4ea 2026-08-06, as S062; 55c5abc 2026-09-09 renumbered the handoff to step 6.
 - verdict: keep
 - reason: The class discriminator is what keeps effort from being relabelled access. Shares c2.C033's supersession with S062.
-- passage: Confirm the reason is genuinely operator access rather than effort, then carry the item into the step 6 handoff. Operator-only means no environment work available to this session could exercise the path.
+- passage: Confirm the reason is genuinely operator access rather than effort, then carry the item into the step 6 handoff.
 
 ### S064
 - key: End a fix round this pass runs on executing-work's terminal condition, its step 4 clause on the class of what remains.
@@ -4956,7 +4926,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a5fce80 2026-08-18 for the not-re-run rule, 0faeb51 2026-09-06 for keeping the one-up section read and accepting the loss; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: keep
 - reason: A section aimed below Fable keeps its section-time blind read at the one-up tier and this whole read accepts that loss; a finishing blind read would buy a duplicate.
-- passage: No blind reviewer runs here. A section the rule aimed below Fable keeps its section-time blind read at the one-up tier, and no blind lens reads a decayed round's fix delta, two losses this whole read accepts.
+- passage: No blind reviewer runs here
 
 ### S088
 - key: Do not re-run the blind reader at finishing unless a document changed after its section review.
@@ -4965,7 +4935,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a5fce80 2026-08-18; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: keep
 - reason: A fresh dispatch is a new context either way, so a second read of an unchanged document buys a duplicate report. Shares c2.C054's supersession with S087.
-- passage: The blind reader is not re-run at finishing unless a document changed after its section review.
+- passage: the blind reader re-runs only on a document changed after its section review.
 
 ### S089
 - key: A fresh reader against an unchanged document reproduces the read its section already paid for, buying a duplicate report rather than a second opinion.
@@ -5020,19 +4990,18 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6 round 2's Major that the brief's enumeration omitted what the charter's fixed brief requires, fixed by making the charter the owner; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the Intent record to this judge, so the goal read's two questions are asked against the operator's own frame.
 - verdict: keep
 - reason: A pointer at the charter with a gloss naming the pass's own input, the base ref, in place of a finding; the charter states the shape in full.
-- passage: The brief is the charter's whole-changeset shape, which the charter states in full. It holds the plan's what, with the `## Intent` record beside the Goal where the plan has one, the base ref in place of a finding, and the two questions, and none of the how the charter forbids.
+- passage: The brief is the charter's whole-changeset shape, which the charter states in full, with the base ref in place of a finding.
 
 ### S095
 - key: Carry none of the plan's how into that brief: no `## Approach`, no `## Decisions`, no `## Chapters`.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:58
 - provenance: 55c5abc 2026-09-09, Section 6; the charter lists six forbidden inputs and executing-work's provenance paragraph declines to restate them.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The charter owns its forbidden inputs and this sentence restates three of the six, so it folds into S094's pointer as "none of the how the charter forbids"; the charter's list is what a session about to change the brief must read.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S094's "which the charter states in full" carries it. The scope-adjudicator charter owns the forbidden inputs.
 - proposed: Fold into S094's pointer as "and none of the how the charter forbids", dropping the three named sections.
 - baseline-test: yes
-- passage: and none of the how the charter forbids
 
 ### S096
 - key: Carry no `Amendments in effect:` line either; let an amendment reach the judge by refreshing the what the brief quotes.
@@ -5044,7 +5013,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The pointer at executing-work's carve-out stays; the refresh mechanism is that step's Trace target rebuild from the Standing Brief Amendments block and moves here: an amendment that moved an acceptance bullet reaches the judge because step 3 rebuilds the what from the block rather than from a session's memory of a ruling.
 - proposed: Keep "It carries no Amendments in effect: line either, on the carve-out executing-work's step 3 states for this judge" and drop the "so an amendment that moved an acceptance bullet reaches it by refreshing the what the brief quotes" clause.
 - baseline-test: yes
-- passage: It carries no `Amendments in effect:` line either, on the carve-out executing-work's step 3 states for this judge.
+- passage: It carries no `Amendments in effect:` line, on the carve-out executing-work's step 3 states for this judge.
 
 ### S097
 - key: Dispatch the adjudicator whatever the roster shows.
@@ -5071,7 +5040,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6, Chapter 6's declared assumption that the double return goes to the close-out rather than BLOCKED.
 - verdict: keep
 - reason: Executing-work's double-NEEDS_CONTEXT exit declares BLOCKED on a section, and this pass has no section to block, so the read that ruled on nothing is recorded to the operator rather than treated as clean.
-- passage: A second such return sends the read to me in this pass's close-out with both returns beside it, in the ask bucket's register, since a read that ruled on nothing is not a clean result.
+- passage: A second such return sends the read to me in this pass's close-out with both returns beside it, in the ask bucket's register.
 
 ### S100
 - key: Record a goal read the unavailability ladder ends ungated on the final Chapter's `Review Findings:` field as `review: <pair or lens> ungated (<chain>)` with `goal read` as the lens, in place of counts.
@@ -5080,7 +5049,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6, Chapter 6's route (a) assumption reusing executing-work's review-ungated form rather than a new literal.
 - verdict: keep
 - reason: The form is executing-work's Chapter format and this is its pointer with the lens named.
-- passage: Record a read the unavailability rule's ladder ends ungated on the final Chapter's `Review Findings:` field in the `review: <pair or lens> ungated (<chain>)` form executing-work's Chapter format states, with `goal read` as the lens, in place of the counts.
+- passage: Record a read the unavailability rule's ladder ends ungated on the final Chapter's `Review Findings:` field in the `review: <pair or lens> ungated (<chain>)` form executing-work's Chapter format states, with `goal read` as the lens.
 
 ### S101
 - key: The goal read is not step 1 again: qa-verifier checks the stated criteria, and this asks what was built that no criterion named and what a Goal sentence promised that none delivered.
@@ -5315,7 +5284,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The docs-curator charter owns the class and keying on the marker keeps the two surfaces from drifting on what counts; nothing mechanical reads the marker.
-- passage: an item whose `Basis:` line carries its charter's marker, "pre-change state not read (this charter grants no Bash)", rests on a state it could not open. Key on the marker rather than re-deriving the class of claims the charter says carry it.
+- passage: an item whose `Basis:` line carries its charter's marker, "pre-change state not read (this charter grants no Bash)", rests on a state it could not open. Key on the marker.
 
 ### S126
 - key: Build the read from the base ref established before step 1 and from your own listing, spending the entry's paths only as selectors over that listing.
@@ -5324,7 +5293,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 round 2, where the read was found parameterised on a ref the skill never defined and interpolating an unvalidated curator path; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The base ref and the listing are the two inputs the session produces itself; everything from the report is a selector over them.
-- passage: Build the read from the base ref the pass established before step 1 and from your own listing, spending the entry's paths only as selectors over it.
+- passage: Build the read from the base ref and your own listing.
 
 ### S127
 - key: Spend the pre-change read on `mistake` items only.
@@ -5351,7 +5320,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 round 2, class one: round 1's injection had been moved rather than closed; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: What reaches git is git's own output about its repository, so there is no interpolation left to screen; no hook performs the selection.
-- passage: No curator-supplied token reaches a command as free text. Every token a command or a file-write consumes selects from a listing you produced, and the command receives the listing's own entry.
+- passage: Every token a command or a file-write consumes selects by equality, whole token against whole entry, from a listing you produced, and the command receives the listing's own entry, quoted, after `--` where the form takes one.
 
 ### S130
 - key: Selection establishes membership rather than innocence, since the curator's ungoverned writes under docs/ let a name it chose join the untracked half and select itself.
@@ -5387,18 +5356,16 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: Prefix or substring selection lets a short token select a directory's worth of entries; nothing enforces equality mechanically.
-- passage: A `Paths:` token selects by equality, whole token against whole entry, never a prefix or a substring.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S129's landed sentence carries the equality selection ("selects by equality, whole token against whole entry").
 
 ### S134
 - key: Compose the read from the selected entry and pass it as a single argument after `--` where the form takes one.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: `--` closes the option parser so a leading-dash entry cannot be read as a flag.
-- passage: Compose the read from the selected entry, passed as a single argument after `--` where the form takes one.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S129's landed sentence carries "after `--` where the form takes one".
 
 ### S135
 - key: Pass every token through the gate first: a repo-relative path of ASCII letters, digits, `.`, `_`, `-` and `/`, with no leading `/`, no leading `-`, and no `.` or `..` segment.
@@ -5416,7 +5383,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae62a4e 2026-08-27, verification-artifacts Section 6; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: A gate that passes a rejected token because it matched an entry is no gate; S140, S141 and S148 state the same stop at their own points of action rather than copying it.
-- passage: A rejection takes the stated-reason stop below, even for a real listing entry.
+- passage: A token the gate rejects, even a real listing entry, or one equal to no entry, is a stop with the reason stated on the anomaly route below, never a silent skip.
 
 ### S137
 - key: Quoting alone does not close this: a legal filename such as `docs/x'$(echo PWNED)'.md` selects itself and closes the surrounding single quotes, and double quotes expand substitutions too.
@@ -5433,9 +5400,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: ae62a4e 2026-08-27, verification-artifacts Section 6; moved from line 60 by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: `git show <base-ref>:<path>` has no `--` to put a path behind, and a second layer costs nothing once the gate has done the work.
-- passage: Quote the gated token too, in every form.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S129's landed sentence carries the quoting ("the listing's own entry, quoted"). So do the read forms' `'<path>'` spelling (S149, S153).
 
 ### S139
 - key: Prefer composing the command as an argument vector with no shell in between where the host allows it.
@@ -5444,25 +5410,23 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae62a4e 2026-08-27, verification-artifacts Section 6; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: An argv spelling removes the shell that quoting and the gate both defend against, so it is stronger than either.
-- passage: Where the host can compose the command as an argument vector with no shell between, prefer that.
+- passage: Prefer an argument vector with no shell where the host offers one.
 
 ### S140
 - key: Treat a token equal to no listing entry as a stop with the reason stated, never a silent skip.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: dd5e568 2026-08-24, Section 1: a token matching no entry became a stated-reason stop instead of a grammar rejection; moved from line 60 by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: Already points at the anomaly route; the hygiene case (S144) is a different item kind with no tag to stop on, so no conflict.
-- passage: A token equal to no entry selects nothing, and that is a stop with the reason stated, never a silent skip, on the anomaly route below.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S136's landed sentence carries it ("or one equal to no entry, is a stop with the reason stated on the anomaly route below, never a silent skip").
 
 ### S141
 - key: The gate may also run before the comparison to discard foreign text early, but one gate decides both passes and a rejected token stops either way.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: ae62a4e 2026-08-27, verification-artifacts Section 6; moved from line 60 by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: The early-gate site is where a reader could reason that a token rejected before the comparison never selected and so needs no stop; the restatement closes that reading where it arises.
-- passage: The gate may also run before the comparison to discard foreign text early, but one gate decides both passes and a token it rejects stops either way.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S136's landed sentence carries the single gate's stop, rejection included, whenever the gate runs. S136's own reason names S141 as the same stop.
 
 ### S142
 - key: Apply the same selection and the same gate to the `LIBRARY HYGIENE` block's `docs/plans/<file>` paths.
@@ -5471,25 +5435,23 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 and its "step 5's archival" renumbered to step 6 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The archival `git mv` ends in a shell command holding the name as an operand, under the `docs/` the curator writes ungoverned, so the gate carries the weight there.
-- passage: The same selection and gate cover the `LIBRARY HYGIENE` block's `docs/plans/<file>` paths, which step 6's archival `git mv` takes through curating-docs as a shell operand.
+- passage: The `LIBRARY HYGIENE` block's `docs/plans/<file>` paths take the same selection and gate against your own listing of `docs/plans/`, and one selecting nothing makes no move and is named in the close-out.
 
 ### S143
 - key: Select hygiene paths against your own listing of `docs/plans/` taken at the repository root, not against the changeset listing.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09. Shares c2.C082's supersession with S142.
-- verdict: keep
-- reason: A stale plan a prior effort left behind is exactly what the block flags and sits in no changeset of this effort, so the listing is `docs/plans/` itself.
-- passage: Select them against your own listing of `docs/plans/` at the repository root, not the changeset listing.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S142's landed sentence carries "against your own listing of `docs/plans/`".
 
 ### S144
 - key: Where a hygiene path selects nothing, report the hygiene item and the field with the offending text described rather than pasted, make no move for it, and carry it into the close-out by name.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: A hygiene item carries no `Class:` tag to stop on, so it takes a consequence of its own rather than S140's stop.
-- passage: A hygiene path selecting nothing carries no `Class:` tag to stop on. Report the hygiene item and the field, with the offending text described rather than pasted, make no move for it, and carry it into the close-out by name.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): S142's landed sentence carries the no-move and close-out duty, which the row-775 shrink cuts to one clause.
 
 ### S145
 - key: Put the cross-reference block's plan names through the same selection, since they reach an `Edit` rather than a shell.
@@ -5498,7 +5460,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: Selection is what keeps a traversal from resolving to a file at an `Edit`.
-- passage: The cross-reference block's plan names reach an `Edit` and take the same selection, so a traversal never resolves to a file.
+- passage: The cross-reference block's plan names take the same selection.
 
 ### S146
 - key: Screen the entry's docs, spec and code `file:line` citations not at all, and open them with the file-reading tool.
@@ -5507,7 +5469,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 rounds 3 to 5: a grammar over citations admitted no colon, then rejected the absolute path the dispatch hands the curator, so every drift entry stopped the run and the screen was deleted whole; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The file-reading tool is not a command and has no injection surface, and a claim may rest on a file outside the changeset, so a membership test would reject every honest citation.
-- passage: The entry's docs, spec and code `file:line` citations take no screen and no membership test: open them with the file-reading tool.
+- passage: The entry's `file:line` citations take no screen: open them with the file-reading tool
 
 ### S147
 - key: Record a citation that does not open as an unopened leg naming the reason.
@@ -5516,7 +5478,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: An unopened leg is neither an anomaly nor a missing basis, so it needs its own name or it gets one of the other two.
-- passage: A citation that does not open is an unopened leg naming the reason, neither an anomaly nor a missing basis.
+- passage: one that does not open is an unopened leg naming the reason.
 
 ### S148
 - key: On the anomaly route, report the drift entry and the field to the operator with the offending text described rather than pasted, never run or pasted, and give the item the tag's default stop.
@@ -5537,7 +5499,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Both forms and the no-`..HEAD` bar stay; the trailing because-clause is S151 and retires here, so the change drops a reason and no instruction.
 - proposed: end the sentence after "never the curator's own token"; drop "because the `..HEAD` form compares two commits" onward.
 - baseline-test: yes
-- passage: Two forms answer the read, and both see uncommitted work. Read `git show <base-ref>:'<path>'` against the file on disk, or take `git diff <base-ref> -- '<path>'` with no `..HEAD`.
+- passage: Then read `git show <base-ref>:'<path>'` against the file on disk, or take `git diff <base-ref> -- '<path>'` with no `..HEAD`
 
 ### S150
 - key: Use the gated selected entry as `<path>`, never the curator's own token.
@@ -5546,7 +5508,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 by 55c5abc 2026-09-09. Shares c2.C088's supersession with S149.
 - verdict: keep
 - reason: S129's rule applied at the read; the clause survives the rewritten sentence as written.
-- passage: Each `<path>` is the gated selected entry, never the curator's own token.
+- passage: each `<path>` the gated selected entry.
 
 ### S151
 - key: The `..HEAD` form compares two commits and reports an uncommitted changeset as no change, a false refutation that reads exactly like a clean result.
@@ -5565,7 +5527,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The disk side under `docs/` is post-curation content, so base-equals-disk proves nothing about the pre-change claim.
-- passage: Under `docs/` the disk side is post-curation content, so a refutation there rests on what the base content itself shows about the claim, never on the base matching the disk.
+- passage: Under `docs/`, where the disk side is post-curation content, a refutation rests on what the base content itself shows about the claim.
 
 ### S153
 - key: Establish presence at the base first and separately with `git ls-tree <base-ref> -- '<path>'`.
@@ -5601,7 +5563,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: Missing is decided in the skill the adjudicating session loads, not in the charter it never opens; a leg written in its absent form is a present basis by this definition.
-- passage: Missing is decided here, not in the charter. A leg written in its absent form (`spec silent`, `no code passage`) is a present basis. A missing basis is only an omitted `Basis:` line, a `Paths:` token the gate rejects or that selects no listing entry, a marker with no `Paths:` label or an empty one, or a pre-change read that failed other than by the positive absent answer.
+- passage: A leg written in its absent form (`spec silent`, `no code passage`) is a present basis. A missing basis is only an omitted `Basis:` line, a `Paths:` token the gate rejects or that selects no listing entry, a marker with no `Paths:` label or an empty one, or a pre-change read that failed other than by the positive absent answer.
 
 ### S157
 - key: Name the empty `Paths:` list explicitly, because the every-path quantifier is vacuously true over nothing and a report could otherwise retire its own run-stopping tag by dropping one label.
@@ -5711,7 +5673,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 64 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: A refuted premise that shaped a curated doc ships a false statement into the library, while a doc stating the current state stays true whatever the premise was.
-- passage: Re-read the curator's `docs/` edit for that item against what the read showed, and correct it only where the read falsified the doc text itself.
+- passage: Correct the curator's `docs/` edit for that item only where the read falsified the doc text itself.
 
 ### S169
 - key: Write the receipt as one line in your own words, the selected path and your conclusion, never the report's own string and never the command's raw output.
@@ -5782,7 +5744,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 9784239 2026-08-30 gave the doctrine's name-the-lane duty its carrier in the Chapter template; 3380bf2 2026-08-31 recorded the handoff gate's counts on the finishing Chapter and needed the template's no-baseline escape hatch; moved by 55c5abc 2026-09-09. Absorbs c3.C002 and c3.C003.
 - verdict: keep
 - reason: The handoff gate's counts have no other Chapter to land in, and a parity pin ties the quoted flags to executing-work's template, so the pointer is the right form.
-- passage: It carries a `Gate:` line of the same shape a section Chapter's does, read from executing-work's Chapter template rather than restated here.
+- passage: It carries a `Gate:` line of the same shape a section Chapter's does, read from executing-work's Chapter template.
 
 ### S176
 - key: A partial copy of the template drops the qualifiers that carry the weight, among them the escape hatch for no baseline existing on the lane.
@@ -5844,7 +5806,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ddcb28e 2026-09-07, the runner gained `--touching` and the after leg narrowed to it; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The runner derives the moment list from the ref's changeset, but nothing invokes the leg or supplies the base sha, so the invocation stays prose.
-- passage: The after leg, `node tools/probe-corpus/run.mjs --touching <base sha>`, runs over the moments whose shapes name a changed file and no others.
+- passage: The after leg is `node tools/probe-corpus/run.mjs --touching <base sha>`
 
 ### S182
 - key: Record a run that reports no such moment as the reading.
@@ -5853,7 +5815,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ddcb28e 2026-09-07, `--touching` prints one line and exits 0 when no moment's shape names a changed file; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The runner's empty-selection line is a reading, and recording it keeps a skipped run and an empty one distinguishable in the Chapter.
-- passage: A run reporting no such moment is the reading, recorded as such.
+- passage: a run reporting no moment is the reading, recorded as such.
 
 ### S183
 - key: Run the before leg as `node tools/probe-corpus/run.mjs --only <moments> --before <sha>` at the effort's base ref, over the moments a `ruled` probe mismatched in the after leg.
@@ -5865,7 +5827,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The command, the moment list, the exclusions and the no-leg case all stand and fold into one compressed statement; the reason moves here: a `proposed` probe's mismatch goes to the rulings batch whichever leg carries it, so a before leg over it buys nothing for its paid readers, and a designed-agreed row's finding is one no before leg can speak to. Landed as three sentences for the exclusions and the no-leg case rather than one, the designed-mismatch marker clause standing on its own so the three exclusions read as a list.
 - proposed: one sentence for the command and the moment list, one for the exclusions and the no-leg case; drop "since a `proposed` probe's mismatch goes to the rulings batch whichever leg carries it".
 - baseline-test: yes
-- passage: The before leg, `node tools/probe-corpus/run.mjs --only <moments> --before <sha>` at the effort's base ref, runs over the moments a `ruled` probe mismatched in the after leg. A `proposed` probe's mismatch, a designed mismatch and a designed-agreed row put no moment on that list. A designed mismatch is one the probe file marks on its shape and the runner reports apart. An empty list calls for no before leg.
+- passage: The before leg is `node tools/probe-corpus/run.mjs --only <moments> --before <sha>` at the effort's base ref, over the moments a `ruled` probe mismatched in the after leg. A designed mismatch or a designed-agreed row puts no moment on that list. An empty list calls for no before leg.
 
 ### S184
 - key: Where the base ref is no commit, the empty-tree hash a root-commit effort yields, leave the before leg unrun and record it as such.
@@ -5890,7 +5852,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The instruction already points at the doctrine as its owner and stays; the reason moves here: the run is serial, one headless paid reader per probe and shape, so it outruns a foreground tool call.
 - proposed: keep "backgrounded with a log and its own exit marker, per the doctrine's background-marker rule"; drop "The run is serial, one headless reader per probe and shape, each a paid reader's full latency, so it outruns a foreground tool call".
 - baseline-test: yes
-- passage: Background the run with its output and error output redirected to a log and its own exit marker, per the doctrine's background-marker rule.
+- passage: Background the run with its output and error output logged and its own exit marker, per the doctrine's background-marker rule.
 
 ### S186
 - key: Name the run's expected span, covering both legs, their re-runs and the gaps between them, before it starts.
@@ -5935,7 +5897,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: A paid reader errors transiently, and one re-run distinguishes a transient error from a pair that fails twice; nothing invokes the re-run.
-- passage: Re-run an errored pair once before reading, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the failing leg's own `--before <sha>` where it was the before leg.
+- passage: Re-run an errored pair, a mismatch or a designed-agreed row once before reading it, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the leg's own `--before <sha>` for a before-leg pair.
 
 ### S190
 - key: Record a leg whose pairs all errored as unavailable rather than as zero mismatches.
@@ -5979,9 +5941,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06, the Chapter slot quotes the summary line verbatim with the mismatched moments named; moved by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: A leg with re-runs has several summary lines, and the reading is the author's adjudication over all of them.
-- passage: A leg's reading is the author's over the invocations the slot quotes, not any one line's counts.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's new `## What a row counts for` block carries it: "A leg's reading is the author's judgment over every invocation the Chapter slot quotes".
 
 ### S194
 - key: Re-run a mismatch or a designed-agreed row for its pair before reading it.
@@ -5993,7 +5954,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule stands in the compressed paragraph; a single paid-reader verdict is one sample, and the re-run tells a stable mismatch from an unstable one.
 - proposed: keep as one sentence ahead of S195.
 - baseline-test: yes
-- passage: Re-run a mismatch or a designed-agreed row for its pair the same way before reading it.
+- passage: Re-run an errored pair, a mismatch or a designed-agreed row once before reading it, as `node tools/probe-corpus/run.mjs --only <moment> --shape <name>`, adding the leg's own `--before <sha>` for a before-leg pair.
 
 ### S195
 - key: Record a re-run that disagrees with the first as an unstable reading with both readings kept, count it as a mismatch, and name it unstable in the close-out.
@@ -6012,55 +5973,49 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09. Absorbs c3.C026 and c3.C027.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: "A designed one" means a designed mismatch, the expected outcome the probe file marks on its shape, and a cold reader read it against the designed-agreed row as a contradiction; the row spells "a designed mismatch" and the agreed-row clause stays as the opposite case, a finding whether the probe is ruled or proposed.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's `## What a row counts for` carries the `designed` and `designed-agreed` rows.
 - proposed: "a designed mismatch counts for nothing; a designed shape that agreed is the finding its marker exists to produce, whatever the ruling state".
 - baseline-test: yes
-- passage: - A designed mismatch counts for nothing.
-- passage: - A designed shape that agreed is the finding its marker exists to produce, whatever the ruling state.
 
 ### S197
 - key: Treat an unparsed reply as the instrument's, re-run it as an error is re-run and read it as one, however the runner's exit code counts it.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: An unparsed reply is the instrument's failure, not the corpus's, and the exit code's tally does not distinguish the two.
-- passage: - An unparsed reply is the instrument's. It is re-run as an error is and read as one, however the runner's exit code counts it.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's `## What a row counts for` carries the `UNPARSED` row.
 
 ### S198
 - key: Treat a mismatch on a `proposed` probe as evidence for the operator's rulings batch and never as a finding.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06, the runner diffs each verdict against the operator's ruling and a proposed probe has none yet; moved by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: Operator-decision gate: the expected verdict is the operator's reading of their own doctrine, and a session promoting a proposed mismatch to a finding would rule its own probe.
-- passage: - A mismatch on a `proposed` probe is evidence for the operator's rulings batch and never a finding.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's `## What a row counts for` carries the `proposed` mismatch row.
 
 ### S199
 - key: Put a `ruled` probe's mismatch that the after leg alone carries through writing-skills' intent test, and name it in the close-out status.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The rule stands in the compressed paragraph; an after-only mismatch is one this effort's change introduced, and writing-skills owns whether a wording change moved behavior.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's `## What a row counts for` carries the after-only `ruled` mismatch row, with the intent test and the close-out naming.
 - proposed: keep as its row in the counts-for sentence.
 - baseline-test: yes
-- passage: - A mismatch on a `ruled` probe that the after leg alone carries takes writing-skills' intent test and is named in the close-out status.
 
 ### S200
 - key: Treat a mismatch both legs carry as the corpus's, and name it in the close-out as such.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The rule stands in the compressed paragraph; a mismatch present at the base ref predates the effort and is the corpus's own, which the close-out names rather than owns.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): row 777 merge. The README's `## What a row counts for` carries the both-legs row.
 - proposed: keep as its row in the counts-for sentence.
 - baseline-test: yes
-- passage: - A mismatch both legs carry is the corpus's and is named in the close-out as such.
 
 ### S201
 - key: Read any other status the runner reports at the runner's README before it counts for anything.
@@ -6069,7 +6024,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The runner README owns its status vocabulary, and the row list closes its enumeration with a pointer rather than a guess.
-- passage: - Any other status the runner reports is read at its README before it counts for anything.
+- passage: Read every other row by the runner README's `What a row counts for` section, and name in the close-out status each row it sends there.
 
 ### S202
 - key: Run the handoff gate before step 7 over the tree as it then stands, re-running the whole gate first where steps 2 through 6 changed anything since step 1's dispatch reported.
@@ -6161,9 +6116,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The up-for-merge freeze was broader than the mechanics warrant (docs/backlog.md, ruling 27 of the corpus rewrite's rulings batch, 2026-09-13): a repository whose review rule dismisses a standing approval on push and requires last-push approval, both on in the kit repository's `protect-main` ruleset, merges nothing on an old approval, so a push to an open pull request only re-requests review over the new commits. The hazard that stays is a push after the merge, which with delete-branch-on-merge recreates the branch as an orphan and reports success. Lands at line 91 as the merged-branch freeze with the merge-state read before every push to a branch with an open pull request (`gh pr view <branch> --json state -q .state`, the same read merged-pr-push-guard.js makes before it blocks), a merged one sending the change to a new branch off the integration branch, and a landed push checked by the strand-check. The doc-PR route is now the merged case's alone. The guard blocks only a push it can prove targets a merged pull request and fails open, so the read is the session's own duty; test/doctrine-parity.test.js pins the doctrine copy of the rule on its stable tokens. Three bounds ride with the read since the section's review round 1: the read answers OPEN, MERGED or CLOSED, and the text routes each (OPEN takes the push, except where auto-merge is armed and the repository does not re-request review on a push, the two staleness settings the step reads for this push, when a stale approval could merge the pushed commits and the push goes to a new branch as MERGED does; an unarmed pull request cannot merge on a stale approval, so the exception is conditioned on the arming; CLOSED takes the push without reopening and is named for the operator); a post-ready push takes the targeted lane over its delta and the whole gate again where the integration branch advanced, since the merge lands there; and because the read is a check before an act with the approval as the racing writer, the session re-reads the state or runs the strand-check after the push lands. "Recreates or extends" replaced "recreates the deleted head branch", since the orphan is recreated only where delete-on-merge is set and extended otherwise.
 - proposed: keep the freeze and the doc-PR route as one sentence pair.
 - baseline-test: yes
-- passage: A pull request branch is frozen once its pull request has merged, not once it is up. Before every push to a branch with a pull request, read its state with `gh pr view <branch> --json state -q .state`, which answers OPEN, MERGED or CLOSED.
-- passage: OPEN takes the push, except where auto-merge is armed and the integration branch's pull request rule has neither dismiss-stale-reviews-on-push nor require-last-push-approval on. There a stale approval could merge the pushed commits, so the push goes to a new branch as MERGED does.
-- passage: MERGED sends the change to a new branch off the integration branch, never back to the merged branch, since a push after the merge recreates or extends the head branch as an orphan and reports success. CLOSED takes the push without reopening anything, and the close-out names that pull request for my word. The approval is a writer racing the read, so after the push lands, re-read the state or run the strand-check below.
+- passage: Before every push to a branch with a pull request, read its state with `gh pr view <branch> --json state -q .state`, which answers OPEN, MERGED or CLOSED.
+- passage: MERGED sends the change to a new branch off the integration branch, never back to the merged branch. So does OPEN where auto-merge is armed and `gh ruleset check <integration>` shows neither dismiss-stale-reviews-on-push nor require-last-push-approval on, or cannot read classic branch protection. Any other OPEN takes the push, and so does CLOSED, without reopening anything, the close-out naming that pull request for my word. After the push lands, re-read the state or run the strand-check below. A push after the pull request is marked ready takes the targeted lane over its delta, and the whole gate again where the integration branch advanced since the last update.
 
 ### S210
 - key: Re-read a counted claim about a concurrently-worked document after the last merge that reaches it, never before.
@@ -6175,7 +6129,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule and its two-case bound stand as two sentences; the why (S211) is that integration is itself a writer, so a close-out that verifies counts and then integrates has verified nothing.
 - proposed: one sentence for the rule, one for the two merge cases.
 - baseline-test: yes
-- passage: A counted claim about a concurrently-worked document is re-read after the last merge that reaches it, never before it, since integration is itself a writer. That holds for this pass's own merges and for one a later session detects.
+- passage: Re-read a counted claim about a concurrently-worked document after the last merge that reaches it, this pass's own or one a later session detects.
 
 ### S211
 - key: Integration is itself a writer, so a close-out that verifies counts and then integrates has verified nothing.
@@ -6197,7 +6151,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule stands; the bullet rewrites one rule per sentence with the reason clause (S214) moved here, so the update is gated as a merge because a clean merge can redden a suite in files neither parent changed.
 - proposed: one sentence for the update and the conflict surfacing.
 - baseline-test: yes
-- passage: with the docs commit on the branch, update from origin and surface any sibling-session conflicts for resolution.
+- passage: with the docs commit on the branch, update from origin and surface any sibling-session conflicts.
 
 ### S213
 - key: Verify the branch builds and run the whole gate over the updated branch with the contention lane beside it.
@@ -6209,7 +6163,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule stands and rides the rewritten bullet with S215 placed directly after it as its carve-out, not a contradiction: an update bringing nothing across is no merge and earns no gate.
 - proposed: one sentence naming the build check and the whole gate with the contention lane.
 - baseline-test: yes
-- passage: Verify the branch builds, then run the whole gate over the updated branch with the contention lane beside it, since the update is a merge whatever its diff touched.
+- passage: Verify the branch builds, then run the whole gate over the updated branch with the contention lane beside it, since the update is a merge.
 
 ### S214
 - key: A clean merge can redden a suite with both parents green, in files neither parent changed, which no lane derived from the merge's own diff reads.
@@ -6231,7 +6185,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The carve-out and its bound become a two-sentence pair with S216 folded in; the branch-push reasoning moves here: the branch push lands on a PR branch rather than a trunk consumers install from, so it fires no pre-push condition and rests on the merge's gate. The branch-push sentence itself stays in the document, because c3.C161 (keep) owns it ("...since the branch push that follows lands on a PR branch rather than on a trunk consumers install from..."); only this entry's discharge sentence was compressed, and the reasoning behind the push's exemption is the c3.C161 sentence's own.
 - proposed: "Where the update brings nothing across, no merge happened and step 6's handoff gate discharges this run" plus S216's bar.
 - baseline-test: yes
-- passage: Where the update brings nothing across, no merge happened and step 6's handoff gate discharges this run.
+- passage: An update bringing nothing across is no merge, and step 6's handoff gate discharges it.
 
 ### S216
 - key: Where the update brings anything across, run the whole gate with the contention lane beside it.
@@ -6254,7 +6208,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule stands as its own sentence; its reason moves here: the merge gate covers the merge only while the update it ran over is current, since a trunk that advanced since is a tree the gate never read.
 - proposed: one sentence with the up-to-the-PR bound.
 - baseline-test: yes
-- passage: Re-run the update and the whole gate with the contention lane beside it wherever origin's integration branch advances, up to the moment the PR goes up.
+- passage: Repeat the update and that gate whenever origin's integration branch advances, until the PR goes up.
 
 ### S218
 - key: Once the PR is up, allow no further push, and carry the collateral-red window rather than pushing to a frozen branch.
@@ -6266,7 +6220,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The freeze in the step lead (S209) now binds a merged branch, so nothing bars a further push to the open pull request; the sentence keeps the collateral-red carry on a different ground: marking ready and arming auto-merge end the session's own acts (S245), so no later update runs and a trunk advancing after the pull request is up leaves the merge on evidence taken at the update, carried rather than closed.
 - proposed: "a trunk advancing after the PR is up leaves the merge on evidence taken at the update, carried rather than closed".
 - baseline-test: yes
-- passage: A trunk advancing after the PR is up leaves the merge on evidence taken at the update, carried rather than closed.
+- passage: A trunk advancing after that leaves the merge on evidence taken at the update, carried rather than closed.
 
 ### S219
 - key: Push the branch and open the pull request by host detection: GitHub `gh pr create`, Azure DevOps Git `az repos pr create`, or push and surface the "create a pull request" URL the host prints.
@@ -6278,8 +6232,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The three host spellings stay verbatim and opening the PR carries the model's own authorization under the doctrine's recorded-model exemption; the draft-per-plan contest with curating-docs sits on the ownership map's unowned list, so the rewrite carries "or flip the open draft ready" pending the operator's ruling rather than assigning an owner. Sub-ruling 3.1 of the corpus rewrite plan (docs/plans/claude-kit_corpus-rewrite_spec_v1.md, Decisions) was ruled as recommended on 2026-09-10: a kit session opens the pull request at finishing-work's close, so the landed sentence carries no "or flip the open draft ready" alternative and the reconciling clause is dropped; the proposed line's pending alternative is superseded by that ruling. Ruling 4 of the rulings batch (docs/backlog.md, 2026-09-13) adds the condition the sentence now carries at line 93: the session opens the pull request only where none is open for the branch (`gh pr list --head <branch> --state open`), an open one taking the push and a refreshed body. Whether a draft opens earlier than finishing is undecided under that ruling and this sentence claims nothing about it.
 - proposed: keep the sentence, adding "or flip the open draft ready" as the pending alternative.
 - baseline-test: yes
-- passage: A kit session opens the pull request here, at finishing-work's close, and only where none is open for the branch (`gh pr list --head <branch> --state open`).
-- passage: Otherwise push the branch and open it by host: GitHub `gh pr create`, Azure DevOps Git `az repos pr create`, or, with no CLI or auth, push and surface the "create a pull request" URL the host prints.
+- passage: Open the pull request only where none is open for the branch (`gh pr list --head <branch> --state open`), and otherwise push and refresh its body with `gh pr edit <branch> --body-file <path>`. To open one, push the branch and run `gh pr create` on GitHub or `az repos pr create` on Azure DevOps Git, or, with no CLI or auth, surface the "create a pull request" URL the host prints.
 
 ### S220
 - key: Have the PR carry the title, a by-section summary, the test evidence, the archival summary, and the deviation drift items.
@@ -6297,7 +6250,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 686b947 2026-09-07, installed because sessions named PRs by feel while the host's PR list is the same truncated list view the commit-title rule is written for and a squash merge proposes the PR title as the trunk commit's; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The two reasons in the bound are why the title takes the commit form; a session changing the rule changes what a squash-merged trunk commit reads as.
-- passage: The title takes the doctrine's commit-title form, because the host's PR list is the same truncated view that rule is written for and a squash merge proposes the PR title as the trunk commit's.
+- passage: The title takes the doctrine's commit-title form, in your own words and never curator text, since it rides the command line.
 
 ### S222
 - key: Write the PR title in your own words, never curator text.
@@ -6309,7 +6262,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule survives as its own sentence, separated from S221's form and reasons; the hazard is an interpolated argument on a shell, which no CLI feature removes.
 - proposed: "The title is your own words, never curator text, since it rides the command line."
 - baseline-test: yes
-- passage: The title is your own words, never curator text, since it rides the command line.
+- passage: The title takes the doctrine's commit-title form, in your own words and never curator text, since it rides the command line.
 
 ### S223
 - key: Write the PR body to a file and pass it with the host CLI's file form, such as `gh pr create --body-file <path>`, never as a command-line argument.
@@ -6321,7 +6274,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The rule stays as a plain sentence; the argument moves here: the drift items are curator prose, unbounded free text rather than a gated path token, and an interpolated argument is where a shell reads whatever it finds, so the file form is the one control that removes the interpolation rather than screening it.
 - proposed: keep the instruction and the `--body-file` spelling; drop "an interpolated argument is where a shell reads whatever it finds".
 - baseline-test: yes
-- passage: Pass the body as a file through the host CLI's file form, `gh pr create --body-file <path>`, never as a command-line argument.
+- passage: Pass the body through the host CLI's file form, `gh pr create --body-file <path>`, never as a command-line argument.
 
 ### S224
 - key: Where the host CLI has no file form, pass no body text at all and never reconstitute the file with `$(cat <path>)`; summarize the body in your own words and pass the summary.
@@ -6333,7 +6286,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The bar and the fallback stay as instructions; the argument moves here: reconstitution puts the text right back on the command line, and the summary is the control that depends on no CLI feature, so removing the `$(cat)` bar reopens the path the file form closed.
 - proposed: keep the bar and the summarize fallback; drop the two argument clauses.
 - baseline-test: yes
-- passage: Where the host CLI has no file form, pass no body text at all, never reconstitute the file with `$(cat <path>)`, and pass a summary in your own words instead.
+- passage: With no file form, pass a summary in your own words, never the body text and never `$(cat <path>)`.
 
 ### S225
 - key: Claim no `@<path>` file-reference spelling for any host.
@@ -6342,7 +6295,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, the injection-screen section; moved by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: A CLI that does not implement the spelling ships the literal token as the body and reports success, so nothing downstream catches it; the reason is the bound.
-- passage: Claim no `@<path>` file-reference spelling for any host, since a CLI that does not implement one ships the literal token as the body and reports success.
+- passage: Claim no `@<path>` file-reference spelling for any host, since a CLI lacking one ships the literal token as the body.
 
 ### S226
 - key: Summarize any drift text quoted into the PR body in your own words.
@@ -6351,7 +6304,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24 (the passthrough rule), restated for the PR body at 5cfa68c 2026-09-08 with the close step named as owner; moved and its "step 5" renumbered to step 6 by 55c5abc 2026-09-09.
 - verdict: keep
 - reason: Already a pointer at step 6's passthrough rule applied to a second surface; deleting it leaves the PR body with no statement that the drift items are subagent text.
-- passage: Drift text quoted into the body is summarized in your own words, under the passthrough rule step 6 applies to a subagent entry quoted into a Chapter.
+- passage: Summarize any drift text quoted into the body, under step 6's passthrough rule.
 
 ### S227
 - key: Present the options after opening the PR: merge, keep the branch for iteration, or discard.
@@ -6432,7 +6385,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The discharge stays; its argument moves here: the handoff gate runs after the last tree-changing step and permits one edit after itself, the Chapter's `Gate:` line, so the tree it read is the tree being pushed and a second suite would read identical bytes.
 - proposed: "Step 6's handoff gate discharges that run where nothing has changed the tree since it"; drop "so the tree it read is the tree being pushed and a second full suite would read the same bytes".
 - baseline-test: yes
-- passage: Step 6's handoff gate discharges that run where nothing has changed the tree since it.
+- passage: Step 6's handoff gate discharges that run unless a late fix, a doc edit or a merge has changed the tree since
 
 ### S235
 - key: Run the whole gate again with the contention lane before the push where anything else changed the tree since, a late fix, a doc edit or a merge.
@@ -6441,7 +6394,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 3380bf2 2026-08-31, the close-out that found its own late fix twenty minutes after the last targeted lane; the merge trigger is 9784239 2026-08-30's; moved by 55c5abc 2026-09-09. Absorbs c3.C096 and c3.C163.
 - verdict: keep
 - reason: The Commit-and-Push rule whole, with the bound as the bar's one statement; the three triggers are the tree changes the finishing pass can make after its handoff gate.
-- passage: Anything else that changed the tree since, a late fix, a doc edit, a merge, earns the whole gate again with the contention lane beside it before the push.
+- passage: unless a late fix, a doc edit or a merge has changed the tree since, which earns the whole gate again with the contention lane beside it before the push.
 
 ### S236
 - key: Where concurrency put the session in a worktree on a feature branch, update from origin surfacing conflicts, merge to main, run the whole gate with the contention lane over the merged tree, then push.
@@ -6551,7 +6504,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The arm is unconditional: where auto-merge should not happen the repository has it disabled, and where it is allowed the arm lands the merge once whatever review the repository requires is finished, so the step reads no rule before arming and V001 carries the flat arm's passage with its spelling. `MERGE` is the method the kit repository allows (auto-merge and merge commits only), and a merge commit is what keeps the branch inside `git branch --merged <integration-ref>` for the reap (S246), where a squash never enters it, which is why a squash-only repository takes the same up-and-unarmed close-out as a host with no equivalent. `gh pr ready` runs even where the pull request is already ready, since `gh pr create` opens non-draft by default; the command's exit status against an already-ready pull request was not checked and the text asserts none. The close waits on nothing because a merge that lands later is met by whichever session's strand-check detects it (S229). Whether a draft opens earlier than finishing is undecided (ruling 4) and this entry claims nothing about it.
 - passage: Then mark it ready with `gh pr ready <branch>`, even where it already is.
 - passage: Where either command errors, the host has no equivalent, or the repository refuses `MERGE`, the pull request stays ready and the close-out names it up and unarmed.
-- passage: `MERGE` is the method whose merge commit keeps the pull request's branch inside `git branch --merged` for the reap below, where a squash-merged branch never enters it.
+- passage: `MERGE` keeps the branch inside `git branch --merged` for the reap below, which a squash-merged branch never enters.
 
 ### S246
 - key: Where the strand-check runs clean, reap the plan's own merged branch and clean managed worktree by one of three routes keyed on where the session's working directory sits, never over the whole merged set, and name the reap or that it is owed in the close-out.
@@ -6560,8 +6513,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/backlog.md 2026-09-13, the addition to batch 2 ruling 8, landed by the corpus-rewrite follow-up plan's section 2; the three routes from that section's review round 1, where all three lenses found the one-sentence form unexecutable in a managed worktree.
 - verdict: keep
 - reason: The operator wants a merged branch gone at the close without being asked, and branch-hygiene already licenses exactly that delete for a verified-merged branch with a clean managed worktree; binding the reap to a clean strand-check means the delete runs only once the check has shown nothing stranded. The bound to the plan's own branch is the doctrine's floor on a commit model's delete, so finishing-work invokes branch-hygiene's steps over one branch and never its step 3's sweep. The routes are spelled because a session inside the plan's own managed worktree has no licensed path: the safe set protects the current branch, so the one-sentence "switch first" form sent that session toward `--force`, which Hard rule 2 forbids. Two further mechanisms the review round named, that `git switch <integration>` fails where the primary checkout holds that branch and that `git worktree remove` of the held directory fails on Windows, were not verified by a run and are left out of the text; the rule stands on the safe set alone. That session owes the reap to the SessionStart branch-reaper nudge; a session in the primary checkout reaps by path with `git -C <root>`, or by a plain switch and delete where the plan branch is checked out there, in both cases after `git branch --merged origin/<integration>` has listed the branch, the verified-merged read branch-hygiene's step 3 takes, so the `-D` rests on a read rather than on the session's belief that the merge landed. The first route yields to a live peer working the same checkout, since `git switch` changes the branch under every session sharing that tree, and a reap is not worth another session's working state.
-- passage: Where the strand-check runs clean, reap the plan's own merged branch and its clean managed worktree. Run branch-hygiene's steps over that one branch and worktree, never over its step 3's whole merged set, since the doctrine bounds a commit model's delete to the plan's own branch and worktree. The route turns on where this session's working directory sits, and the close-out names the reap or that it is owed.
-- passage: Inside the plan's own managed worktree, do not reap, since the safe set protects the current branch and `--force` is what Hard rule 2 forbids.
+- passage: Where the strand-check runs clean, reap the plan's own merged branch and its clean managed worktree by branch-hygiene's steps, over that one branch and worktree and never its step 3's whole merged set. In the primary checkout with the plan branch checked out, run `git switch <integration>` first, unless the machine's registry shows another live session in that checkout. Inside the plan's own managed worktree, or with such a live session, the reap is owed to the SessionStart branch-reaper nudge. The close-out names the reap or that it is owed.
 
 ### T001
 - key: End a fix round on executing-work's terminal condition, step 4's "The loop ends on the class of what remains".
@@ -6570,7 +6522,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 5620b2b 2026-09-07 pointed the fix rounds at the terminal condition, 9463de7 2026-09-09 rewrote the line for Section 4, 55c5abc 2026-09-09 widened the coverage to step 4's items after Section 6's round 1 found the rule naming only steps 2 and 3 as fix sources; 6983398 2026-09-10 left the sentence unchanged.
 - verdict: keep
 - reason: The terminal condition is executing-work's by pointer; the coverage names every place this pass runs a fix round, including the goal read's items.
-- passage: A fix round this pass runs, here, at step 3 or on step 4's items, ends on executing-work's terminal condition (`skills/executing-work/SKILL.md` under the kit plugin root, step 4's `The loop ends on the class of what remains`).
+- passage: A fix round this pass runs, here, at step 3 or on step 4's items, takes executing-work's step 4 loop (`skills/executing-work/SKILL.md` under the kit plugin root): it ends on `The loop ends on the class of what remains` and stops on that step's review-round backstop, with the changeset the base ref defines standing where that skill reads the section's files.
 
 ### T002
 - key: Stop fix rounds on executing-work's step 4 review-round backstop, counted over this pass's own rounds.
@@ -6579,7 +6531,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4, the backstop that stops a section on the BLOCKED path once its rounds pass the operator's bound; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
 - verdict: keep
 - reason: The backstop is executing-work's and this counts it over the pass's own rounds, which is the finishing-specific fact.
-- passage: It stops on that step's review-round backstop, counted over this pass's own rounds.
+- passage: This pass counts its own rounds.
 
 ### T003
 - key: Count one round here as this pass's review dispatches taken together: the two advisory lenses, the adversarial lens, and the document lenses.
@@ -6595,9 +6547,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4, as T003, whose supersession of S066 it shares; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
-- verdict: keep
-- reason: A pass that re-ran one lens over a fix delta would otherwise never reach the bound at all, which is the why T005 carried and now lives here.
-- passage: Each further round the fix-delta bar owes counts too, whatever lenses it carries.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): executing-work step 4's round sentence carries it ("A round is step 1's tier-escalation unit, the roster step 3's round rule dispatched, advisory lenses and a round the fix-delta bar owed included, counted once its roster returns").
 
 ### T005
 - key: Count partial re-dispatches because a pass that re-ran one lens over a fix delta would otherwise never reach the bound.
@@ -6624,9 +6575,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 55c5abc 2026-09-09, the orchestrator's ruling at interim board 9 that the adversarial lens over the delta is the one-lens re-dispatch; 6983398 2026-09-10 left it unchanged.
-- verdict: keep
-- reason: The goal read rules once over the whole changeset; a second read over a delta would rule on what the first already ruled on.
-- passage: The goal read is not re-dispatched over a fix delta.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): W007's landed passage carries it ("No fix-delta round takes an advisory lens or re-dispatches the goal read.").
 
 ### T008
 - key: Name this round unit as a deliberate divergence from executing-work's, which counts a round only once its full set returned.
@@ -6643,9 +6593,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 5620b2b 2026-09-07 first stated the base-ref substitution in c2.C044's sentence, 9463de7 2026-09-09 carried it into the rewritten line beside the shared bound and exits (R008 and R009, both superseded here); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
-- verdict: keep
-- reason: The bound and the exits are executing-work's by pointer, and the base-ref substitution is the one finishing-specific fact, consistent with the base ref the pass establishes before step 1.
-- passage: The two share the bound and the exits, with the changeset the base ref defines standing where that skill reads the section's files.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): T001's landed sentence carries the base-ref substitution. The shared bound and exits are carried by the step 4 loop pointer.
 
 ### T010
 - key: Run executing-work step 4's provenance read over this pass's own owed Majors, on the same three values.
@@ -6654,16 +6603,15 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
 - verdict: keep
 - reason: The read is executing-work's and this applies it to the pass's owed Majors; the read was adopted together with the bound because the backstop's declaration carries provenance counts in its phase analysis and its `--detail` totals, so a pass holding the bound without the read would owe a body it had no rule to compose (the why T025 carried).
-- passage: That step's provenance read runs over this pass's owed Majors too, on the same three values.
+- passage: Executing-work's step 4 provenance read, held-finding judge and design stop run over this pass's owed Majors as in a section, the live seat's ask sent first.
 
 ### T011
 - key: Give a new-requirement Major this pass holds that paragraph's hold and judge, sending the live seat's ask first.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, the review-loop-provenance plan's finishing pass: round 1's adversarial Major that finishing-work stated no disposition for a new-requirement Major or a design stop at finishing (interim board 13), with the seat-first order fixed at round 3 after the first wording dispatched the adjudicator at once beside a live seat's ask.
-- verdict: keep
-- reason: The hold and judge and the never-gates rule are executing-work's by pointer; this states the finishing instance and the seat-first order the Goal requires.
-- passage: A new-requirement Major takes that paragraph's hold and judge, held and bucketed before anything is fixed or presented, with the live seat's ask sent first under the never-gates rule.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): T010's landed sentence carries the seat-first order. Executing-work step 4 carries the hold and judge ("A new-requirement Major never enters one. It is held" and "The held finding goes to a judge: the repo's live Expert seat where the roster ... shows one").
 
 ### T012
 - key: Close that hold's window when this pass's fix path closes, the moment step 3 keys the Minor pass on.
@@ -6679,9 +6627,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix rounds 1 and 3 of the review-loop-provenance plan; interim board 14 records the Expert ask unanswered at fix-path close and the adjudicator dispatched on the design-stop brief.
-- verdict: keep
-- reason: The fallback is executing-work's own applied at this pass's window; without it a held finding would ride into the close-out unruled.
-- passage: An ask still unanswered then falls to the `scope-adjudicator`, under the same `GROUNDS` check.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): executing-work step 4 carries it ("An expert ask still unanswered when the section is otherwise ready for its close gate falls to the adjudicator", and the `GROUNDS` check paragraph). T012 resets the window's close for this pass.
 
 ### T014
 - key: Fire a design stop here on the same add-decision as in a section, with the same seat and the same window, writing the line for each owed Major save a Critical from a correctness lens on the interim board entry.
@@ -6690,7 +6637,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the stop fired live at finishing round 3 on the charter's passages with the capture range `fix-round-1.diff` to `fix-round-3.diff` (interim board 13); amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which reads the one class step 4 exempts where two stood, the security finding having become an advisory one that takes the add-decision line like any other fix.
 - verdict: keep
 - reason: A pointer at executing-work's design stop with the finishing bound in one sentence; the pass that installed it is the pass it fired in. goal-fit section 3 2026-09-19 re-keyed the trigger to the add-decision, so the pointer names the line rather than a capture range, and names where this pass writes it, the pass having no Chapter until step 6.
-- passage: A design stop fires here on the same add-decision as in a section, with the same seat and window. Write the add-decision line for each owed Major on an interim board entry, held or not, save a Critical from a correctness lens.
+- passage: Write the add-decision line for each owed Major on an interim board entry, held or not, save a Critical from a correctness lens.
 
 ### T015
 - key: Record the hold on an interim board entry rather than on a Chapter.
@@ -6720,7 +6667,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The fixed lines stay, since a session writes them verbatim and no hook or test pins them; the clause "as the backstop's below does" points at nothing in this document, the backstop's finishing line being stated in executing-work's step 4 backstop paragraph, so the back-reference becomes a pointer there.
 - proposed: Keep the two fixed lines and replace "as the backstop's below does" with a pointer at executing-work's step 4 backstop paragraph, which states the finishing-pass form of the backstop's line.
 - baseline-test: yes
-- passage: The hold and the design stop each open with a fixed first line naming the pass, as executing-work's step 4 backstop paragraph states the backstop's own: `BLOCKED: the finishing pass holds a new-requirement Major; the judge recommends an ask` and `BLOCKED: the finishing pass hit a design stop; the judge recommends an ask`.
+- passage: The hold and the design stop each open with a fixed first line naming the pass: `BLOCKED: the finishing pass holds a new-requirement Major; the judge recommends an ask` and `BLOCKED: the finishing pass hit a design stop; the judge recommends an ask`.
 
 ### T018
 - key: Put "the judge returned NEEDS_CONTEXT twice" in place of the recommendation clause where two returns ruled on nothing.
@@ -6736,21 +6683,19 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan, round 1's Major that the fix-or-present rule read as the route for every Major; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which relocated that rule from the security step to the pass's fix path (W006).
-- verdict: keep
-- reason: Bounds the fix path's route to the two provenance values that enter a fix round, which executing-work's provenance paragraph fixes and this pass applies.
-- passage: The fix-or-present rule routes a spec-traceable or fix-introduced Major, never a new-requirement one.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): W006's landed sentence carries it ("That fix-or-present rule routes a spec-traceable or fix-introduced Major wherever on the path it entered, never a new-requirement Major or an advisory finding.").
 
 ### T020
 - key: Hold and bucket a new-requirement Major before anything is fixed or presented.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: Executing-work's provenance paragraph owns that a new-requirement Major never enters a fix round and is bucketed first, and T011 already points there, so the clause restates T011; the timing bound merges into T011's sentence and drops from T019's, losing no instruction.
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): executing-work step 4 carries it ("A new-requirement Major never enters one. It is held, and the section continues on every other finding").
 - proposed: Merge the timing bound into T011's sentence and drop "which is held and bucketed before anything is fixed or presented" from T019's.
 - baseline-test: yes
-- passage: held and bucketed before anything is fixed or presented
 
 ### T021
 - key: Do not use step 4's goal read as a substitute for that ruling.
@@ -6759,7 +6704,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
 - verdict: keep
 - reason: Only this pass has a goal read, so the confusion between a whole-changeset read and one finding's bucket is finishing's own; the goal read answers the changeset's two questions rather than one finding's bucket.
-- passage: The goal read at step 4 is no substitute for that ruling, since it answers the changeset's two questions rather than one finding's bucket.
+- passage: The goal read at step 4 is no substitute for that ruling.
 
 ### T022
 - key: Read the provenance values from captures written under this pass's own key, `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff`, inside that gitignored root.
@@ -6771,7 +6716,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The path spelling stays, since nothing derives the finishing key from executing-work's section-keyed path; the sentence's "It" now follows the goal-read sentence rather than the provenance-read sentence, so the subject is restored or the inserted sentences move after it. A capture outside the gitignored root is a tracked file carrying the fix narrative into the next commit, the why T023 carried.
 - proposed: Restore the subject ("The provenance read is taken from captures written under this pass's own key ...") or move the hold and design-stop sentences after the capture sentence, so the antecedent is the provenance read again.
 - baseline-test: yes
-- passage: The provenance read is taken from captures under this pass's own key, `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff`, in the gitignored root that step writes its captures under.
+- passage: The provenance read is taken from captures under this pass's own key, `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff`, made as executing-work's held-finding paragraph makes them, over the changeset the base ref defines rather than a `Files in scope:` line.
 
 ### T023
 - key: Keep the capture inside the gitignored root because a capture outside it is a tracked file carrying the fix narrative into the next commit.
@@ -6788,9 +6733,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R013 and R014 together, then S073), the second Standing Brief Amendment naming the three excluded roots; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
-- verdict: keep
-- reason: This pass has no section, so its pathspec has none, and the exclusions are executing-work's own carried by name.
-- passage: The capture covers the changeset the base ref defines rather than a `Files in scope:` line, with that step's exclusions of the plan docs, the archive and the kaizen inbox.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): T022's landed sentence carries the base-ref scope. Executing-work's held-finding paragraph carries the exclusions in its capture command (`':(exclude)docs/plans/**' ':(exclude)docs/archive/**' ':(exclude)kaizen/**'`).
 
 ### T025
 - key: Adopt the provenance read with the bound, because the backstop's declaration carries provenance counts in its phase analysis and its `--detail` totals.
@@ -6818,7 +6762,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6, Chapter 6 listing the declared-bullet check among the Minors fixed in place; 6983398 2026-09-10 left it unchanged.
 - verdict: keep
 - reason: The record is the owner's, taken unchanged, and the plan's own goal read recorded seven declares that way.
-- passage: A declare takes that paragraph's record unchanged
+- passage: A declare or a refuse takes that paragraph's record
 
 ### T028
 - key: As orchestrator, check the declared bullet against the item itself.
@@ -6827,7 +6771,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6, as T027, whose supersession of S103 it shares; 6983398 2026-09-10 left it unchanged.
 - verdict: keep
 - reason: Step 1 is not re-run for a declared item, so the orchestrator's check against the item itself is the only verification a declare gets at finishing.
-- passage: the orchestrator checks the declared bullet against the item itself, since step 1 is not re-run for it.
+- passage: Check a declared bullet against the item itself, since step 1 is not re-run for it.
 
 ### T029
 - key: For a refuse, write that paragraph's record too, with its ground written to the `Standing Brief Amendments` block.
@@ -6836,7 +6780,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6, the record being executing-work's provenance paragraph's, the ground rather than the verdict; 6983398 2026-09-10 left it unchanged.
 - verdict: keep
 - reason: A pointer with a one-clause gloss naming the block; the owner's rule that the ground and never the verdict is written there is not restated.
-- passage: A refuse takes that paragraph's record too, its ground written to the `Standing Brief Amendments` block.
+- passage: a refuse's ground written to the `Standing Brief Amendments` block.
 
 ### T030
 - key: Enter the refused item's removal, to the form the judge's `GROUNDS` names, into this pass's fix path under that path's fix-or-present rule.
@@ -6845,7 +6789,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6: the design stop fired on this sentence at round 3, the scope adjudicator ruled ASK, and the operator ruled option (c) on the relay on 2026-09-09, the fifth Standing Brief Amendment; 6983398 2026-09-10 left it unchanged; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which re-aims the pointer at the fix path where the rule now sits (W006).
 - verdict: keep
 - reason: An operator ruling on a built item: the removal takes the fix path's route so an expensive removal has an operator branch. This pointer is one of the two that showed the route to be the pass's correctness-tier disposition rather than a security rule, since a refused built item is a Major from the goal read.
-- passage: The item's removal, to the form the judge's `GROUNDS` names, then enters this pass's fix path under the fix-or-present rule
+- passage: A refused item's removal, to the form the judge's `GROUNDS` names, enters this pass's fix path under the fix-or-present rule
 
 ### T031
 - key: Treat that removal as a Major that is spec-traceable on the ruling itself, whatever ground the refuse took.
@@ -6903,7 +6847,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The holds-nothing rule stays and the sentence compresses to S109's proposal; the per-model enumeration lives here: under Commit-and-Push the mechanism sits on the trunk where its section's close pushed it, under Review-Only it sits staged in the walkthrough the operator reads.
 - proposed: Compress to S109's proposal: "It holds nothing, this pass having no round left to hold, and names where the mechanism already sits; an answer reopens the plan under the doctrine's new-round rule."
 - baseline-test: yes
-- passage: It holds nothing, this pass having no round left to hold
+- passage: It holds nothing
 
 ### T037
 - key: Name in the ask where the mechanism it asks about already sits.
@@ -6915,7 +6859,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The where-it-sits duty stays in the compressed sentence; the trunk-versus-staged enumeration in its bound moves to T036's entry, since the duty is obeyable from the commit model in force without the enumeration restated.
 - proposed: Keep "names where the mechanism already sits" in the compressed sentence and move the Commit-and-Push and Review-Only enumeration to the ledger.
 - baseline-test: yes
-- passage: and names where the mechanism already sits.
+- passage: names where the mechanism already sits.
 
 ### T038
 - key: Treat an answer as reopening the plan under the doctrine's new-round rule, not a step this pass held.
@@ -6952,9 +6896,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rationale-example
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
-- verdict: keep
-- reason: Review tier decay gives a section's round two shapes, so executing-work's unit became the roster a round dispatched rather than a full set. That is this pass's unit too, and a sentence still naming a divergence would send a reader looking for a difference the corpus no longer holds.
-- passage: This round unit is executing-work's own: a round counts once the roster its round rule dispatched has returned, and a later round's one lens is such a roster.
+- verdict: retire
+- reason: mechanism cut, section 4 (finishing-work shrink and merge rows): executing-work step 4's round sentence carries it ("A round is step 1's tier-escalation unit, the roster step 3's round rule dispatched, advisory lenses and a round the fix-delta bar owed included, counted once its roster returns").
 
 ### V001
 - key: Read the pull request's review state and base before arming auto-merge, and arm only where a rule requires an approving review, the read exited 0 with the base equal to the integration branch, and the state is `REVIEW_REQUIRED` or `CHANGES_REQUESTED`, or `APPROVED` under a rule that dismisses a stale approval on push or requires last-push approval; otherwise mark ready alone and name the pull request in the close-out as up and unarmed.
@@ -6963,8 +6906,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md 2026-09-14, the finishing pass's security review finding S-M1 recorded on Interim board 12, fixed in that pass's round 1 with the arm condition written as "not `APPROVED`", and restated positively with the base read added in round 2 on the second security review's finding that the negative form read an errored or empty answer as licence; the first condition gained its count clause in round 3 on the third security review's finding that a rule requiring more than one approving review with neither setting on answers `REVIEW_REQUIRED` while an approval at an earlier head still counts toward the merge; and rewritten in round 4 on the fourth review's two Majors, that `CHANGES_REQUESTED` under a rule with neither setting on can sit beside a counted approval at an earlier head, and that a code-owner requirement or a required-reviewers list produces the count-one shape too while rulesets stack, so the orchestrator ruled that the review-state read and the count clause go and the rule condition requires one of the two staleness settings. Evidence: `gh ruleset check main` on the kit repository printing `[required_approving_review_count: 1]` beside `[dismiss_stale_reviews_on_push: true]` and `[require_last_push_approval: true]`, exit 0, 2026-09-14; `reviewDecision` and `baseRefName` listed by `gh pr view --json` with no field named (gh 2.97.0); `APPROVED` and `REVIEW_REQUIRED` answered by `gh pr list --state all --json reviewDecision` on the kit repository; the enum's three values, `CHANGES_REQUESTED` among them, from `gh api graphql` introspecting `PullRequestReviewDecision`; and `gh pr view <branch>` exiting 1 with empty stdout on a branch with no pull request, run on `plan/corpus-rewrite-follow-up` 2026-09-14. Round 5, on the fifth review, replaced the claim that either setting keeps an approval from outliving its head with what each setting does, since require-last-push-approval leaves an earlier approval standing and holds the merge for a fresh approval instead, and narrowed the doctrine floor to an approval that could land the merge with nobody approving the head. Round 7 removed the condition whole on the operator's ruling of 2026-09-14 on the relay channel, recorded as decision 5 of that plan and adopting the scope-adjudicator REFUSE on its Interim board 15: arming is unconditional where the repository allows it, the rules read, the base read and the fallback list built on them are gone, and the doctrine floor clause and its S001 retired with them. Fix round 9 of the same pass respelled the arm as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql`, on the security review's confirmed Critical that `gh pr merge <branch> --auto --merge` merges directly when the pull request is already mergeable: `cli/cli` at tag `v2.97.0`, the version installed on the kit box, computes `autoMerge: opts.AutoMergeEnable && !isImmediatelyMergeable(pr.MergeStateStatus)` in `pkg/cmd/pr/merge/merge.go`, where `Clean`, `HasHooks` and `Unstable` are immediately mergeable, so on a repository with no review rule the "arm" landed the merge on the session's word. The mutation's shape (`enablePullRequestAutoMerge(input: $input)`, input carrying `pullRequestId` and an optional `mergeMethod` of `MERGE`, `REBASE` or `SQUASH`) is read from `pkg/cmd/pr/merge/http.go` at the same tag and confirmed by `gh api graphql` introspection of `EnablePullRequestAutoMergeInput`, `EnablePullRequestAutoMergePayload` and `PullRequestMergeMethod` on 2026-09-14; `gh pr view --json` lists `id` among its fields on gh 2.97.0.
 - verdict: keep
 - reason: The arm has no precondition, on the operator's ruling: a repository where auto-merge should not happen has it disabled at the repository level, and one that allows it lands the merge only once whatever review it requires is finished, so arming simplifies that merge and licenses nothing the repository's own rules withhold. The step therefore reads no branch rule, no review state, no base and no mergeability before arming, and the passage says so. The arm is spelled as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql` because the CLI's merge command with its `--auto` flag performs a direct merge when the pull request is already mergeable, which on a repository with no rule requiring a review lands the merge on the session's own word; the mutation enables auto-merge and never merges, merging being a separate mutation, so nothing the step runs can land a merge and the passage states that as the reason for the spelling. A command that errors leaves the pull request ready and the close-out names it as up and unarmed; a repository with auto-merge disabled is the ordinary way that happens, a host with no equivalent has no arm to run, and a squash-only or rebase-only repository refuses `MERGE`, the method whose merge commit keeps the branch inside `git branch --merged` for the reap (S246). The two staleness settings stay in the step for the post-ready push alone (S209), which reads them to decide where a later push lands, and the passage says they decide nothing about the arm so a reader does not carry a condition back in through them. The repository that requires no review is named as a pair of outcomes rather than as one, because whether the mutation refuses a pull request the host already reads as mergeable is not settled by anything readable: `cli/cli` carries no comment beside `isImmediatelyMergeable` explaining the branch, and the GraphQL schema's introspection states the input and payload shapes and no refusal condition. Both outcomes close out honestly under the ruling, since either the merge lands with no review the repository asked for outstanding or the pull request sits up and unarmed, so the passage is true whichever way that behavior falls and asserts neither. The last sentences name the residual the ruling accepts: the sequence is push, then ready, then arm, so the push lands while auto-merge is unarmed and an approval at an earlier head can still land the merge of the pushed head on a repository that requires a review with neither staleness setting on. That is the repository's configuration to fix rather than a read to add back, and it is named so that a close-out can name it too.
-- passage: Then arm auto-merge, with no precondition, in two commands. Read the node id with `gh pr view <branch> --json id -q .id`, then run `gh api graphql -f query='mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: MERGE}) { clientMutationId } }' -f id=<node-id>`. Never arm with `gh pr merge --auto`, which merges directly when the pull request is already mergeable, where the mutation never merges. The arm reads no branch rule, no review state and no mergeability, because a repository that should not merge unreviewed requires a review or disables auto-merge. Where no review is required, the mutation either arms and the merge lands or it refuses, and either result is the repository's configuration at work. The staleness settings above decide only where a later push lands. One residual is the repository's to close: the push lands before the arm, so under a required review with neither staleness setting on, an approval given at an earlier head can land the pushed head.
-- passage: `MERGE` is the method whose merge commit keeps the pull request's branch inside `git branch --merged` for the reap below, where a squash-merged branch never enters it.
+- passage: Then arm auto-merge, with no precondition, in two commands. Read the node id with `gh pr view <branch> --json id -q .id`, then run `gh api graphql -f query='mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: MERGE}) { clientMutationId } }' -f id=<node-id>`. Never arm with `gh pr merge --auto`, which merges directly when the pull request is already mergeable.
+- passage: `MERGE` keeps the branch inside `git branch --merged` for the reap below, which a squash-merged branch never enters.
 - flag: stale
 
 ### W001
@@ -6974,7 +6917,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: The plan's Approach puts every lens of a round in one `agent()` wave so the orchestrator reads the round together, and the preamble already licensed steps 2 and 3 in parallel. Saying so at the step is what stops a reader serializing three dispatches on the step numbers alone.
-- passage: Send them in one `agent()` wave with step 3's adversarial lens. The step numbers order the reading of the returns rather than the dispatch.
+- passage: Send them in one `agent()` wave with step 3's adversarial lens.
 
 ### W002
 - key: Take executing-work's advisory disposition for every advisory finding here, written on this pass's interim board entry, with the relevance ruling on a fix-now lean and on every cited security Critical.
@@ -6983,7 +6926,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: The disposition is executing-work's to state and this pass points at it rather than copying it, so the two tiers cannot drift. The one finishing-specific fact is the surface: the section advisory list is keyed by section number and this pass has none, and the interim board entry is where this pass already records a hold for the same reason.
-- passage: Findings take the advisory disposition executing-work's step 4 states (`skills/executing-work/SKILL.md` under the kit plugin root). Write them on this pass's interim board entry in place of that paragraph's section advisory list, since this pass has no Chapter until step 6. A fix-now lean takes that paragraph's relevance ruling before the fix is written, and a cited security Critical takes it whatever the lean.
+- passage: Findings take the advisory disposition executing-work's step 4 states (`skills/executing-work/SKILL.md` under the kit plugin root), written on this pass's interim board entry, since this pass has no Chapter until step 6.
 
 ### W003
 - key: Block this pass on a cited security Critical the relevance ruling confirms, fixed before the close or raised to the operator, and on a `Disclosure:` sweep hit, and on nothing else an advisory lens returns.
@@ -6992,7 +6935,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: The cited-Critical case is the one route the plan keeps from the old fast lane, and it is the same route a section keeps, behind the same judge. The `Disclosure:` case is the second, grounded at W004, and it reaches the same route with no judge behind it. The correctness clause is there because deleting a blanket "Critical findings block completion" would otherwise read as licence to close over an adversarial Critical, which the terminal condition never allowed.
-- passage: An advisory lens blocks this pass in two cases, each fixed before the close or raised to me. One is a cited security Critical the ruling confirms. The other is a `Disclosure:` sweep hit, which blocks with no citation and no ruling behind it. This pass reads that hit as a correctness Critical wherever its fix path's exits read one, so the round backstop never freezes it and the fix path cannot end while it stands. Every other advisory Critical or Major is fixed, deferred or refused with its reason on that entry, and blocks nothing. A Critical from step 3's correctness lens routes on the fix path below, not here.
+- passage: An advisory lens blocks this pass only on a cited security Critical the ruling confirms or on a `Disclosure:` sweep hit, which needs no citation or ruling. Each is fixed before the close or raised to me. This pass reads a sweep hit as a correctness Critical wherever its fix path's exits read one, so the round backstop never freezes it.
 
 ### W004
 - key: Keep the `Disclosure:` sweep with the security lens, where a hit is the one Critical that blocks with no threat-model citation and no ruling behind it.
@@ -7001,7 +6944,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: A `Disclosure:` list is the plan's own statement of what must not appear, so a hit needs no threat model to rank it and no judge to confirm that it applies to this project. Naming the lens is what the widened step forced: with two lenses dispatched, "run the review with the list in the brief" no longer says whose brief.
-- passage: The sweep is that lens's alone, and a hit is the one Critical that blocks with no threat-model citation and no ruling behind it.
+- passage: the sweep is that lens's alone.
 
 ### W005
 - key: Print a folded pass's advisory findings under their own lens label, taking the advisory disposition and counting nowhere on the adversarial verdict.
@@ -7010,7 +6953,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Tier is keyed on the lens, and a folded dispatch is one agent carrying three lenses' scope, so without the label the advisory findings would arrive as an adversarial reviewer's verdict and be routed automatically. That is the fast lane reappearing through the small-effort allowance, which is why the allowance now states the label and the route.
-- passage: A folded pass prints its performance and security findings under their own lens label. Those lines take step 2's advisory disposition and count nowhere on the adversarial verdict, so folding the dispatch never folds the route.
+- passage: Its findings under those lens labels take step 2's advisory disposition, never the adversarial verdict.
 
 ### W006
 - key: Fix an owed Major on this pass's fix path or present it to the operator with the tradeoff, a route that reaches no advisory finding and no new-requirement Major.
@@ -7019,7 +6962,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, relocating the route c2.C036 carried under the security step.
 - verdict: keep
 - reason: The route is the pass's correctness-tier disposition and never a security rule, which the two step 4 pointers had already shown by aiming at it for the goal read's `BUILT-BUT-UNASKED` removal and its `ASKED-BUT-UNBUILT` items. Under an advisory heading it would have read as a security route with two pointers aimed into a tier that no longer routes anything, so it sits on the fix path those pointers describe and they name that path rather than the step.
-- passage: **An owed Major on this pass's fix path is fixed, or presented to me with the tradeoff.** That fix-or-present rule is the pass's route for such a Major wherever on the path it entered. It never reaches a new-requirement Major, which takes the hold and judge below, nor an advisory finding, which takes step 2's disposition.
+- passage: **An owed Major on this pass's fix path is fixed, or presented to me with the tradeoff.** That fix-or-present rule routes a spec-traceable or fix-introduced Major wherever on the path it entered, never a new-requirement Major or an advisory finding.
 
 ### W007
 - key: Take the adversarial lens alone on a fix-delta round here, since the bar's rounds are the correctness tier's and an advisory finding owes none.
@@ -7028,7 +6971,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: An advisory lens opens no round of its own, so a round it did not owe is not a round it reads. The loss is named rather than covered, because a fix delta written after the advisory pass is genuinely unread by it, and executing-work accepts the same loss on a decayed round. Supersedes T006, whose per-delta security re-dispatch was the old tier's.
-- passage: A fix delta from step 4's items takes the adversarial lens alone, over that delta and on that same re-dispatch. Neither advisory lens joins a fix-delta round, since the bar's rounds are the correctness tier's. So a fix delta written after step 2 gets no advisory read, the loss executing-work accepts on a decayed round.
+- passage: A fix delta from step 4's items takes the adversarial lens alone. No fix-delta round takes an advisory lens or re-dispatches the goal read.
 
 ### W008
 - key: Name the performance reviewer among the agents the compensation route re-dispatches as.
@@ -7046,7 +6989,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2, three Fable reviewers held running for 4.7 hours because the wedge was looked for only once suspected; re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
 - verdict: keep
 - reason: A session awaiting a background dispatch ends its turn under executing-work's dispatch row, so it is idle when a window closes. The cadence therefore runs on the moments the session is awake, which are the three named.
-- passage: **Evaluate the hallmark on a cadence rather than on a suspicion**, for every in-flight dispatch whatever its model. A wedge sought only on suspicion is the multi-hour wait this rule exists to end. The wakes are three: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the session's first return to that dispatch after either, before anything else is done with it.
+- passage: **Evaluate the hallmark on a cadence rather than on a suspicion**, for every in-flight dispatch whatever its model. The wakes are three: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the session's first return to that dispatch after either, before anything else is done with it.
 
 ### W010
 - key: Take the first-turn reading at the first wake at or after the first-turn window closes and at every wake after that, and for a dispatch carrying a model override take it at that wake whatever woke the session.
@@ -7055,8 +6998,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2 (a reading seconds in reads a meaningless zero; every never-started transcript in the measured corpus carried a fable override); re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
 - verdict: keep
 - reason: Executing-work's `WAITING:` shape points at this sentence. The override sentence sits in the next paragraph and reads "is taken at that wake whatever woke the session", so a message wake takes the reading as a timer wake does.
-- passage: Take the first-turn reading at the first wake at or after the first-turn window closes, and at every wake after.
-- passage: For a dispatch carrying a model override, take the first-turn reading at that wake whatever woke the session.
+- passage: Take the first-turn reading at the first wake at or after the first-turn window closes, and at every wake after. A dispatch carrying a model override takes it at that wake whatever woke the session.
 
 ### W011
 - key: Send the probe at the first wake that finds the shape's window closed flat, and run the probe window from that send.
@@ -7076,7 +7018,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - landed: 005a7fde section 2
 - reason: The rule names no tool so it holds on any harness and fits a wake supplied from outside the session. The timer is tied to a named dispatch so kit-goal's sentence stands, that a `WAITING:` naming neither a park nor an awaited dispatch stalls the run. The closing recovery names the operator's re-arm, since no session re-arms a leash for itself (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: It surfaces at session start and to the doctor, where the armed goal stays visible, and the operator's re-arm is the recovery.
-- passage: A window is observed only at a wake, so land the wakes where the windows close. A session that can wake itself on a timer arms one for the class's growth window before the `WAITING:` turn end. It re-arms at every later wake that leaves a window open, the probe window or a pending first-turn window. A timer is armed for a named dispatch and never waited on alone, so the `WAITING:` line always names a dispatch. Without a timer the completion notification is the only wake, and a wedge produces none, since status reads `running` for healthy and wedged alike. It surfaces at session start and to the doctor, where the armed goal stays visible, and the operator's re-arm is the recovery.
+- passage: A session able to wake itself on a timer arms one for each named dispatch at its class's growth window before the `WAITING:` turn end. It re-arms at every later wake that leaves a window open, and never waits on a timer alone. Without a timer a wedge raises no wake and surfaces at session start and to the doctor, where the operator's re-arm is the recovery.
 
 ### W013
 - key: Await the compensating round as executing-work's completion contract awaits any dispatch, by the `WAITING:` turn end.
@@ -7112,7 +7054,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which put the commit body under the register in the doctrine's commit-title bullet and carried the same rule to the pull request body here.
 - verdict: keep
 - reason: S221 gives the title the doctrine's commit-title form and no rule shaped the body, so the longest prose this pass writes was the one piece under none. The doctrine owns the register and this sentence points at it, which is why the body's shape is stated in one clause rather than restated here.
-- passage: The body takes the prose register, as the commit body does.
+- passage: Each body header takes the doctrine's heading form, and the body takes the prose register.
 
 ### Z001
 - key: Keep the never-started ladder live behind a capacity reading that passes, leaving its windows, cadence and triggers unchanged.
@@ -7122,7 +7064,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: keep
 - landed: 3aedccd7 section 2
 - reason: A passing meter does not guarantee a dispatch lands: the account rotator can move the active seat mid-dispatch, and the cache's usage figures can be up to three poll intervals old, or thirty minutes where no interval is recorded, even when the seat identity is current (Goal principle 4). So the ladder's windows, cadence and triggers are unchanged, and a dispatch the meter read as `-> dispatch` still takes the never-started rules if it stalls. The meter only changes how an exhaustion already known to the rotator is discovered, never what counts as unavailable.
-- passage: Executing-work's capacity reading before a fable dispatch leaves this ladder live behind a reading that passes, since that reading is a prediction and this ladder is the observation.
+- passage: A capacity reading that passes leaves this ladder live.
 
 ### A002
 - key: Give each pull request body header the doctrine's heading form, not the commit-title form the title takes.
@@ -7131,4 +7073,4 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 4, 2026-09-26, review round 1's prose lens: the base sentence gave body headers the title's sentence form, which the doctrine's heading bullet and plan item 8 bar.
 - verdict: keep
 - reason: A body header is a heading a reader scans for, so the doctrine's heading bullet owns its shape, and that bullet states a commit title is a sentence by its own rule and is not a heading. Giving headers the title's form told a closing session to write the sentence-with-period headers item 8 names as the case the operator rewrote by hand.
-- passage: Each body header takes the doctrine's heading form rather than the title's, since a header is a heading and a title is not.
+- passage: Each body header takes the doctrine's heading form, and the body takes the prose register.
