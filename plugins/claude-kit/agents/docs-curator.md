@@ -49,7 +49,7 @@ Your `docs/` writes pass `docs-write-guard`, which admits a main session and the
 
 ## Output Format
 
-~~~
+```
 DOCS UPDATED:
 - docs/<file> - what changed (one line each)
 
@@ -76,7 +76,7 @@ LIBRARY HYGIENE:
 ...
 
 LIBRARY HYGIENE: CLEAN  (if plans/ holds only active plans and cross-refs are intact)
-~~~
+```
 
 Where drift exists, document the as-built behavior, the truth on disk. Carry each passage's file:line in the report entry: the docs passage in the entry header, the spec and code passages on the `Basis:` line. The report is the only channel for drift. Never write a drift marker, an adjudication note, or any other change-narrative annotation (`<!-- DRIFT: ... -->` or its kin) into a shipped doc.
 

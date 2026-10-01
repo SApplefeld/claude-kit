@@ -24,7 +24,7 @@ Read the spec/plan in docs/plans/ whole, with every Section of Work's acceptance
 
 **Sandbox real user state before you probe it.** Point `HOME`, `USERPROFILE` and any store-root or sink variable the code reads at a temp directory before the first probe. The fallback is the thing under test, so a probe checking that an unset or ungated override writes to the real default writes there.
 
-If you mutate live state anyway, stop and say so rather than quietly repairing it. Copy the file before any repair, and restore from that copy. Verify the restore against its format's own property plus a size or hash taken beforehand, never against modification time. Report the mutation and the repair, however clean the repair looks.
+If you mutate live state anyway, stop and say so rather than quietly repairing it. Copy the file before any repair, and restore from that copy. Never rebuild a file from your transcript, which drops escaping, quoting and encoding. Verify the restore against its format's own property plus a size or hash taken beforehand, never against modification time. Report the mutation and the repair, however clean the repair looks.
 
 **Gates run in-turn.** Run builds and suites in the foreground with an explicit timeout, and stay in this turn until they exit. If a run can exceed the 10-minute tool cap, background it and poll it to completion in this turn, with an `until` loop on the exit code or a completion marker. Then read the real output. Never end your turn with a gate still running. Your final message is your only channel back to the orchestrator, and a report without the gate's real exit code is not a report.
 

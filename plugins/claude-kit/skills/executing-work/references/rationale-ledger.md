@@ -11481,7 +11481,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - provenance: a5fce80 2026-08-18, when both new agents joined the guard's strict class.
 - verdict: keep
 - reason: The proposed retirement as superseded fails on a check: the hook enforces only the first half, and the operative half is that builds and test runs are not denied, which is what leaves C024 resting on the agent's own discipline. Retiring it would delete the fact that the guard will not stop a build.
-- passage: The kit hook leaves builds and test runs open, so the no-build rule rests on your discipline.
+- passage: A kit hook denies write-shaped shell commands but leaves builds and test runs open, so the no-build rule rests on your discipline.
 
 ### C026
 - key: Avoid your own build or test run because where the repo has one shared test binary or build output it contends with the orchestrator's suite and blocks until released.
@@ -11893,8 +11893,8 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - class: rule
 - source: plugins/claude-kit/agents/prose-reviewer.md:31
 - provenance: 7ef71e3 2026-09-01.
-- verdict: retire
-- reason: a rule stated in a second place, dropped under row 355's shrink. C012's landed sentence "only the check that file carries is skipped" carries the per-file fallback.
+- verdict: keep
+- reason: It keeps the question executable when one pointer cannot be followed, and it splits the halves so an unreadable file does not silently void both.
 - passage: Where one is unreadable, say so and check only what this question states outright for that file's half.
 
 ### C069
@@ -13922,7 +13922,8 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; that plan's Approach records that a rule alone did not hold, the 2026-09-03 audit's tree growing past its own Goal within a week, so the reviewers are held to the axis in both directions.
 - verdict: keep
 - reason: A recall-biased lens asks for tests, and a request with no requirement behind it is how a choice gets pinned at review. A request for a stricter count, a broader control set or an exact wording stays a finding only where it names the defect the current test lets through, which is the same axis applied to a test that already exists.
-- passage: A finding that asks for a test names the earn clause it satisfies and the requirement the test would pin, which for a security boundary is the bypass or disclosure the pin prevents. A request for a pin on a choice is not a finding.
+- passage: A finding that asks for a test names the earn clause it satisfies and the requirement the test would pin, which for a security boundary is the bypass or disclosure the pin prevents.
+- passage: A request for a pin on a choice is not a finding.
 
 ### W006
 - key: Name in a finding that asks for a pin on a security boundary the bypass or disclosure the pin prevents, the boundaries being the ones the claim-class region lists.
@@ -13931,7 +13932,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; one of the four single-lens additions the operator accepted on 2026-09-17, from the council's security lens.
 - verdict: keep
 - reason: A security pin is the case where "name the requirement" could read as a bar against asking at all. The sentence says what the requirement is for that case, the bypass, and points at the region this charter already carries for the list of boundaries rather than stating a second list.
-- passage: A finding that asks for a test names the earn clause it satisfies and the requirement the test would pin, which for a security boundary is the bypass or disclosure the pin prevents.
+- passage: The boundaries are those the security-reviewer trigger in `skills/executing-work/SKILL.md` names.
 - flag: stale
 
 ### W007
@@ -16583,7 +16584,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - provenance: b3ed504 2026-09-08, the output contract; changed at 6983398 2026-09-10 by finishing round 5's adversarial Major, the GROUNDS line admitting no `## Out of Scope` ground where executing-work's check requires one; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: Executing-work re-checks this field on its own surface before adopting a ruling, and its check reads the Out of Scope list beside the trace target, so the field must admit that ground.
-- passage: **GROUNDS:** the quoted bullet, Goal sentence or Intent clause the thing serves or fails to serve, the statement that none covers it, or the quoted `## Out of Scope` entry or negative-half Intent clause that keeps it out,
+- passage: **GROUNDS:** one of three. The acceptance bullet, Goal sentence or Intent clause the thing serves or fails to serve, quoted. The statement that no bullet, no Goal sentence and no Intent clause covers it. The `## Out of Scope` entry or negative-half Intent clause that keeps it out, quoted,
 
 ### T048
 - key: On an `## Out of Scope` ground, or on an Intent clause of the record's negative half, state that the fix is then not written at all.
@@ -16601,7 +16602,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - provenance: 6983398 2026-09-10, fix round 2 under Amendment 6, "that bullet" widened to "bullet or sentence" in fix round 4. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: Executing-work line 431 passes a design-stop refuse's GROUNDS only where it names the bullet or Goal sentence and the form it asks for, so a GROUNDS without the form demotes the ruling to a lead.
-- passage: A design-stop `REFUSE` adds the form the fix is written within.
+- passage: A design-stop `REFUSE` adds the form that bullet, sentence or clause asks for, since the fix is written within it.
 
 ### T050
 - key: Under BUILT-BUT-UNASKED, give one item per thing built that nothing asked for, each carrying its bucket and the ground that bucket takes.
@@ -16656,7 +16657,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, adopted on the `scope-adjudicator`'s own ACCEPT-AND-DECLARE ruling at that section's design stop, which found the mechanism to be the form the Goal sentence and the 2026-09-18 Intent ruling already ask for.
 - verdict: keep
 - reason: The record carries the operator's post-ship rulings by its own definition, and input 2 forbids a prior ruling on the question, so without this reading the charter both requires the judge to read a ruling and requires it to refuse the brief carrying one. The reading is the charter's own rather than a new carve-out: the frontmatter description has glossed the forbidden inputs as "no lean, no prior consult and no fix narrative" since `b3ed504`, and C042's kept why records input 2 as guarding against the framing that colored the question and the design story the session itself produced. An operator ruling made at design time is neither. The six inputs are therefore unchanged, as section 1's acceptance requires, and the statement sits on the list's lead and on the record-admission bullet rather than inside any of the six.
-- passage: An operator ruling in it reads on whichever half its words fall in.
+- passage: An operator ruling in it reads on whichever half its words fall in, widening what is asked for or what is kept out.
 - passage: An operator ruling recorded in the `## Intent` record is part of the what, not this input, whatever question it bears on.
 
 ### T056
@@ -17006,7 +17007,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reader.md`). Redrafted on 
 - verdict: rewrite
 - landed: 98b3f27 section 11
 - reason: Restated in the unpacked sequence with its bound intact. This is the one prohibition here the guard does not enforce, so it must keep the sentence saying so. Lands as "never run builds" in the sequence C022 records, with the kept sentence "the no-build instruction above stands on your discipline" after it, so "above" resolves.
-- passage: The kit hook leaves builds and test runs open, so the no-build rule rests on your discipline.
+- passage: It denies write-shaped commands and leaves builds and test runs open, so the no-build rule rests on your discipline.
 
 ### C025
 - key: Treat the guard's open door to builds and test runs as its shape rather than permission, since your run contends with the orchestrator's suite over a shared binary.
@@ -19252,7 +19253,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. Nothing enforces this half at all: the guard deliberately leaves builds and test runs open, so the charter's words are the whole of the rule. Lands as "Never run builds or test runs of your own."
-- passage: Never run builds or test runs of your own, since the kit hook leaves them open and your run would contend with the orchestrator's suite on a shared test binary or build output.
+- passage: Never run builds or test runs of your own.
 
 ### C025
 - key: Know that a kit hook denies write-shaped shell commands while leaving builds and tests open, and that your own run would contend with the orchestrator's suite over a shared test binary or build output.
@@ -19261,7 +19262,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 86461d1 2026-08-07, after all three code reviewers said never run builds and then said the hook leaves builds deliberately open, which read as permission.
 - verdict: keep
 - reason: It bounds the rule rather than explaining it: it marks which half of the read-only contract nothing enforces, and without it a permitted command reads as a permitted act. That is the exact incident, and it recurs on every dispatch.
-- passage: Never run builds or test runs of your own, since the kit hook leaves them open and your run would contend with the orchestrator's suite on a shared test binary or build output.
+- passage: A kit hook denies write-shaped commands but leaves builds and test runs open, so the no-build rule rests on you, and on a shared test binary or build output your run would contend with the orchestrator's suite.
 - flag: weak-reason
 
 ### C026
@@ -20369,7 +20370,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; that plan's Approach paragraph "The refusable frame." states the design.
 - verdict: keep
 - reason: Every other question reads the sections against the record and the Goal, so each of them passes on a record that refuses nothing, which is the record's own failure mode. The finding is written as a named mechanism and a named clause because a record is refusable only if some addition can be held against it, and an unnamed complaint is a taste report. The no-record trigger draws a Major on every plan predating the record, which is intended: the charter's lead still reads such a plan from its Goal alone, so the seat reviews it rather than refusing it, and the finding is what tells the author the record is missing. The empty-refusals carve-out keeps the tag off the honest case the brainstorming ledger's C178 states, where the conversation refused nothing and the record says so, since the not-done half is the half the add-decision reads against.
-- passage: 8. `[unrefusable-frame]` An `## Intent` record whose not-done half, beside its refused alternatives, refuses no mechanism a section could plausibly add. Name the mechanism and the clause, or the part you did not find. An honestly empty refused-alternatives part is no finding by itself. Also a record past the brainstorming skill's bound, with the byte count read and rulings appended after the spec shipped discounted, or a spec with no `## Intent`, anchored on its `## Goal` line.
+- passage: `[unrefusable-frame]` An `## Intent` record whose not-done half, read beside its refused alternatives, refuses no mechanism a section could plausibly add. Also a record past the bound the brainstorming skill states, discounting a ruling appended after the spec shipped, or a spec with no `## Intent`. An honestly empty refused-alternatives part is not by itself a finding. Name the mechanism and the clause that failed to refuse it, or the record part you did not find. On the other two, name the byte count read or the missing heading, anchored on the `## Goal` line where no record exists.
 
 ### C073
 - key: Rate an `[unrefusable-frame]` finding Major, since a section would ship something the record could not stop.
@@ -20647,15 +20648,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: ddd6c72 2026-08-23, the principle kept in the doctrine with the anchors routed to the style skills.
 - verdict: keep
 - reason: A parity test asserts this exact phrase in all three sighted implementer charters and the routing clause in executing-work; a copy pinned by a parity test keeps its copy. Rewording the phrase reds that test, which is the intended alarm rather than a nuisance.
-- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first under the doctrine's rule on hunting in a large file.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first
 
 ### C026
 - key: Take outlining anchors for a language from the Outlining heading in the style skills named in your brief.
 - class: pointer
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23, whose consult found that language-scoped knowledge cannot live in a language-agnostic surface, so the anchors moved to csharp-style and sql-style.
-- verdict: retire
-- reason: row 228 (Outline large files before hunting) is a merge. The owner is the doctrine bullet "When you are hunting for something in a large file, outline before you read.", whose sentence "Reach first for the Outlining section of the language's style skill" carries the anchors route.
+- verdict: keep
+- reason: This is the far end of the two-ended pin: the bullet routes, the routed-to sections exist, and the charters still carry their route. Deleting it breaks the chain from the charter end.
 - passage: outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C027
@@ -20663,8 +20664,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - class: mechanic
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23, which deliberately shipped no JS or TS anchors because the kit has no house style with standing to own them.
-- verdict: retire
-- reason: row 228 merge. The same doctrine bullet's "and fall back to a generic pattern" carries it.
+- verdict: keep
+- reason: This is the honest fallback that decision requires; without it the outline rule is unexecutable for every language the kit does not style.
 - passage: For a language none covers, grep its declaration and section markers with line numbers, then read the range they name.
 - flag: weak-reason
 
@@ -20673,8 +20674,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - class: rule
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23, shipped with the outline rule as the guard against its one silent failure.
-- verdict: retire
-- reason: row 228 merge. The same doctrine bullet carries it in "An outline never proves absence, so a symbol you did not find earns a whole-file search.".
+- verdict: keep
+- reason: An outline that misses a helper produces a duplicate helper and no error, so this is the carve-out that makes the outline rule safe. It travels with C025 or not at all.
 - passage: so search the whole file before writing a helper you think is missing.
 
 ### C029
@@ -20682,8 +20683,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23, stated as the property of outlines that fails quietly.
-- verdict: retire
-- reason: row 228 merge. Carried by the same doctrine sentence as C028.
+- verdict: keep
+- reason: Classed as rationale but functioning as the bound on C028: the whole-file search is ordered only where an outline was the evidence of absence, so the rule cannot be obeyed without it.
 - passage: An outline never proves a symbol absent,
 
 ### C030
@@ -20691,8 +20692,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - class: mechanic
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23, the second of the two things an outline cannot do, both of which fail quietly.
-- verdict: retire
-- reason: row 228 merge. The same doctrine bullet's "In a generated file, one with an `<auto-generated>` marker near the top, grep for the member's name where you have it." carries it.
+- verdict: keep
+- reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline rule would waste the read; this is a carve-out on C025 and stays with it.
 - passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name where you have it, instead of outlining.
 
 ### C031
@@ -20735,7 +20736,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - verdict: rewrite
 - landed: 064e45f section 14
 - reason: The rule stands with its exclusion list intact. The list is the operative part: an agent that keeps only "state the current state" writes the fix and the prior version back in. Lands as "Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.", the exclusion list whole and the trailing parenthetical "(change-narrative goes in the commit message, not the code)" gone as the part of the sentence this reason does not protect; whether a rewrite verdict whose reason protects one part licenses a cut elsewhere in the sentence is a fork the plan's Chapter 14 records for the rulings batch.
-- passage: A comment states what the code does now, under the doctrine's rule that documents ship the current state.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C035
 - key: Make the build pass.
@@ -20763,7 +20764,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: 4d1bc30 2026-07-02, whose wording was baseline-tested against a deliberately slow fake suite: the old wording reproduced the strand, the new wording stayed in-turn.
 - verdict: keep
 - reason: The wording is proven behavior-shaping by a red-then-green baseline test, so any rewrite of it must repeat that test rather than rely on reading.
-- passage: Run those gates in the foreground and stay in this turn until they exit, since DONE without the gate's real exit code is not DONE.
+- passage: Run those gates in the foreground and stay in this turn until they exit;
 - flag: weak-reason
 
 ### C038
@@ -20773,7 +20774,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: 4d1bc30 2026-07-02, the carve-out that makes the foreground rule survivable for a long suite.
 - verdict: keep
 - reason: Without this the foreground rule is unfollowable past ten minutes, and an agent with no sanctioned way to wait reaches for the parameter the next rule bars.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C039
 - key: Background a gate at the shell and never with the Bash tool's `run_in_background` parameter.
@@ -20782,7 +20783,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: 86461d1 2026-08-07: all four implementers already forbade ending a turn mid-gate and one still did, because it was obeying a tool whose parameter ends the turn by definition.
 - verdict: keep
 - reason: This is the fix for a reproduced failure that more prose had already failed to prevent, and no hook refuses the parameter, so the class is live.
-- passage: **Never use the Bash tool's `run_in_background` parameter.**
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 - flag: weak-reason
 
 ### C040
@@ -20792,7 +20793,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: 86461d1 2026-08-07, the commit that names the lever after the bare prohibition failed.
 - verdict: keep
 - reason: Classed as rationale but it is the fix itself: history shows the absolute prohibition without the lever's definition did not stop the strand. Removing it reproduces a defect the kit has already paid for once.
-- passage: It is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
 - flag: weak-reason
 
 ### C041
@@ -20802,16 +20803,16 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: 86461d1 2026-08-07, which paired the barred lever with the right pattern in the same edit.
 - verdict: keep
 - reason: This is the positive recipe beside the prohibition; a prohibition shipped without it is the form the kit's own writing skill names as the one that backfires.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C042
 - key: Never end your turn with a gate still running; poll it here and answer once.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-fable.md:22
 - provenance: 4d1bc30 2026-07-02, the rule the stranded-gate incident installed.
-- verdict: retire
+- verdict: rewrite
 - landed: 2b427ac section 4
-- reason: this is the stay-in-turn rule stated twice. The survivor is C037, "Run those gates in the foreground and stay in this turn until they exit".
+- reason: The whole of step 4 exists to make this hold, and the orchestrator has no way to recover a turn ended mid-gate except a nudge and a re-run. C043's only-channel clause follows the colon, so the sentence does not close on a period; the separate "Poll the gate here and answer once." is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Never end your turn with a gate still running:
 - passage: Never end your turn with a gate still running:
 
@@ -20825,7 +20826,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - reason: "DONE without the gate's real exit code is not DONE" is the operative definition, and the only-channel clause is what turns the never-end-your-turn rule from a preference into a consequence: a fresh-context agent has no other source for the fact that its final message is its only channel. Before this section the rewrite cut that clause as diagnosis; ruling 1 restores it because the haiku, sonnet and opus charters carry it (sonnet C037, opus C042). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 - baseline-test: yes
-- passage: since DONE without the gate's real exit code is not DONE.
+- passage: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C044
 - key: Stop yourself when about to write that you are backgrounding the suite, will follow up, or are ending your turn while the gate completes.
@@ -20834,7 +20835,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - provenance: 86461d1 2026-08-07, which added the controller's red-flag phrasing to the implementers.
 - verdict: keep
 - reason: The three quoted phrases are the trigger the rule fires on, not illustrations of it: the rule catches the agent at the moment it is composing one of them, which nothing else in the step can do.
-- passage: If you are about to write "the tests are running, I will follow up", do not: poll the gate here and answer once.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes". If you are about to write one of these, do not. Poll the gate here and answer once.
 
 ### C045
 - key: Leave a durable test and show it passing where the change earned one.
@@ -21324,15 +21325,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, the outline-first plan; pinned at both ends so the doctrine bullet and the surfaces that defer to it cannot drift apart.
 - verdict: keep
 - reason: A copy pinned by a parity test keeps its copy: test/doctrine-parity.test.js asserts this file still carries the phrase "hunting for one thing in a file past roughly 1,000 lines", matched on the clause rather than the bare word. Deleting or rewording it turns that lane red.
-- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first under the doctrine's rule on hunting in a large file.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C026
 - key: For outlining anchors, read the Outlining heading in the style skills named in your brief.
 - class: pointer
 - source: plugins/claude-kit/agents/implementer-opus.md:19
 - provenance: ddd6c72 2026-08-23, whose consult concluded that language-scoped knowledge cannot live in a language-agnostic surface, so the anchors went to csharp-style and sql-style and this line routes to them.
-- verdict: retire
-- reason: row 269 merge. The owner is the doctrine bullet "When you are hunting for something in a large file, outline before you read.", whose "Reach first for the Outlining section of the language's style skill" carries it.
+- verdict: keep
+- reason: Already the pointer form the ownership map prescribes; the owner is the style skills.
 - passage: outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C027
@@ -21340,8 +21341,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - class: mechanic
 - source: plugins/claude-kit/agents/implementer-opus.md:19
 - provenance: ddd6c72 2026-08-23, which shipped no JS/TS anchors at all because the kit has no house style with standing to own them.
-- verdict: retire
-- reason: row 269 merge. The same doctrine bullet's "and fall back to a generic pattern" carries it.
+- verdict: keep
+- reason: The fallback for the uncovered case, which is most of the languages the agent will meet; without it the routing dead-ends.
 - passage: For a language none covers, grep its declaration and section markers with line numbers, then read the range they name.
 
 ### C028
@@ -21349,8 +21350,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:19
 - provenance: ddd6c72 2026-08-23.
-- verdict: retire
-- reason: row 269 merge. The same bullet's "An outline never proves absence, so a symbol you did not find earns a whole-file search." carries it.
+- verdict: keep
+- reason: An outline never proves absence, and this is the duty that stops a false absence becoming a duplicate helper. It sits beside the rule that creates the risk.
 - passage: An outline never proves a symbol absent, so search the whole file before writing a helper you think is missing.
 
 ### C029
@@ -21358,8 +21359,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - class: mechanic
 - source: plugins/claude-kit/agents/implementer-opus.md:19
 - provenance: ddd6c72 2026-08-23.
-- verdict: retire
-- reason: row 269 merge. The same bullet's generated-file sentence carries it.
+- verdict: keep
+- reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline rule has to be excepted here or it wastes the read.
 - passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name where you have it, instead of outlining.
 
 ### C030
@@ -21402,7 +21403,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - landed: 2b427ac section 4
 - reason: The wording passed a baseline test in the commit that installed it, and it was deliberately forwarded inline rather than pointed at. Ruling 17's fourth pick drops the trailing parenthetical "(change-narrative goes in the commit message, not the code)" from every charter that carried it, the part of the sentence the fable ledger's C034 found no reason protecting; the tested exclusion list stands whole. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
-- passage: A comment states what the code does now, under the doctrine's rule that documents ship the current state.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C034
 - key: Make the build pass.
@@ -21430,7 +21431,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02, whose commit message records why the rule lives in the agent definitions: subagents inherit the catalog, not the doctrine, and a brief is written fresh every dispatch.
 - verdict: keep
 - reason: Incident-born, baseline-tested against a deliberately slow fake suite, and unenforced by any hook. The class recurs whenever a suite outlives an agent's patience.
-- passage: Run those gates in the foreground and stay in this turn until they exit, since DONE without the gate's real exit code is not DONE.
+- passage: Run those gates in the foreground and stay in this turn until they exit
 - flag: weak-reason
 
 ### C037
@@ -21440,7 +21441,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02.
 - verdict: keep
 - reason: The carve-out that keeps the foreground rule obeyable on a long suite. A stop rule met without its carve-out is what strands an agent, so the two stay together.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C038
 - key: Background a gate at the shell, never with the Bash tool's `run_in_background` parameter.
@@ -21449,7 +21450,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07, the kaizen round that found all four implementers already forbade ending a turn mid-gate and the agent stranding anyway, because it was obeying the Bash tool's own parameter.
 - verdict: keep
 - reason: This sentence contradicts a live instruction sitting in the agent's own tool description, so it only wins if it is in the same context. A grep of plugins/claude-kit/hooks/ finds no guard on the parameter, so prose is the whole enforcement.
-- passage: **Never use the Bash tool's `run_in_background` parameter.**
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 
 ### C039
 - key: Treat `run_in_background` as ending your turn and re-invoking you on exit, which converts a wait into a stop.
@@ -21458,7 +21459,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The incident record states outright that more prose about the rule would not have helped and that naming the lever's semantics was the fix. Retiring the definition restores the state the incident found insufficient.
-- passage: It is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
 - flag: weak-reason
 
 ### C040
@@ -21468,15 +21469,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The positive recipe that replaces the barred parameter. The kit's own authoring rules name a prohibition without a recipe as the form that backfires, so this stays beside C038.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C041
 - key: Never end your turn with a gate still running.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:23
 - provenance: 4d1bc30 2026-07-02, from a real strand in a long autonomous run that cost a nudge and a re-run.
-- verdict: retire
-- reason: this is the stay-in-turn rule stated twice. The survivor is C036, "Run those gates in the foreground and stay in this turn until they exit".
+- verdict: keep
+- reason: The rule the incident produced, placed in the charter on purpose and re-confirmed by a second incident a month later. No hook can see a turn ending early.
 - passage: Never end your turn with a gate still running
 - flag: weak-reason
 
@@ -21487,7 +21488,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02, whose baseline test reproduced the strand under the old wording and held under this one.
 - verdict: keep
 - reason: A fresh-context agent has no other source for the fact that its final message is its only channel, and that fact is what turns the never-end-your-turn rule from a preference into a consequence.
-- passage: since DONE without the gate's real exit code is not DONE.
+- passage: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C043
 - key: If you are about to write that you are backgrounding the suite, will follow up, or are ending your turn while a gate completes, stop, poll the gate here, and answer once.
@@ -21496,7 +21497,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07, which added the controller's red-flag phrasing; the phrases themselves are the ones a stranding agent actually wrote (4d1bc30 2026-07-02).
 - verdict: keep
 - reason: The three literal phrases are the recognition trigger, quoted from real transcripts. Paraphrasing them loses the recognition, which is the entire mechanism.
-- passage: If you are about to write "the tests are running, I will follow up", do not: poll the gate here and answer once.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes". If you are about to write one of these, do not. Poll the gate here and answer once.
 - flag: weak-reason
 
 ### C044
@@ -21936,15 +21937,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: This exact phrase is what test/doctrine-parity.test.js:3954 reads in this file. Reword it and the pin reds; the pin exists because a deletion at either end of the chain is otherwise invisible.
-- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first under the doctrine's rule on hunting in a large file.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C023
 - key: Use the outlining anchors under the Outlining heading of the style skills named in your brief when outlining a file in their language.
 - class: pointer
 - source: plugins/claude-kit/agents/implementer-sonnet.md:19
 - provenance: ddd6c72 2026-08-23, which ruled that language-scoped knowledge cannot live in a language-agnostic surface and moved the anchors into csharp-style and sql-style.
-- verdict: retire
-- reason: row 289 merge. The doctrine bullet "When you are hunting for something in a large file, outline before you read." carries it in "Reach first for the Outlining section of the language's style skill".
+- verdict: keep
+- reason: A pointer that resolves, because the brief names the style skills' file paths; it is the routing half of the decision that kept a weaker re-derived pattern set out of the doctrine.
 - passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first, taking the anchors from the Outlining heading of the style skills your brief names.
 
 ### C024
@@ -21952,8 +21953,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - class: mechanic
 - source: plugins/claude-kit/agents/implementer-sonnet.md:19
 - provenance: ddd6c72 2026-08-23, which shipped no JS or TS anchors at all because the kit has no house style with standing to own them.
-- verdict: retire
-- reason: row 289 merge. The same doctrine bullet's "and fall back to a generic pattern" carries it.
+- verdict: keep
+- reason: The fallback for every language the kit ships no style skill for; without it an agent outside C# and T-SQL has an outline rule and no method.
 - passage: For a language none covers, grep its declaration and section markers with line numbers, then read the range they name.
 
 ### C025
@@ -21961,8 +21962,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:19
 - provenance: ddd6c72 2026-08-23.
-- verdict: retire
-- reason: row 289 merge. The same bullet's "An outline never proves absence, so a symbol you did not find earns a whole-file search." carries it.
+- verdict: keep
+- reason: An outline never proves a symbol absent, and this is the duty that stops the outline rule from generating duplicate helpers; it fails silently when dropped.
 - passage: An outline never proves a symbol absent, so search the whole file before writing a helper you think is missing.
 
 ### C026
@@ -21970,8 +21971,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:19
 - provenance: ddd6c72 2026-08-23.
-- verdict: retire
-- reason: row 289 merge. The same bullet's generated-file sentence carries it.
+- verdict: keep
+- reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline is worthless there; the `<auto-generated>` marker is the recognizer that makes the rule actionable.
 - passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name where you have it, instead of outlining.
 
 ### C027
@@ -22006,7 +22007,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - landed: 2b427ac section 4
 - reason: The inline copy is a recorded decision: the agent holds neither the doctrine nor a skill, and "for a reader who never saw the work" is the operative test. Ruling 17's fourth pick drops the trailing parenthetical "(change-narrative goes in the commit message, not the code)" from every charter that carried it, the part of the sentence the fable ledger's C034 found no reason protecting; the exclusion list stands whole. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
-- passage: A comment states what the code does now, under the doctrine's rule that documents ship the current state.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C030
 - key: Make the build pass.
@@ -22033,7 +22034,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02: in a long autonomous run a qa-verifier backgrounded a long suite, ended its turn mid-gate and returned a report with no result, and the orchestrator had to nudge it and re-run.
 - verdict: keep
 - reason: Live incident class with no machinery behind it. 4d1bc30 states outright why the rule lives in the charter rather than the brief: subagents inherit the catalog, not the doctrine, and a brief is written fresh every dispatch. The wording was baseline-tested against a deliberately slow fake suite, old wording reproducing the strand and new wording holding.
-- passage: Run those gates in the foreground and stay in this turn until they exit, since DONE without the gate's real exit code is not DONE.
+- passage: Run those gates in the foreground and stay in this turn until they exit; if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C033
 - key: For a run that may exceed the 10-minute tool cap, redirect it to a log, background it with `&`, and poll the log or an exit-code file with an `until` loop in this same turn.
@@ -22042,7 +22043,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07, which named the shell-plus-poll pattern as the right lever after an agent reached for the wrong one.
 - verdict: keep
 - reason: The escape hatch that makes C032 obeyable on a long suite; without a stated alternative the foreground rule forces the very turn-end it bars.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: Run those gates in the foreground and stay in this turn until they exit; if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C034
 - key: Never background a gate with the Bash tool's `run_in_background` parameter; background it at the shell instead.
@@ -22051,7 +22053,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07, the kaizen note recording that all four implementers already barred ending a turn on a running gate and one stranded anyway, because it was obeying the tool.
 - verdict: keep
 - reason: No hook screens this parameter, so the sentence is the whole guard. Grep of plugins/claude-kit/hooks/ finds no reference to `run_in_background` anywhere.
-- passage: **Never use the Bash tool's `run_in_background` parameter.**
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 
 ### C035
 - key: Avoid `run_in_background` because it is defined to end your turn and re-invoke you when the command exits, converting a wait into a stop.
@@ -22060,15 +22062,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: This is the rationale that was the fix, not decoration on it. The bare prohibition was already in all four charters when the strand happened; naming what the parameter does is what turns a rule the agent reads into a lever it recognizes, and removing it restores the state that failed.
-- passage: It is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
 
 ### C036
 - key: Never end your turn with a gate still running.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:23
 - provenance: 4d1bc30 2026-07-02, the stranded-gate incident.
-- verdict: retire
-- reason: this is the stay-in-turn rule stated twice. The survivor is C032, "Run those gates in the foreground and stay in this turn until they exit".
+- verdict: keep
+- reason: The rule the whole verification step exists for; a wait is not a stop, and nothing mechanical distinguishes the two for the orchestrator reading the report.
 - passage: Never end your turn with a gate still running: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C037
@@ -22078,7 +22080,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 4d1bc30 2026-07-02.
 - verdict: keep
 - reason: The incident's own diagnosis, written into the charter by the commit that fixed it. The failure mode is an agent believing it can report later, which a bare "never end your turn" does not reach, and the wording carrying this clause is the one that passed the baseline test.
-- passage: since DONE without the gate's real exit code is not DONE.
+- passage: Never end your turn with a gate still running: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C038
 - key: Treat phrases like "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", or "ending my turn while the gate completes" as red flags that you are about to end the turn early.
@@ -22087,7 +22089,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07, which added the controller's red-flag phrasing to the step after prose alone had failed to hold an agent in-turn.
 - verdict: keep
 - reason: A recognizer, not an example set: it fires at the moment of composition, which is the only moment left before the turn ends. One carrier across the four charters is not enough, because no agent reads another's charter.
-- passage: If you are about to write "the tests are running, I will follow up", do not: poll the gate here and answer once.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes".
 
 ### C039
 - key: If you are about to write one of those red-flag sentences, do not: poll the gate here and answer once.
@@ -22096,7 +22098,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The act the recognizer triggers; separating the list from the act leaves each half inert.
-- passage: If you are about to write "the tests are running, I will follow up", do not: poll the gate here and answer once.
+- passage: If you are about to write one of these, do not. Poll the gate here and answer once.
 
 ### C040
 - key: Settle the test question your brief set: where the change earned a durable test, leave one and show it passing.
@@ -22606,7 +22608,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 20cf885 2026-07-03; the rule itself is the doctrine's, and ownership-map.md row 66 names the implementer charters as its carriers.
 - verdict: keep
 - reason: The enumeration of what a comment may never say (the session, the task, the fix, the prior version) is the operative half, and it reaches the agent only here.
-- passage: A comment states what the code does now, under the doctrine's rule that documents ship the current state.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C029
 - key: Run the gate commands from your brief and verify with evidence.
@@ -22634,7 +22636,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; an implementer agent ended its turn three times awaiting its own background suite and burned about an hour.
 - verdict: keep
 - reason: Incident-born, the class is still live, and nothing mechanical stops an agent ending a turn on a running gate.
-- passage: Run those gates in the foreground and stay in this turn until they exit, since DONE without the gate's real exit code is not DONE.
+- passage: Run those gates in the foreground and stay in this turn until they exit;
 
 ### C032
 - key: Where a run can exceed the 10-minute tool cap, background it and poll it to completion in the same turn with an `until` loop on the exit code or a completion marker.
@@ -22643,7 +22645,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The carve-out that makes the foreground rule executable against a real tool cap; without it the agent's only way past ten minutes is the parameter the next line bars.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C033
 - key: Background the run at the shell, never with the Bash tool's `run_in_background` parameter.
@@ -22652,7 +22654,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07, per kaizen/archive/2026-08-07-implementer-wait-is-not-a-stop.md: the agent was obeying a tool, so the fix named the lever rather than restating the outcome.
 - verdict: keep
 - reason: This sentence is the incident fix itself. The Bash tool still ships the parameter and still advertises it as a notification, so the class recurs on every dispatch.
-- passage: **Never use the Bash tool's `run_in_background` parameter.**
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 
 ### C034
 - key: Treat `run_in_background` as defined to end your turn and re-invoke you on exit, which converts a wait into a stop.
@@ -22661,7 +22663,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; the kaizen brief states that all four implementers already carried the outcome rule and that more prose saying the same thing would not have helped.
 - verdict: keep
 - reason: A rationale that stays because the rule cannot be obeyed without it. The agent is simultaneously reading a tool description that presents the parameter as a wait, and this clause is what overrules it.
-- passage: It is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
 
 ### C035
 - key: Redirect the run to a log, background it with `&`, then poll that log or an exit-code file with `until` in this turn.
@@ -22670,15 +22672,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; the kaizen brief required each charter to state the working mechanism concretely.
 - verdict: keep
 - reason: A haiku-tier agent cannot derive the recipe, and a rule that bars the only lever it knows without naming the replacement leaves it stuck.
-- passage: Where a run can exceed the 10-minute tool cap, redirect it to a log, background it with `&` at the shell, and poll that log or an exit-code file with an `until` loop.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C036
 - key: Never end your turn with a gate still running.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:22
 - provenance: 86461d1 2026-08-07 (the bar itself predates the incident and was found insufficient alone).
-- verdict: retire
-- reason: this is the stay-in-turn rule stated twice. The survivor is C031, "Run those gates in the foreground and stay in this turn until they exit".
+- verdict: keep
+- reason: Insufficient alone is not the same as surplus; the bar is what the named lever and the recipe serve, and it is the sentence the report is judged against.
 - passage: Never end your turn with a gate still running:
 
 ### C037
@@ -22688,7 +22690,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: States as a bar on the report what the sibling charter states as the reason behind the turn-end rule, so the two are not restatements. The orchestrator has no other way to tell a run from a claim.
-- passage: since DONE without the gate's real exit code is not DONE.
+- passage: and DONE without the gate's real exit code is not DONE.
 
 ### C038
 - key: Recognize as red flags phrases like "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", and "ending my turn while the gate completes".
@@ -22697,7 +22699,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07; the kaizen brief closes the fix with "the red-flag phrases an agent writes immediately before doing it".
 - verdict: keep
 - reason: Classed as example but operative: C039's rule fires at the moment one of these is about to be written, so the phrases are the recognition trigger and the rule has no trigger without them.
-- passage: If you are about to write "the tests are running, I will follow up", do not: poll the gate here and answer once.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes".
 
 ### C039
 - key: If you are about to write one of those red-flag phrases, stop, poll the gate here, and answer once.
@@ -22706,7 +22708,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The catch-yourself instruction the phrase list exists to arm; it is the last guard before the exact failure the incident produced.
-- passage: If you are about to write "the tests are running, I will follow up", do not: poll the gate here and answer once.
+- passage: If you are about to write one of these, do not. Poll the gate here and answer once.
 
 ### C040
 - key: Do not commit or stage; leave your changes as unstaged edits.
@@ -23252,8 +23254,8 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`). Amended on 202
 - class: rule
 - source: plugins/claude-kit/agents/qa-verifier.md:27
 - provenance: 9c062c5 2026-08-01.
-- verdict: retire
-- reason: shrink row 381 (Mutation disclosure and restore protocol). C035 carries the act: "Copy the file before any repair, and restore from that copy." A restore from the copy is never a rebuild from the transcript.
+- verdict: keep
+- reason: The bound is the mechanism, not decoration: the transcript shows rendered values and drops escaping, quoting and encoding, so a retyped restore reads correct and is wrong in bytes.
 - passage: Never rebuild a file from your transcript, which drops escaping, quoting and encoding.
 
 ### C037

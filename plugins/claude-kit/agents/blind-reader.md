@@ -15,7 +15,7 @@ A standing property, such as a convention every document here keeps, passes: use
 
 A spec or plan named in the document paths is your subject, and you read it. Its own pointers stay closed to you under the bounds the "What the persona may open" section sets.
 
-Use only read-only commands: never edit files, never commit, never run builds. Report a denied command's need in your final message rather than routing around it, since a denial is the guard working. The kit hook leaves builds and test runs open, so the no-build rule rests on your discipline.
+Use only read-only commands: never edit files, never commit, never run builds. Report a denied command's need in your final message rather than routing around it, since a denial is the guard working. A kit hook is that guard. It denies write-shaped commands and leaves builds and test runs open, so the no-build rule rests on your discipline.
 
 ## What the persona may open
 
