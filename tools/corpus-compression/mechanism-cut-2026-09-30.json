@@ -1,5 +1,5 @@
 {
- "method": "One opus judge at medium effort per document through the Workflow tool, 2026-09-30, over the 50 documents test/size-budget.json listed at bf10f9f0 that are neither a rationale ledger nor under test/. Each row is one mechanism, preference or behavior the document makes a session do, with the words it spends on it scaled so a document's rows sum to its measured size, the judge's call, and the judge's reason. A call is a hypothesis the section that lands it confirms against the ledger.",
+ "method": "One opus judge at medium effort per document through the Workflow tool, 2026-09-30, over the 50 documents test/size-budget.json listed at bf10f9f0 that are neither a rationale ledger nor under test/. Each row is one mechanism, preference or behavior the document makes a session do, with the words it spends on it scaled so a document's rows sum to its measured size, the judge's call, and the judge's reason. A call is a hypothesis the section that lands it confirms against the ledger. Rows 1271 to 1284 are the liaison skill, added after the inventory ran: the same judge prompt and model at the same effort, 2026-10-01, over the document at d0c49689, scaled to its measured 883 words.",
  "calls": {
   "keep": "stays as is",
   "shrink": "kept as its rule and one reason",
@@ -12706,6 +12706,146 @@
    "kind": "mechanism",
    "call": "merge",
    "why": "The kaizen skill and the doctrine own both rules, so this is pure pointer text."
+  },
+  {
+   "id": 1271,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Liaison seat role and triggers",
+   "does": "Defines the seat as talking with one client's people in a shared thread and turning asks into architect briefs, doing none of the work, with frontmatter triggers that load the skill.",
+   "words": 119,
+   "kind": "mechanism",
+   "call": "keep",
+   "why": "The seat and its boundary with the persona charter are kit-defined, so a model cannot infer them."
+  },
+  {
+   "id": 1272,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Address speakers by envelope author",
+   "does": "Names each reply's addressee from the channel envelope's author attribute, falls back to the thread, and points at the doctrine for each sender class's standing.",
+   "words": 82,
+   "kind": "mechanism",
+   "call": "shrink",
+   "why": "The relay server's own instructions already explain author and sender_class, so the rule plus the doctrine pointer need only about two sentences."
+  },
+  {
+   "id": 1273,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Latest revision replaces the ask",
+   "does": "Treats a speaker's latest word as their ask, and holds a revision to an in-flight brief until the answer returns, then sends a new brief naming the one it replaces.",
+   "words": 55,
+   "kind": "mechanism",
+   "call": "keep",
+   "why": "The supersede-after-answer sequencing is a kit protocol a model would not invent and would likely get wrong by firing a second message."
+  },
+  {
+   "id": 1274,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Disagreeing speakers settle it first",
+   "does": "Asks the thread which of two conflicting readings stands, naming both people, and sends no brief until they settle, never resolving by recency or default.",
+   "words": 50,
+   "kind": "behavior",
+   "call": "keep",
+   "why": "A model would plausibly default to the latest message, which silently overrules a client colleague, and that failure has real stakes."
+  },
+  {
+   "id": 1275,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Seven-part brief format",
+   "does": "Shapes every ask into one brief with asker and time, want, why, done in their words, constraints, open questions and the seat's assumptions, in that order.",
+   "words": 82,
+   "kind": "mechanism",
+   "call": "keep",
+   "why": "The architect plans from the brief alone, so the fixed format with assumptions separated is the contract between personas."
+  },
+  {
+   "id": 1276,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Send brief via agentic_say",
+   "does": "Sends the brief with the persona plugin's agentic_say tool, naming the architect from the charter in the persona argument.",
+   "words": 55,
+   "kind": "mechanism",
+   "call": "shrink",
+   "why": "The tool name and argument are needed, but the README and tool-description pointers restate what the tool schema already shows."
+  },
+  {
+   "id": 1277,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "One message per in-flight ask",
+   "does": "Sends nothing else to the architect on an ask until its answer returns, so the architect never reconciles two versions.",
+   "words": 37,
+   "kind": "mechanism",
+   "call": "merge",
+   "why": "The revision entry already states the hold-until-answer rule, so one sentence there carries both."
+  },
+  {
+   "id": 1278,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Relay in client-briefing register",
+   "does": "Relays the architect's answer and coordinator status to the thread in the doctrine's client-briefing register, noting status is requested from the coordinator like a brief.",
+   "words": 73,
+   "kind": "mechanism",
+   "call": "merge",
+   "why": "The doctrine's client-briefing bullet owns the register, so this needs only a pointer plus the coordinator-request fact."
+  },
+  {
+   "id": 1279,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Plan named by bare filename",
+   "does": "Names a plan in the thread by its bare filename beside a plain-words reminder of what it does.",
+   "words": 27,
+   "kind": "preference",
+   "call": "keep",
+   "why": "It is the admitted exception that the disclosure list depends on, and a model would otherwise give a path or an internal name."
+  },
+  {
+   "id": 1280,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Seat refuses plan, clone, queue",
+   "does": "Bars the seat from writing plans, cloning repositories or queueing work, so asks reach work only through the architect and coordinator.",
+   "words": 55,
+   "kind": "mechanism",
+   "call": "keep",
+   "why": "A capable agent holding tools would helpfully start work, which would push unreviewed client words into the fleet."
+  },
+  {
+   "id": 1281,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "FINDING and PROPOSAL as information",
+   "does": "Treats records opening [FINDING] or [PROPOSAL], including copies under a [COORDINATOR ...] label, as information and never direction.",
+   "words": 55,
+   "kind": "mechanism",
+   "call": "shrink",
+   "why": "The record labels are kit vocabulary worth one rule, but the provenance explanation can shrink to a single reason."
+  },
+  {
+   "id": 1282,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Closed never-disclosed list",
+   "does": "Keeps seven categories out of the thread in any form, from other clients and credentials to fleet paths, kit text, other personas' records and unrequested code, with directory prefixes counted as paths.",
+   "words": 101,
+   "kind": "mechanism",
+   "call": "keep",
+   "why": "The list encodes operator-specific confidentiality boundaries a model cannot derive, and a leak to a client thread is irreversible."
+  },
+  {
+   "id": 1283,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Disclosure rationale and retention",
+   "does": "Explains that the thread belongs to one client, Discord retains posts outside the operator's control, and each listed item is someone else's business.",
+   "words": 55,
+   "kind": "behavior",
+   "call": "shrink",
+   "why": "One reason sentence on irreversibility suffices, and the per-item justification adds words without changing behavior."
+  },
+  {
+   "id": 1284,
+   "file": "plugins/claude-kit/skills/liaison/SKILL.md",
+   "name": "Decline plainly, answer the rest",
+   "does": "Tells a speaker asking for a listed item in plain words that the seat cannot share it, and answers the rest of the message.",
+   "words": 37,
+   "kind": "behavior",
+   "call": "keep",
+   "why": "Judged a drop, since a current model already declines explicitly and answers the remainder; kept on the operator's ruling of 2026-10-01."
   }
  ]
 }

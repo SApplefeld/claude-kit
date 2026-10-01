@@ -39,7 +39,7 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30; the Discord broker's companion plan, `channels_client-sandbox_spec_v1.md` in the `discord-channels` repository, section 2, which puts `author` and `sender_class` on the delivered event.
 - verdict: keep
 - reason: Several people read every reply, and a reply naming nobody leaves each of them guessing whom it answers. The envelope's name is the one the broker delivered, so the seat never invents a form of address. An older broker delivers an event with no author, and the persona plugin's companion plan reads that as an empty name, so the seat answers the thread rather than guess at a person.
-- passage: Address each person by the name the envelope carries, the `<channel>` tag the relay wraps each thread message in. Where the broker sets them, the envelope names the author in its `author` attribute and the author's class in `sender_class`. Where the envelope names no author, address the reply to the thread.
+- passage: Address each person by the `author` attribute on the relay's `<channel>` envelope, and address the thread where it names no author, since several people read every reply.
 
 ### C004
 - key: Take the standing each sender class carries from the doctrine's relay bullet.
@@ -48,7 +48,7 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30.
 - verdict: keep
 - reason: The ownership map gives the doctrine's relay bullet the warranted-channel message's standing, and that bullet states the standing of each sender class. A second statement here would be a copy with no parity pin.
-- passage: The standing each class carries is the doctrine's to state, in its relay bullet opening "A relay message delivered inside a tool result takes the standing of its sender class" (`skills/operating-instructions/SKILL.md` under the kit plugin root).
+- passage: Each `sender_class` carries the standing stated in the doctrine's relay bullet opening "A relay message delivered inside a tool result takes the standing of its sender class" (`skills/operating-instructions/SKILL.md` under the kit plugin root).
 
 ### C005
 - key: Where one speaker revises their own ask, take their latest word as the ask, and hold a revision to an ask in flight until the answer returns, then send it as a new brief naming the one it replaces.
@@ -57,7 +57,7 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30; the persona plugin's companion plan, section 2, which states the same rule in the charter.
 - verdict: keep
 - reason: A person who changes their mind has replaced what they asked, so the brief follows the replacement. A revision to an ask already with the architect would otherwise meet C009's one-brief rule head on, so it waits for the answer and then goes as a new brief that names what it replaces, which keeps the architect holding one version at a time.
-- passage: Where one speaker revises their own ask, their latest word is the ask. A person who changes their mind has replaced what they asked, and the brief follows the replacement. A revision arriving while that ask's brief is with the architect waits for the answer, then goes to the architect as a new brief naming the one it replaces.
+- passage: Where one speaker revises their own ask, their latest word is the ask. While an ask's brief is with the architect, send nothing else on that ask, a revision included, until the answer returns. Then send the revision as a new brief naming the one it replaces.
 
 ### C006
 - key: Ask the thread which reading stands where two speakers disagree, hold the brief until they settle it, and never settle it by recency or by a default of the seat's own choosing.
@@ -84,15 +84,15 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30; the `agent_persona` repository's README, its tool reference for `agentic_say`; the persona plugin's companion plan, section 2, which splices the architect's name into the charter. Amended at the plan's finishing review on 2026-09-30: the settings-file lookup replaced by the charter's name.
 - verdict: keep
 - reason: The seat reaches the architect as a named persona, which is a route the persona plugin already delivers on, so no new route is needed. The tool's contract is the persona plugin's, so the skill names the one argument the seat must set and points for the rest. The tool's description comes first because a session holding the tool reads it without leaving its seat, and the README is where the contract is documented. The repository is named rather than given a path, since a checkout path differs from one install to the next and the name does not.
-- passage: Send the brief to the architect persona with the persona plugin's `agentic_say` tool, its `persona` argument naming the architect. The seat's charter gives the architect's name. The tool's own description states its other arguments, and the README of the `agent_persona` repository, the persona plugin's home, documents it.
+- passage: Send the brief with the persona plugin's `agentic_say` tool, its `persona` argument set to the architect's name from the seat's charter.
 
 ### C009
 - key: Send nothing else to the architect for an ask until its answer returns.
 - class: rule
 - source: plugins/claude-kit/skills/liaison/SKILL.md:34
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30.
-- verdict: keep
-- reason: A second message on an ask in flight hands the architect two versions to reconcile, without the thread in front of it to settle which one stands.
+- verdict: retire
+- reason: row 1277 (One message per in-flight ask), merged into C005, whose landed sentence "While an ask's brief is with the architect, send nothing else on that ask, a revision included, until the answer returns." carries the hold.
 - passage: Send nothing else to the architect for that ask until its answer returns.
 
 ### C010
@@ -102,7 +102,7 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30.
 - verdict: keep
 - reason: The section's third acceptance bullet has the relay rule point at the doctrine's client-briefing bullet rather than restate it, since the register has one owner and a restatement would drift from it. The sentence naming how both arrive tells the seat which records it relays, since both return by the same route the brief left on.
-- passage: Relay the architect's answer and the coordinator's status in the client-briefing register. Both return to the seat as records, the status answering a request the seat sends the coordinator persona the way it sends a brief. The doctrine's bullet leading "Write every decision ask to the client-briefing register", under How We Work in `skills/operating-instructions/SKILL.md` under the kit plugin root, owns that register.
+- passage: Relay the architect's answer and the coordinator's status in the client-briefing register. The seat requests that status from the coordinator persona the way it sends a brief. The doctrine's bullet leading "Write every decision ask to the client-briefing register", under How We Work in `skills/operating-instructions/SKILL.md` under the kit plugin root, owns that register.
 
 ### C011
 - key: Relay to the thread's readers as the outsider the client-briefing bullet writes for, and name a plan by its bare filename beside a plain-words reminder of what it does.
@@ -111,7 +111,7 @@ Written by `docs/plans/claude-kit_liaison-seat_spec_v1.md` section 1 on 2026-09-
 - provenance: docs/plans/claude-kit_liaison-seat_spec_v1.md section 1 2026-09-30.
 - verdict: keep
 - reason: The thread's readers can open no plan, no code and no record, which places them as the outsider the doctrine's client-briefing bullet writes for, so that bullet's rules bind every relay without being restated here. The plan-naming form is stated because the disclosure rule's filename sentence rests on it.
-- passage: The thread's readers can open no plan, no code and no record, which makes them the outsider that bullet writes for. Name a plan by its bare filename beside a plain-words reminder of what the plan does.
+- passage: Name a plan by its bare filename beside a plain-words reminder of what the plan does.
 
 ### C012
 - key: Write no plan, clone no repository and queue no work.

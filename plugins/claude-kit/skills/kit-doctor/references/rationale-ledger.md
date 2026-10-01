@@ -187,7 +187,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa; the doctor honesty plan (2026-09-23) narrowed it to the one temp file a failed signpost write leaves.
 - verdict: keep
 - reason: The doctor does all of this itself, but the sentence is the content of the ask C017 requires: nothing shows the operator what `-Fix` will write before the word is asked, so the prose is the informed consent. Keep the inventory in step with the doctor's section headers when a repair is added or removed. Finishing fix: the inventory gained the `autoCompactWindow` write into user `settings.json`, behind its own consent prompt, which the doctor's own header lists and the sentence had omitted.
-- passage: it prompts before installing anything. It repairs execution policy, memq shim wiring, the store's sync repo and allowlist, the local embedding stack, the kaizen signpost and git hooks on a clone, and `autoCompactWindow` in user `settings.json` behind its own prompt. It runs `memq db-sync` where the memory database step warns. It deletes only the temp file its own failed signpost write left.
+- passage: it prompts before installing anything. Its repairs include installing the local embedding stack and committing the store's sync through its gated allowlist. It runs `memq db-sync` unprompted where the memory database step warns. It deletes only the temp file its own failed signpost write left.
 
 ### C019
 - key: Use `-Fix -Yes` only when the operator says the run is unattended.
@@ -272,8 +272,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - landed: 3d2b3cd section 41
 - reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: the doctor prints the label `Doctrine import`, not "doctrine-freshness", and that label has four WARN branches (no import line, no doctrine file yet, installed copy differs, operating-instructions skill not found at the payload path), of which only the differs branch is the lag reading; the sentence names the label, bounds the reading to that branch, and says which of the other three print a remedy. The hook does the resync; the reading tells the session which remedy (a plugin update) precedes it.
 - proposed: A `Doctrine import` WARN reading that the installed copy differs from the payload's skill body usually means the installed plugin lags the clone (or the reverse); the doctrine-refresh hook resyncs on the next session once the plugin is current. No manual file copying. Its other three branches carry no such reading: a missing import line and a doctrine file not yet written each print their remedy on the line, and the branch that finds no operating-instructions skill at the payload path prints only that freshness cannot be verified.
-- passage: A `Doctrine import` WARN that the installed copy differs from the payload's skill body usually means the plugin lags the clone, or the reverse. The doctrine-refresh hook resyncs next session once the plugin is current.
-- passage: A missing import line or doctrine file prints its remedy, and a missing operating-instructions skill prints only that freshness cannot be verified.
+- passage: A `Doctrine import` WARN that the installed copy differs usually means the plugin lags the clone, or the reverse. The doctrine-refresh hook resyncs next session once the plugin is current.
 
 ### C027
 - key: Do not copy doctrine files manually.
@@ -372,8 +371,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03, the doctor's embedder section.
-- verdict: keep
-- reason: No finding. The line names the install location a session would otherwise have to find by hand.
+- verdict: retire
+- reason: row 833 (Embedder line semantics) shrink. The report line names the stack and its location. The act survives in "`memq shim` and `Embedder (semantic search)` name their remedy on the line.".
 - passage: `Embedder (semantic search)` reports `memq find`'s local embedding stack at `~\.claude\kit-embedder`.
 
 ### C038
@@ -383,7 +382,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - provenance: ec46854 2026-08-03 ("absent is an install and unusable is a repair, and an operator who cannot tell them apart runs the wrong command").
 - verdict: keep
 - reason: No finding. The two states were separated by design so the remedy named is the right one.
-- passage: `absent` means not installed, and `find` still works lexical-only. `unusable` means the model cache is missing or incomplete, a repair rather than a fresh install.
+- passage: With the embedder absent, `memq find` still works lexical-only.
 
 ### C039
 - key: Expect `-Fix` to install or repair the embedder after a consent prompt naming about 400 MB of disk cost.
@@ -395,15 +394,15 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - reason: The cost stays because through a tool shell the doctor's prompt never reaches the operator and the in-chat ask (C022) must carry it. The npm-not-on-PATH clause and the runtime aside leave safely because the doctor prints the npm case itself. Lands at line 35 (section 41's close) as "`-Fix` installs or repairs it after a consent prompt naming the real disk cost (about 400 MB).", the runtime parenthetical and the npm clause gone, the four keeps sharing the line untouched.
 - proposed: Keep "`-Fix` installs or repairs it after a consent prompt naming the real disk cost (about 400 MB)"; drop the platform-runtime parenthetical and the "never prompts when `npm` is not on PATH" clause.
 - baseline-test: yes
-- passage: `-Fix` installs or repairs it after a consent prompt naming the real disk cost (about 400 MB).
+- passage: Its install costs about 400 MB of disk, which `-Fix`'s consent prompt names.
 
 ### C040
 - key: Read the index-health lines (record count, model identity, age) as describing the derived search index without rebuilding or touching it.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03 ("a check that rebuilt the index would have changed the thing it was reporting on").
-- verdict: keep
-- reason: No finding. Tells a session the check is read-only, so a stale index reading is not mistaken for a repair the doctor performed.
+- verdict: retire
+- reason: row 833 (Embedder line semantics) shrink. The index-health lines are reference the report prints, and they change no act.
 - passage: The index-health lines (record count, model identity, age) describe the search index and never rebuild it.
 
 ### C041
@@ -420,8 +419,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - class: rule
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:39
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2.
-- verdict: keep
-- reason: No finding. The doctrine's run-the-real-thing rule applied to the doctor: a FIXED line is the fix's claim, and the re-run is the reading.
+- verdict: retire
+- reason: row 835 (Post-fix recheck and disclosure) merge. The owner is the doctrine's "Run the real thing before you call it done" (home/claude-kit-doctrine.md:99). The pointer is "After `-Fix`, re-run check mode under the doctrine's "Run the real thing before you call it done", and name what the fix changed on the machine under its "Name any shared or local state you altered outside the code".".
 - passage: After `-Fix`, re-run check mode and report which lines flipped.
 
 ### C043
@@ -429,8 +428,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - class: rule
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:39
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2.
-- verdict: keep
-- reason: No finding. The doctrine's name-what-you-changed-outside-the-code rule for the one kit command that writes machine state.
+- verdict: retire
+- reason: row 835 (Post-fix recheck and disclosure) merge. The owner is the doctrine's "Name any shared or local state you altered outside the code" (home/claude-kit-doctrine.md:163). The pointer is the same sentence as for C042.
 - passage: Name in one line each what the fix changed on the machine, such as PATH, execution policy or installed software.
 
 ### C044
@@ -440,15 +439,15 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. States the doctor's three-way verdict at the point a session picks which path's report to trust, ahead of the per-check INFO readings C045 to C047 carry.
-- passage: A clone run also reads the installed copy on the memq shim, `Memory sync` and embedder steps. Where the machine matches the installed copy and not the clone, those report INFO reading `trails the checkout in hand`, and `-Fix` from the clone installs nothing there.
+- passage: On a clone run, an INFO reading `trails the checkout in hand` means the machine matches the installed copy, and `-Fix` from the clone changes nothing there.
 
 ### C045
 - key: Read a `Memory sync` INFO as the allowlist matching the installed copy and not the clone, with `-Fix` from that clone leaving the store as found since the installed copy's doctor commits pending memories.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:34
 - provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
-- verdict: keep
-- reason: No finding. The trailing reading is the state a fix pass run from the clone must not treat as the drift FAIL C034 covers, so the operator does not run an install a healthy machine does not need.
+- verdict: retire
+- reason: merged into C044's sentence, which is the same trailing rule stated for every clone-run step (row 823 shrink). Its separate `Memory sync` INFO passage and the "matching neither copy is the drift FAIL" sentence go. The drift FAIL remains under C034.
 - passage: INFO means the allowlist matches the installed copy, and `-Fix` from the clone then leaves the store as found.
 - passage: Where the machine matches the installed copy and not the clone, those report INFO reading `trails the checkout in hand`, and `-Fix` from the clone installs nothing there.
 
@@ -457,8 +456,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
 - provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
-- verdict: keep
-- reason: No finding. Parallels C045 for the shim's own drift FAIL; the not-running exclusion keeps a shim that never resolves from misreading as a healthy trailing machine.
+- verdict: retire
+- reason: row 832 (memq shim line semantics) shrink. Its trailing-INFO act is carried by C044's sentence. The not-running exclusion is reported on the shim line itself, and the line names its remedy.
 - passage: A shim that does not run never reads as trailing, since it is healthy for no copy.
 - passage: Where the machine matches the installed copy and not the clone, those report INFO reading `trails the checkout in hand`, and `-Fix` from the clone installs nothing there.
 
@@ -469,4 +468,4 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted
 - provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. Keeps a session from offering the roughly 400 MB install C039 names when the installed copy already carries a usable stack.
-- passage: Where the machine matches the installed copy and not the clone, those report INFO reading `trails the checkout in hand`, and `-Fix` from the clone installs nothing there.
+- passage: On a clone run, an INFO reading `trails the checkout in hand` means the machine matches the installed copy, and `-Fix` from the clone changes nothing there.

@@ -5688,13 +5688,11 @@ const INTEGRATION_EXEMPT = [
     ['skills/brainstorming/SKILL.md', 'land it on main and leave no mess',
         'names the commit model for a plan header; the push it describes is '
         + 'executing-work step 7\'s, which names that push\'s lane where it happens'],
-    ['skills/branch-hygiene/SKILL.md', 'Branch fresh from the current integration ref',
+    ['skills/branch-hygiene/SKILL.md', 'Bring the commits over',
         'the stranded-recovery path\'s gate is an open operator decision in '
         + 'docs/backlog.md: a cherry-pick onto a fresh base produces a tree '
         + 'neither parent had, and whether that is the cadence\'s merge moment '
         + 'is a change to the cadence rather than a carrier repair'],
-    ['skills/branch-hygiene/SKILL.md', 'Bring the commits over',
-        'same recovery path, same open decision'],
     ['skills/branch-hygiene/SKILL.md', 'Push the recovery branch',
         'same recovery path; the push lands on a recovery branch rather than on '
         + 'an install-surface trunk, so only the cherry-pick\'s own status is open'],
