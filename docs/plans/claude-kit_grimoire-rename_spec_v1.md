@@ -295,3 +295,10 @@ for (const f of fs.readFileSync(0, 'latin1').split('\0').filter(Boolean)) {
 }
 console.log('changed', changed);
 ```
+
+### Interim board 3 - 2026-10-02
+Stage: finishing pass, step 1. Section 2 closed in Chapter 2 at 1ef16fae. origin/main (14 commits since 3551ed71, all under docs/) merged at ccacc36b: two additive conflicts kept both lines (docs/README.md index entry, docs/backlog.md item), then the rename sweep changed one file, the coordinator follow-through plan's Files in scope lines, and a second run changed none. Finishing base ref: df873018, the merge-base with main.
+Live dispatches: the qa-verifier, asked for build.ps1, the whole suite `node --test test/*.test.js`, every acceptance criterion in both sections with the amended forms, and a hand run on a temporary home; this repository defines no contention lane (docs/architecture.md:21). Capacity reading before the fable wave: "fable capacity: scoped 74%, 7d 69%, 5h 8% -> dispatch".
+Gate baseline: whole suite at e4a41a62, 4370/4359/1, skipped 10, exit 1 (the linked-worktree sidecar test).
+Rulings since the last boundary: none in the finishing pass yet.
+Next: on QA's pass, one Workflow wave at fable/high carrying the security, performance and adversarial lenses over df873018..HEAD; then the goal read (scope adjudicator at fable); then the docs-curator; then step 6's final Chapter, archive and handoff gate; then PR #177 ready with auto-merge armed.
