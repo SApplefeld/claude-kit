@@ -11,7 +11,7 @@ The kit's self-improvement backlog. Captured friction with the kit becomes notes
 - `briefs/` holds one file per brief a reflect pass produces.
 - `archive/` holds applied briefs, moved out of `briefs/` in the same commit that applied them, so the pending predicate stays clean.
 
-Notes and briefs are tracked and pushed by git: that is the sync. The machine-local pointer that tells capture where this clone lives is the signpost at `~/.claude/claude-kit.local.json`, written by setup, and is never committed.
+Notes and briefs are tracked and pushed by git: that is the sync. The machine-local pointer that tells capture where this clone lives is the signpost at `~/.claude/grimoire.local.json`, written by setup, and is never committed.
 
 ## Pending predicate
 

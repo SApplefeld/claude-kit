@@ -13,14 +13,14 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/design-council/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/design-council/SKILL.md
   - name: doctrine-plus-design-council
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/design-council/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/design-council/SKILL.md
 ---
 # The council's last round ends with two of three members on one side
 

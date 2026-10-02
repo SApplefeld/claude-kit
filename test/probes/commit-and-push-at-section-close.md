@@ -13,20 +13,20 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/skills/curating-docs/SKILL.md
-      - plugins/claude-kit/skills/role/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/curating-docs/SKILL.md
+      - plugins/grimoire/skills/role/SKILL.md
   - name: doctrine-plus-executing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
   - name: doctrine-plus-output-style
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
 ---
 # A section closes on a plan whose header reads Commit-and-Push
 

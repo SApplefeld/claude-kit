@@ -1,5 +1,5 @@
 // Tests for the shared output-channel renderer in
-// plugins/claude-kit/hooks/kit-compact-lib.js: sanitizeForOutput, displayPath,
+// plugins/grimoire/hooks/kit-compact-lib.js: sanitizeForOutput, displayPath,
 // scrub, scrubAfterStrip and homeElisionsKnown, the five exports every writer
 // into a channel a model reads goes through.
 //
@@ -27,8 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
-const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-checkpoint.js');
+const LIB = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
+const CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-checkpoint.js');
 
 // The fixture account name, deliberately a string that appears nowhere in a
 // temp directory's own path on any box this suite runs on. The operator's real
@@ -416,8 +416,8 @@ const RENDERER_PARTS = ['printableAscii', 'sanitizeForOutput', 'displayPath', 'h
 // the renderer could appear in.
 function pluginSources() {
     const roots = [
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks'),
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts')
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks'),
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts')
     ];
     const files = [];
     const walk = (dir) => {
@@ -500,8 +500,8 @@ test('renderer: it is defined in the shared library and in no other plugin sourc
 
 // --- The CLIs that write into a model-read channel ------------------------
 
-const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
-const STAMP_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-registry-stamp.js');
+const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal.js');
+const STAMP_CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-registry-stamp.js');
 
 // Refuse the require of a kit library outright, which is what a damaged or
 // partially written plugin cache does to these CLIs. The shim runs before the

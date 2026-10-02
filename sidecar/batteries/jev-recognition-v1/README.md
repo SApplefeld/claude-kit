@@ -42,4 +42,4 @@ MOCK=1 node sidecar/batteries/jev-recognition-v1/run.js
 
 WHERE THE DATA GOES. A live run sends every situation's text, and each candidate record's name, description and status, off this machine to the vendor's endpoint. Record bodies are never sent. `docs/security-model.md` states what the vendor holds and on what terms. Stage 1 runs on the memory database host through the kit's own client, and it sends each situation's text to the host's embedder.
 
-This directory does not ship with the kit plugin, since `sidecar/` sits outside `plugins/claude-kit/`.
+This directory does not ship with the kit plugin, since `sidecar/` sits outside `plugins/grimoire/`.

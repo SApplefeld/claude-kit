@@ -40,7 +40,7 @@ const {
 // the repository under question and strips every GIT_* variable out of the
 // child environment. The one call below passes a fixed argument array with
 // nothing from a probe file in it.
-const { gitOutput } = require('../plugins/claude-kit/hooks/kit-git-lib.js');
+const { gitOutput } = require('../plugins/grimoire/hooks/kit-git-lib.js');
 
 const REPO = path.join(__dirname, '..');
 const PROBES_DIR = path.join(__dirname, 'probes');
@@ -126,7 +126,7 @@ function statOf(abs) {
 // Every file entry in `probe` that a run could not hand a reader, and every
 // `home/` entry that is absent on this box. Two rules decide a repo entry: it
 // resolves to a regular file, which a directory entry fails (the parser reads no
-// file system, so `plugins/claude-kit/skills` is a path it passes), and the git
+// file system, so `plugins/grimoire/skills` is a path it passes), and the git
 // index carries it in that spelling, which an untracked file and a mis-cased
 // entry both fail and which is asked only where the listing was taken. The home
 // absence is the only permitted one: a home file has no git ref behind it and a
@@ -240,9 +240,9 @@ test('the git listing the shape pin reads was taken', () => {
 test('the shape-file predicate speaks when a file is absent, is a directory, or is mis-cased', (t) => {
     const probe = {
         shapes: [
-            { name: 'present', files: ['plugins/claude-kit/output-styles/kit.md'] },
-            { name: 'absent', files: ['plugins/claude-kit/skills/' + 'no-such-skill-' + process.pid + '/SKILL.md'] },
-            { name: 'directory', files: ['plugins/claude-kit/output-styles'] }
+            { name: 'present', files: ['plugins/grimoire/output-styles/kit.md'] },
+            { name: 'absent', files: ['plugins/grimoire/skills/' + 'no-such-skill-' + process.pid + '/SKILL.md'] },
+            { name: 'directory', files: ['plugins/grimoire/output-styles'] }
         ]
     };
     const { missing, skipped } = shapeFileReadings(probe);
@@ -257,7 +257,7 @@ test('the shape-file predicate speaks when a file is absent, is a directory, or 
         return;
     }
     const cased = shapeFileReadings({
-        shapes: [{ name: 'mis-cased', files: ['plugins/claude-kit/output-styles/KIT.md'] }]
+        shapes: [{ name: 'mis-cased', files: ['plugins/grimoire/output-styles/KIT.md'] }]
     });
     assert.deepStrictEqual(cased.missing.map((entry) => entry.shape), ['mis-cased'],
         'the mis-cased control went unreported: ' + JSON.stringify(cased.missing));
@@ -279,8 +279,8 @@ test('an absent home/ entry is reported as a skip with its reason, not as a miss
 // entries sit under the plugin root because that is one of the two roots a
 // shape may name; they need not exist, since this module reads no filesystem
 // for `files`.
-const FILE_A = 'plugins/claude-kit/one.md';
-const FILE_B = 'plugins/claude-kit/two.md';
+const FILE_A = 'plugins/grimoire/one.md';
+const FILE_B = 'plugins/grimoire/two.md';
 
 const BASE = [
     '---',
@@ -518,7 +518,7 @@ test('a file entry reaching out of the tree is refused', () => {
 });
 
 test('a file entry naming a directory is refused', () => {
-    assert.match(refusal(withLine('      - ' + FILE_B, '      - plugins/claude-kit/skills/')), /names a file rather than a directory/);
+    assert.match(refusal(withLine('      - ' + FILE_B, '      - plugins/grimoire/skills/')), /names a file rather than a directory/);
 });
 
 // The allowlist, driven from the far side: each of these is a path a run would
@@ -529,7 +529,7 @@ test('a file entry naming a directory is refused', () => {
 test('a file entry outside the plugin root and the home markdown files is refused', () => {
     for (const entry of ['.git/config', '.env', 'docs/plans/acme_search-index_spec_v1.md', 'tools/probe-corpus/run.mjs']) {
         assert.match(refusal(withLine('      - ' + FILE_B, '      - ' + entry)),
-            /a file entry sits under "plugins\/claude-kit\/" or names a `home\/<name>\.md` file under ~\/\.claude/,
+            /a file entry sits under "plugins\/grimoire\/" or names a `home\/<name>\.md` file under ~\/\.claude/,
             'the entry ' + entry + ' was not refused by the two-roots rule');
     }
 });
@@ -552,10 +552,10 @@ test('a bare `home/` is refused by the directory rule, ahead of the home/ rule',
 // strings.
 test('a file entry carrying a `.` or an empty path segment is refused', () => {
     for (const entry of [
-        'plugins/claude-kit/./skills/role/SKILL.md',
-        'plugins/claude-kit//skills/role/SKILL.md',
+        'plugins/grimoire/./skills/role/SKILL.md',
+        'plugins/grimoire//skills/role/SKILL.md',
         'home/./CLAUDE.md',
-        './plugins/claude-kit/one.md'
+        './plugins/grimoire/one.md'
     ]) {
         assert.match(refusal(withLine('      - ' + FILE_B, '      - ' + entry)),
             /carries no `\.` or empty path segment/,
@@ -565,18 +565,18 @@ test('a file entry carrying a `.` or an empty path segment is refused', () => {
 
 test('the two roots a shape may name still parse', () => {
     const probe = parseProbeFile(
-        withLine('      - ' + FILE_B, '      - plugins/claude-kit/skills/role/SKILL.md\n      - home/CLAUDE.md'),
+        withLine('      - ' + FILE_B, '      - plugins/grimoire/skills/role/SKILL.md\n      - home/CLAUDE.md'),
         { path: 'probe.md' }
     );
     assert.deepStrictEqual(probe.shapes[0].files, [
         FILE_A,
-        'plugins/claude-kit/skills/role/SKILL.md',
+        'plugins/grimoire/skills/role/SKILL.md',
         'home/CLAUDE.md'
     ]);
 });
 
 test('a file entry repeated inside one shape is refused', () => {
-    assert.match(refusal(withLine('      - ' + FILE_B, '      - ' + FILE_A)), /names "plugins\/claude-kit\/one\.md" twice/);
+    assert.match(refusal(withLine('      - ' + FILE_B, '      - ' + FILE_A)), /names "plugins\/grimoire\/one\.md" twice/);
 });
 
 test('a `#` inside a list entry is refused rather than truncated', () => {
@@ -696,7 +696,7 @@ test('the parser exports the three closed sets whole', () => {
 // decides where a shape's file entry resolves, and a root spelled a second time
 // there is a second allowlist that can drift from the one the parser enforces.
 test('the parser exports the two roots a shape may name', () => {
-    assert.strictEqual(PLUGIN_PREFIX, 'plugins/claude-kit/');
+    assert.strictEqual(PLUGIN_PREFIX, 'plugins/grimoire/');
     assert.ok(HOME_ENTRY instanceof RegExp, 'HOME_ENTRY is not a regular expression');
     assert.ok(HOME_ENTRY.test('home/CLAUDE.md'), 'HOME_ENTRY refuses a markdown file directly under ~/.claude');
     assert.ok(!HOME_ENTRY.test('home/projects/x.md'), 'HOME_ENTRY admits a path below ~/.claude');

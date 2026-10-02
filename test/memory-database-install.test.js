@@ -1,5 +1,5 @@
 // Tests for the memory database installer,
-// plugins/claude-kit/db/Install-MemoryDatabase.ps1, and the schema, procedures
+// plugins/grimoire/db/Install-MemoryDatabase.ps1, and the schema, procedures
 // and role model it applies.
 //
 // Node's built-in test runner, no framework, no install (Node v24). The
@@ -48,10 +48,10 @@ const os = require('os');
 const crypto = require('crypto');
 
 const REPO = path.join(__dirname, '..');
-const DB_DIR = path.join(REPO, 'plugins', 'claude-kit', 'db');
+const DB_DIR = path.join(REPO, 'plugins', 'grimoire', 'db');
 // The publisher itself, for the one case that drives its real transport
 // against the run's database rather than against a fake.
-const client = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
+const client = require(path.join(REPO, 'plugins', 'grimoire', 'scripts', 'memory-database.js'));
 const INSTALLER = path.join(DB_DIR, 'Install-MemoryDatabase.ps1');
 // The schema version the installer carries, read off the installer itself. The
 // number moves whenever a script changes a shape a client reads, and a copy of
@@ -263,7 +263,7 @@ test('the client gates on the schema version the installer actually writes', () 
 test('both shipped procedures project the distance key the client ranks on', () => {
     for (const file of ['100-usp_Search.sql', '110-usp_Nearest.sql']) {
         const src = fs.readFileSync(
-            path.join(REPO, 'plugins', 'claude-kit', 'db', 'Procedures', file), 'utf8');
+            path.join(REPO, 'plugins', 'grimoire', 'db', 'Procedures', file), 'utf8');
         // Comments are stripped first because both files describe the key in
         // prose, and a sweep that reads its own documentation is a sweep that
         // cannot fail.
@@ -295,7 +295,7 @@ test('both shipped procedures project the distance key the client ranks on', () 
 // documentation cannot fail.
 test('the nearest-neighbour procedure withholds retired records unless asked, and labels every row it serves', () => {
     const src = fs.readFileSync(
-        path.join(REPO, 'plugins', 'claude-kit', 'db', 'Procedures', '110-usp_Nearest.sql'), 'utf8');
+        path.join(REPO, 'plugins', 'grimoire', 'db', 'Procedures', '110-usp_Nearest.sql'), 'utf8');
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
     assert.match(code, /,\s*@p_IncludeArchived\s+BIT\s*=\s*0\s/,
         'usp_Nearest must default @p_IncludeArchived to 0; the callers that do not ask'
@@ -1249,8 +1249,8 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         // no hits, since the real ones load an embedder and sweep this machine's
         // own store. What is left is the host's answer and the printer.
         await t.test('live lane: the neighbours block counts a retired shared duplicate and never lists it', async () => {
-            const memq = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memq.js'));
-            const mi = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-index.js'));
+            const memq = require(path.join(REPO, 'plugins', 'grimoire', 'scripts', 'memq.js'));
+            const mi = require(path.join(REPO, 'plugins', 'grimoire', 'scripts', 'memory-index.js'));
             const clientConfig = {
                 server: SERVER, database: dbName, login: '', password: '',
                 timeoutMs: 30000, windowsAuth: true, trustServerCertificate: true,

@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/docs-write-guard.js (the docs/ write guard).
+// Tests for plugins/grimoire/hooks/docs-write-guard.js (the docs/ write guard).
 //
 // Node's built-in test runner, no framework (Node v24). The guard is spawned as
 // a real child process, fed a PreToolUse payload on stdin, and asserted on by
@@ -16,7 +16,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'docs-write-guard.js');
+const GUARD = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'docs-write-guard.js');
 
 function runGuard(payload) {
     return spawnSync(process.execPath, [GUARD], {
@@ -54,11 +54,11 @@ test('bare "claude" matches case-insensitively (fail-open direction)', () => {
 
 test('docs-curator may write docs/, including plugin-namespaced', () => {
     assert.strictEqual(runGuard(writePayload('docs-curator', DOCS_PATH)).status, 0);
-    assert.strictEqual(runGuard(writePayload('claude-kit:docs-curator', DOCS_PATH)).status, 0);
+    assert.strictEqual(runGuard(writePayload('grimoire:docs-curator', DOCS_PATH)).status, 0);
 });
 
 test('governed named agents are denied docs/ writes', () => {
-    for (const t of ['claude-kit:adversarial-reviewer', 'claude-kit:implementer-opus', 'general-purpose', 'Explore']) {
+    for (const t of ['grimoire:adversarial-reviewer', 'grimoire:implementer-opus', 'general-purpose', 'Explore']) {
         const r = runGuard(writePayload(t, DOCS_PATH));
         assert.strictEqual(r.status, 2, `expected deny for agent type ${t}`);
         assert.match(r.stderr, /may not write into docs\//);
@@ -70,7 +70,7 @@ test('a type planted under the bare `type` spelling alone is judged, not passed 
     // library's reader. A guard still reading its own four-spelling chain
     // allows here, since none of `agent_type`/`agentType`/`subagent_type`/
     // `subagentType` is present.
-    const p = { tool_name: 'Write', tool_input: { file_path: DOCS_PATH }, type: 'claude-kit:implementer-opus' };
+    const p = { tool_name: 'Write', tool_input: { file_path: DOCS_PATH }, type: 'grimoire:implementer-opus' };
     const r = runGuard(p);
     assert.strictEqual(r.status, 2, 'expected deny for a type planted only under `type`');
     assert.match(r.stderr, /may not write into docs\//);
@@ -87,7 +87,7 @@ test('a classifier library missing its export allows the write and names the gap
         fs.writeFileSync(path.join(dir, 'kit-agent-identity-lib.js'),
             "'use strict';\nmodule.exports = { agentIdentity: () => null };\n", 'utf8');
         const res = spawnSync(process.execPath, [path.join(dir, 'docs-write-guard.js')], {
-            input: JSON.stringify(writePayload('claude-kit:implementer-opus', DOCS_PATH)),
+            input: JSON.stringify(writePayload('grimoire:implementer-opus', DOCS_PATH)),
             encoding: 'utf8'
         });
         assert.strictEqual(res.status, 0,
@@ -102,7 +102,7 @@ test('a classifier library missing its export allows the write and names the gap
     // The control, withheld from the stub above: the same payload against the
     // library as shipped denies, so the allow is the missing export rather than
     // a payload the guard was never going to judge.
-    assert.strictEqual(runGuard(writePayload('claude-kit:implementer-opus', DOCS_PATH)).status, 2);
+    assert.strictEqual(runGuard(writePayload('grimoire:implementer-opus', DOCS_PATH)).status, 2);
 });
 
 test('a namespaced id ending in "claude" does not ride the bare-claude allowance', () => {
@@ -111,14 +111,14 @@ test('a namespaced id ending in "claude" does not ride the bare-claude allowance
 });
 
 test('governed agents may still write outside docs/', () => {
-    const r = runGuard(writePayload('claude-kit:implementer-opus', 'D:\\repo\\.kit\\report.md'));
+    const r = runGuard(writePayload('grimoire:implementer-opus', 'D:\\repo\\.kit\\report.md'));
     assert.strictEqual(r.status, 0);
 });
 
 test('governed agents are denied shell redirects into docs/', () => {
     const r = runGuard({
         tool_name: 'Bash',
-        agent_type: 'claude-kit:implementer-opus',
+        agent_type: 'grimoire:implementer-opus',
         tool_input: { command: 'echo hi > docs/notes.md' },
     });
     assert.strictEqual(r.status, 2);
@@ -148,7 +148,7 @@ test('with a cwd, an absolute docs/ path outside the project tree is allowed', (
         const target = path.join(base, 'scratch', 'docs', 'plans', 'report.md');
         const r = runGuard({
             tool_name: 'Write',
-            agent_type: 'claude-kit:qa-verifier',
+            agent_type: 'grimoire:qa-verifier',
             cwd: repo,
             tool_input: { file_path: target },
         });
@@ -162,7 +162,7 @@ test('with a cwd, in-tree docs/ writes are still denied, absolute and relative',
         for (const fp of [path.join(repo, 'docs', 'plans', 'x.md'), 'docs/plans/x.md']) {
             const r = runGuard({
                 tool_name: 'Write',
-                agent_type: 'claude-kit:qa-verifier',
+                agent_type: 'grimoire:qa-verifier',
                 cwd: repo,
                 tool_input: { file_path: fp },
             });
@@ -177,14 +177,14 @@ test('with a cwd, a shell redirect to an out-of-tree docs/ path is allowed, an i
         const outPath = path.join(base, 'scratch', 'docs', 'notes.md').replace(/\\/g, '/');
         const out = runGuard({
             tool_name: 'Bash',
-            agent_type: 'claude-kit:implementer-opus',
+            agent_type: 'grimoire:implementer-opus',
             cwd: repo,
             tool_input: { command: 'echo hi > ' + outPath },
         });
         assert.strictEqual(out.status, 0, out.stderr);
         const inTree = runGuard({
             tool_name: 'Bash',
-            agent_type: 'claude-kit:implementer-opus',
+            agent_type: 'grimoire:implementer-opus',
             cwd: repo,
             tool_input: { command: 'echo hi > docs/notes.md' },
         });

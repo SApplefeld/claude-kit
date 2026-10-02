@@ -1,4 +1,4 @@
-// Every skill under plugins/claude-kit/skills/ that carries a
+// Every skill under plugins/grimoire/skills/ that carries a
 // references/rationale-ledger.md opens it with one preamble: the purpose
 // paragraph, the entry-format paragraph, and the authoring paragraph that
 // carries the ledger-authoring lessons. The copies are meant to be identical
@@ -28,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SKILLS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills');
+const SKILLS = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills');
 const SOURCE_SKILL = 'executing-work';
 
 // The authoring paragraph is found by its opening sentence rather than by its
@@ -58,7 +58,7 @@ function ledgers() {
     return fs.readdirSync(SKILLS).sort()
         .map((skill) => ({
             skill,
-            rel: 'plugins/claude-kit/skills/' + skill + '/references/rationale-ledger.md',
+            rel: 'plugins/grimoire/skills/' + skill + '/references/rationale-ledger.md',
             file: path.join(SKILLS, skill, 'references', 'rationale-ledger.md'),
         }))
         .filter((l) => fs.existsSync(l.file));
@@ -210,7 +210,7 @@ test('a drifted authoring paragraph is reported with its file and the first diff
     assert.notStrictEqual(drifted, paragraph, 'the control found no "verdict" to alter, so '
         + 'it can prove nothing about the report');
     assert.throws(
-        () => assertParity('plugins/claude-kit/skills/example/references/rationale-ledger.md',
+        () => assertParity('plugins/grimoire/skills/example/references/rationale-ledger.md',
             'example', 'authoring paragraph', canonical(paragraph, SOURCE_SKILL),
             canonical(drifted, 'example')),
         (err) => /skills\/example\/references\/rationale-ledger\.md: the authoring paragraph differs/.test(err.message)

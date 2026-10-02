@@ -37,7 +37,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const isWin = process.platform === 'win32';
 // The drifted store is a git repository, and the doctor itself reports WARN
 // and never prompts where git is absent, so this case skips there too.
@@ -56,7 +56,7 @@ function rmDir(dir) {
 }
 
 // The temp root holds a home and a payload copy. The payload's leaf is not
-// "claude-kit" and its parent is not "plugins", which is what the doctor's
+// "grimoire" and its parent is not "plugins", which is what the doctor's
 // clone test reads.
 function makeSandbox() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'doctor-consent-'));

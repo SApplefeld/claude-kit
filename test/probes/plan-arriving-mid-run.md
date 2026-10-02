@@ -13,16 +13,16 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/skills/peer-sessions/SKILL.md
-      - plugins/claude-kit/skills/kit-goal/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/peer-sessions/SKILL.md
+      - plugins/grimoire/skills/kit-goal/SKILL.md
   - name: doctrine-plus-executing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
 ---
 # A second plan arrives while a leashed run is mid-section
 

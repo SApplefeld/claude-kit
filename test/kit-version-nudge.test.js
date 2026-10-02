@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-version-nudge.js (the SessionStart
+// Tests for plugins/grimoire/hooks/kit-version-nudge.js (the SessionStart
 // build-drift warning).
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-version-nudge.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-version-nudge.js');
 
 function makeDir(prefix) {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -31,7 +31,7 @@ function rmDir(dir) {
 function stamp(root, hash) {
     fs.mkdirSync(path.join(root, '.claude-plugin'), { recursive: true });
     fs.writeFileSync(path.join(root, '.claude-plugin', 'build-info.json'),
-        JSON.stringify({ name: 'claude-kit', hash, dirty: false }), 'utf8');
+        JSON.stringify({ name: 'grimoire', hash, dirty: false }), 'utf8');
 }
 
 // process.env is spread rather than rebuilt so the child keeps its real PATH
@@ -74,7 +74,7 @@ test('a session that meets a newer installed build is nudged to restart', () => 
     assert.strictEqual(first.status, 0);
     assert.strictEqual(first.stdout, '', 'the first sighting pins the build and stays silent');
     assert.strictEqual(second.status, 0);
-    assert.match(second.stdout, /claude-kit version drift/);
+    assert.match(second.stdout, /grimoire version drift/);
     assert.match(second.stdout, /aaaaaaa/);
     assert.match(second.stdout, /bbbbbbb/);
 });
@@ -109,5 +109,5 @@ test('under KIT_EXTERNAL_ENGINE build drift draws no nudge', () => {
 test('a marker value other than 1 leaves the drift warning live', () => {
     const { second } = driftRun({ KIT_EXTERNAL_ENGINE: '0' });
     assert.strictEqual(second.status, 0);
-    assert.match(second.stdout, /claude-kit version drift/);
+    assert.match(second.stdout, /grimoire version drift/);
 });

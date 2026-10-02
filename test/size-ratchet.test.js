@@ -1,11 +1,11 @@
-// The kit's size ratchet: tests for plugins/claude-kit/scripts/kit-size.js and
+// The kit's size ratchet: tests for plugins/grimoire/scripts/kit-size.js and
 // the gate over test/size-budget.json.
 //
 // Node's built-in test runner, no framework. Two subjects sit here rather than
 // one. The ratchet itself is the gate: every tracked file under the script's six
 // measured roots is measured against its committed cap, so growth past a cap is a
 // red rather than a thing somebody notices at an audit. Those roots are the
-// skills, agents and output-styles directories under plugins/claude-kit/, the
+// skills, agents and output-styles directories under plugins/grimoire/, the
 // markdown files directly under home/, test/probes/, and test/; a tracked file
 // outside them is unmeasured and this gate says nothing about it. The script's failure
 // reasons are the second subject, and each is driven separately, because a gate
@@ -63,13 +63,13 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const SCRIPT = path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'kit-size.js');
+const SCRIPT = path.join(REPO, 'plugins', 'grimoire', 'scripts', 'kit-size.js');
 const BUDGET = path.join(REPO, 'test', 'size-budget.json');
 const kit = require(SCRIPT);
 // The shared git runner, required here for the one case whose subject is its
 // output ceiling: the report's HEAD read is designed around that ceiling, so the
 // ceiling's own semantic is pinned rather than assumed.
-const { gitOutput, gitChildEnv, MAX_OUTPUT_BYTES } = require(path.join(REPO, 'plugins', 'claude-kit', 'hooks', 'kit-git-lib.js'));
+const { gitOutput, gitChildEnv, MAX_OUTPUT_BYTES } = require(path.join(REPO, 'plugins', 'grimoire', 'hooks', 'kit-git-lib.js'));
 
 // A directory holding no git configuration and no exclusions file, built once per
 // process. It is where every git invocation in this file, spawned or in-process,
@@ -208,11 +208,11 @@ function fixtureTemplate() {
     if (templateDir !== null) return templateDir;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-size-template-'));
     git(dir, ['init', '-q', '.']);
-    write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', ALPHA_SKILL);
-    write(dir, 'plugins/claude-kit/skills/alpha/references/notes.md', 'notes for alpha.\n');
-    write(dir, 'plugins/claude-kit/agents/reviewer.md', 'reviewer charter text.\n');
-    write(dir, 'plugins/claude-kit/output-styles/kit.md', 'output style text.\n');
-    write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here.\n');
+    write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', ALPHA_SKILL);
+    write(dir, 'plugins/grimoire/skills/alpha/references/notes.md', 'notes for alpha.\n');
+    write(dir, 'plugins/grimoire/agents/reviewer.md', 'reviewer charter text.\n');
+    write(dir, 'plugins/grimoire/output-styles/kit.md', 'output style text.\n');
+    write(dir, 'home/grimoire-doctrine.md', 'doctrine text here.\n');
     write(dir, 'test/one.test.js', "test('a', () => {});\n    it('b', () => {});\n");
     write(dir, 'README.md', 'outside every measured root.\n');
     git(dir, ['add', '-A']);
@@ -358,11 +358,11 @@ test('a test count reads line-opening test and it call sites, nested ones includ
 // checkout happens to hold.
 test('the classifier gives each measured shape its root metric', () => {
     const { entries, unclassified, excluded } = kit.classify([
-        'plugins/claude-kit/skills/alpha/SKILL.md',
-        'plugins/claude-kit/skills/alpha/references/notes.md',
-        'plugins/claude-kit/agents/reviewer.md',
-        'plugins/claude-kit/output-styles/kit.md',
-        'home/claude-kit-doctrine.md',
+        'plugins/grimoire/skills/alpha/SKILL.md',
+        'plugins/grimoire/skills/alpha/references/notes.md',
+        'plugins/grimoire/agents/reviewer.md',
+        'plugins/grimoire/output-styles/kit.md',
+        'home/grimoire-doctrine.md',
         // Every markdown file directly under home/ is measured, not the doctrine
         // copy alone: home/ carries what lands in the user's home directory, and a
         // root naming one file is a root the coverage control cannot police, since
@@ -383,11 +383,11 @@ test('the classifier gives each measured shape its root metric', () => {
     // classified from, so a metric landing on the wrong path reds here where a list of
     // metrics alone would match.
     assert.deepStrictEqual(entries, [
-        { path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words' },
-        { path: 'plugins/claude-kit/skills/alpha/references/notes.md', metric: 'words' },
-        { path: 'plugins/claude-kit/agents/reviewer.md', metric: 'words' },
-        { path: 'plugins/claude-kit/output-styles/kit.md', metric: 'words' },
-        { path: 'home/claude-kit-doctrine.md', metric: 'words' },
+        { path: 'plugins/grimoire/skills/alpha/SKILL.md', metric: 'words' },
+        { path: 'plugins/grimoire/skills/alpha/references/notes.md', metric: 'words' },
+        { path: 'plugins/grimoire/agents/reviewer.md', metric: 'words' },
+        { path: 'plugins/grimoire/output-styles/kit.md', metric: 'words' },
+        { path: 'home/grimoire-doctrine.md', metric: 'words' },
         { path: 'home/CLAUDE.md', metric: 'words' },
         { path: 'test/probes/scenario.md', metric: 'words' },
         { path: 'test/one.test.js', metric: 'lines' }
@@ -405,11 +405,11 @@ test('the classifier gives each measured shape its root metric', () => {
 // being quietly skipped.
 test('a tracked file under a measured root that matches no shape lands unclassified', () => {
     const withheld = [
-        'plugins/claude-kit/skills/alpha/references/deep/nested.md',
-        'plugins/claude-kit/skills/alpha/CHANGELOG.md',
-        'plugins/claude-kit/skills/loose.md',
-        'plugins/claude-kit/agents/shared/common.md',
-        'plugins/claude-kit/output-styles/notes.txt',
+        'plugins/grimoire/skills/alpha/references/deep/nested.md',
+        'plugins/grimoire/skills/alpha/CHANGELOG.md',
+        'plugins/grimoire/skills/loose.md',
+        'plugins/grimoire/agents/shared/common.md',
+        'plugins/grimoire/output-styles/notes.txt',
         // Under the home/ root too, where the shape is a markdown file directly
         // inside it: a nested file and a non-markdown one are both held by the root
         // and measured by nothing, which is the state that must red.
@@ -442,8 +442,8 @@ test('a tracked file under a measured root that matches no shape lands unclassif
 // a case-variant prefix.
 test('the classifier lands a path under a differently-cased root prefix unclassified rather than skipping it', () => {
     const withheld = [
-        'Plugins/claude-kit/skills/alpha/SKILL.md',
-        'plugins/Claude-Kit/agents/reviewer.md',
+        'Plugins/grimoire/skills/alpha/SKILL.md',
+        'plugins/Grimoire/agents/reviewer.md',
         'TEST/one.test.js'
     ];
     const { entries, unclassified } = kit.classify(withheld);
@@ -468,9 +468,9 @@ test('a budget key git does not report as an untracked measured file is stale, n
     const budget = {
         'test/one.test.js': 120,
         test: 40,
-        '../claude-kit/README.md': 40,
+        '../grimoire/README.md': 40,
         'test\\size-ratchet.test.js': 40,
-        'plugins/claude-kit/claude-kit-doctrine.md': 40,
+        'plugins/grimoire/grimoire-doctrine.md': 40,
         'test/helpers/fixture-builder.js': 40,
         'test/genuinely-new.test.js': 40
     };
@@ -482,8 +482,8 @@ test('a budget key git does not report as an untracked measured file is stale, n
     assert.deepStrictEqual(kit.pendingEntries(budget, measured, untracked), ['test/genuinely-new.test.js']);
     const failures = kit.evaluate(measured, budget, [], kit.pendingEntries(budget, measured, untracked));
     assert.deepStrictEqual(failures.map((f) => f.reason + ' ' + f.path).sort(), [
-        'stale-entry ../claude-kit/README.md',
-        'stale-entry plugins/claude-kit/claude-kit-doctrine.md',
+        'stale-entry ../grimoire/README.md',
+        'stale-entry plugins/grimoire/grimoire-doctrine.md',
         'stale-entry test',
         'stale-entry test/helpers/fixture-builder.js',
         'stale-entry test\\size-ratchet.test.js'
@@ -495,20 +495,20 @@ test('a budget key git does not report as an untracked measured file is stale, n
 // no failures at all.
 test('the ratchet greens at cap', () => {
     const measured = [
-        { path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words', size: 400, tests: null },
+        { path: 'plugins/grimoire/skills/alpha/SKILL.md', metric: 'words', size: 400, tests: null },
         { path: 'test/one.test.js', metric: 'lines', size: 120, tests: 7 }
     ];
-    const budget = { 'plugins/claude-kit/skills/alpha/SKILL.md': 400, 'test/one.test.js': 120 };
+    const budget = { 'plugins/grimoire/skills/alpha/SKILL.md': 400, 'test/one.test.js': 120 };
     assert.deepStrictEqual(kit.evaluate(measured, budget, []), []);
 });
 
 test('the ratchet reds on one word over cap, naming over-cap and the file', () => {
-    const measured = [{ path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words', size: 401, tests: null }];
-    const budget = { 'plugins/claude-kit/skills/alpha/SKILL.md': 400 };
+    const measured = [{ path: 'plugins/grimoire/skills/alpha/SKILL.md', metric: 'words', size: 401, tests: null }];
+    const budget = { 'plugins/grimoire/skills/alpha/SKILL.md': 400 };
     const failures = kit.evaluate(measured, budget, []);
     assert.strictEqual(failures.length, 1);
     assert.strictEqual(failures[0].reason, kit.REASONS.OVER_CAP);
-    assert.strictEqual(failures[0].path, 'plugins/claude-kit/skills/alpha/SKILL.md');
+    assert.strictEqual(failures[0].path, 'plugins/grimoire/skills/alpha/SKILL.md');
     assert.match(failures[0].detail, /401 words against a cap of 400/);
     // One line under cap is not a red: the ratchet holds the ceiling and never
     // pins the size, since the audits lower caps by cutting.
@@ -522,12 +522,12 @@ test('the ratchet reds on one word over cap, naming over-cap and the file', () =
 // red outside its own diff diagnoses it in one read rather than by re-deriving
 // where the number came from.
 test('an over-cap failure attributes the reading to worktree content and to the HEAD comparison', () => {
-    const measured = [{ path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words', size: 401, tests: null }];
-    const budget = { 'plugins/claude-kit/skills/alpha/SKILL.md': 400 };
+    const measured = [{ path: 'plugins/grimoire/skills/alpha/SKILL.md', metric: 'words', size: 401, tests: null }];
+    const budget = { 'plugins/grimoire/skills/alpha/SKILL.md': 400 };
     // The comparison is asserted as the field it is, so the sentence beside it
     // stays free to improve. What the sentence owes is the attribution token, and
     // that is what is pinned of it.
-    const differs = kit.evaluate(measured, budget, [], [], new Set(['plugins/claude-kit/skills/alpha/SKILL.md']));
+    const differs = kit.evaluate(measured, budget, [], [], new Set(['plugins/grimoire/skills/alpha/SKILL.md']));
     assert.strictEqual(differs[0].headComparison, 'differs');
     assert.match(differs[0].detail, /read from worktree content/);
     const matches = kit.evaluate(measured, budget, [], [], new Set(['test/other.test.js']));
@@ -584,14 +584,14 @@ test('evaluate never reports the corpus cap key as a stale entry', () => {
 // heard of still counts once it carries a cap.
 test('corpusSum excludes a rationale ledger and everything under test/, and corpusCapFailure reds over cap and greens at it', () => {
     const budget = {
-        'plugins/claude-kit/skills/alpha/SKILL.md': 10,
-        'plugins/claude-kit/skills/alpha/references/rationale-ledger.md': 900,
+        'plugins/grimoire/skills/alpha/SKILL.md': 10,
+        'plugins/grimoire/skills/alpha/references/rationale-ledger.md': 900,
         'test/one.test.js': 500,
         'corpus-cap': 12
     };
     const measuredByPath = new Map([
-        ['plugins/claude-kit/skills/alpha/SKILL.md', { path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words', size: 10, tests: null }],
-        ['plugins/claude-kit/skills/alpha/references/rationale-ledger.md', { path: 'plugins/claude-kit/skills/alpha/references/rationale-ledger.md', metric: 'words', size: 900, tests: null }],
+        ['plugins/grimoire/skills/alpha/SKILL.md', { path: 'plugins/grimoire/skills/alpha/SKILL.md', metric: 'words', size: 10, tests: null }],
+        ['plugins/grimoire/skills/alpha/references/rationale-ledger.md', { path: 'plugins/grimoire/skills/alpha/references/rationale-ledger.md', metric: 'words', size: 900, tests: null }],
         ['test/one.test.js', { path: 'test/one.test.js', metric: 'lines', size: 500, tests: 1 }]
     ]);
     assert.strictEqual(kit.corpusSum(budget, measuredByPath), 10, 'the ledger and the test file are outside the corpus sum');
@@ -781,9 +781,9 @@ test('the rendered report is the totals block alone when nothing changed, and on
 test('a tracked row with no size renders as unreadable with no delta, and the totals say so', () => {
     const sums = { words: { size: 0, cap: 10733, files: 1, unreadable: 1 }, lines: { size: 5, cap: 5, files: 1, unreadable: 0 }, tests: 1 };
     const printed = kit.renderReport([
-        { path: 'home/claude-kit-doctrine.md', metric: 'words', size: null, tests: null, headState: 'changed', headSize: 10733, headTests: null }
-    ], sums, { 'home/claude-kit-doctrine.md': 10733 });
-    assert.match(printed[0], /^home\/claude-kit-doctrine\.md: worktree content unreadable/);
+        { path: 'home/grimoire-doctrine.md', metric: 'words', size: null, tests: null, headState: 'changed', headSize: 10733, headTests: null }
+    ], sums, { 'home/grimoire-doctrine.md': 10733 });
+    assert.match(printed[0], /^home\/grimoire-doctrine\.md: worktree content unreadable/);
     assert.match(printed[0], /cap 10733/);
     // No signed number anywhere on the row, which is the whole point: neither the
     // fabricated cut nor a zero that reads as no change.
@@ -793,8 +793,8 @@ test('a tracked row with no size renders as unreadable with no delta, and the to
     // renders its delta, so the case above is the null state speaking rather than
     // the renderer having lost the delta.
     const withSize = kit.renderReport([
-        { path: 'home/claude-kit-doctrine.md', metric: 'words', size: 10000, tests: null, headState: 'changed', headSize: 10733, headTests: null }
-    ], sums, { 'home/claude-kit-doctrine.md': 10733 });
+        { path: 'home/grimoire-doctrine.md', metric: 'words', size: 10000, tests: null, headState: 'changed', headSize: 10733, headTests: null }
+    ], sums, { 'home/grimoire-doctrine.md': 10733 });
     assert.match(withSize[0], /-733$/);
 });
 
@@ -900,20 +900,20 @@ test('over a real repository the ratchet greens at its caps and reds on each pla
         assert.match(again.stderr, /a budget already exists/);
 
         // One word over cap.
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
         const over = runScript(['check', '--repo', dir]);
         assert.strictEqual(over.status, 1);
-        assert.match(over.stdout, /^over-cap: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 5 words against a cap of 4/m);
+        assert.match(over.stdout, /^over-cap: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 5 words against a cap of 4/m);
         // The HEAD attribution is read as the field it is rather than as the
         // sentence it also prints: the same reading in process, where the failure
         // itself is in reach.
         const overFailures = kit.check(dir, path.join(dir, 'test', 'size-budget.json')).failures
-            .filter((f) => f.path === 'plugins/claude-kit/skills/alpha/SKILL.md');
+            .filter((f) => f.path === 'plugins/grimoire/skills/alpha/SKILL.md');
         assert.deepStrictEqual(overFailures.map((f) => f.reason), [kit.REASONS.OVER_CAP]);
         assert.strictEqual(overFailures[0].headComparison, 'differs');
         assert.strictEqual(overFailures[0].size, 5);
         assert.strictEqual(overFailures[0].cap, 4);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', ALPHA_SKILL);
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', ALPHA_SKILL);
         assert.strictEqual(runScript(['check', '--repo', dir]).status, 0);
 
         // A new tracked test file with no cap.
@@ -966,10 +966,10 @@ test('over a real repository the ratchet greens at its caps and reds on each pla
         git(dir, ['rm', '-q', '-f', 'test/helpers/fixture-builder.js']);
 
         // A cap for a file that no longer exists.
-        git(dir, ['rm', '-q', '-f', 'plugins/claude-kit/agents/reviewer.md']);
+        git(dir, ['rm', '-q', '-f', 'plugins/grimoire/agents/reviewer.md']);
         const stale = runScript(['check', '--repo', dir]);
         assert.strictEqual(stale.status, 1);
-        assert.match(stale.stdout, /^stale-entry: plugins\/claude-kit\/agents\/reviewer\.md: a cap for a file/m);
+        assert.match(stale.stdout, /^stale-entry: plugins\/grimoire\/agents\/reviewer\.md: a cap for a file/m);
     } finally {
         rmDir(dir);
     }
@@ -992,10 +992,10 @@ test('over a real repository the report prints totals only on a clean tree and a
         assert.match(cleanLines[2], /^test lines: 2 of cap 2 across 1 /);
         assert.match(cleanLines[3], /^tests: 2$/);
         assert.match(cleanLines[4], /^changed paths under no measured root: none/);
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here, with more words than before.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text here, with more words than before.\n');
         const dirty = runScript(['report', '--repo', dir]);
         assert.strictEqual(dirty.status, 0, dirty.stderr);
-        assert.match(dirty.stdout, /^home\/claude-kit-doctrine\.md: 8 words, cap 3, \+5$/m);
+        assert.match(dirty.stdout, /^home\/grimoire-doctrine\.md: 8 words, cap 3, \+5$/m);
     } finally {
         rmDir(dir);
     }
@@ -1148,8 +1148,8 @@ test('over a real repository a HEAD blob past the git runner ceiling arrives as 
         // The control on the row state: a small changed file in the same run
         // reports a real delta, so the case above is the ceiling speaking rather
         // than every row having collapsed to unreadable.
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here, with more words than before.\n');
-        assert.match(runScript(['report', '--repo', dir]).stdout, /^home\/claude-kit-doctrine\.md: 8 words, cap 3, \+5$/m);
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text here, with more words than before.\n');
+        assert.match(runScript(['report', '--repo', dir]).stdout, /^home\/grimoire-doctrine\.md: 8 words, cap 3, \+5$/m);
     } finally {
         rmDir(dir);
     }
@@ -1222,10 +1222,10 @@ test('a conflicted path is measured once rather than once per merge stage', () =
     try {
         const base = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']);
         git(dir, ['checkout', '-q', '-b', 'sideline']);
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text from the sideline.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text from the sideline.\n');
         git(dir, ['commit', '-q', '-a', '-m', 'sideline']);
         git(dir, ['checkout', '-q', base]);
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text from the base branch.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text from the base branch.\n');
         git(dir, ['commit', '-q', '-a', '-m', 'base']);
         const merge = gitTry(dir, ['merge', 'sideline']);
         assert.notStrictEqual(merge.status, 0, 'the fixture merge must conflict for this case to have a subject');
@@ -1233,13 +1233,13 @@ test('a conflicted path is measured once rather than once per merge stage', () =
         // The control: git really does print the path once per stage here, so the
         // assertion below is the dedupe working rather than a merge that left one
         // entry anyway.
-        const stages = gitTry(dir, ['ls-files', '--', 'home/claude-kit-doctrine.md']).stdout
+        const stages = gitTry(dir, ['ls-files', '--', 'home/grimoire-doctrine.md']).stdout
             .split(/\r?\n/).filter((l) => l !== '');
         assert.ok(stages.length > 1, 'the conflicted path is staged more than once: ' + stages.length);
 
-        const tracked = kit.trackedPaths(dir).filter((p) => p === 'home/claude-kit-doctrine.md');
-        assert.deepStrictEqual(tracked, ['home/claude-kit-doctrine.md']);
-        const measured = kit.collect(dir).measured.filter((m) => m.path === 'home/claude-kit-doctrine.md');
+        const tracked = kit.trackedPaths(dir).filter((p) => p === 'home/grimoire-doctrine.md');
+        assert.deepStrictEqual(tracked, ['home/grimoire-doctrine.md']);
+        const measured = kit.collect(dir).measured.filter((m) => m.path === 'home/grimoire-doctrine.md');
         assert.strictEqual(measured.length, 1);
     } finally {
         rmDir(dir);
@@ -1252,14 +1252,14 @@ test('a conflicted path is measured once rather than once per merge stage', () =
 test('init refuses a tree holding an uncommitted edit to a measured file, naming the paths', () => {
     const dir = makeFixtureRepo();
     try {
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha.\n');
         const refused = runScript(['init', '--repo', dir]);
         assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
-        assert.match(refused.stderr, /measured files differ from HEAD, so a cap taken now would bake uncommitted content in: plugins\/claude-kit\/skills\/alpha\/SKILL\.md/);
+        assert.match(refused.stderr, /measured files differ from HEAD, so a cap taken now would bake uncommitted content in: plugins\/grimoire\/skills\/alpha\/SKILL\.md/);
         assert.ok(!fs.existsSync(path.join(dir, 'test', 'size-budget.json')), 'the refusal wrote no budget');
         // The control: the same call on the same tree once the edit is reverted
         // writes the budget, so the refusal is the dirty measured file speaking.
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', ALPHA_SKILL);
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', ALPHA_SKILL);
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
     } finally {
         rmDir(dir);
@@ -1335,7 +1335,7 @@ test('a worktree read refuses a path outside the repository, a non-regular file,
         // The control first: a path inside the repository reads normally, so the
         // refusals below are the boundary and not a reader that returns null for
         // everything.
-        assert.match(kit.readWorktree(dir, 'home/claude-kit-doctrine.md'), /^doctrine text here/);
+        assert.match(kit.readWorktree(dir, 'home/grimoire-doctrine.md'), /^doctrine text here/);
         assert.strictEqual(kit.readWorktree(dir, path.join('..', path.basename(outside))), null,
             'a path resolving outside the repository is not measured as though it sat inside it');
         assert.strictEqual(kit.readWorktree(dir, 'test'), null, 'a directory is not a file to measure');
@@ -1388,23 +1388,23 @@ test('over a real repository a tracked path under a differently-cased root prefi
 
         write(dir, 'blob-source.md', 'planted through the index.\n');
         const hash = git(dir, ['hash-object', '-w', 'blob-source.md']);
-        git(dir, ['update-index', '--add', '--cacheinfo', '100644,' + hash + ',Plugins/claude-kit/agents/planted.md']);
+        git(dir, ['update-index', '--add', '--cacheinfo', '100644,' + hash + ',Plugins/grimoire/agents/planted.md']);
 
         // The mechanism, so the red below is read for what it is: the unfiltered
         // listing holds the path and the pathspec-filtered one does not.
-        assert.ok(kit.allTrackedPaths(dir).includes('Plugins/claude-kit/agents/planted.md'));
-        assert.ok(!kit.trackedPaths(dir).includes('Plugins/claude-kit/agents/planted.md'),
+        assert.ok(kit.allTrackedPaths(dir).includes('Plugins/grimoire/agents/planted.md'));
+        assert.ok(!kit.trackedPaths(dir).includes('Plugins/grimoire/agents/planted.md'),
             'git pathspec matching is case-sensitive, so the filtered listing does not return it');
 
         const blind = runScript(['check', '--repo', dir]);
         assert.strictEqual(blind.status, 1, blind.stdout + blind.stderr);
-        assert.match(blind.stdout, /^pathspec-blind: Plugins\/claude-kit\/agents\/planted\.md: a root holds this tracked path/m);
+        assert.match(blind.stdout, /^pathspec-blind: Plugins\/grimoire\/agents\/planted\.md: a root holds this tracked path/m);
         // And the report names it too, because the report is the output a Chapter
         // quotes: a path in no row, in no total and in no untracked line is
         // invisible in that record unless the reading says so.
         const blindReport = runScript(['report', '--repo', dir]);
         assert.strictEqual(blindReport.status, 0, blindReport.stderr);
-        assert.match(blindReport.stdout, /^Plugins\/claude-kit\/agents\/planted\.md: a root holds this tracked path.*the totals below exclude it$/m);
+        assert.match(blindReport.stdout, /^Plugins\/grimoire\/agents\/planted\.md: a root holds this tracked path.*the totals below exclude it$/m);
         // And init refuses on it too, so a budget is never written over a corpus
         // holding a file no cap would cover.
         fs.rmSync(path.join(dir, 'test', 'size-budget.json'));
@@ -1417,11 +1417,11 @@ test('over a real repository a tracked path under a differently-cased root prefi
         // the classifier and reds as a measured file with no cap instead. Without
         // this half the red above would pass on a cross-check that flagged every
         // planted path.
-        git(dir, ['update-index', '--force-remove', 'Plugins/claude-kit/agents/planted.md']);
-        write(dir, 'plugins/claude-kit/agents/planted.md', 'planted through the index.\n');
-        git(dir, ['add', 'plugins/claude-kit/agents/planted.md']);
+        git(dir, ['update-index', '--force-remove', 'Plugins/grimoire/agents/planted.md']);
+        write(dir, 'plugins/grimoire/agents/planted.md', 'planted through the index.\n');
+        git(dir, ['add', 'plugins/grimoire/agents/planted.md']);
         git(dir, ['commit', '-q', '-m', 'planted']);
-        assert.ok(kit.trackedPaths(dir).includes('plugins/claude-kit/agents/planted.md'));
+        assert.ok(kit.trackedPaths(dir).includes('plugins/grimoire/agents/planted.md'));
         const cased = runScript(['init', '--repo', dir]);
         assert.strictEqual(cased.status, 0, cased.stdout + cased.stderr);
         const casedCheck = runScript(['check', '--repo', dir]);
@@ -1474,17 +1474,17 @@ test('over a real repository a tracked measured file missing from the worktree i
     const dir = makeFixtureRepo();
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
-        fs.rmSync(path.join(dir, 'home', 'claude-kit-doctrine.md'));
+        fs.rmSync(path.join(dir, 'home', 'grimoire-doctrine.md'));
 
         // Refused by the unreadable reason, which is what `measure` produces for
         // content the bounded reader would not hand over.
         const checked = runScript(['check', '--repo', dir]);
         assert.strictEqual(checked.status, 1, checked.stdout + checked.stderr);
-        assert.match(checked.stdout, /^unreadable: home\/claude-kit-doctrine\.md: git tracks this file/m);
+        assert.match(checked.stdout, /^unreadable: home\/grimoire-doctrine\.md: git tracks this file/m);
 
         const reported = runScript(['report', '--repo', dir]);
         assert.strictEqual(reported.status, 0, reported.stderr);
-        const row = reported.stdout.split(/\r?\n/).filter((l) => l.startsWith('home/claude-kit-doctrine.md'));
+        const row = reported.stdout.split(/\r?\n/).filter((l) => l.startsWith('home/grimoire-doctrine.md'));
         assert.strictEqual(row.length, 1, reported.stdout);
         assert.match(row[0], /unreadable/);
         assert.ok(!/[-+]\d/.test(row[0]), 'the row carries no delta at all: ' + row[0]);
@@ -1892,7 +1892,7 @@ test('init parts a missing budget directory from one linked out of the checkout'
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-size-nodir-'));
     try {
         git(dir, ['init', '-q', '.']);
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text here.\n');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'fixture']);
         assert.ok(!fs.existsSync(path.join(dir, 'test')), 'the fixture carries no test directory');
@@ -2000,7 +2000,7 @@ test('a payload missing the hooks library refuses with a reading it could not ta
         // The control, withheld from the missing library by one directory: the same
         // copy beside a hooks directory runs, so the refusal is the absent payload
         // rather than a script that refuses wherever it sits.
-        fs.cpSync(path.join(REPO, 'plugins', 'claude-kit', 'hooks'), path.join(dir, 'hooks'), { recursive: true });
+        fs.cpSync(path.join(REPO, 'plugins', 'grimoire', 'hooks'), path.join(dir, 'hooks'), { recursive: true });
         const ran = spawn(['report', '--repo', REPO, '--budget', BUDGET]);
         assert.strictEqual(ran.status, 0, ran.stdout + ran.stderr);
         assert.match(ran.stdout, /of cap/);
@@ -2049,7 +2049,7 @@ test('a hooks library that is present and will not load is named by what the loa
         fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
         const lone = path.join(dir, 'scripts', 'kit-size.js');
         fs.copyFileSync(SCRIPT, lone);
-        fs.cpSync(path.join(REPO, 'plugins', 'claude-kit', 'hooks'), path.join(dir, 'hooks'), { recursive: true });
+        fs.cpSync(path.join(REPO, 'plugins', 'grimoire', 'hooks'), path.join(dir, 'hooks'), { recursive: true });
         // The control first, with the library intact: the same copy in the same place
         // produces a reading, so the refusal below is the broken module speaking.
         const spawn = (args) => spawnSync(process.execPath, [lone].concat(args), {
@@ -2801,8 +2801,8 @@ test('no line either reading verb prints carries a path rooted outside the repos
         // a deletion, an untracked file a shape reaches, an untracked file no shape
         // reaches, a tracked file no shape reaches, an edited named-exclusion path, and
         // a changed path under no measured root.
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here, with more words than before.\n');
-        git(dir, ['rm', '-q', '-f', 'plugins/claude-kit/agents/reviewer.md']);
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text here, with more words than before.\n');
+        git(dir, ['rm', '-q', '-f', 'plugins/grimoire/agents/reviewer.md']);
         write(dir, 'test/new.test.js', "test('c', () => {});\n");
         write(dir, 'test/helpers/fixture-builder.js', 'module.exports = {};\n');
         write(dir, 'test/tracked-helper.js', 'module.exports = {};\n');
@@ -2840,8 +2840,8 @@ test('no line either reading verb prints carries a path rooted outside the repos
         // And the row states really did run, so the sweep above is over a reading rather
         // than over a clean tree's subject line and totals block.
         const report = readings.report.join('\n');
-        assert.match(report, /^home\/claude-kit-doctrine\.md: 8 words/m);
-        assert.match(report, /^plugins\/claude-kit\/agents\/reviewer\.md: deleted/m);
+        assert.match(report, /^home\/grimoire-doctrine\.md: 8 words/m);
+        assert.match(report, /^plugins\/grimoire\/agents\/reviewer\.md: deleted/m);
         assert.match(report, /^test\/new\.test\.js: 1 lines/m);
         assert.match(report, /^test\/helpers\/fixture-builder\.js: untracked/m);
         assert.match(report, /^test\/tracked-helper\.js: changed/m);
@@ -2951,7 +2951,7 @@ test('a hooks library that is present and throws is named with its message elide
         const dir = path.join(home, 'payload');
         fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
         fs.copyFileSync(SCRIPT, path.join(dir, 'scripts', 'kit-size.js'));
-        fs.cpSync(path.join(REPO, 'plugins', 'claude-kit', 'hooks'), path.join(dir, 'hooks'),
+        fs.cpSync(path.join(REPO, 'plugins', 'grimoire', 'hooks'), path.join(dir, 'hooks'),
             { recursive: true });
         fs.writeFileSync(path.join(dir, 'hooks', 'kit-git-lib.js'),
             "throw Object.assign(new Error('the fixture refuses this library: ' + __filename),"
@@ -3014,22 +3014,22 @@ test('sync raises a cap below its file and lowers one above it, and counts what 
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         // One word over the cap init wrote (4), so this entry needs a raise.
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
         // Two words under the cap init wrote (3), so this entry needs a lowering.
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine.\n');
         // Committed, because the bare form is an audit's over a clean tree.
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'grow and shrink']);
         const synced = runScript(['sync', '--repo', dir]);
         assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
-        assert.match(synced.stdout, /^lowered: home\/claude-kit-doctrine\.md: 3 to 1$/m, synced.stdout);
+        assert.match(synced.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
+        assert.match(synced.stdout, /^lowered: home\/grimoire-doctrine\.md: 3 to 1$/m, synced.stdout);
         // Four entries never moved: the three other curated files and the test file.
         assert.match(synced.stdout, /^unchanged: 4 entries left at their current size$/m, synced.stdout);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
         const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
-        assert.strictEqual(budget['plugins/claude-kit/skills/alpha/SKILL.md'], 5);
-        assert.strictEqual(budget['home/claude-kit-doctrine.md'], 1);
+        assert.strictEqual(budget['plugins/grimoire/skills/alpha/SKILL.md'], 5);
+        assert.strictEqual(budget['home/grimoire-doctrine.md'], 1);
         assert.ok(fs.readFileSync(budgetPath, 'utf8').includes('\r\n'), 'the CRLF budget init wrote stays CRLF');
         // The moved caps hold: a clean check over the rewritten budget is green.
         assert.strictEqual(runScript(['check', '--repo', dir]).status, 0);
@@ -3066,16 +3066,16 @@ test('sync names a measured tracked path the budget lacks, without adding it, an
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         write(dir, 'test/two.test.js', "test('c', () => {});\n");
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'a new test file and a grown skill']);
         const synced = runScript(['sync', '--repo', dir]);
         assert.strictEqual(synced.status, 1, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, 'test setup: the rewrite ran: ' + synced.stdout);
+        assert.match(synced.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, 'test setup: the rewrite ran: ' + synced.stdout);
         assert.match(synced.stdout, /^unlisted: test\/two\.test\.js: tracked and measured, and the budget holds no cap for it$/m, synced.stdout);
         assert.match(synced.stdout, /^1 measured path has no cap, so the budget as written still fails check$/m, synced.stdout);
         const budget = JSON.parse(fs.readFileSync(path.join(dir, 'test', 'size-budget.json'), 'utf8'));
-        assert.strictEqual(budget['plugins/claude-kit/skills/alpha/SKILL.md'], 5, 'the write landed before the exit code was set');
+        assert.strictEqual(budget['plugins/grimoire/skills/alpha/SKILL.md'], 5, 'the write landed before the exit code was set');
         assert.strictEqual(Object.prototype.hasOwnProperty.call(budget, 'test/two.test.js'), false,
             'sync names an unlisted path rather than adding a cap for it');
     } finally {
@@ -3114,13 +3114,13 @@ test('sync refuses to rewrite over a failure that is neither an over-cap nor a m
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
         const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
-        budget['plugins/claude-kit/skills/gone/SKILL.md'] = 3;
+        budget['plugins/grimoire/skills/gone/SKILL.md'] = 3;
         fs.writeFileSync(budgetPath, kit.serializeBudget(budget), 'utf8');
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
         const before = fs.readFileSync(budgetPath);
         const res = runScript(['sync', '--repo', dir]);
         assert.strictEqual(res.status, 2, res.stdout + res.stderr);
-        assert.match(res.stderr, /stale-entry plugins\/claude-kit\/skills\/gone\/SKILL\.md/, res.stderr);
+        assert.match(res.stderr, /stale-entry plugins\/grimoire\/skills\/gone\/SKILL\.md/, res.stderr);
         assert.strictEqual(Buffer.compare(before, fs.readFileSync(budgetPath)), 0, 'a refused sync must not rewrite the budget');
     } finally {
         rmDir(dir);
@@ -3140,7 +3140,7 @@ test('a moving sync preserves the budget file\'s line endings, indent and key or
         const reversed = {};
         for (const key of Object.keys(initial).reverse()) reversed[key] = initial[key];
         fs.writeFileSync(budgetPath, JSON.stringify(reversed, null, 2) + '\n', 'utf8');
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'an LF budget and a grown skill']);
         const synced = runScript(['sync', '--repo', dir]);
@@ -3149,19 +3149,19 @@ test('a moving sync preserves the budget file\'s line endings, indent and key or
         assert.ok(!text.includes('\r'), 'an LF budget stays LF');
         assert.match(text, /^\{\n  "/, 'a two-space indent stays two spaces');
         assert.deepStrictEqual(Object.keys(JSON.parse(text)), Object.keys(reversed), 'key order is the file\'s own');
-        assert.strictEqual(JSON.parse(text)['plugins/claude-kit/skills/alpha/SKILL.md'], 5);
+        assert.strictEqual(JSON.parse(text)['plugins/grimoire/skills/alpha/SKILL.md'], 5);
         // An indent past ten columns, which a serializer leaning on JSON.stringify's
         // space argument would silently cut to ten.
         fs.writeFileSync(budgetPath, text.replace(/\n  "/g, '\n            "'), 'utf8');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'a twelve-space budget']);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more still.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more still.\n');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'the skill grown again']);
         assert.strictEqual(runScript(['sync', '--repo', dir]).status, 0);
         const wide = fs.readFileSync(budgetPath, 'utf8');
         assert.match(wide, /^\{\n {12}"/, 'a twelve-space indent stays twelve spaces');
-        assert.strictEqual(JSON.parse(wide)['plugins/claude-kit/skills/alpha/SKILL.md'], 6);
+        assert.strictEqual(JSON.parse(wide)['plugins/grimoire/skills/alpha/SKILL.md'], 6);
     } finally {
         rmDir(dir);
     }
@@ -3173,7 +3173,7 @@ test('a moving sync preserves the budget file\'s line endings, indent and key or
 // is put through the parser the script runs, as the Delta field's pin in
 // test/doctrine-parity.test.js does for the Chapter template.
 test('the writing-skills ledger bullet names a sync verb the script exports and flags its parser takes', () => {
-    const skill = fs.readFileSync(path.join(REPO, 'plugins', 'claude-kit', 'skills', 'writing-skills', 'SKILL.md'), 'utf8');
+    const skill = fs.readFileSync(path.join(REPO, 'plugins', 'grimoire', 'skills', 'writing-skills', 'SKILL.md'), 'utf8');
     const bullet = skill.split(/\r?\n/).filter((l) => l.includes('ledger rather than a ceiling'));
     assert.strictEqual(bullet.length, 1, 'expected exactly one ledger bullet in writing-skills');
     const invocation = /`([^`]*kit-size\.js[^`]*)`/.exec(bullet[0]);
@@ -3198,20 +3198,20 @@ test('sync with paths named moves those caps alone and adds a first cap for a na
     const dir = makeFixtureRepo();
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine.\n');
         write(dir, 'test/two.test.js', "test('c', () => {});\n");
         git(dir, ['add', 'test/two.test.js']);
-        const synced = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md', 'test/two.test.js']);
+        const synced = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/alpha/SKILL.md', 'test/two.test.js']);
         assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
+        assert.match(synced.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
         assert.match(synced.stdout, /^added: test\/two\.test\.js: a first cap of 1, /m, synced.stdout);
         assert.doesNotMatch(synced.stdout, /^lowered: /m, 'the unnamed doctrine file\'s cap does not move: ' + synced.stdout);
         assert.match(synced.stdout, /^unchanged: 0 entries left at their current size$/m, synced.stdout);
         assert.match(synced.stdout, /^outside the named paths: 5 entries left as they stand$/m, synced.stdout);
         const budget = JSON.parse(fs.readFileSync(path.join(dir, 'test', 'size-budget.json'), 'utf8'));
-        assert.strictEqual(budget['plugins/claude-kit/skills/alpha/SKILL.md'], 5);
-        assert.strictEqual(budget['home/claude-kit-doctrine.md'], 3, 'the unnamed entry keeps its cap');
+        assert.strictEqual(budget['plugins/grimoire/skills/alpha/SKILL.md'], 5);
+        assert.strictEqual(budget['home/grimoire-doctrine.md'], 3, 'the unnamed entry keeps its cap');
         assert.strictEqual(budget['test/two.test.js'], 1);
         // A named path nothing measures is refused rather than capped at nothing.
         const refused = runScript(['sync', '--repo', dir, 'README.md']);
@@ -3230,15 +3230,15 @@ test('sync moves the cap of a pending, untracked file when the file is named', (
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
-        write(dir, 'plugins/claude-kit/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
+        write(dir, 'plugins/grimoire/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
         const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
-        budget['plugins/claude-kit/skills/beta/SKILL.md'] = 1;
+        budget['plugins/grimoire/skills/beta/SKILL.md'] = 1;
         fs.writeFileSync(budgetPath, kit.serializeBudget(budget), 'utf8');
-        const synced = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/beta/SKILL.md']);
+        const synced = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/beta/SKILL.md']);
         assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^raised: plugins\/claude-kit\/skills\/beta\/SKILL\.md: 1 to 4$/m, synced.stdout);
+        assert.match(synced.stdout, /^raised: plugins\/grimoire\/skills\/beta\/SKILL\.md: 1 to 4$/m, synced.stdout);
         assert.match(synced.stdout, /^outside the named paths: 6 entries left as they stand$/m, synced.stdout);
-        assert.strictEqual(JSON.parse(fs.readFileSync(budgetPath, 'utf8'))['plugins/claude-kit/skills/beta/SKILL.md'], 4);
+        assert.strictEqual(JSON.parse(fs.readFileSync(budgetPath, 'utf8'))['plugins/grimoire/skills/beta/SKILL.md'], 4);
     } finally {
         rmDir(dir);
     }
@@ -3258,15 +3258,15 @@ test('the bare sync form refuses over a moved file that differs from HEAD, and t
         git(dir, ['commit', '-q', '-m', 'the budget, so the file guard is the one that fires']);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
         const before = fs.readFileSync(budgetPath);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
         const refused = runScript(['sync', '--repo', dir]);
         assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
         assert.match(refused.stderr, /differ from HEAD/, refused.stderr);
-        assert.match(refused.stderr, /plugins\/claude-kit\/skills\/alpha\/SKILL\.md/, refused.stderr);
+        assert.match(refused.stderr, /plugins\/grimoire\/skills\/alpha\/SKILL\.md/, refused.stderr);
         assert.strictEqual(Buffer.compare(before, fs.readFileSync(budgetPath)), 0, 'a refused sync must not rewrite the budget');
-        const named = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md']);
+        const named = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/alpha/SKILL.md']);
         assert.strictEqual(named.status, 0, named.stdout + named.stderr);
-        assert.match(named.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, named.stdout);
+        assert.match(named.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, named.stdout);
     } finally {
         rmDir(dir);
     }
@@ -3280,16 +3280,16 @@ test('sync resolves a named path in any spelling inside the repository and refus
     const dir = makeFixtureRepo();
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
-        const absolute = runScript(['sync', '--repo', dir, path.join(dir, 'plugins', 'claude-kit', 'skills', 'alpha', 'SKILL.md')]);
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        const absolute = runScript(['sync', '--repo', dir, path.join(dir, 'plugins', 'grimoire', 'skills', 'alpha', 'SKILL.md')]);
         assert.strictEqual(absolute.status, 0, absolute.stdout + absolute.stderr);
-        assert.match(absolute.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, absolute.stdout);
+        assert.match(absolute.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, absolute.stdout);
         if (process.platform === 'win32') {
             // A backslashed spelling is the shell's own on Windows; on POSIX a backslash is a filename character and names a different file.
-            write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more still.\n');
-            const backslashed = runScript(['sync', '--repo', dir, 'plugins\\claude-kit\\skills\\alpha\\SKILL.md']);
+            write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more still.\n');
+            const backslashed = runScript(['sync', '--repo', dir, 'plugins\\grimoire\\skills\\alpha\\SKILL.md']);
             assert.strictEqual(backslashed.status, 0, backslashed.stdout + backslashed.stderr);
-            assert.match(backslashed.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 5 to 6$/m, backslashed.stdout);
+            assert.match(backslashed.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 5 to 6$/m, backslashed.stdout);
         }
         const outside = runScript(['sync', '--repo', dir, '../outside.md']);
         assert.strictEqual(outside.status, 2, outside.stdout + outside.stderr);
@@ -3298,7 +3298,7 @@ test('sync resolves a named path in any spelling inside the repository and refus
         const excluded = runScript(['sync', '--repo', dir, 'test/size-budget.json']);
         assert.strictEqual(excluded.status, 2, excluded.stdout + excluded.stderr);
         assert.match(excluded.stderr, /is on the exclusion list/, 'the budget file is refused as excluded, not as unmeasured: ' + excluded.stderr);
-        const control = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md\n']);
+        const control = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/alpha/SKILL.md\n']);
         assert.strictEqual(control.status, 2, control.stdout + control.stderr);
         assert.match(control.stderr, /control character/, control.stderr);
         const empty = runScript(['sync', '--repo', dir, '']);
@@ -3318,13 +3318,13 @@ test('sync adds a first cap for a named file not yet added to git, in sorted key
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
-        write(dir, 'plugins/claude-kit/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
-        const synced = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/beta/SKILL.md']);
+        write(dir, 'plugins/grimoire/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
+        const synced = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/beta/SKILL.md']);
         assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^added: plugins\/claude-kit\/skills\/beta\/SKILL\.md: a first cap of 4, /m, synced.stdout);
+        assert.match(synced.stdout, /^added: plugins\/grimoire\/skills\/beta\/SKILL\.md: a first cap of 4, /m, synced.stdout);
         const keys = Object.keys(JSON.parse(fs.readFileSync(budgetPath, 'utf8')));
         assert.deepStrictEqual(keys, keys.slice().sort(), 'the added key lands in sorted order: ' + keys.join(', '));
-        assert.ok(keys.includes('plugins/claude-kit/skills/beta/SKILL.md'));
+        assert.ok(keys.includes('plugins/grimoire/skills/beta/SKILL.md'));
         // The new cap is pending until the file is added, and check holds the file to it.
         assert.strictEqual(runScript(['check', '--repo', dir]).status, 0);
         // A budget kept in another order keeps it: the added key goes before the first
@@ -3333,7 +3333,7 @@ test('sync adds a first cap for a named file not yet added to git, in sorted key
         const held = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
         const reorderedText = '{\n' + reversed.map((k, i) => '    ' + JSON.stringify(k) + ': ' + held[k] + (i < reversed.length - 1 ? ',' : '')).join('\n') + '\n}\n';
         fs.writeFileSync(budgetPath, reorderedText, 'utf8');
-        const gamma = 'plugins/claude-kit/skills/gamma/SKILL.md';
+        const gamma = 'plugins/grimoire/skills/gamma/SKILL.md';
         write(dir, gamma, '---\nname: gamma\n---\n\ngamma body words.\n');
         const again = runScript(['sync', '--repo', dir, gamma]);
         assert.strictEqual(again.status, 0, again.stdout + again.stderr);
@@ -3353,16 +3353,16 @@ test('the named sync form exits 1 and names an entry still over its cap outside 
     const dir = makeFixtureRepo();
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine words here more.\n');
-        const synced = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md']);
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine words here more.\n');
+        const synced = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/alpha/SKILL.md']);
         assert.strictEqual(synced.status, 1, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
-        assert.match(synced.stdout, /^still over cap: home\/claude-kit-doctrine\.md: 4 against a cap of 3$/m, synced.stdout);
+        assert.match(synced.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
+        assert.match(synced.stdout, /^still over cap: home\/grimoire-doctrine\.md: 4 against a cap of 3$/m, synced.stdout);
         assert.match(synced.stdout, /^1 entry is still over its cap, so the budget as written still fails check$/m, synced.stdout);
         const budget = JSON.parse(fs.readFileSync(path.join(dir, 'test', 'size-budget.json'), 'utf8'));
-        assert.strictEqual(budget['plugins/claude-kit/skills/alpha/SKILL.md'], 5, 'the named cap moved');
-        assert.strictEqual(budget['home/claude-kit-doctrine.md'], 3, 'the unnamed cap did not');
+        assert.strictEqual(budget['plugins/grimoire/skills/alpha/SKILL.md'], 5, 'the named cap moved');
+        assert.strictEqual(budget['home/grimoire-doctrine.md'], 3, 'the unnamed cap did not');
     } finally {
         rmDir(dir);
     }
@@ -3379,16 +3379,16 @@ test('the bare sync form refuses over a budget file that itself differs from HEA
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'the budget']);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
-        const edited = fs.readFileSync(budgetPath, 'utf8').replace('"plugins/claude-kit/skills/alpha/SKILL.md": 4', '"plugins/claude-kit/skills/alpha/SKILL.md": 3');
+        const edited = fs.readFileSync(budgetPath, 'utf8').replace('"plugins/grimoire/skills/alpha/SKILL.md": 4', '"plugins/grimoire/skills/alpha/SKILL.md": 3');
         assert.notStrictEqual(edited, fs.readFileSync(budgetPath, 'utf8'), 'test setup: the hand edit landed');
         fs.writeFileSync(budgetPath, edited, 'utf8');
         const refused = runScript(['sync', '--repo', dir]);
         assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
         assert.match(refused.stderr, /the budget file itself differs from HEAD/, refused.stderr);
         assert.strictEqual(fs.readFileSync(budgetPath, 'utf8'), edited, 'a refused sync must not rewrite the budget');
-        const named = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md']);
+        const named = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/alpha/SKILL.md']);
         assert.strictEqual(named.status, 0, named.stdout + named.stderr);
-        assert.match(named.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 3 to 4$/m, named.stdout);
+        assert.match(named.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 3 to 4$/m, named.stdout);
     } finally {
         rmDir(dir);
     }
@@ -3401,8 +3401,8 @@ test('the bare sync form refuses over an untracked budget file, at the default p
     const dir = makeFixtureRepo();
     try {
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
-        git(dir, ['add', 'plugins/claude-kit/skills/alpha/SKILL.md']);
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body words here more.\n');
+        git(dir, ['add', 'plugins/grimoire/skills/alpha/SKILL.md']);
         git(dir, ['commit', '-q', '-m', 'the grown file, the budget still untracked']);
         const refused = runScript(['sync', '--repo', dir]);
         assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
@@ -3426,7 +3426,7 @@ test('the bare sync form refuses over an untracked budget file, at the default p
         git(dir, ['commit', '-q', '-m', 'the budget']);
         const synced = runScript(['sync', '--repo', dir]);
         assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^raised: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
+        assert.match(synced.stdout, /^raised: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 5$/m, synced.stdout);
     } finally {
         rmDir(dir);
     }
@@ -3441,7 +3441,7 @@ test('the bare sync form refuses over a pending file whose cap would move', () =
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'the budget']);
-        const beta = 'plugins/claude-kit/skills/beta/SKILL.md';
+        const beta = 'plugins/grimoire/skills/beta/SKILL.md';
         write(dir, beta, '---\nname: beta\n---\n\nbeta body words here.\n');
         assert.strictEqual(runScript(['sync', '--repo', dir, beta]).status, 0, 'test setup: the pending cap was added');
         git(dir, ['add', 'test/size-budget.json']);
@@ -3450,7 +3450,7 @@ test('the bare sync form refuses over a pending file whose cap would move', () =
         const refused = runScript(['sync', '--repo', dir]);
         assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
         assert.match(refused.stderr, /not yet added to git/, refused.stderr);
-        assert.match(refused.stderr, /plugins\/claude-kit\/skills\/beta\/SKILL\.md/, refused.stderr);
+        assert.match(refused.stderr, /plugins\/grimoire\/skills\/beta\/SKILL\.md/, refused.stderr);
     } finally {
         rmDir(dir);
     }
@@ -3484,10 +3484,10 @@ test('over a real repository the corpus cap greens at its sum, reds once a corpu
         // Grown by two words, so the corpus sum reaches 18 against the cap of 16;
         // its own file cap is raised in the same commit so the file's own over-cap
         // does not ride along with the corpus one.
-        write(dir, 'home/claude-kit-doctrine.md', 'doctrine text here now longer.\n');
+        write(dir, 'home/grimoire-doctrine.md', 'doctrine text here now longer.\n');
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
         const grown = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
-        grown['home/claude-kit-doctrine.md'] = 5;
+        grown['home/grimoire-doctrine.md'] = 5;
         fs.writeFileSync(budgetPath, kit.serializeBudget(grown, '\r\n', 4), 'utf8');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'grow the corpus past its cap']);
@@ -3496,7 +3496,7 @@ test('over a real repository the corpus cap greens at its sum, reds once a corpu
         assert.strictEqual(over.status, 1, over.stdout + over.stderr);
         assert.match(over.stdout, /^corpus-over-cap: corpus-cap: 18 words against a cap of 16, 2 over; a raise is an operator ruling, per the corpus cap item in docs\/backlog\.md$/m, over.stdout);
         assert.doesNotMatch(over.stdout, /stale-entry: corpus-cap/, 'the corpus cap key is a cap, never a stale entry: ' + over.stdout);
-        assert.doesNotMatch(over.stdout, /^over-cap: home\/claude-kit-doctrine\.md/m, 'test setup: the file\'s own cap was raised ahead of the grow');
+        assert.doesNotMatch(over.stdout, /^over-cap: home\/grimoire-doctrine\.md/m, 'test setup: the file\'s own cap was raised ahead of the grow');
 
         // The in-process reading carries the same reason and figures as a field.
         const checked = kit.check(dir, budgetPath);
@@ -3541,7 +3541,7 @@ test('sync corpus-cap and a new corpus path in one command counts the new path i
         assert.strictEqual(runScript(['init', '--repo', dir]).status, 0);
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'the budget']);
-        const beta = 'plugins/claude-kit/skills/beta/SKILL.md';
+        const beta = 'plugins/grimoire/skills/beta/SKILL.md';
         write(dir, beta, '---\nname: beta\n---\n\nbeta body words here now.\n');
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'a new corpus file, no cap yet']);
@@ -3573,10 +3573,10 @@ test('a named sync that does not name corpus-cap counts it among the entries lef
         // Lowered rather than raised, so the corpus sum drops and stays under its
         // own cap: a raise here would also trip corpus-over-cap, which is a true
         // and separate reading this test is not about.
-        write(dir, 'plugins/claude-kit/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body.\n');
-        const synced = runScript(['sync', '--repo', dir, 'plugins/claude-kit/skills/alpha/SKILL.md']);
+        write(dir, 'plugins/grimoire/skills/alpha/SKILL.md', '---\nname: alpha\n---\n\nalpha body.\n');
+        const synced = runScript(['sync', '--repo', dir, 'plugins/grimoire/skills/alpha/SKILL.md']);
         assert.strictEqual(synced.status, 0, synced.stdout + synced.stderr);
-        assert.match(synced.stdout, /^lowered: plugins\/claude-kit\/skills\/alpha\/SKILL\.md: 4 to 2$/m, synced.stdout);
+        assert.match(synced.stdout, /^lowered: plugins\/grimoire\/skills\/alpha\/SKILL\.md: 4 to 2$/m, synced.stdout);
         // Seven budget keys total (five corpus files, one test file, corpus-cap);
         // one named, so six are left outside, corpus-cap among them.
         assert.match(synced.stdout, /^outside the named paths: 6 entries left as they stand$/m, synced.stdout);
@@ -3600,9 +3600,9 @@ test('report\'s corpus line and check\'s corpus-cap failure agree over a pending
         git(dir, ['add', '-A']);
         git(dir, ['commit', '-q', '-m', 'the budget, corpus cap included']);
         const budgetPath = path.join(dir, 'test', 'size-budget.json');
-        write(dir, 'plugins/claude-kit/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
+        write(dir, 'plugins/grimoire/skills/beta/SKILL.md', '---\nname: beta\n---\n\nbeta body words here.\n');
         const budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
-        budget['plugins/claude-kit/skills/beta/SKILL.md'] = 4;
+        budget['plugins/grimoire/skills/beta/SKILL.md'] = 4;
         fs.writeFileSync(budgetPath, kit.serializeBudget(budget), 'utf8');
         const reported = runScript(['report', '--repo', dir]);
         assert.strictEqual(reported.status, 0, reported.stdout + reported.stderr);

@@ -29,7 +29,7 @@ const { pathToFileURL } = require('node:url');
 
 const RUNNER = path.join(__dirname, '..', 'tools', 'probe-corpus', 'run.mjs');
 const TEMPLATE = path.join(__dirname, '..', 'tools', 'probe-corpus', 'template.md');
-const HOOKS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
+const HOOKS = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks');
 
 // A shape file path names a file under the plugin root or one markdown file in
 // the home directory, and the runner enforces that allowlist at the read
@@ -37,8 +37,8 @@ const HOOKS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
 // repositories here therefore carry their corpus under the plugin root: a
 // fixture spelled any other way is refused before it is read, which is the
 // property the allowlist cases below assert directly.
-const CORPUS = 'plugins/claude-kit/corpus/';
-const CORPUS_SEGMENTS = ['plugins', 'claude-kit', 'corpus'];
+const CORPUS = 'plugins/grimoire/corpus/';
+const CORPUS_SEGMENTS = ['plugins', 'grimoire', 'corpus'];
 
 function loadRunner() {
     return import(pathToFileURL(RUNNER).href);
@@ -118,14 +118,14 @@ test('parseArgs refuses --touching beside --only, a dash-leading --touching, and
 test('momentsTouching selects the moments whose shapes name a changed file and skips home entries', async () => {
     const { momentsTouching } = await loadRunner();
     const probes = [
-        { moment: 'a', shapes: [{ name: 'full', files: [{ value: 'plugins/claude-kit/skills/x/SKILL.md' }, { value: 'home/CLAUDE.md' }] }] },
-        { moment: 'b', shapes: [{ name: 'full', files: [{ value: 'plugins/claude-kit/skills/y/SKILL.md' }] }] },
+        { moment: 'a', shapes: [{ name: 'full', files: [{ value: 'plugins/grimoire/skills/x/SKILL.md' }, { value: 'home/CLAUDE.md' }] }] },
+        { moment: 'b', shapes: [{ name: 'full', files: [{ value: 'plugins/grimoire/skills/y/SKILL.md' }] }] },
         { moment: 'c', shapes: [{ name: 'full', files: [{ value: 'home/CLAUDE.md' }] }] },
     ];
-    assert.deepStrictEqual(momentsTouching(probes, ['plugins/claude-kit/skills/x/SKILL.md', 'docs/README.md']), ['a']);
+    assert.deepStrictEqual(momentsTouching(probes, ['plugins/grimoire/skills/x/SKILL.md', 'docs/README.md']), ['a']);
     // A home entry never counts as touched, even when a path of that spelling is in the changeset.
     assert.deepStrictEqual(momentsTouching(probes, ['home/CLAUDE.md']), []);
-    assert.deepStrictEqual(momentsTouching(probes, ['plugins/claude-kit/skills/y/SKILL.md', 'plugins/claude-kit/skills/x/SKILL.md']), ['a', 'b']);
+    assert.deepStrictEqual(momentsTouching(probes, ['plugins/grimoire/skills/y/SKILL.md', 'plugins/grimoire/skills/x/SKILL.md']), ['a', 'b']);
     assert.deepStrictEqual(momentsTouching(probes, []), []);
 });
 
@@ -685,17 +685,17 @@ function stageRendererlessTree(libSource) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'probe-nolib-'));
     const runner = path.join(dir, 'tools', 'probe-corpus', 'run.mjs');
     fs.mkdirSync(path.dirname(runner), { recursive: true });
-    fs.mkdirSync(path.join(dir, 'plugins', 'claude-kit', 'hooks'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'plugins', 'grimoire', 'hooks'), { recursive: true });
     fs.copyFileSync(RUNNER, runner);
     fs.copyFileSync(path.join(__dirname, '..', 'tools', 'probe-corpus', 'probe-file.mjs'),
         path.join(path.dirname(runner), 'probe-file.mjs'));
     // Everything the runner and the parser load, except the renderer.
     for (const lib of ['kit-read-lib.js', 'kit-goal-lib.js']) {
         fs.copyFileSync(path.join(HOOKS, lib),
-            path.join(dir, 'plugins', 'claude-kit', 'hooks', lib));
+            path.join(dir, 'plugins', 'grimoire', 'hooks', lib));
     }
     if (libSource !== null) {
-        fs.writeFileSync(path.join(dir, 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js'),
+        fs.writeFileSync(path.join(dir, 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js'),
             libSource, 'utf8');
     }
     // Two lines through the binding, because the note is said once per run and
@@ -1540,7 +1540,7 @@ test('a shape file outside the two allowed roots is refused, in both modes', asy
         assert.throws(() => readShapeFile('.git/config', {
             repoRoot: dir, homeDir: dir, before: 'abc123',
             git: () => { throw new Error('git was spawned for a path that should never have reached it'); }
-        }), /is refused: it sits outside plugins\/claude-kit\//);
+        }), /is refused: it sits outside plugins\/grimoire\//);
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -1556,7 +1556,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 export const VERDICTS = ['RESOLVED', 'CONTESTED', 'SILENT'];
 export const RULING_STATES = ['proposed', 'ruled'];
-export const PLUGIN_PREFIX = 'plugins/claude-kit/';
+export const PLUGIN_PREFIX = 'plugins/grimoire/';
 export const HOME_ENTRY = /^home\\/[A-Za-z0-9._-]+\\.md$/;
 export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export const TIERS = ['sonnet', 'opus'];
@@ -1718,7 +1718,7 @@ function makeHarness(fixtures, corpus) {
     fs.mkdirSync(path.join(root, 'tools', 'probe-corpus'), { recursive: true });
     fs.mkdirSync(path.join(root, 'test', 'probes'), { recursive: true });
     fs.mkdirSync(path.join(root, ...CORPUS_SEGMENTS), { recursive: true });
-    fs.mkdirSync(path.join(root, 'plugins', 'claude-kit', 'hooks'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'plugins', 'grimoire', 'hooks'), { recursive: true });
     fs.mkdirSync(path.join(root, 'home'), { recursive: true });
     fs.copyFileSync(RUNNER, path.join(root, 'tools', 'probe-corpus', 'run.mjs'));
     fs.copyFileSync(TEMPLATE, path.join(root, 'tools', 'probe-corpus', 'template.md'));
@@ -1727,7 +1727,7 @@ function makeHarness(fixtures, corpus) {
     // it reads, and the channel renderer that takes the OS account name out of
     // the lines it prints.
     for (const lib of ['kit-read-lib.js', 'kit-goal-lib.js', 'kit-compact-lib.js']) {
-        fs.copyFileSync(path.join(HOOKS, lib), path.join(root, 'plugins', 'claude-kit', 'hooks', lib));
+        fs.copyFileSync(path.join(HOOKS, lib), path.join(root, 'plugins', 'grimoire', 'hooks', lib));
     }
     fs.writeFileSync(path.join(root, 'tools', 'probe-corpus', 'probe-file.mjs'), PARSER_STUB, 'utf8');
     fs.writeFileSync(path.join(root, 'fake-claude.mjs'), FAKE_CLI, 'utf8');

@@ -14,12 +14,12 @@ options:
 shapes:
   - name: executing-work
     files:
-      - plugins/claude-kit/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
   - name: executing-work-plus-adjudicator
     files:
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/agents/scope-adjudicator.md
-      - plugins/claude-kit/skills/consult/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/agents/scope-adjudicator.md
+      - plugins/grimoire/skills/consult/SKILL.md
 ---
 # The fix you are about to write would add something no bullet asked for
 

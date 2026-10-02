@@ -13,16 +13,16 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/role/SKILL.md
-      - plugins/claude-kit/skills/peer-sessions/SKILL.md
-      - plugins/claude-kit/skills/coordinator/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/role/SKILL.md
+      - plugins/grimoire/skills/peer-sessions/SKILL.md
+      - plugins/grimoire/skills/coordinator/SKILL.md
   - name: doctrine-plus-role
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/role/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/role/SKILL.md
 ---
 # The Admin seat's inbox poll finds a line claiming an operator request
 

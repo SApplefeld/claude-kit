@@ -1,5 +1,5 @@
 // Tests for the kaizen signpost write in the two installers that own
-// ~/.claude/claude-kit.local.json: setup.sh (POSIX) and doctor.ps1 -Fix
+// ~/.claude/grimoire.local.json: setup.sh (POSIX) and doctor.ps1 -Fix
 // (Windows). Both writers merge into the existing object rather than
 // replacing it wholesale, so an operator-set compactNudgeFloor (or any other
 // key neither writer owns) survives a re-run. Both write to a sibling temp
@@ -10,7 +10,7 @@
 //
 // Every case here builds its own fake HOME / claudeDir / repoRoot under a
 // short-lived temp directory and passes it explicitly, so nothing touches the
-// real ~/.claude/claude-kit.local.json.
+// real ~/.claude/grimoire.local.json.
 //
 // The doctor half lifts the "Kaizen signpost + git hooks" section of
 // doctor.ps1 as source text and runs it (Invoke-Expression) inside a harness
@@ -21,7 +21,7 @@
 //
 // The setup.sh half spawns the real script under `sh` with HOME redirected
 // to a temp directory and a fake repo root that carries the one file
-// setup.sh checks for (plugins/claude-kit/.claude-plugin/plugin.json) and is
+// setup.sh checks for (plugins/grimoire/.claude-plugin/plugin.json) and is
 // git-initialized, so the later git-hooks step (which runs under `set -e`)
 // does not abort the run. Its red-first cases spawn a saved pre-fix copy of
 // setup.sh the same way.
@@ -42,7 +42,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const SETUP_SH = path.join(REPO, 'setup.sh');
 // Copies of doctor.ps1 and setup.sh carrying the unfixed signpost writer,
@@ -167,7 +167,7 @@ function runSignpostSection(claudeDir, repoRoot, doctorPath) {
 }
 
 function readSignpost(claudeDir) {
-    return JSON.parse(fs.readFileSync(path.join(claudeDir, 'claude-kit.local.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(claudeDir, 'grimoire.local.json'), 'utf8'));
 }
 
 test('doctor -Fix: a floor beside the owned keys survives a rewrite reached via the kitRepoPath-no-longer-resolves branch (red against the pre-fix writer)', { skip: !isWin }, (t) => {
@@ -176,12 +176,12 @@ test('doctor -Fix: a floor beside the owned keys survives a rewrite reached via 
     const repoRoot = makeTempDir('doctor-signpost-repo-');
     try {
         const staleRepoPath = path.join(os.tmpdir(), 'kit-repo-that-does-not-exist-' + Math.random().toString(36).slice(2));
-        write(path.join(claudeDir, 'claude-kit.local.json'), JSON.stringify({ kitRepoPath: staleRepoPath, machine: 'old-machine', compactNudgeFloor: 42000 }));
+        write(path.join(claudeDir, 'grimoire.local.json'), JSON.stringify({ kitRepoPath: staleRepoPath, machine: 'old-machine', compactNudgeFloor: 42000 }));
 
         if (hasDoctorPrefix) {
             const claudeDirRed = makeTempDir('doctor-signpost-floor-red-');
             try {
-                write(path.join(claudeDirRed, 'claude-kit.local.json'), JSON.stringify({ kitRepoPath: staleRepoPath, machine: 'old-machine', compactNudgeFloor: 42000 }));
+                write(path.join(claudeDirRed, 'grimoire.local.json'), JSON.stringify({ kitRepoPath: staleRepoPath, machine: 'old-machine', compactNudgeFloor: 42000 }));
                 runSignpostSection(claudeDirRed, repoRoot, DOCTOR_PREFIX);
                 const redResult = readSignpost(claudeDirRed);
                 assert.strictEqual(redResult.compactNudgeFloor, undefined, 'pre-fix doctor.ps1 must drop compactNudgeFloor on the wholesale rewrite: ' + JSON.stringify(redResult));
@@ -195,7 +195,7 @@ test('doctor -Fix: a floor beside the owned keys survives a rewrite reached via 
         assert.strictEqual(result.compactNudgeFloor, 42000, 'the operator-set floor must survive the merge: ' + JSON.stringify(result));
         assert.strictEqual(result.kitRepoPath, repoRoot);
         assert.strictEqual(result.machine, process.env.COMPUTERNAME);
-        assert.deepStrictEqual(fs.readdirSync(claudeDir), ['claude-kit.local.json'], 'the temp file the write renames from must not survive the run');
+        assert.deepStrictEqual(fs.readdirSync(claudeDir), ['grimoire.local.json'], 'the temp file the write renames from must not survive the run');
     } finally {
         rmTempDir(claudeDir);
         rmTempDir(repoRoot);
@@ -213,12 +213,12 @@ test('doctor -Fix: a nested operator value survives the merge intact, not as a s
     try {
         const staleRepoPath = path.join(os.tmpdir(), 'kit-repo-that-does-not-exist-' + Math.random().toString(36).slice(2));
         const nested = { kitRepoPath: staleRepoPath, machine: 'old-machine', operatorNested: { a: { b: { c: 'deep value' } } } };
-        write(path.join(claudeDir, 'claude-kit.local.json'), JSON.stringify(nested));
+        write(path.join(claudeDir, 'grimoire.local.json'), JSON.stringify(nested));
 
         if (hasDoctorPrefix) {
             const claudeDirRed = makeTempDir('doctor-signpost-nested-red-');
             try {
-                write(path.join(claudeDirRed, 'claude-kit.local.json'), JSON.stringify(nested));
+                write(path.join(claudeDirRed, 'grimoire.local.json'), JSON.stringify(nested));
                 runSignpostSection(claudeDirRed, repoRoot, DOCTOR_PREFIX);
                 const redResult = readSignpost(claudeDirRed);
                 assert.strictEqual(redResult.operatorNested, undefined, 'pre-fix doctor.ps1 must drop the nested key on the wholesale rewrite: ' + JSON.stringify(redResult));
@@ -269,7 +269,7 @@ test('doctor -Fix: a signpost whose JSON does not parse is still replaced wholes
     const claudeDir = makeTempDir('doctor-signpost-unparseable-');
     const repoRoot = makeTempDir('doctor-signpost-repo-');
     try {
-        write(path.join(claudeDir, 'claude-kit.local.json'), '{ not json');
+        write(path.join(claudeDir, 'grimoire.local.json'), '{ not json');
         runSignpostSection(claudeDir, repoRoot, DOCTOR);
         const result = readSignpost(claudeDir);
         assert.deepStrictEqual(Object.keys(result).sort(), ['kitRepoPath', 'machine']);
@@ -278,7 +278,7 @@ test('doctor -Fix: a signpost whose JSON does not parse is still replaced wholes
         if (hasDoctorPrefix) {
             const claudeDirRed = makeTempDir('doctor-signpost-unparseable-red-');
             try {
-                write(path.join(claudeDirRed, 'claude-kit.local.json'), '{ not json');
+                write(path.join(claudeDirRed, 'grimoire.local.json'), '{ not json');
                 runSignpostSection(claudeDirRed, repoRoot, DOCTOR_PREFIX);
                 const redResult = readSignpost(claudeDirRed);
                 assert.deepStrictEqual(Object.keys(redResult).sort(), ['kitRepoPath', 'machine'], 'unchanged behaviour on the pre-fix writer too: ' + JSON.stringify(redResult));
@@ -303,7 +303,7 @@ test('doctor -Fix: a signpost whose JSON parses to an array takes the two-key te
     const claudeDir = makeTempDir('doctor-signpost-array-');
     const repoRoot = makeTempDir('doctor-signpost-repo-');
     try {
-        write(path.join(claudeDir, 'claude-kit.local.json'), '[1,2,3]');
+        write(path.join(claudeDir, 'grimoire.local.json'), '[1,2,3]');
         runSignpostSection(claudeDir, repoRoot, DOCTOR);
         const result = readSignpost(claudeDir);
         assert.deepStrictEqual(Object.keys(result).sort(), ['kitRepoPath', 'machine'], 'an array signpost must not contribute keys: ' + JSON.stringify(result));
@@ -312,7 +312,7 @@ test('doctor -Fix: a signpost whose JSON parses to an array takes the two-key te
         if (hasDoctorPrefix) {
             const claudeDirRed = makeTempDir('doctor-signpost-array-red-');
             try {
-                write(path.join(claudeDirRed, 'claude-kit.local.json'), '[1,2,3]');
+                write(path.join(claudeDirRed, 'grimoire.local.json'), '[1,2,3]');
                 runSignpostSection(claudeDirRed, repoRoot, DOCTOR_PREFIX);
                 const redResult = readSignpost(claudeDirRed);
                 assert.deepStrictEqual(Object.keys(redResult).sort(), ['kitRepoPath', 'machine'], 'unchanged behaviour on the pre-fix writer too: ' + JSON.stringify(redResult));
@@ -343,7 +343,7 @@ test('doctor -Fix: a hard link at the signpost path is replaced, not written thr
             const decoyRed = path.join(decoyDir, 'decoy-red.json');
             try {
                 write(decoyRed, decoyContent);
-                fs.linkSync(decoyRed, path.join(claudeDirRed, 'claude-kit.local.json'));
+                fs.linkSync(decoyRed, path.join(claudeDirRed, 'grimoire.local.json'));
                 runSignpostSection(claudeDirRed, repoRoot, DOCTOR_PREFIX);
                 const afterRed = fs.readFileSync(decoyRed, 'utf8');
                 assert.notStrictEqual(afterRed, decoyContent, 'pre-fix doctor.ps1 must write through the hard link and overwrite the shared inode: ' + afterRed);
@@ -354,7 +354,7 @@ test('doctor -Fix: a hard link at the signpost path is replaced, not written thr
 
         const decoyTarget = path.join(decoyDir, 'decoy.json');
         write(decoyTarget, decoyContent);
-        const signpostPath = path.join(claudeDir, 'claude-kit.local.json');
+        const signpostPath = path.join(claudeDir, 'grimoire.local.json');
         fs.linkSync(decoyTarget, signpostPath);
         const linkedBefore = fs.statSync(signpostPath).nlink;
 
@@ -366,7 +366,7 @@ test('doctor -Fix: a hard link at the signpost path is replaced, not written thr
         if (linkedBefore === 2) {
             assert.strictEqual(fs.statSync(signpostPath).nlink, 1, 'the signpost must be a fresh directory entry rather than the shared inode');
         }
-        assert.deepStrictEqual(fs.readdirSync(claudeDir), ['claude-kit.local.json'], 'the temp file the write renames from must not survive the run');
+        assert.deepStrictEqual(fs.readdirSync(claudeDir), ['grimoire.local.json'], 'the temp file the write renames from must not survive the run');
     } finally {
         rmTempDir(claudeDir);
         rmTempDir(repoRoot);
@@ -382,7 +382,7 @@ test('doctor -Fix: a reparse point at the signpost path is refused, and the refu
     const repoRoot = makeTempDir('doctor-signpost-repo-');
     const decoyDir = makeTempDir('doctor-signpost-jtarget-');
     try {
-        const signpostPath = path.join(claudeDir, 'claude-kit.local.json');
+        const signpostPath = path.join(claudeDir, 'grimoire.local.json');
         if (!makeJunction(signpostPath, decoyDir)) {
             t.skip('mklink /J failed on this machine; the refusal path is unverified here.');
             return;
@@ -392,7 +392,7 @@ test('doctor -Fix: a reparse point at the signpost path is refused, and the refu
             const claudeDirRed = makeTempDir('doctor-signpost-junction-red-');
             const decoyRed = makeTempDir('doctor-signpost-jtarget-red-');
             try {
-                if (makeJunction(path.join(claudeDirRed, 'claude-kit.local.json'), decoyRed)) {
+                if (makeJunction(path.join(claudeDirRed, 'grimoire.local.json'), decoyRed)) {
                     let redReports = null;
                     // The pre-fix writer has no link check at all: it either
                     // reports no refusal or fails outright on the reparse
@@ -421,7 +421,7 @@ test('doctor -Fix: a reparse point at the signpost path is refused, and the refu
     } finally {
         // The junction must go before the directory holding it, or the
         // recursive remove walks through it into the target.
-        try { fs.rmdirSync(path.join(claudeDir, 'claude-kit.local.json')); } catch { /* absent when mklink failed */ }
+        try { fs.rmdirSync(path.join(claudeDir, 'grimoire.local.json')); } catch { /* absent when mklink failed */ }
         rmTempDir(claudeDir);
         rmTempDir(repoRoot);
         rmTempDir(decoyDir);
@@ -437,7 +437,7 @@ test('doctor -Fix: a symbolic link at the signpost path is refused, and the file
         const decoyTarget = path.join(decoyDir, 'decoy.json');
         const decoyContent = '{"secret":"do-not-touch","compactNudgeFloor":9999}';
         write(decoyTarget, decoyContent);
-        const signpostPath = path.join(claudeDir, 'claude-kit.local.json');
+        const signpostPath = path.join(claudeDir, 'grimoire.local.json');
         try {
             fs.symlinkSync(decoyTarget, signpostPath, 'file');
         } catch (err) {
@@ -477,7 +477,7 @@ test('doctor without -Fix: a reparse point at the signpost path is named as the 
     const repoRoot = makeTempDir('doctor-signpost-repo-');
     const decoyDir = makeTempDir('doctor-signpost-jtarget-warn-');
     try {
-        const signpostPath = path.join(claudeDir, 'claude-kit.local.json');
+        const signpostPath = path.join(claudeDir, 'grimoire.local.json');
         if (!makeJunction(signpostPath, decoyDir)) {
             t.skip('mklink /J failed on this machine; the non-fix advice path is unverified here.');
             return;
@@ -510,7 +510,7 @@ test('doctor without -Fix: a reparse point at the signpost path is named as the 
         assert.match(warn.Detail, /is a link/i, 'the link must be named as the blocker: ' + warn.Detail);
         assert.match(warn.Detail, /remove the link/i, 'the advice must be one that can actually clear the gap: ' + warn.Detail);
     } finally {
-        try { fs.rmdirSync(path.join(claudeDir, 'claude-kit.local.json')); } catch { /* absent when mklink failed */ }
+        try { fs.rmdirSync(path.join(claudeDir, 'grimoire.local.json')); } catch { /* absent when mklink failed */ }
         rmTempDir(claudeDir);
         rmTempDir(repoRoot);
         rmTempDir(decoyDir);
@@ -521,12 +521,12 @@ test('doctor without -Fix: a reparse point at the signpost path is named as the 
 
 // Spawns setup.sh (or a pre-fix copy) with HOME redirected to a temp
 // directory and cwd set to a fake repo root carrying the one file setup.sh
-// validates for (plugins/claude-kit/.claude-plugin/plugin.json), git-
+// validates for (plugins/grimoire/.claude-plugin/plugin.json), git-
 // initialized so the later `git config core.hooksPath` step (which runs
 // under `set -e`) does not abort the script. extraEnv overrides the child's
 // environment, which is how the no-node cases hand it a PATH without one.
 function runSetupSh(fakeRoot, home, scriptPath, extraEnv) {
-    write(path.join(fakeRoot, 'plugins', 'claude-kit', '.claude-plugin', 'plugin.json'), '{}');
+    write(path.join(fakeRoot, 'plugins', 'grimoire', '.claude-plugin', 'plugin.json'), '{}');
     const scriptText = fs.readFileSync(scriptPath || SETUP_SH, 'utf8');
     const scriptDest = path.join(fakeRoot, 'setup.sh');
     write(scriptDest, scriptText);
@@ -540,7 +540,7 @@ function runSetupSh(fakeRoot, home, scriptPath, extraEnv) {
 }
 
 function readSetupSignpost(home) {
-    return JSON.parse(fs.readFileSync(path.join(home, '.claude', 'claude-kit.local.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(home, '.claude', 'grimoire.local.json'), 'utf8'));
 }
 
 // setup.sh resolves its own SCRIPT_DIR via `cd ... && pwd` under Git Bash,
@@ -558,12 +558,12 @@ test('setup.sh: a floor beside the owned keys survives a re-run (red against the
     const fakeRoot = makeTempDir('setup-signpost-repo-');
     const home = makeTempDir('setup-signpost-home-');
     try {
-        write(path.join(home, '.claude', 'claude-kit.local.json'), JSON.stringify({ kitRepoPath: '/somewhere/else', machine: 'old-machine', compactNudgeFloor: 42000 }));
+        write(path.join(home, '.claude', 'grimoire.local.json'), JSON.stringify({ kitRepoPath: '/somewhere/else', machine: 'old-machine', compactNudgeFloor: 42000 }));
 
         if (hasSetupPrefix) {
             const homeRed = makeTempDir('setup-signpost-home-red-');
             try {
-                write(path.join(homeRed, '.claude', 'claude-kit.local.json'), JSON.stringify({ kitRepoPath: '/somewhere/else', machine: 'old-machine', compactNudgeFloor: 42000 }));
+                write(path.join(homeRed, '.claude', 'grimoire.local.json'), JSON.stringify({ kitRepoPath: '/somewhere/else', machine: 'old-machine', compactNudgeFloor: 42000 }));
                 const resRed = runSetupSh(fakeRoot, homeRed, SETUP_PREFIX);
                 assert.strictEqual(resRed.status, 0, resRed.stdout + resRed.stderr);
                 const redResult = readSetupSignpost(homeRed);
@@ -578,7 +578,7 @@ test('setup.sh: a floor beside the owned keys survives a re-run (red against the
         const result = readSetupSignpost(home);
         assert.strictEqual(result.compactNudgeFloor, 42000, 'the operator-set floor must survive the merge: ' + JSON.stringify(result));
         assert.ok(samePath(result.kitRepoPath, fakeRoot), 'kitRepoPath (' + result.kitRepoPath + ') must resolve to the fake repo root (' + fakeRoot + ')');
-        assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')), ['claude-kit.local.json'], 'the temp file the write renames from must not survive the run');
+        assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')), ['grimoire.local.json'], 'the temp file the write renames from must not survive the run');
     } finally {
         rmTempDir(fakeRoot);
         rmTempDir(home);
@@ -591,12 +591,12 @@ test('setup.sh: a nested operator value survives the merge intact (red against t
     const home = makeTempDir('setup-signpost-home-nested-');
     try {
         const nested = { kitRepoPath: '/somewhere/else', machine: 'old-machine', operatorNested: { a: { b: { c: 'deep value' } } } };
-        write(path.join(home, '.claude', 'claude-kit.local.json'), JSON.stringify(nested));
+        write(path.join(home, '.claude', 'grimoire.local.json'), JSON.stringify(nested));
 
         if (hasSetupPrefix) {
             const homeRed = makeTempDir('setup-signpost-home-nested-red-');
             try {
-                write(path.join(homeRed, '.claude', 'claude-kit.local.json'), JSON.stringify(nested));
+                write(path.join(homeRed, '.claude', 'grimoire.local.json'), JSON.stringify(nested));
                 const resRed = runSetupSh(fakeRoot, homeRed, SETUP_PREFIX);
                 assert.strictEqual(resRed.status, 0, resRed.stdout + resRed.stderr);
                 assert.strictEqual(readSetupSignpost(homeRed).operatorNested, undefined, 'pre-fix setup.sh must drop the nested key on the wholesale rewrite');
@@ -647,7 +647,7 @@ test('setup.sh: a signpost whose JSON does not parse is still replaced wholesale
     const fakeRoot = makeTempDir('setup-signpost-repo-');
     const home = makeTempDir('setup-signpost-home-unparseable-');
     try {
-        write(path.join(home, '.claude', 'claude-kit.local.json'), '{ not json');
+        write(path.join(home, '.claude', 'grimoire.local.json'), '{ not json');
         const res = runSetupSh(fakeRoot, home, SETUP_SH);
         assert.strictEqual(res.status, 0, res.stdout + res.stderr);
         const result = readSetupSignpost(home);
@@ -656,7 +656,7 @@ test('setup.sh: a signpost whose JSON does not parse is still replaced wholesale
         if (hasSetupPrefix) {
             const homeRed = makeTempDir('setup-signpost-home-unparseable-red-');
             try {
-                write(path.join(homeRed, '.claude', 'claude-kit.local.json'), '{ not json');
+                write(path.join(homeRed, '.claude', 'grimoire.local.json'), '{ not json');
                 const resRed = runSetupSh(fakeRoot, homeRed, SETUP_PREFIX);
                 assert.strictEqual(resRed.status, 0, resRed.stdout + resRed.stderr);
                 const redResult = readSetupSignpost(homeRed);
@@ -675,7 +675,7 @@ test('setup.sh: a signpost whose JSON parses to an array takes the two-key templ
     const fakeRoot = makeTempDir('setup-signpost-repo-');
     const home = makeTempDir('setup-signpost-home-array-');
     try {
-        write(path.join(home, '.claude', 'claude-kit.local.json'), '[1,2,3]');
+        write(path.join(home, '.claude', 'grimoire.local.json'), '[1,2,3]');
         const res = runSetupSh(fakeRoot, home, SETUP_SH);
         assert.strictEqual(res.status, 0, res.stdout + res.stderr);
         const result = readSetupSignpost(home);
@@ -700,7 +700,7 @@ test('setup.sh: a hard link at the signpost path is replaced, not written throug
             try {
                 write(decoyRed, decoyContent);
                 fs.mkdirSync(path.join(homeRed, '.claude'), { recursive: true });
-                fs.linkSync(decoyRed, path.join(homeRed, '.claude', 'claude-kit.local.json'));
+                fs.linkSync(decoyRed, path.join(homeRed, '.claude', 'grimoire.local.json'));
                 runSetupSh(fakeRoot, homeRed, SETUP_PREFIX);
                 assert.notStrictEqual(fs.readFileSync(decoyRed, 'utf8'), decoyContent, 'pre-fix setup.sh must write through the hard link and overwrite the shared inode');
             } finally {
@@ -711,7 +711,7 @@ test('setup.sh: a hard link at the signpost path is replaced, not written throug
         const decoyTarget = path.join(decoyDir, 'decoy.json');
         write(decoyTarget, decoyContent);
         fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-        const signpostPath = path.join(home, '.claude', 'claude-kit.local.json');
+        const signpostPath = path.join(home, '.claude', 'grimoire.local.json');
         fs.linkSync(decoyTarget, signpostPath);
         const linkedBefore = fs.statSync(signpostPath).nlink;
 
@@ -724,7 +724,7 @@ test('setup.sh: a hard link at the signpost path is replaced, not written throug
         if (linkedBefore === 2) {
             assert.strictEqual(fs.statSync(signpostPath).nlink, 1, 'the signpost must be a fresh directory entry rather than the shared inode');
         }
-        assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')), ['claude-kit.local.json'], 'the temp file the write renames from must not survive the run');
+        assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')), ['grimoire.local.json'], 'the temp file the write renames from must not survive the run');
     } finally {
         rmTempDir(fakeRoot);
         rmTempDir(home);
@@ -738,7 +738,7 @@ test('setup.sh: a reparse point at the signpost path is refused and the run exit
     const decoyDir = makeTempDir('setup-signpost-jtarget-');
     try {
         fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-        const signpostPath = path.join(home, '.claude', 'claude-kit.local.json');
+        const signpostPath = path.join(home, '.claude', 'grimoire.local.json');
         if (!makeJunction(signpostPath, decoyDir)) {
             t.skip('mklink /J failed on this machine; the refusal path is unverified here.');
             return;
@@ -749,12 +749,12 @@ test('setup.sh: a reparse point at the signpost path is refused and the run exit
             const decoyRed = makeTempDir('setup-signpost-jtarget-red-');
             try {
                 fs.mkdirSync(path.join(homeRed, '.claude'), { recursive: true });
-                if (makeJunction(path.join(homeRed, '.claude', 'claude-kit.local.json'), decoyRed)) {
+                if (makeJunction(path.join(homeRed, '.claude', 'grimoire.local.json'), decoyRed)) {
                     const resRed = runSetupSh(fakeRoot, homeRed, SETUP_PREFIX);
                     assert.doesNotMatch(resRed.stderr, /is a link/i, 'pre-fix setup.sh must carry no link refusal: ' + resRed.stderr);
                 }
             } finally {
-                try { fs.rmdirSync(path.join(homeRed, '.claude', 'claude-kit.local.json')); } catch { /* absent when mklink failed */ }
+                try { fs.rmdirSync(path.join(homeRed, '.claude', 'grimoire.local.json')); } catch { /* absent when mklink failed */ }
                 rmTempDir(homeRed);
                 rmTempDir(decoyRed);
             }
@@ -768,7 +768,7 @@ test('setup.sh: a reparse point at the signpost path is refused and the run exit
         assert.match(res.stdout, /core\.hooksPath/, 'the rest of setup must still run: ' + res.stdout);
         assert.deepStrictEqual(fs.readdirSync(decoyDir), [], 'nothing may be written through the reparse point');
     } finally {
-        try { fs.rmdirSync(path.join(home, '.claude', 'claude-kit.local.json')); } catch { /* absent when mklink failed */ }
+        try { fs.rmdirSync(path.join(home, '.claude', 'grimoire.local.json')); } catch { /* absent when mklink failed */ }
         rmTempDir(fakeRoot);
         rmTempDir(home);
         rmTempDir(decoyDir);
@@ -785,7 +785,7 @@ test('setup.sh: a symbolic link at the signpost path is refused, and the file it
         const decoyContent = '{"secret":"do-not-touch","compactNudgeFloor":9999}';
         write(decoyTarget, decoyContent);
         fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-        const signpostPath = path.join(home, '.claude', 'claude-kit.local.json');
+        const signpostPath = path.join(home, '.claude', 'grimoire.local.json');
         try {
             fs.symlinkSync(decoyTarget, signpostPath, 'file');
         } catch (err) {
@@ -848,10 +848,10 @@ test('setup.sh without node: an existing signpost is left untouched rather than 
     const home = makeTempDir('setup-signpost-home-nonode-existing-');
     try {
         const existing = JSON.stringify({ kitRepoPath: '/somewhere/else', machine: 'old-machine', compactNudgeFloor: 42000 });
-        write(path.join(home, '.claude', 'claude-kit.local.json'), existing);
+        write(path.join(home, '.claude', 'grimoire.local.json'), existing);
         const res = runSetupSh(fakeRoot, home, SETUP_SH, { PATH: pathWithoutNode() });
         assert.strictEqual(res.status, 0, res.stdout + res.stderr);
-        assert.strictEqual(fs.readFileSync(path.join(home, '.claude', 'claude-kit.local.json'), 'utf8'), existing, 'the existing signpost must be byte-identical');
+        assert.strictEqual(fs.readFileSync(path.join(home, '.claude', 'grimoire.local.json'), 'utf8'), existing, 'the existing signpost must be byte-identical');
         assert.match(res.stderr, /node not found/i, 'the skipped write must be reported: ' + res.stderr);
         assert.match(res.stdout, /core\.hooksPath/, 'the run must continue to the git-hooks wiring: ' + res.stdout);
     } finally {

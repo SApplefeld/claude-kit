@@ -1,4 +1,4 @@
-// Tests for the armed-goal block in plugins/claude-kit/hooks/session-start.js.
+// Tests for the armed-goal block in plugins/grimoire/hooks/session-start.js.
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
 // child process, fed a SessionStart payload on stdin, and asserted on by its
@@ -17,8 +17,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
-const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
+const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal.js');
 
 function makeRepo() {
     return fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-goal-test-'));

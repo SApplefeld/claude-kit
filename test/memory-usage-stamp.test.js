@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/memory-usage-stamp.js (the memory usage stamp).
+// Tests for plugins/grimoire/hooks/memory-usage-stamp.js (the memory usage stamp).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
 // a real child process, fed a PostToolUse payload on stdin, and asserted on by
@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-usage-stamp.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memory-usage-stamp.js');
 
 // A fresh store root with both tiers laid out the way memq resolves them: a
 // project memory dir under projects/<sanitized-cwd>/memory and a type dir

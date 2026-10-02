@@ -26,7 +26,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const GOAL_LIB = path.join(PLUGIN_ROOT, 'hooks', 'kit-goal-lib.js');
 // A copy of doctor.ps1 as it stood before the ordinal-comparison fix,

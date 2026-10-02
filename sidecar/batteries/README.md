@@ -439,6 +439,6 @@ attribute is set, and the files inherit the containing tree's ACL, per
 operator's; the run prints the path and says so.
 
 Neither battery ships with the kit plugin: `sidecar/`
-sits outside `plugins/claude-kit/`, which is the only tree `build.ps1`
+sits outside `plugins/grimoire/`, which is the only tree `build.ps1`
 packages, so these fixtures and the runner are dev-time evaluation artifacts
 by construction.

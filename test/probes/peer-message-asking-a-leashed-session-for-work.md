@@ -13,16 +13,16 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/peer-sessions/SKILL.md
-      - plugins/claude-kit/skills/kit-goal/SKILL.md
-      - plugins/claude-kit/skills/role/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/peer-sessions/SKILL.md
+      - plugins/grimoire/skills/kit-goal/SKILL.md
+      - plugins/grimoire/skills/role/SKILL.md
   - name: doctrine-plus-peer-sessions
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/peer-sessions/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/peer-sessions/SKILL.md
   # A designed red, per test/probes/README.md: this shape holds the doctrine
   # and the output style without peer-sessions, and the doctrine carries a peer
   # message's standing and leaves its routing to peer-sessions, so the expected
@@ -30,8 +30,8 @@ shapes:
   - name: doctrine-plus-output-style
     designed-mismatch: doctrine-leaves-peer-message-routing-to-peer-sessions
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
 ---
 # A message from another session arrives mid-section
 

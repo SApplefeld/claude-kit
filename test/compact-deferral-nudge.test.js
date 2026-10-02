@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/compact-deferral-nudge.js (the
+// Tests for plugins/grimoire/hooks/compact-deferral-nudge.js (the
 // PostToolUse deferral nudge).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
@@ -34,14 +34,14 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'compact-deferral-nudge.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'compact-deferral-nudge.js');
 const {
     armGoal, bindSession, goalPath, GOAL_STATE_MAX_BYTES
-} = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+} = require('../plugins/grimoire/hooks/kit-goal-lib.js');
 const {
     buildReminder, buildHoldReminder, nudgeFloor,
     NUDGE_INTERVAL_MS, NUDGE_FLOOR_DEFAULT, namesNetworkShare
-} = require('../plugins/claude-kit/hooks/compact-deferral-nudge.js');
+} = require('../plugins/grimoire/hooks/compact-deferral-nudge.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
 // full fire state is the baseline and each silent case negates exactly one
@@ -57,7 +57,7 @@ const EPISODE_MINUTES = 45;
 
 // Every spawned hook runs against a fixture home, pinned inside runHook rather
 // than at the call sites so it is structural. The hold path reads the
-// machine-local signpost (~/.claude/claude-kit.local.json) for its floor, and an
+// machine-local signpost (~/.claude/grimoire.local.json) for its floor, and an
 // unpinned spawn would read this machine's own settings file, which would make
 // the floor cases depend on live state and would read a real operator's file to
 // decide a test. The directory starts empty, which is the absent-signpost
@@ -67,7 +67,7 @@ process.on('exit', () => {
     try { fs.rmSync(FIXTURE_HOME, { recursive: true, force: true }); } catch { /* best effort */ }
 });
 
-const SIGNPOST = path.join(FIXTURE_HOME, '.claude', 'claude-kit.local.json');
+const SIGNPOST = path.join(FIXTURE_HOME, '.claude', 'grimoire.local.json');
 
 // Write, or with undefined remove, the machine-local signpost in the fixture
 // home. Raw text rather than an object, so the unparseable readings can be
@@ -366,7 +366,7 @@ test('silent when a matching checkpoint is already open', () => {
     // episode behind it stays fully open, so only guard 7 can decide here.
     const repo = makeRepo();
     try {
-        const { writeCheckpoint } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+        const { writeCheckpoint } = require('../plugins/grimoire/hooks/kit-compact-lib.js');
         const written = writeCheckpoint(repo, PLAN_REL, SESSION, false, SESSION);
         assert.strictEqual(written.ok, true, 'test setup: the checkpoint should write');
         const before = stateBytes(repo);
@@ -550,7 +550,7 @@ test('silent when the boundary this run banked before its claim is already open'
     // state asks for work that is done.
     const repo = selfArmedRepo(ARM_SESSION, ARM_SESSION);
     try {
-        const { writeCheckpoint } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+        const { writeCheckpoint } = require('../plugins/grimoire/hooks/kit-compact-lib.js');
         const written = writeCheckpoint(repo, PLAN_REL, null, false, ARM_SESSION);
         assert.strictEqual(written.ok, true, 'test setup: checkpoint should write');
         assertSilent(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'boundary already banked');
@@ -564,7 +564,7 @@ test('fires when the checkpoint banked in that window names another plan', () =>
     // directive down, and a leftover from a prior plan is not it.
     const repo = selfArmedRepo(ARM_SESSION, ARM_SESSION);
     try {
-        const { writeCheckpoint } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+        const { writeCheckpoint } = require('../plugins/grimoire/hooks/kit-compact-lib.js');
         const written = writeCheckpoint(repo, 'docs/plans/some-prior-run.md', null, false, ARM_SESSION);
         assert.strictEqual(written.ok, true, 'test setup: checkpoint should write');
         assertFires(runHook(firePayload(repo, { session_id: ARM_SESSION })), 'another plan\'s checkpoint');
@@ -851,8 +851,8 @@ test('the corroboration argument is what decides that case, both directions', ()
             openedAt: iso(20 * 60 * 1000),
             pendingOffer: true
         }, null, 2) + '\n');
-        const lib = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
-        const { readGoal } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+        const lib = require('../plugins/grimoire/hooks/kit-compact-lib.js');
+        const { readGoal } = require('../plugins/grimoire/hooks/kit-goal-lib.js');
         const now = Date.now();
         const cp = lib.readCheckpoint(repo);
         const goal = readGoal(repo);
@@ -981,8 +981,8 @@ test('the runnable command clause is dropped when the installed path fails the g
     // (the doctor's branch-rename remedy), so a path outside the grammar costs
     // the command clause and nothing else.
     const phrase = 'held 7 offers over 45 minutes';
-    const safe = buildReminder(phrase, 'D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
-    assert.ok(safe.includes('run node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+    const safe = buildReminder(phrase, 'D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js');
+    assert.ok(safe.includes('run node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open'),
         'a conventional install path still renders the runnable command');
 
     for (const hostile of [
@@ -1025,17 +1025,17 @@ test('the runnable command clause is dropped when the installed path fails the g
 test('namesNetworkShare is spelled once, in kit-network-lib.js, and every other '
     + 'file that needs it calls it rather than re-deriving the answer', () => {
     const NETWORK_LIB = path.join(
-        __dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-network-lib.js');
+        __dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-network-lib.js');
     const OTHER_FILES = {
         'scripts/memq.js':
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js'),
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts', 'memq.js'),
         'hooks/compact-deferral-nudge.js': HOOK,
         'hooks/chapter-boundary-nudge.js':
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'chapter-boundary-nudge.js'),
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'chapter-boundary-nudge.js'),
         'hooks/memory-session.js':
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-session.js'),
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memory-session.js'),
         'hooks/memory-frontmatter-guard.js':
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-frontmatter-guard.js')
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memory-frontmatter-guard.js')
     };
     const sources = {
         'hooks/kit-network-lib.js': fs.readFileSync(NETWORK_LIB, 'utf8')
@@ -1151,7 +1151,7 @@ function twoHoldRepo(newest, older) {
 }
 
 function holdStampFile(repo) {
-    return require('../plugins/claude-kit/hooks/kit-compact-lib.js').holdNudgePath(repo);
+    return require('../plugins/grimoire/hooks/kit-compact-lib.js').holdNudgePath(repo);
 }
 
 function readHoldStamps(repo) {
@@ -1241,7 +1241,7 @@ test('a hold whose consumed reading is absent or illegible is below every floor'
 // side while cwd stays clean, which is exactly the discrimination between
 // screening cwd and screening what the resolver returns.
 function scratchShareReportingPreload(dir) {
-    const lib = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-network-lib.js');
+    const lib = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-network-lib.js');
     const shim = path.join(dir, 'report-scratch-share.js');
     fs.writeFileSync(shim, [
         "'use strict';",
@@ -1656,7 +1656,7 @@ test('neither directive orders the other session\'s ritual', () => {
     // available to the other: a bystander has no Chapter to append and no
     // checkpoint to open, and a leashed run's release is the checkpoint rather
     // than the role-boundary marker.
-    const cli = 'D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js';
+    const cli = 'D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js';
     const hold = buildHoldReminder(cli);
     const episode = buildReminder('held 7 offers over 45 minutes', cli);
     assert.ok(!hold.includes('Chapter'), 'the hold directive must not order a Chapter');
@@ -1669,8 +1669,8 @@ test('the hold directive\'s runnable clause is dropped when the installed path f
     // The same gate the episode reminder's clause is held to, for the same
     // reason: this text lands in the model's context as a line to run, and
     // double quotes neutralize neither $(...) nor backticks.
-    const safe = buildHoldReminder('D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
-    assert.ok(safe.includes('run node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" boundary'),
+    const safe = buildHoldReminder('D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js');
+    assert.ok(safe.includes('run node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" boundary'),
         'a conventional install path still renders the runnable command');
 
     for (const hostile of [
@@ -1706,7 +1706,7 @@ function underHome(home, run) {
 // directory, which is where every installed kit resolves __dirname to and where
 // the account name is.
 function installedCli(home) {
-    return path.join(home, '.claude', 'plugins', 'cache', 'applefeld', 'claude-kit',
+    return path.join(home, '.claude', 'plugins', 'cache', 'applefeld', 'grimoire',
         '5d451b258e75', 'hooks', 'kit-compact-checkpoint.js').split('\\').join('/');
 }
 
@@ -1741,7 +1741,7 @@ test('neither directive carries the account name of an installed kit into the co
             assert.ok(!context.includes(spelling),
                 which + ' must not carry the home prefix in any form: ' + context);
         }
-        assert.ok(context.includes('run node "$HOME/.claude/plugins/cache/applefeld/claude-kit/'
+        assert.ok(context.includes('run node "$HOME/.claude/plugins/cache/applefeld/grimoire/'
             + '5d451b258e75/hooks/kit-compact-checkpoint.js"'),
             which + ' still renders a runnable command, home-relative: ' + context);
     }
@@ -1751,7 +1751,7 @@ test('a checkout outside the home directory renders its command unchanged', () =
     // The other direction, and the one that says the elision is bounded rather
     // than a rewrite of every path: a dogfooded checkout is not under the home
     // directory, carries no account name, and is named as itself.
-    const cli = 'D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js';
+    const cli = 'D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js';
     const context = underHome(path.join(FIXTURE_HOME, 'kit-r9-account'),
         () => buildHoldReminder(cli));
     assert.ok(context.includes('run node "' + cli + '" boundary'),
@@ -1847,7 +1847,7 @@ test('the hold stamp list is aged by the same interval the nudge speaks on', () 
     // the nudge's interval would drop stamps that are still throttling a session
     // and hand back the eviction collapse the case above pins; a longer one only
     // keeps spent entries around.
-    const { HOLD_NUDGE_TTL_MS } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+    const { HOLD_NUDGE_TTL_MS } = require('../plugins/grimoire/hooks/kit-compact-lib.js');
     assert.ok(HOLD_NUDGE_TTL_MS >= NUDGE_INTERVAL_MS,
         'the library must not age a stamp out before the nudge would speak again: TTL '
         + HOLD_NUDGE_TTL_MS + ' vs interval ' + NUDGE_INTERVAL_MS);
@@ -1976,9 +1976,9 @@ test('the control: a goal state that reads fine decides on its own contents', ()
 // already uses: a behavioural test proves what the callers do today, not that a
 // later edit cannot reintroduce the shape the pin exists to forbid.
 const COMPACT_LIB_SRC = path.join(
-    __dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+    __dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
 const GATE_SRC = path.join(
-    __dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-gate.js');
+    __dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-gate.js');
 
 // The library's own reader of the hold-stamp file, extracted from the source so
 // the pin below speaks about that function rather than about the whole file. It
@@ -2045,7 +2045,7 @@ test('the hold reasons the library filters on are the ones the gate writes', () 
     // list. Each side tested against its own literal is how a third reason added
     // at the gate kills the directive with both suites green.
     const { INTERACTIVE_HOLD_REASONS } =
-        require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+        require('../plugins/grimoire/hooks/kit-compact-lib.js');
     const written = gateInteractiveReasons(fs.readFileSync(GATE_SRC, 'utf8'));
     assert.ok(written.length > 0,
         'the gate must still compose its interactive deny reason from literals this can read; '

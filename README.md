@@ -1,15 +1,15 @@
-# claude-kit
+# grimoire
 
-Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, testing discipline, responding to review, skill and curated-prose authoring, kaizen self-improvement, and a multi-lens design council), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
+Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, testing discipline, responding to review, skill and curated-prose authoring, kaizen self-improvement, and a multi-lens design council), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `grimoire` plugin in the `applefeld` marketplace.
 
 ## STRUCTURE
 
 ```
-claude-kit/                          (repo = the marketplace)
+grimoire/                            (repo = the marketplace)
   .claude-plugin/
     marketplace.json                 Marketplace catalog (must live here)
   plugins/
-    claude-kit/                      (the plugin)
+    grimoire/                        (the plugin)
       .claude-plugin/plugin.json     Plugin manifest (no version field - every
                                      commit counts as a new version)
       skills/
@@ -64,7 +64,7 @@ claude-kit/                          (repo = the marketplace)
                                      Complete-but-unarchived plans, and reports the active backlog's
                                      item count and oldest-item age
         format-on-edit.js            CSharpier on edited .cs files (silent when not installed)
-        doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session, under a header line naming it as the writer
+        doctrine-refresh.js          Rewrites ~/.claude/grimoire-doctrine.md from the installed skill each session, under a header line naming it as the writer
         capacity-read.js             Pre-dispatch capacity reading: one line from claude-swap's usage cache saying
                                      whether a fable dispatch goes ahead, downgrades, or leaves it to the ladder
         kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
@@ -141,25 +141,26 @@ claude-kit/                          (repo = the marketplace)
                                      launcher (run by the doctor)
         install-memory-sync.ps1      Memory-sync allowlist, state, and initialization (run by the doctor)
         install-embedder.ps1         Embedder probe, install, and index health (run by the doctor)
-        install-compact-window.ps1   Writes autoCompactWindow into user settings.json (run by the doctor
+        install-compact-window.ps1   Writes autoCompactWindow and outputStyle into user settings.json (run by the doctor
                                      under -Fix; backs up, verifies, and aborts rather than clobbering)
         doctor.ps1                   The kit doctor (ships with the plugin, so installed machines have it):
                                      policy, ANTHROPIC_API_KEY hazard, doctrine import + freshness, signpost,
                                      hooks (goal leash wiring and load, hook canary wiring, the memq shim),
-                                     memory sync, the embedder, and the auto-compaction window. Flags:
-                                     -Fix and -Yes (pre-answers prompts). Under -Fix the
-                                     auto-compaction check offers to write your user settings.json, the
-                                     only change it makes to harness config.
+                                     memory sync, the embedder, the auto-compaction window, files under the
+                                     plugin's former name, the output style, and the plugin install. Flags:
+                                     -Fix and -Yes (pre-answers prompts). Under -Fix the auto-compaction
+                                     and output style checks offer to write your user settings.json, and
+                                     the install check offers to run `claude plugin install`.
         doctor.cmd                   Execution-policy-proof wrapper (a fresh Windows box blocks .ps1 by default)
   kaizen/                            Kit self-improvement inbox (per-machine notes-*.md + briefs/)
   settings/settings.recommended.json Permission rules + acceptEdits starting point
   doctor.ps1 / doctor.cmd            Thin forwarders to the payload doctor (kept for the repo-root habit)
   setup.sh                           POSIX first-run setup: kaizen signpost + git hook wiring (until a doctor.sh exists)
-  build.ps1 / build.sh               Package plugins/claude-kit -> plugins/claude-kit.zip (claude-kit/ at archive root) for manual upload
+  build.ps1 / build.sh               Package plugins/grimoire -> plugins/grimoire.zip (grimoire/ at archive root) for manual upload
   .githooks/pre-commit               Rebuilds the zip on commit when plugin sources change (wired via core.hooksPath)
 ```
 
-The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"source": "./plugins/claude-kit"` - relative paths resolve against the repo root and work because the marketplace is added via git. Additional plugins later: add a folder under `plugins/` and a second entry in the catalog.
+The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"source": "./plugins/grimoire"` - relative paths resolve against the repo root and work because the marketplace is added via git. Additional plugins later: add a folder under `plugins/` and a second entry in the catalog.
 
 ## INSTALL (per machine)
 
@@ -168,15 +169,15 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
 2. Validate before pushing (catches structure/schema mistakes):
    ```
    claude plugin validate .
-   claude plugin validate ./plugins/claude-kit
+   claude plugin validate ./plugins/grimoire
    ```
 
 3. In Claude Code:
    ```
    /plugin marketplace add <your-github-username>/claude-kit
-   /plugin install claude-kit@applefeld
+   /plugin install grimoire@applefeld
    ```
-   Default scope is user, so every project picks it up. If the marketplace was added before a structure fix, refresh it first: `/plugin marketplace update applefeld` (or remove and re-add).
+   Default scope is user, so every project picks it up. If the marketplace was added before a structure fix, refresh it first: `/plugin marketplace update applefeld` (or remove and re-add). A machine that installed the plugin under its former name sees Claude Code rename it once, and then needs the one install command `claude plugin install grimoire@applefeld`, which the doctor runs.
 
 4. Wire the dev clone (kaizen signpost + git hooks; this no longer installs a user CLAUDE.md):
    - Windows: `.\doctor.cmd -Fix` (setup and verification in one pass; the wrapper works on a fresh box, where the default execution policy blocks `.ps1` files)
@@ -185,15 +186,15 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
 5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push`, which every commit model but Review-Only relies on; remove it if you want pushes gated).
 
 6. Operating doctrine (single-sourced as the `operating-instructions` skill, which rides plugin auto-update):
-   - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, except that a session on an older plugin than the one that last wrote it declines, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
+   - Claude Code (once per machine): add `@grimoire-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, except that a session on an older plugin than the one that last wrote it declines, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
    - Cowork / Chat (once per account): add to your account personal preferences: `Before any non-trivial task, consult the operating-instructions skill.` Plugins cannot write account preferences and Cowork/Chat do not read `~/.claude`, so this one line is the only manual step there.
 
-7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/claude-kit:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, the `ANTHROPIC_API_KEY` hazard, the doctrine import and content freshness, the kaizen signpost, git hooks, the goal-leash and hook-canary wiring, the memq shim, memory sync, the embedder, and the auto-compaction window. `-Fix` applies the safe durable repairs (`-Yes` pre-answers prompts for unattended runs). The one thing it deletes is the temp file its own failed signpost write left behind. Each FAIL or WARN whose expected value came from the payload names that copy (`repo clone: <path>` or `installed plugin: <path>`). On a clone, the memq shim and memory sync steps read three ways: PASS where the machine matches the clone, INFO (`trails the checkout in hand`) where it matches only the installed copy, and FAIL where it matches neither or no installed copy could be judged. A memq shim that does not run is never read as trailing. The embedder reads three ways too: PASS where the clone reads the stack ready, INFO where the clone reads it absent or unusable and the installed copy reads it ready, the clone's WARN otherwise, and FAIL where the payload lacks `memory-index.js`, the probe cannot answer, or an install fails. `-Fix` from the clone installs nothing on an INFO. It installs from the clone where a FAIL or WARN names a repair it performs. The memq shim's FAIL, for a missing or differing file, is one such case. The memory sync FAIL, for a drifted or missing allowlist file, is another. The memory sync WARN, for a store that is not yet a repository, is a third, and `-Fix` initializes that repository. The embedder's WARN is the fourth. A memq shim whose files match but that does not run names a plugin reinstall instead, which `-Fix` does not perform. On a clone it first names the checkout's own `scripts\memq-shim.js`, since the shim memq runs from matches it.
+7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/grimoire:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, the `ANTHROPIC_API_KEY` hazard, files left under the plugin's former name, the doctrine import and content freshness, the kaizen signpost, git hooks, the goal-leash and hook-canary wiring, the memq shim, memory sync, the embedder, the auto-compaction window, the output style, and the plugin install. `-Fix` applies the safe durable repairs (`-Yes` pre-answers prompts for unattended runs). It deletes only files its own run wrote: the temp file a failed signpost write or import-line rewrite left, and the settings writer's temp file and pre-write backup. Each FAIL or WARN whose expected value came from the payload names that copy (`repo clone: <path>` or `installed plugin: <path>`). On a clone, the memq shim and memory sync steps read three ways: PASS where the machine matches the clone, INFO (`trails the checkout in hand`) where it matches only the installed copy, and FAIL where it matches neither or no installed copy could be judged. A memq shim that does not run is never read as trailing. The embedder reads three ways too: PASS where the clone reads the stack ready, INFO where the clone reads it absent or unusable and the installed copy reads it ready, the clone's WARN otherwise, and FAIL where the payload lacks `memory-index.js`, the probe cannot answer, or an install fails. `-Fix` from the clone installs nothing on an INFO. It installs from the clone where a FAIL or WARN names a repair it performs. The memq shim's FAIL, for a missing or differing file, is one such case. The memory sync FAIL, for a drifted or missing allowlist file, is another. The memory sync WARN, for a store that is not yet a repository, is a third, and `-Fix` initializes that repository. The embedder's WARN is the fourth. A memq shim whose files match but that does not run names a plugin reinstall instead, which `-Fix` does not perform. On a clone it first names the checkout's own `scripts\memq-shim.js`, since the shim memq runs from matches it.
 
 Updating. Commit and push here first. The plugin's version is the git commit SHA (`plugin.json` omits `version`), so every commit is a new version with no version bumping. How you pull that update differs by surface, and the surfaces are SEPARATE installs:
 
 - **Desktop app (Chat, Cowork, and Code share one install).** There is no update button on the plugin card itself, and `/plugin` slash commands do not work in the Desktop chat. Open the plugin Directory (Customize) -> Plugins -> Personal -> open the plugin's marketplace (its blue marketplace link, or the Local uploads entry) -> the `...` menu -> Check for updates (it shows the latest synced commit). Then go back to the plugin and its Update button lights up; updating propagates to Chat, Cowork, and Code at once. The same `...` menu has a Sync automatically toggle, off by default for a personal marketplace, so turn it on to skip this dance on future commits.
-- **Terminal CLI is a separate install** and does not share the Desktop app's plugin copy: `/plugin marketplace update applefeld` then `/plugin update claude-kit` updates the CLI only. Updating one surface family does not update the other.
+- **Terminal CLI is a separate install** and does not share the Desktop app's plugin copy: `/plugin marketplace update applefeld` then `/plugin update grimoire` updates the CLI only. Updating one surface family does not update the other.
 
 The README and docs are repo-level, not plugin payload, so they need no plugin update. The doctrine rides the plugin and updates with it (no setup re-run): Code via the import + `doctrine-refresh` hook, Cowork/Chat via the skill.
 
@@ -201,7 +202,7 @@ The README and docs are repo-level, not plugin payload, so they need no plugin u
 
 Some environments - for example a work Cowork/Chat account that can't reach this private GitHub - can't add the marketplace by repo. For those, upload the packaged plugin zip instead:
 
-- `build.ps1` (Windows, canonical) or `build.sh` (Linux/macOS) packages `plugins/claude-kit/` into `plugins/claude-kit.zip` with `claude-kit/` at the archive root - the layout the zip-upload flow expects. The build is deterministic (sorted entries, fixed timestamps).
+- `build.ps1` (Windows, canonical) or `build.sh` (Linux/macOS) packages `plugins/grimoire/` into `plugins/grimoire.zip` with `grimoire/` at the archive root - the layout the zip-upload flow expects. The build is deterministic (sorted entries, fixed timestamps).
 - The pre-commit hook rebuilds the zip automatically whenever a commit changes plugin sources, so the artifact stays current. It's wired via `git config core.hooksPath .githooks`; on a fresh clone, run `doctor.cmd -Fix` (Windows) or `./setup.sh` (POSIX), or set that config by hand, to activate it. Run `build.ps1`/`build.sh` directly anytime you want a fresh zip without committing.
 - The zip is gitignored - it's a local build artifact you carry by hand, not something committed.
 
@@ -232,14 +233,14 @@ Quality is protected by three things, none of which is the implementer's model: 
 - Specs and plans: `docs/plans/` in each project, named `<project>_<content-type>_v1.md`, versions increment, never overwrite.
 - Chapters are appended to the plan doc, not kept in a separate file. The plan doc is the single source of truth for intent and state.
 - Durable learnings go to the kit memory store, not into plan docs or CLAUDE.md. One fact per file with an index line beside it, written under the `memory-system` skill's bar and read back through `memq`; the SessionStart hook names the store's directory and its index at the start of an ordinary session. The store works the same whether Claude Code's own auto-memory is on or off.
-- Project CLAUDE.md files carry what is true of that project only: build commands, architecture pointers, and the rules that hold nowhere else (a product's honesty, identity, and privacy gates, its test-suite naming), stated next to the gate tests that enforce them. Global rules live in the operating-instructions skill (delivered always-on in Code via the `~/.claude/CLAUDE.md` import of `@claude-kit-doctrine.md`, and available as a skill in Cowork/Chat), which carries only what is general and not already guaranteed by the harness; the mechanics of a workflow moment live in the skill that owns it.
+- Project CLAUDE.md files carry what is true of that project only: build commands, architecture pointers, and the rules that hold nowhere else (a product's honesty, identity, and privacy gates, its test-suite naming), stated next to the gate tests that enforce them. Global rules live in the operating-instructions skill (delivered always-on in Code via the `~/.claude/CLAUDE.md` import of `@grimoire-doctrine.md`, and available as a skill in Cowork/Chat), which carries only what is general and not already guaranteed by the harness; the mechanics of a workflow moment live in the skill that owns it.
 - Each project documents its access architecture and accepted risks in `docs/security-model.md` (for example, a procedure-only or impersonation model: the roles, schema, impersonation mechanism, and any accepted-risk rationale). It also carries the `## Threat model` section the security-reviewer agent reads before any code, whose four parts are the deployment, the assets, the attacker classes in consideration and the classes out of it with the reason, and what citing that section buys a finding is `executing-work`'s rule, stated whole in `docs/security-model.md` under that heading rather than restated here. That agent verifies the code upholds the access architecture, and re-checks accepted-risk preconditions instead of re-flagging them, which is also the document auditors ask for.
 
 ## NOTES AND KNOWN TRADEOFFS
 
-- Plugin skills are namespaced: explicit invocation is `/claude-kit:brainstorming`. Automatic (model-invoked) triggering is unaffected.
+- Plugin skills are namespaced: explicit invocation is `/grimoire:brainstorming`. Automatic (model-invoked) triggering is unaffected.
 - The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the `format-on-edit.js` command object from its PostToolUse group in `hooks/dispatch-table.json`, and its name from the matching row of the routing copy at the top of `hooks/hook-dispatch.js`, if this annoys more than it helps; that group holds a second command, the chapter-boundary nudge, which should stay.
-- Plugins are copied to a cache at install (`~/.claude/plugins/cache`); the plugin cannot reference files outside `plugins/claude-kit/`. That is why `home/` and `settings/` live outside the plugin - they are machine-setup assets, not plugin components.
+- Plugins are copied to a cache at install (`~/.claude/plugins/cache`); the plugin cannot reference files outside `plugins/grimoire/`. That is why `home/` and `settings/` live outside the plugin - they are machine-setup assets, not plugin components.
 - Plugin-shipped agents cannot declare their own hooks, MCP servers, or permissionMode (Claude Code security restriction). None of these agents need them.
 - `settings.recommended.json` reflects the settings schema as of June 2026; verify key names against current docs if something is ignored: https://code.claude.com/docs/en/settings
 

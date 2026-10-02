@@ -1,5 +1,5 @@
 // Tests for the goal family in a linked git worktree: goalPath in
-// plugins/claude-kit/hooks/kit-goal-lib.js resolves .kit/goal-state.json
+// plugins/grimoire/hooks/kit-goal-lib.js resolves .kit/goal-state.json
 // against the working tree itself, so a session working in a worktree holds
 // that tree's own leash and the main checkout's leash is untouched by it. The
 // checkpoint CLI, the PreCompact gate and the Stop hook inherit the resolution
@@ -28,18 +28,18 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
-const CHECKPOINT_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-checkpoint.js');
-const GATE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-gate.js');
-const STOP_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
+const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal.js');
+const CHECKPOINT_CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-checkpoint.js');
+const GATE = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-gate.js');
+const STOP_HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal-stop.js');
 
 const {
     goalPath, readGoal, armGoal, bindSession, clearGoal
-} = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+} = require('../plugins/grimoire/hooks/kit-goal-lib.js');
 const {
     checkpointPath, writeCheckpoint, recordEpisodeNudge
-} = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
-const memq = require('../plugins/claude-kit/scripts/memq.js');
+} = require('../plugins/grimoire/hooks/kit-compact-lib.js');
+const memq = require('../plugins/grimoire/scripts/memq.js');
 
 // The session id fixtures bind the goal to; gate payloads default to it so the
 // leash-holder path is the baseline, matching the gate suite's own fixtures.

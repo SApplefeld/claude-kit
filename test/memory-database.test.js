@@ -34,7 +34,7 @@ const path = require('path');
 // dependency either side.
 const { DatabaseSync } = require('node:sqlite');
 
-const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
+const SCRIPTS = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts');
 const MEMQ = path.join(SCRIPTS, 'memq.js');
 const CLIENT_SOURCE = path.join(SCRIPTS, 'memory-database.js');
 const db = require(CLIENT_SOURCE);
@@ -43,7 +43,7 @@ const db = require(CLIENT_SOURCE);
 const mi = require(path.join(SCRIPTS, 'memory-index.js'));
 // The kit's one home-directory elision, which is what the client runs a
 // sentence through on its way to the host.
-const { scrub, homeElisionsKnown } = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
+const { scrub, homeElisionsKnown } = require(path.join(__dirname, '..', 'plugins', 'grimoire',
     'hooks', 'kit-compact-lib.js'));
 const LIVE = process.env.KIT_MEMORY_DB_LIVE === '1';
 
@@ -1347,7 +1347,7 @@ test('the publish run record carries no home directory, whatever the sentence wa
 // where the rule lives, which is what keeps that output identical by
 // construction rather than by coincidence.
 test('the channel render is one helper in the shared library, called by both spellings of it', () => {
-    const lib = require(path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks',
+    const lib = require(path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks',
         'kit-compact-lib.js'));
     assert.strictEqual(typeof lib.shownText, 'function',
         'the shared library owns the render');
@@ -1385,7 +1385,7 @@ test('the channel render is one helper in the shared library, called by both spe
     const homesIn = (text) => (text.split(/\r?\n/)
         .filter((line) => !/^\s*(\/\/|\*)/.test(line)).join(' ').match(BODY) || []).length;
     const homes = [];
-    for (const file of [CLIENT_SOURCE, MEMQ, path.join(__dirname, '..', 'plugins', 'claude-kit',
+    for (const file of [CLIENT_SOURCE, MEMQ, path.join(__dirname, '..', 'plugins', 'grimoire',
         'hooks', 'kit-compact-lib.js')]) {
         const found = homesIn(fs.readFileSync(file, 'utf8'));
         if (found > 0) homes.push(path.basename(file) + ' x' + found);
@@ -2176,7 +2176,7 @@ test('a drain refusal leaves the publish running, and the stand-down that remain
 // sidecar capture hook keeps a spool of its own, and it and the two hooks
 // that describe that spool are not members.
 test('no reference to the file spool survives on any memory-database surface', () => {
-    const plugin = path.join(__dirname, '..', 'plugins', 'claude-kit');
+    const plugin = path.join(__dirname, '..', 'plugins', 'grimoire');
     const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
         entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
     const files = [
@@ -2854,7 +2854,7 @@ test('an unreachable host is discovered at the probe budget, before the drain or
 // proves nothing about variable indirection. Every script in this tree spells
 // the resource where it asks for the lock; one that stopped doing so would need
 // this pattern widened with it.
-const PROCEDURES_DIR = path.join(__dirname, '..', 'plugins', 'claude-kit', 'db', 'Procedures');
+const PROCEDURES_DIR = path.join(__dirname, '..', 'plugins', 'grimoire', 'db', 'Procedures');
 const PUBLISH_LOCK_RE = /sp_getapplock[\s\S]{0,200}?@Resource\s*=\s*N?'mem\.Publish'/i;
 const PROCEDURE_NAME_RE = /^\s*;?\s*ALTER\s+PROCEDURE\s+mem\.(\w+)/im;
 function lockTakingProcedures(dir) {

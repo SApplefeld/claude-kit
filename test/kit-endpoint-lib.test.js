@@ -13,7 +13,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 
-const lib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
+const lib = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 
 function writeConfig(t, body) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-endpoint-'));

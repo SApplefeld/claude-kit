@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/hook-dispatch.js, the one process
+// Tests for plugins/grimoire/hooks/hook-dispatch.js, the one process
 // hooks.json wires on PreToolUse and PostToolUse, and for its thread bootstrap
 // hook-dispatch-boot.js.
 //
@@ -28,7 +28,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const PLUGIN = path.join(__dirname, '..', 'plugins', 'claude-kit');
+const PLUGIN = path.join(__dirname, '..', 'plugins', 'grimoire');
 const HOOKS = path.join(PLUGIN, 'hooks');
 const DISPATCH = path.join(HOOKS, 'hook-dispatch.js');
 const d = require(DISPATCH);
@@ -785,17 +785,17 @@ function payloadFor(event, proj, toolName, toolInput, extra) {
 const CASES = [
     { label: 'Bash, quiet', event: 'PreToolUse', tool: 'Bash', input: { command: 'git status' } },
     { label: 'Bash, a read-only reviewer pushing, which is blocked', event: 'PreToolUse', tool: 'Bash',
-        input: { command: 'git push origin main' }, extra: { agent_type: 'claude-kit:blind-reviewer' }, expectExit: 2 },
+        input: { command: 'git push origin main' }, extra: { agent_type: 'grimoire:blind-reviewer' }, expectExit: 2 },
     { label: 'Bash, a memq call the grant hook withholds', event: 'PreToolUse', tool: 'Bash', input: { command: 'memq find dispatcher' } },
     { label: 'Bash, the one memq call the grant hook allows', event: 'PreToolUse', tool: 'Bash',
         input: { command: 'node "' + MEMQ + '" recall' }, expectDecision: 'allow' },
     { label: 'PowerShell, quiet', event: 'PreToolUse', tool: 'PowerShell', input: { command: 'git status' } },
     { label: 'PowerShell, a read-only reviewer committing, which is blocked', event: 'PreToolUse', tool: 'PowerShell',
-        input: { command: 'git commit -m x' }, extra: { agent_type: 'claude-kit:adversarial-reviewer' }, expectExit: 2 },
+        input: { command: 'git commit -m x' }, extra: { agent_type: 'grimoire:adversarial-reviewer' }, expectExit: 2 },
     { label: 'Write', event: 'PreToolUse', tool: 'Write', input: { file_path: 'notes.txt', content: 'x' } },
     { label: 'Write, a governed subagent writing a docs path, which is blocked', event: 'PreToolUse', tool: 'Write',
         input: { file_path: 'docs/plans/hook-dispatch-probe.md', content: 'x' },
-        extra: { agent_type: 'claude-kit:adversarial-reviewer' }, expectExit: 2 },
+        extra: { agent_type: 'grimoire:adversarial-reviewer' }, expectExit: 2 },
     // The frontmatter guard's two answers: a deny on exit 2 through its stderr
     // write to descriptor 2, and the not-checked allow on exit 0 through its
     // JSON write to descriptor 1, which never touches process.stdout. The
@@ -948,7 +948,7 @@ test('an unusable routing table is named on stderr and the call is routed on the
             fs.cpSync(HOOKS, copy, { recursive: true });
             breakIt(path.join(copy, 'dispatch-table.json'));
             const payload = JSON.stringify(payloadFor('PreToolUse', f.proj, 'Bash',
-                { command: 'git push origin main' }, { agent_type: 'claude-kit:blind-reviewer' }));
+                { command: 'git push origin main' }, { agent_type: 'grimoire:blind-reviewer' }));
             const run = spawnSync(process.execPath, [path.join(copy, 'hook-dispatch.js'), 'PreToolUse'], {
                 input: payload, cwd: f.proj, env: f.env, encoding: 'utf8', timeout: 60000
             });
@@ -965,7 +965,7 @@ test('KIT_HOOK_DISPATCH=legacy still blocks what the threaded path blocks', () =
     const f = fixture();
     try {
         const payload = JSON.stringify(payloadFor('PreToolUse', f.proj, 'Bash',
-            { command: 'git push origin main' }, { agent_type: 'claude-kit:blind-reviewer' }));
+            { command: 'git push origin main' }, { agent_type: 'grimoire:blind-reviewer' }));
         const env = Object.assign({}, f.env, { KIT_HOOK_DISPATCH: 'legacy' });
         const run = spawnSync(process.execPath, [DISPATCH, 'PreToolUse'], {
             input: payload, cwd: f.proj, env, encoding: 'utf8', timeout: 60000

@@ -2547,7 +2547,7 @@ test('a diverged verdict is queued for delivery and an achieved one is not', asy
 // sentence is read through the real hook rather than a copy of its text, so a
 // writer and a reader that disagreed on the field would show here.
 test('diverged and unproven each reach the findings file and the inbox in their own sentence, and achieved and failed reach neither', async (t) => {
-    const captureHook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const captureHook = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
     const words = ['achieved', 'failed', 'diverged', 'unproven'];
     assert.deepStrictEqual(prompt.VERDICTS.slice().sort(), words.slice().sort(),
         'this case answers every word the live prompt names, and no other');
@@ -3001,9 +3001,9 @@ const memoryIndex = require('../sidecar/memory-index.js');
 const recognize = require('../sidecar/recognize.js');
 const recognitionPrompt = require('../sidecar/prompts/recognition-v1.js');
 const recordName = require('../sidecar/record-name.js');
-const memq = require('../plugins/claude-kit/scripts/memq.js');
+const memq = require('../plugins/grimoire/scripts/memq.js');
 
-const CAPTURE_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-sidecar-capture.js');
+const CAPTURE_HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-sidecar-capture.js');
 
 function indexLine(name, description) {
     return `- [${name}](${name}.md) - ${description || 'a record about something'}`;

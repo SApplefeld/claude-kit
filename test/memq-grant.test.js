@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/memq-grant.js (the fleet memq grant).
+// Tests for plugins/grimoire/hooks/memq-grant.js (the fleet memq grant).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
 // a real child process, fed a PreToolUse payload on stdin, and asserted on by
@@ -18,8 +18,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memq-grant.js');
-const PLUGIN_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memq-grant.js');
+const PLUGIN_ROOT = path.join(__dirname, '..', 'plugins', 'grimoire');
 const MEMQ = path.join(PLUGIN_ROOT, 'scripts', 'memq.js');
 const MEMQ_FWD = MEMQ.split(path.sep).join('/');
 const WIN = process.platform === 'win32';

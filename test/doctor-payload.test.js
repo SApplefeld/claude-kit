@@ -28,7 +28,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const SHIM_HELPERS = path.join(PLUGIN_ROOT, 'doctor', 'install-memq-shim.ps1');
 const SYNC_INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memory-sync.ps1');
@@ -143,10 +143,10 @@ const CHECKOUT_SHIM_HELPERS = fs.readFileSync(SHIM_HELPERS, 'utf8');
 // `shimHelpers` its install-memq-shim.ps1 text.
 function makeInstalledCopy(home, { statusline, syncInstaller, shimHelpers, marketplace }) {
     const pluginsRoot = path.join(home, 'plugins');
-    const root = path.join(pluginsRoot, 'cache', marketplace || 'fixture-mp', 'claude-kit', '1.0.0');
+    const root = path.join(pluginsRoot, 'cache', marketplace || 'fixture-mp', 'grimoire', '1.0.0');
     if (!marketplace) {
         write(path.join(pluginsRoot, 'installed_plugins.json'),
-            JSON.stringify({ plugins: { 'claude-kit@fixture-mp': [{ installPath: root }] } }));
+            JSON.stringify({ plugins: { 'grimoire@fixture-mp': [{ installPath: root }] } }));
     }
     // memq's own argless contract: a usage line and exit 1, which is what the
     // shim check's health run reads as a resolving payload.
@@ -188,8 +188,8 @@ test('a derived Doctrine import WARN ends by naming the copy in the banner\'s wo
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'doctor-payload-doctrine-'));
     try {
         const drifted = path.join(home, 'drifted', '.claude');
-        write(path.join(drifted, 'CLAUDE.md'), '@claude-kit-doctrine.md\n');
-        write(path.join(drifted, 'claude-kit-doctrine.md'), 'not the payload\'s doctrine body\n');
+        write(path.join(drifted, 'CLAUDE.md'), '@grimoire-doctrine.md\n');
+        write(path.join(drifted, 'grimoire-doctrine.md'), 'not the payload\'s doctrine body\n');
         const noImport = path.join(home, 'no-import', '.claude');
         fs.mkdirSync(noImport, { recursive: true });
         const results = runCases({
@@ -416,7 +416,7 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         const tie = only('tie');
         assert.strictEqual(tie.Status, 'INFO', JSON.stringify(tie));
         assert.ok([tieA.root, tieB.root].map((p) => path.resolve(p)).includes(path.resolve(results.tie.InstalledRoot)), results.tie.InstalledRoot);
-        assert.match(tie.Detail.join('\n'), /2 marketplaces offer a claude-kit payload/, JSON.stringify(tie.Detail));
+        assert.match(tie.Detail.join('\n'), /2 marketplaces offer a grimoire payload/, JSON.stringify(tie.Detail));
 
         const neither = only('neither');
         assert.strictEqual(neither.Status, 'FAIL', JSON.stringify(neither));
@@ -517,7 +517,7 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         // The no-payload WARN compares nothing against the payload, so it takes no clause.
         const noPayload = only('no-payload');
         assert.strictEqual(noPayload.Status, 'WARN', JSON.stringify(noPayload));
-        assert.match(noPayload.Detail.join('\n'), /no claude-kit plugin payload is installed/);
+        assert.match(noPayload.Detail.join('\n'), /no grimoire plugin payload is installed/);
         assertNamesNoCopy(noPayload);
     } finally {
         fs.rmSync(home, { recursive: true, force: true });

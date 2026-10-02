@@ -13,13 +13,13 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/coordinator/SKILL.md
-      - plugins/claude-kit/skills/peer-sessions/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/coordinator/SKILL.md
+      - plugins/grimoire/skills/peer-sessions/SKILL.md
   - name: doctrine-plus-coordinator
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/coordinator/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/coordinator/SKILL.md
 ---
 # A worker's plan doc records the operator's answer to an open escalation
 

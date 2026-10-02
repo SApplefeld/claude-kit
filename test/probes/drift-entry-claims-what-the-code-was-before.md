@@ -14,11 +14,11 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/agents/docs-curator.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/agents/docs-curator.md
   - name: docs-curator
     files:
-      - plugins/claude-kit/agents/docs-curator.md
+      - plugins/grimoire/agents/docs-curator.md
 ---
 # A drift item says what the code was before the effort
 

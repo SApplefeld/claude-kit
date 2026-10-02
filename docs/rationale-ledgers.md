@@ -1,6 +1,6 @@
 # Rationale ledgers
 
-A rationale ledger records why each rule in the kit's prose holds, one entry per claim, beside the document the claim lives in. Rule text says what happens, the ledger says why, and git says when. The corpus is 23 files, one per owning skill, at `plugins/claude-kit/skills/<skill>/references/rationale-ledger.md`. Every count in this document is read at `923175d3`. There the corpus holds 7,042 entries under 50 document headings. Forty-nine of those headings name a document a session loads as instruction, and the fiftieth records a document since removed.
+A rationale ledger records why each rule in the kit's prose holds, one entry per claim, beside the document the claim lives in. Rule text says what happens, the ledger says why, and git says when. The corpus is 23 files, one per owning skill, at `plugins/grimoire/skills/<skill>/references/rationale-ledger.md`. Every count in this document is read at `923175d3`. There the corpus holds 7,042 entries under 50 document headings. Forty-nine of those headings name a document a session loads as instruction, and the fiftieth records a document since removed.
 
 Nobody loads a ledger. It is not instruction, and no skill body, charter frontmatter or hook points a session at one as part of a task. What reads it is a session about to change a rule, which opens the entry for the claim it is changing before it edits the sentence, so the reason a rule holds is not re-litigated at the next review. Its other reader was the corpus rewrite, which took each document's heading here as its whole instruction and rewrote the document from it; every verdict that plan applied is now in the text, and the entry that ordered it records where it landed.
 
@@ -28,7 +28,7 @@ Every ledger's preamble carries one authoring paragraph, identical across the 23
 
 ## Placement
 
-A ledger sits with the skill that owns the document, not with the file the document is. That rule decides three cases the paths alone do not. All 17 agent charters sit under the executing-work ledger, because a markdown file under `plugins/claude-kit/agents/` reads as a charter and ownership is keyed by moment rather than by directory. The doctrine, its home-directory mirror, the output style, `home/CLAUDE.md` and the ownership map sit under the operating-instructions ledger. Every other reference file sits under its own skill.
+A ledger sits with the skill that owns the document, not with the file the document is. That rule decides three cases the paths alone do not. All 17 agent charters sit under the executing-work ledger, because a markdown file under `plugins/grimoire/agents/` reads as a charter and ownership is keyed by moment rather than by directory. The doctrine, its home-directory mirror, the output style, `home/CLAUDE.md` and the ownership map sit under the operating-instructions ledger. Every other reference file sits under its own skill.
 
 The mirror carries a heading and no entries. It is byte-identical to the doctrine under `test/doctrine-parity.test.js`, so one extraction serves both and the mirror's heading points at the doctrine's entries rather than repeating them.
 
@@ -40,7 +40,7 @@ Supersession is how a re-extraction retires an older reading without retiring th
 
 ## Maintenance
 
-A ledger is a tracked file under a measured root, so it carries its own cap in `test/size-budget.json` and any edit that moves its size moves the cap through `node plugins/claude-kit/scripts/kit-size.js sync <path>` in the same change. Skipping the sync reds `test/size-ratchet.test.js`, and a new ledger with no cap at all reds it for a different reason.
+A ledger is a tracked file under a measured root, so it carries its own cap in `test/size-budget.json` and any edit that moves its size moves the cap through `node plugins/grimoire/scripts/kit-size.js sync <path>` in the same change. Skipping the sync reds `test/size-ratchet.test.js`, and a new ledger with no cap at all reds it for a different reason.
 
 Three walkers leave the ledgers out, and one deliberately does not. The two `test/doctrine-parity.test.js` walkers that enumerate shipped markdown as instruction surfaces skip them through the shared `isRationaleLedger` predicate, and `test/review-loop-provenance.test.js`'s skill-tree walker skips them by name, because an entry quotes rule wording verbatim as its key, retired wordings included, which any single-carrier or wording sweep reads as a second carrier of a phrase that should be stated once. The tracked-tree retire sweep in that same parity file keeps them in its judged set, so a ledger paragraph enumerating the classes that retire a test would red there and would need an exemption of its own. A fourth test reads every ledger and reads it as a copy rather than as instruction: `test/ledger-preamble-parity.test.js` asserts the executing-work ledger's preamble in each of the other 22, allowing the skill's own name and its provenance-source list, so the 23 authoring paragraphs cannot drift the way the rewrite's own copies did.
 

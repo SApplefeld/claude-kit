@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# build.sh - Package the claude-kit plugin into an installable zip (POSIX parity
-# with build.ps1). Produces plugins/claude-kit.zip with claude-kit/ at the
+# build.sh - Package the grimoire plugin into an installable zip (POSIX parity
+# with build.ps1). Produces plugins/grimoire.zip with grimoire/ at the
 # archive root. build.ps1 is the canonical builder on Windows; this path is for
 # Linux/macOS, where the `zip` command is normally available.
 
@@ -8,7 +8,7 @@ set -eu
 
 # Resolve Paths.
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-PLUGIN_NAME=claude-kit
+PLUGIN_NAME=grimoire
 SOURCE_DIR="$SCRIPT_DIR/plugins/$PLUGIN_NAME"
 ZIP_PATH="$SCRIPT_DIR/plugins/$PLUGIN_NAME.zip"
 
@@ -85,9 +85,9 @@ printf '{\n  "name": "%s",\n  "hash": "%s",\n  "dirty": %s,\n  "hooks": {\n%s\n 
 # appends this file to the worker's system prompt from the deployed payload instead.
 # home/ stays the single source; the copy is gitignored and regenerated on every
 # build, before the archive step so it lands inside the zip.
-cp "$SCRIPT_DIR/home/claude-kit-doctrine.md" "$SOURCE_DIR/claude-kit-doctrine.md"
+cp "$SCRIPT_DIR/home/grimoire-doctrine.md" "$SOURCE_DIR/grimoire-doctrine.md"
 
-# Recreate Archive From Scratch. Zipping from plugins/ stores claude-kit/ at the
+# Recreate Archive From Scratch. Zipping from plugins/ stores grimoire/ at the
 # archive root. -X drops platform extra-attributes for more reproducible output.
 rm -f "$ZIP_PATH"
 cd "$SCRIPT_DIR/plugins"

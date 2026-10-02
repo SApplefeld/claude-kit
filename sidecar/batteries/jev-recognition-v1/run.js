@@ -51,7 +51,7 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO = path.join(__dirname, '..', '..', '..');
-const endpointLib = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'kit-endpoint-lib.js'));
+const endpointLib = require(path.join(REPO, 'plugins', 'grimoire', 'scripts', 'kit-endpoint-lib.js'));
 
 const DEFAULT_CASES = path.join(__dirname, 'situations.json');
 const DEFAULT_ENDPOINT = 'https://api.typesafe.ai';
@@ -188,7 +188,7 @@ function candidateOf(row, index) {
 // The live stage 1: both shapes of one situation in one query, one list per
 // text in the order asked.
 async function liveStage1(row) {
-    const db = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
+    const db = require(path.join(REPO, 'plugins', 'grimoire', 'scripts', 'memory-database.js'));
     const answered = await db.queryHost({
         mode: 'search',
         texts: SHAPES.map((shape) => row[shape]),
@@ -228,7 +228,7 @@ function questionsFor(candidates) {
 
 // The response as one score per asked id. A noul answer is read at
 // `answers[id].noul`, the one spelling the shipped client in
-// plugins/claude-kit/scripts/jev-client.js reads, so a run can only read as
+// plugins/grimoire/scripts/jev-client.js reads, so a run can only read as
 // measured on answers that client can use. Anything else, or any asked id
 // without a number from 0 to 1, makes the whole answer unusable.
 function readAnswers(body, questions) {

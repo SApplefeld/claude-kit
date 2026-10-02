@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/branch-reaper-nudge.js (the SessionStart
+// Tests for plugins/grimoire/hooks/branch-reaper-nudge.js (the SessionStart
 // branch-hygiene trigger).
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'branch-reaper-nudge.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'branch-reaper-nudge.js');
 
 function makeDir(prefix) {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

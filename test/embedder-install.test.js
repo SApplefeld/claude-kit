@@ -1,4 +1,4 @@
-// Tests for the doctor's embedder section: plugins/claude-kit/doctor/
+// Tests for the doctor's embedder section: plugins/grimoire/doctor/
 // install-embedder.ps1 and the "Embedder (semantic search)" section of
 // doctor.ps1.
 //
@@ -37,7 +37,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-embedder.ps1');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const MEMORY_INDEX_JS = path.join(PLUGIN_ROOT, 'scripts', 'memory-index.js');
@@ -618,7 +618,7 @@ test('embedder: a clone reading ready against the installed copy trails the chec
         // checkout identity could print the mismatch line.
         for (const [name, checkout, identity, against] of [['absent', 'absent', null, /reads not installed/], ['unusable', 'unusable', 'checkout-identity', /reads installed but not usable \(fake detail for unusable\)/]]) {
             const { result, before, after } = run('trailing-' + name, Object.assign({}, identities, {
-                BeforeProbe: fakeProbe(checkout, { identity }), ResolverNotes: ['kit: 2 marketplaces offer a claude-kit payload; using fixture-mp']
+                BeforeProbe: fakeProbe(checkout, { identity }), ResolverNotes: ['kit: 2 marketplaces offer a grimoire payload; using fixture-mp']
             }));
             assert.strictEqual(result.Reports.length, 1, JSON.stringify(result.Reports));
             const r = result.Reports[0];
@@ -626,7 +626,7 @@ test('embedder: a clone reading ready against the installed copy trails the chec
             assert.ok(r.Detail.includes('trails the checkout in hand: ' + installedRoot), r.Detail);
             assert.match(r.Detail, against);
             assert.match(r.Detail, /Installed: @huggingface\/transformers@8\.8\.8/, 'the installed copy\'s reading is the one reported: ' + r.Detail);
-            assert.match(r.Detail, /2 marketplaces offer a claude-kit payload/, 'the resolver notes ride the INFO: ' + r.Detail);
+            assert.match(r.Detail, /2 marketplaces offer a grimoire payload/, 'the resolver notes ride the INFO: ' + r.Detail);
             assert.match(r.Detail, /installed-identity/, 'the real index lines ran: ' + r.Detail);
             assert.match(r.Detail, /\b3 record/, 'the real index lines ran: ' + r.Detail);
             assert.doesNotMatch(r.Detail, /different model identity/, name + ': the index is judged against the installed copy\'s identity: ' + r.Detail);

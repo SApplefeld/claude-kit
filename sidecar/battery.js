@@ -6,7 +6,7 @@
 // test suite (test/kit-sidecar-battery.test.js pins this file's own harness,
 // the scoring arithmetic and the substance-versus-enum rule against a mock,
 // never a live call) and it is not part of the kit's build: sidecar/ sits
-// outside plugins/claude-kit/, the only tree build.ps1 packages, so this
+// outside plugins/grimoire/, the only tree build.ps1 packages, so this
 // command and its fixtures never ship.
 //
 // WHAT IT REPRODUCES. sidecar/batteries/README.md states the provenance and
@@ -133,7 +133,7 @@
 // 6000-character cap and the same cut as a real capture would: head and tail
 // kept, the in-band cut marker between them naming what went, and the
 // lone-surrogate trim at both cut points (mirrored here rather than required
-// from plugins/claude-kit/hooks/kit-sidecar-capture.js, since this tree does
+// from plugins/grimoire/hooks/kit-sidecar-capture.js, since this tree does
 // not depend on hooks/ as a library, and pinned equal to it by a test).
 // `truncated` is set from whether that cut actually fired rather than
 // hardcoded, so a fixture line never claims a shape the daemon could not have
@@ -154,7 +154,7 @@
 // configured endpoint, which is another machine, in cleartext HTTP. That
 // sentence is printed unconditionally and before the first call, never from
 // the daemon's remote-host warning alone: that warning is silent for a
-// loopback or private-network endpoint (plugins/claude-kit/scripts/
+// loopback or private-network endpoint (plugins/grimoire/scripts/
 // kit-endpoint-lib.js), which is the ordinary configuration on this fleet, so
 // a run leaning on it discloses nothing on exactly the machines it runs on.
 // The address is never printed on any surface; the fingerprint identifies it.

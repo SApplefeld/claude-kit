@@ -113,7 +113,7 @@ const { screenStateDir } = require('./state-screen.js');
 // off both the same way. Requiring the hook file runs none of its PostToolUse
 // duty; that duty sits behind the hook's own require.main === module guard,
 // so this require pulls in only its function definitions.
-const { stripCwdResetFooter } = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+const { stripCwdResetFooter } = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
 
 // `exit code 127` and `exit code 130` are failure shapes exactly as `exit code
 // 1` is, so the digit run is matched whole rather than as one digit: a

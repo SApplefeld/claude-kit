@@ -1190,7 +1190,7 @@ test('harvest strips the footer once from the joined result, after array-shaped 
 // newline, while the transcript records the same output-less call's content
 // as the footer alone. Both producers must write the same result.
 test('capture and harvest write the same result for an output-less call whose cwd was reset', async (t) => {
-    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const hook = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
     const captured = hook.resultText({ tool_response: { stdout: '', stderr: '\nShell cwd was reset to D:\\repo' } });
     const { file } = writeTranscript(t, [
         bashLine('t1', 'an output-less command whose cwd the harness reset', 'cd sub && mkdir x'),
@@ -1206,7 +1206,7 @@ test('capture and harvest write the same result for an output-less call whose cw
 // character on the one text the hook's bare-string branch and the harvester's
 // joined branch both take.
 test('capture and harvest strip the harness cwd-reset footer from the same text the same way', () => {
-    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const hook = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
     const withFooter = 'plain output\nShell cwd was reset to D:\\repo';
     assert.strictEqual(harvest.resultTextOf(withFooter), hook.resultText({ tool_response: withFooter }),
         'harvest and capture disagree on the footer strip for the same footer-bearing text');
@@ -2642,13 +2642,13 @@ test('a startup report reaches stderr while the run is still in flight, not afte
 // ----------------------------------------------------- the shared spellings --
 
 // MAJOR 5's pin. sidecar/ cannot require across the packaging boundary into
-// plugins/claude-kit/, so battery.js carries its own copy of the capture hook's
+// plugins/grimoire/, so battery.js carries its own copy of the capture hook's
 // field cap, line cap, surrogate trim and field cutter. What holds two
 // implementations in separate processes together is a test pinning them equal
 // rather than a shared require. This is that pin, and it is red if either side
 // moves alone.
 test('the battery spool writer and the capture hook agree on every cap and cut they both carry', () => {
-    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const hook = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
     assert.strictEqual(battery.FIELD_CAP, hook.FIELD_CAP, 'field cap drifted');
     assert.strictEqual(battery.LINE_CAP_BYTES, hook.LINE_CAP_BYTES, 'line byte cap drifted');
     const probes = [
@@ -2764,7 +2764,7 @@ test('a case the harvester cut replays as a marked line, and one it did not does
 // its own, so the pin covers the newlines the emitter puts around it and not
 // only the literal.
 test('the capture hook and the judgment prompt spell the cut marker the same way', () => {
-    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const hook = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
     const judgePrompt = require('../sidecar/prompts/judgment-v5.js');
     for (const count of [0, 1, 7, 412, 1000000, 'N']) {
         assert.strictEqual(hook.captureCutMarker(count), judgePrompt.captureCutMarker(count),

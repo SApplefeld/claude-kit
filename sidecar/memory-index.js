@@ -10,8 +10,8 @@
 // git worktrees file their memories under the main checkout rather than under
 // the worktree, and a pointer that claims a main checkout has to close a
 // two-way handshake before it is believed. All of that lives in
-// plugins/claude-kit/scripts/memq.js and is reached through its exports, the
-// same way plugins/claude-kit/hooks/memory-recognition-nudge.js and
+// plugins/grimoire/scripts/memq.js and is reached through its exports, the
+// same way plugins/grimoire/hooks/memory-recognition-nudge.js and
 // kit-compact-lib.js reach it for the same question. A second spelling of the
 // worktree or flattening rules here would send this daemon looking in a
 // directory the store is not using, silently, on exactly the machines where a
@@ -86,7 +86,7 @@ const MEMQ_SYMBOLS = [
     ['INDEX_FILE', 'string']
 ];
 
-const MEMQ_PATH = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js');
+const MEMQ_PATH = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts', 'memq.js');
 
 // The most of an index file that is read. A project index is one line per
 // record and a large one is a few tens of kilobytes, so this bounds a file
