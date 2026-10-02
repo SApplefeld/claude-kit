@@ -120,3 +120,80 @@ Tests: the rename of each file both ways, since a hook that renames over an exis
 - Branch `plans/validate-reserved-name`, `claude-kit_validate-reserved-name_spec_v1.md`: the tolerated-error alternative, closed unrun by the operator's ruling and superseded by this plan.
 
 ## Chapters
+
+### Chapter 1 - 2026-10-02
+Completed: 1. The tree carries the new name, and the validator and the suite pass under it
+Implemented By: implementer-sonnet (the sweep), then the main session (both fix rounds and the close pass, which were mechanical restores and partly under `docs/`)
+Metrics: review rounds 3, closed clean; provenance 9 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: The section-open add-decision and the round 1 and 2 add-decisions, verbatim from the scratch file:
+- section 1 open: changes the plugin's name token across the tree, moves two paths, adds the marketplace renames map and one README sentence; serves the Goal's first two sentences and section 1's acceptance; adds no mechanism (a rename, a data key, a sentence); size 409 tracked files at 3551ed71 per the plan; not building it leaves the pre-commit validator refusing every plugin commit.
+- r1 Critical (frozen battery fixtures rewritten): restores sidecar/batteries data files whole from b4f98711; serves Intent's "does not rewrite ... history"; no mechanism; 5 files; not fixing mis-scores battery situation 3 and falsifies the provenance claims.
+- r1 Major (host paths swept): restores the token where it names a host directory; serves the Goal and Out of Scope's host-state class; no mechanism; about 15 lines outside the battery data; not fixing sends the Ready triage plan to a nonexistent memory directory.
+- r1 Major (acceptance grep 5 hits): writes a Standing Brief Amendments block; no mechanism; not fixing leaves both grep bullets unmeetable as written.
+- r1 Major (.gitignore dropped old lines): keeps the three old ignore lines beside the new ones; no mechanism; 3 lines; not fixing dirties every existing clone after the merge.
+- r1 Major (plan index reads from grimoire to grimoire): rewrites two index sentences; no mechanism; 2 lines.
+- r2 Major (triage plan memory-file predicate swept): the predicate matches both spellings in prose and grep; no mechanism; 1 line; not fixing undercounts the triage inventory from 11 records to 0 on this host.
+- r2 Major (memq test project segment and the GitHub slug swept): restores both; no mechanism; 6 lines.
+- r2 Major (in-flight recipe cannot reproduce trunk): replaces sweep-at-tip with merge-then-sweep, and the script gains keep rules for every exclusion; no mechanism in the shipped tree; not fixing silently undoes trunk's restores on every pre-merge branch.
+Three intake gaps went to the ARCHITECT, which agreed on 2026-10-02 (record DEV-PLUGIN-e57cef63, answering ARCHITECT-1ca002ff-1). The memory-sync allowlist marker and the sidecar daemon's scheduled task name keep the old spelling, as host state written outside the repository. The plan's literal `sed -i` recipe was replaced by a byte-preserving node script, since 558 tracked files are CRLF in the worktree and Git Bash `sed -i` strips every CR. Both review rounds then found that the sweep, case-blind to meaning, renamed more outside state and history than the plan's five exclusions named: captured battery data, host directory paths, a memory record's name, the repository slug and a memory-record predicate. Approval drift: the `## Standing Brief Amendments` block was created as its own heading above `## Sections of Work`, recording the host-state class, the battery exclusion, the kept `.gitignore` lines, the byte-preserving script, and the merge-then-sweep recipe. That recipe replaces `## Approach`'s run-the-recipe-at-your-tip step. Status moved from Ready to In Progress on starting. Both validators end `Validation passed with warnings`, exit 0: the one warning is the missing `version` field, which `plugin.json` omits by design, so the acceptance bullet's `Validation passed` reads as met. In the kit's own repository the writing-skills probe pair reading was not taken, since no probe scenario turned on a rename of path strings.
+Failed approaches: tried the plan's literal sweep-then-merge recipe for in-flight branches, failed because trunk's hand restores make a pre-merge sweep rewrite them (a replayed sweep merged against this branch conflicted in 8 files), learned that a recipe for other branches must be idempotent on trunk rather than a replay of trunk's first step. Tried a host-path restore regex with escaped backslash alternations, failed because a heredoc through the Bash tool collapsed the doubled backslash and the pattern silently missed `D:/` paths, learned to use a character class `[\\/]` and to give every absence check a control.
+Assumptions: assumed 2026-10-02 (source: the ARCHITECT's agreement, record DEV-PLUGIN-e57cef63; section 1): literals naming host state outside the repository keep the old spelling; reversal: an operator ruling to migrate them, which is its own migration. assumed 2026-10-02 (default; section 1): the per-session temp names `claude-kit-recognition` and `claude-kit-session-*.json` take the new name as a one-time cache reset, costing one lost dedup per host; reversal: restore both names with a comment.
+Review Findings: review: code pair at opus, Workflow (round 1, round 2, re-raised by round 1's surviving Critical); review: adversarial at sonnet, Workflow (round 3). Round 1: 1 Critical fixed (battery fixtures), 5 Majors fixed (host paths, grep amendment, `.gitignore`, plan index, and the blind lens's battery Major, which duplicates the Critical). Round 2: 3 Majors fixed (triage predicate, memq segment and slug, recipe). Majors justified, each delivered by section 2 before any merge, with the pull request held as a draft until then: the doctrine import and file never migrated (blind, round 1 Major and round 2 Critical, the Critical downgraded at adjudication to justified-not-fixed on that ground), the signpost renamed without migration (blind, rounds 1 and 2), and README's "which the doctor runs" (blind claim, rounds 1 and 2, true once section 2 adds the doctor's install repair). The blind round 2 Major that the `renames` key is unverified was refuted: `claude plugin validate .` passes with it, and the round 1 blind lens found the key in the installed binary's marketplace schema. The traces on the blind lens's findings are orchestrator-made. Minors: 9 fixed in the fix rounds and the close pass (title-case spellings, duplicate comment, test comment, README tree padding, rationale-ledger segment, jev handoff slug, index status word, script header order, head-tree suite run); 1 routed to `docs/backlog.md` (memory records whose triggers name the former folder); 4 left with the reason: the temp-cache names (the assumption above), memq-shim staleness (the doctor's existing shim check repairs it), a live dev-clone session losing hook files on the move (sessions run from the plugin cache), and the role skill's `Repo:` example (true once the operator renames the repository).
+Stamps: adjudicated 20, stamped 5: project `suite-baseline-is-not-zero-fail` and `the-whole-gate-reds-one-sidecar-test-from-a-linked-worktree` (read the baseline's one red as the linked-worktree property), operator `git-bash-sed-i-strips-cr` and `gitbash-sed-strips-cr-in-text-mode` (replaced the sed recipe), operator `bash-tool-heredoc-collapses-backslashes` (explained the restore regex's miss); the 15 others were read through nudges and did not change the work.
+Gate: whole suite `node --test test/*.test.js` at 27ff95ab plus two uncommitted index lines under `docs/`, worktree `.kit/wt-grimoire`, 2026-10-02 16:57-17:05Z, SCOTT-CLAUDE, process poll clear: 4338/4327/1, skipped 10, exit 1; baseline on the same lane at b4f98711, 15:54-16:03Z, clean worktree: 4338/4327/1, skipped 10, exit 1; delta none, the one failure in both `loadIndex answers a status, never a throw, for a cwd the store refuses to name` (`test/kit-sidecar-memory-index.test.js`, the linked-worktree property). Targeted lanes in the fix rounds: 1504/1500/0 exit 0 over the touched and battery-reading files after b8625b34; `test/memq.test.js` 806/806/0 after b257896b. Tests added 0, retired 0; edited to stay green on the section's own change: `test/size-ratchet.test.js` (the case-variant root `plugins/Grimoire/` pins that a case variant of the plugin root is not the root) and the path pins across the suite the sweep rewrote. Spawning tests added 0. Wall clock 498 s against the baseline's 548 s on the same lane. Validators: `claude plugin validate ./plugins/grimoire` and `claude plugin validate .` both `Validation passed with warnings`, exit 0, on 2.1.287 at bc6f0e57. Pre-commit hook on bc6f0e57: `[pre-commit] plugin sources changed - rebuilding plugins/grimoire.zip`, `Built ...plugins\grimoire.zip (174 files, 2846 KB)`, commit exit 0. Line endings: `git ls-files --eol` before and after the sweep identical across 565 files once the two moved paths are mapped. Planted control: `plugins/grimoire/skills/zz-sweep-control.md` reading `the claude-kit plugin` and `~/.claude/claude-kit.local.json` became `the grimoire plugin` and `~/.claude/grimoire.local.json`, its `claude-kit_` prefix and CR untouched, then removed. Acceptance grep `git grep -n -P 'claude-kit(?!_)'` outside the six exclusions at 27ff95ab: the `renames` line in `.claude-plugin/marketplace.json`, the three kept `.gitignore` lines, the memory-sync marker (`install-memory-sync.ps1:55`), the task name (`sidecar/install-daemon-task.ps1:23,29`), and the host-state class: host paths and project segments in `docs/backlog.md`, the triage plan, the operating-instructions rationale ledger, the batteries' two READMEs and four tests, the triage plan's both-spellings predicate, and the repository slug in README.md, setup.sh, `docs/backlog.md` and the jev handoff. Recipe idempotence: the script below, run over the whole tree at 27ff95ab with one planted file carrying the token in a shape its literals do not name, changed that file only (`changed 1`).
+Next: 2. Each host migrates itself: the session-start hook renames the four files, and the doctor reads and repairs the rest. Its migration constants spell the old names, so the script below gains a keep rule for those lines and is re-proved idempotent on the merged tree.
+Commit Model: Branch-and-PR
+Delta: moment 2026-10-02 ~16:58Z, SCOTT-CLAUDE, worktree `.kit/wt-grimoire` at 27ff95ab with two uncommitted index lines under `docs/`, alongside the close gate.
+
+```
+repository: wt-grimoire
+words: 14149 of cap 14192 across 48 curated files
+test lines: 142497 of cap 142505 across 80 test files
+tests: 4087
+changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+corpus: 6530 words of cap 105304
+```
+
+The recipe for a branch cut before this plan merges. The trunk run, from the repository root under Git Bash:
+
+```
+git mv plugins/claude-kit plugins/grimoire
+git mv home/claude-kit-doctrine.md home/grimoire-doctrine.md
+git ls-files -z | node rename-sweep.js
+```
+
+A branch cut before the merge does not repeat those steps at its own tip. Its owner merges trunk first, which carries every renamed file and moves a file the branch added under the former plugin folder into `plugins/grimoire/` (git's directory-rename detection may report that move as a conflict to `git add`), then runs `git ls-files -z | node rename-sweep.js` from the repository root, which renames only the branch's own new lines, and reads the diff. `rename-sweep.js`, verbatim at this section's close:
+
+```js
+// The grimoire rename's token sweep. On trunk it ran once, after the two git mv
+// commands. A branch cut before the rename merges trunk first, then runs it from
+// the repository root:   git ls-files -z | node rename-sweep.js
+// Over trunk's merged tree it changes nothing, so it renames only the branch's own lines.
+// Replaces `claude-kit` not followed by `_` with `grimoire`, byte for byte, so
+// CRLF files keep their endings. It leaves alone what names state outside the
+// repository or is history: the excluded paths, the two host-state lines, and a
+// token that is a host directory (drive path, /d/ path, D--<dir> project
+// segment), a GitHub repository slug, or the triage plan's memory-file predicate.
+const fs = require('fs');
+const EXCLUDED = /^(docs\/archive\/|kaizen\/archive\/|kaizen\/notes-|tools\/corpus-compression\/mechanism-cut-2026-09-30\.json$|docs\/plans\/claude-kit_grimoire-rename_spec_v1\.md$|sidecar\/batteries\/[^/]+\/(cases|situations)\.json$|sidecar\/batteries\/recognition-v1\/index\.md$)/;
+const KEEP_LINE = /\$script:MemorySyncMarker = "# claude-kit memory sync allowlist\."|claude-kit-sidecar-daemon/;
+const KEEP_LINE_IN = {
+  'docs/plans/claude-kit_post-rewrite-triage_spec_v1.md': /memory-operator/,
+  '.claude-plugin/marketplace.json': /"renames"/,
+  '.gitignore': /^plugins\/claude-kit/
+};
+const TOKEN = /([A-Za-z]:[\\/]+|\/[a-z]\/|\b[A-Z]--[\w-]*?|SApplefeld\/|<your-github-username>\/|sapplefeld-)?claude-kit(?!_)/g;
+let changed = 0;
+for (const f of fs.readFileSync(0, 'latin1').split('\0').filter(Boolean)) {
+  if (EXCLUDED.test(f) || /\.zip$/.test(f) || !fs.existsSync(f)) continue;
+  const buf = fs.readFileSync(f);
+  if (buf.includes(0)) continue;
+  const text = buf.toString('latin1');
+  const out = text.replace(/[^\n]*\n|[^\n]+$/g, (line) => {
+    if (KEEP_LINE.test(line) || (KEEP_LINE_IN[f] && KEEP_LINE_IN[f].test(line))) return line;
+    return line.replace(TOKEN, (m, host) => host ? m : 'grimoire');
+  });
+  if (out !== text) { fs.writeFileSync(f, Buffer.from(out, 'latin1')); changed++; }
+}
+console.log('changed', changed);
+```
