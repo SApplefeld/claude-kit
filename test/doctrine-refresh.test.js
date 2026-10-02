@@ -276,6 +276,178 @@ test('a payload with no build-info.json records its hash as unknown', () => {
     }
 });
 
+// --- The rename migration. A home an earlier install wrote carries the
+// doctrine file, its stamp and the signpost under the plugin's former name,
+// and a CLAUDE.md importing the former doctrine file. The hook renames each
+// file only where its new name is absent, so a newer write is never replaced,
+// and swaps the import only on a line that is exactly the former token.
+
+const OLD = {
+    doctrine: 'claude-kit-doctrine.md',
+    stamp: 'claude-kit-doctrine.stamp.json',
+    signpost: 'claude-kit.local.json',
+    importLine: '@claude-kit-doctrine.md'
+};
+const NEW = {
+    doctrine: 'grimoire-doctrine.md',
+    stamp: 'grimoire-doctrine.stamp.json',
+    signpost: 'grimoire.local.json',
+    importLine: '@grimoire-doctrine.md'
+};
+const SIGNPOST_BYTES = '{"kitRepoPath":"C:\\\\clone","machine":"M1"}\r\n';
+
+// A fixture home in the state an earlier install left: the three files under
+// their former names and a CLAUDE.md whose import line is exactly the former
+// token, with every line ending eol. The old stamp carries T1, the time the
+// fixture plugin is written at, so the refresh after the migration writes.
+function makeOldHome(root, eol) {
+    const home = path.join(root, 'home');
+    const dir = path.join(home, '.claude');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, OLD.doctrine), 'Old doctrine text.\n', 'utf8');
+    fs.writeFileSync(path.join(dir, OLD.stamp),
+        JSON.stringify({ payloadMtimeMs: T1.getTime(), hash: 'old1111', root: 'old' }) + '\n', 'utf8');
+    fs.writeFileSync(path.join(dir, OLD.signpost), SIGNPOST_BYTES, 'utf8');
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), claudeMdWith(OLD.importLine, eol), 'utf8');
+    return home;
+}
+
+function claudeMdWith(importLine, eol) {
+    return ['# My global notes', '', importLine, 'Keep this line, café.', ''].join(eol);
+}
+
+// Every entry in ~/.claude by name, with its bytes, so a comparison sees a
+// rename, a new file and a changed byte alike.
+function snapshot(home) {
+    const dir = path.join(home, '.claude');
+    const out = {};
+    for (const name of fs.readdirSync(dir).sort()) out[name] = fs.readFileSync(path.join(dir, name)).toString('base64');
+    return out;
+}
+
+const claudePath = (home, name) => path.join(home, '.claude', name);
+
+for (const [label, eol] of [['CRLF', '\r\n'], ['LF', '\n']]) test(`a home in the former name's state ends with the three new files and the new import line, ${label} kept`, () => {
+    const root = makeDir('doctrine-refresh-migrate-');
+    try {
+        const home = makeOldHome(root, eol);
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const out = runHook(home, plugin, 'startup');
+
+        for (const name of [OLD.doctrine, OLD.stamp, OLD.signpost]) {
+            assert.ok(!fs.existsSync(claudePath(home, name)), name + ' must be gone');
+        }
+        assert.strictEqual(bodyOf(readDoctrine(home)), 'The doctrine.\n');
+        assert.strictEqual(readStamp(home).hash, 'aaa1111');
+        // The signpost is moved, never rewritten: its bytes are the ones the
+        // earlier install wrote.
+        assert.strictEqual(fs.readFileSync(claudePath(home, NEW.signpost), 'utf8'), SIGNPOST_BYTES);
+        // Every byte but the import line's own text is kept, line endings included.
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), claudeMdWith(NEW.importLine, eol));
+
+        const ctx = JSON.parse(out).hookSpecificOutput.additionalContext;
+        assert.ok(ctx.includes(NEW.importLine) && ctx.includes(OLD.importLine), 'the rewrite is reported: ' + ctx);
+        assert.ok(!ctx.includes('\n'), 'the report is one line: ' + ctx);
+        assert.doesNotMatch(ctx, /not wired in/, 'the swapped import needs no offer');
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('a home holding only new files is untouched, and the snapshot sees a migration (control)', () => {
+    const root = makeDir('doctrine-refresh-migrate-new-');
+    try {
+        const home = makeHome(root);
+        fs.writeFileSync(claudePath(home, NEW.signpost), SIGNPOST_BYTES, 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+        const before = snapshot(home);
+        assert.strictEqual(runHook(home, plugin, 'startup'), '');
+        assert.deepStrictEqual(snapshot(home), before);
+
+        // Control: the same snapshot, taken across a run on a home in the
+        // former name's state, reports the change, so its silence above is
+        // the migration declining rather than a comparison that cannot see one.
+        const oldRoot = path.join(root, 'old');
+        fs.mkdirSync(oldRoot);
+        const oldHome = makeOldHome(oldRoot, '\n');
+        const oldBefore = snapshot(oldHome);
+        runHook(oldHome, plugin, 'startup');
+        assert.notDeepStrictEqual(snapshot(oldHome), oldBefore);
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('a home holding both names of each file leaves every pair as it was', () => {
+    const root = makeDir('doctrine-refresh-migrate-both-');
+    try {
+        const home = makeOldHome(root, '\n');
+        fs.writeFileSync(claudePath(home, NEW.doctrine), 'Newer text.\n', 'utf8');
+        fs.writeFileSync(claudePath(home, NEW.stamp),
+            JSON.stringify({ payloadMtimeMs: T1.getTime(), hash: 'new2222', root: 'new' }) + '\n', 'utf8');
+        fs.writeFileSync(claudePath(home, NEW.signpost), '{"kitRepoPath":"C:\\\\newer"}\n', 'utf8');
+        const oldBytes = {};
+        for (const name of [OLD.doctrine, OLD.stamp, OLD.signpost]) oldBytes[name] = fs.readFileSync(claudePath(home, name), 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+
+        for (const name of [OLD.doctrine, OLD.stamp, OLD.signpost]) {
+            assert.strictEqual(fs.readFileSync(claudePath(home, name), 'utf8'), oldBytes[name], name + ' must stay as it was');
+        }
+        assert.ok(fs.existsSync(claudePath(home, NEW.doctrine)));
+        assert.ok(fs.existsSync(claudePath(home, NEW.stamp)));
+        assert.strictEqual(fs.readFileSync(claudePath(home, NEW.signpost), 'utf8'), '{"kitRepoPath":"C:\\\\newer"}\n');
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('a lone old stamp beside a new doctrine file stays put', () => {
+    const root = makeDir('doctrine-refresh-migrate-stamp-');
+    try {
+        const home = makeHome(root);
+        fs.writeFileSync(claudePath(home, NEW.doctrine), 'Some text.\n', 'utf8');
+        fs.writeFileSync(claudePath(home, OLD.stamp), '{"payloadMtimeMs":1}\n', 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+        assert.strictEqual(fs.readFileSync(claudePath(home, OLD.stamp), 'utf8'), '{"payloadMtimeMs":1}\n');
+        assert.strictEqual(readStamp(home).hash, 'aaa1111', 'the new stamp is the refresh\'s own');
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('a CLAUDE.md already holding the exact new line keeps its exact old line, so no duplicate import is written', () => {
+    const root = makeDir('doctrine-refresh-migrate-dup-');
+    try {
+        const home = makeHome(root);
+        const text = OLD.importLine + '\r\n' + NEW.importLine + '\r\n';
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        assert.strictEqual(runHook(home, plugin, 'startup'), '');
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('an old-token line carrying other text is kept, and the wiring offer names the new token', () => {
+    const root = makeDir('doctrine-refresh-migrate-other-');
+    try {
+        const home = makeHome(root);
+        const text = '# notes\n' + OLD.importLine + '  # my comment\n';
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const ctx = JSON.parse(runHook(home, plugin, 'startup')).hookSpecificOutput.additionalContext;
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
+        assert.match(ctx, /not wired in/);
+        assert.ok(ctx.includes('"' + NEW.importLine + '"'), ctx);
+    } finally {
+        rmDir(root);
+    }
+});
+
 // --- The doctor's comparison. Lifts the section from Get-DoctrineBody to the
 // kaizen signpost section that follows it, and runs it against a fixture
 // ~/.claude and a fixture plugin root, with Report and Get-PayloadClause stubbed.

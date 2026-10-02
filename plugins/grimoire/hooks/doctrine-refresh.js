@@ -6,6 +6,11 @@
 // on-demand, so this hook maintains a stable, kit-owned file that the user's
 // ~/.claude/CLAUDE.md imports:
 //
+//   0. Move the files an install under the plugin's former name wrote (the
+//      doctrine file, its stamp and the kaizen signpost) onto the current names,
+//      never over a file already under the current name, and swap a CLAUDE.md
+//      line that is exactly the former import token for the current one, saying
+//      so in one additionalContext line.
 //   1. Read the installed skill's SKILL.md from CLAUDE_PLUGIN_ROOT, strip the YAML
 //      frontmatter, and write one header line plus the body to
 //      ~/.claude/grimoire-doctrine.md whenever it differs. Reading from
@@ -52,6 +57,14 @@ const HEADER =
     '<!-- Written by the grimoire doctrine-refresh hook from skills/operating-instructions/SKILL.md; ' +
     'edit the skill, not this file. -->';
 const SESSION_START_SOURCES = ['startup', 'resume'];
+const SIGNPOST_FILE = 'grimoire.local.json';       // the kaizen signpost, which the doctor writes
+
+// These spell the plugin's former name because they read the files earlier
+// installs wrote, which the migration step below moves to the names above.
+const OLD_DOCTRINE_FILE = 'claude-kit-doctrine.md';
+const OLD_IMPORT_TOKEN = '@claude-kit-doctrine.md';
+const OLD_STAMP_FILE = 'claude-kit-doctrine.stamp.json';
+const OLD_SIGNPOST_FILE = 'claude-kit.local.json';
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
@@ -109,6 +122,44 @@ function readStamp(stampPath) {
     return null;
 }
 
+// Rename from to to inside dir where from exists and to does not, so a file
+// already under the new name is never replaced. True where the rename landed.
+function renameIfFree(dir, from, to) {
+    try {
+        if (!fs.existsSync(path.join(dir, from)) || fs.existsSync(path.join(dir, to))) return false;
+        fs.renameSync(path.join(dir, from), path.join(dir, to));
+        return true;
+    } catch { return false; }                         // locked or unwritable: give up quietly
+}
+
+// Move a home an earlier install wrote under the plugin's former name onto the
+// current names. The doctrine file moves where its new name is absent, and its
+// stamp moves only in that same run, since a lone old stamp beside a current
+// file describes some other write. The signpost moves on its own. In CLAUDE.md
+// the first line that is exactly the old import token, terminator aside, becomes
+// the new token, unless a line is already exactly the new token. The file is
+// read and written as latin1 so every other byte, line endings included, is
+// written back as it was read. Returns the session-start line reporting the
+// import swap, or null.
+function migrateFormerName(claudeDir) {
+    if (renameIfFree(claudeDir, OLD_DOCTRINE_FILE, DOCTRINE_FILE)) {
+        renameIfFree(claudeDir, OLD_STAMP_FILE, STAMP_FILE);
+    }
+    renameIfFree(claudeDir, OLD_SIGNPOST_FILE, SIGNPOST_FILE);
+    try {
+        const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
+        const segments = fs.readFileSync(claudeMdPath, 'latin1').split(/(?<=\n)/);
+        const textOf = (seg) => seg.replace(/\r?\n$/, '');
+        if (segments.some((seg) => textOf(seg) === IMPORT_TOKEN)) return null;
+        const at = segments.findIndex((seg) => textOf(seg) === OLD_IMPORT_TOKEN);
+        if (at < 0) return null;
+        segments[at] = IMPORT_TOKEN + segments[at].slice(OLD_IMPORT_TOKEN.length);
+        fs.writeFileSync(claudeMdPath, segments.join(''), 'latin1');
+        return `Kit renamed: ~/.claude/CLAUDE.md imported "${OLD_IMPORT_TOKEN}", the doctrine file's former ` +
+            `name, so that line now reads "${IMPORT_TOKEN}", the file's current name. No other line changed.`;
+    } catch { return null; }                          // absent or unwritable: nothing to swap
+}
+
 function main() {
     let payload = {};
     try { payload = JSON.parse(readStdin() || '{}') || {}; } catch { /* malformed: defaults */ }
@@ -130,6 +181,11 @@ function main() {
     const doctrinePath = path.join(claudeDir, DOCTRINE_FILE);
     const stampPath = path.join(claudeDir, STAMP_FILE);
     const lines = [];
+
+    // 0. Move a home the plugin's former name wrote onto the current names, so
+    //    the refresh below finds the file and stamp it owns.
+    const migrated = migrateFormerName(claudeDir);
+    if (migrated) lines.push(migrated);
 
     // 1. Refresh the kit-owned doctrine file silently when it drifts, unless a
     //    newer payload wrote it last.

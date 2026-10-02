@@ -4,21 +4,24 @@
 # has the current doctor, clone or not. The repo root keeps thin forwarders
 # (doctor.ps1 / doctor.cmd) for the dev-clone habit.
 #
-# Verifies core setup (execution policy, doctrine import and freshness, kaizen
-# signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
-# (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
-# store's sync repo and its allowlist, the embedder behind semantic memory
-# search, the .kit/ state directory's exposure, the shared memory database on
-# the host, and the auto-compaction window.
+# Verifies core setup (execution policy, files left under the plugin's former
+# name, doctrine import and freshness, kaizen signpost, git hooks on a clone),
+# the ANTHROPIC_API_KEY hazard, the hook layer (goal-leash wiring and load,
+# hook-canary wiring, the memq shim), the memory store's sync repo and its
+# allowlist, the embedder behind semantic memory search, the .kit/ state
+# directory's exposure, the shared memory database on the host, the
+# auto-compaction window, the output style, and the plugin's install.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
 #                             policy, the memq shim into ~\.claude\bin,
 #                             the memory store's sync repo and allowlist,
 #                             signpost + git hooks on a clone, a memq db-sync
-#                             where the memory database step warns, and the
-#                             autoCompactWindow value written into user
-#                             settings.json, behind its own consent prompt).
+#                             where the memory database step warns, the move
+#                             of files left under the plugin's former name,
+#                             and, each behind its own consent prompt, the
+#                             autoCompactWindow and outputStyle values written
+#                             into user settings.json and the plugin install).
 #                             The one thing it deletes is the temp file its
 #                             own failed signpost write left behind.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts -Fix already
@@ -322,6 +325,120 @@ else {
     }
     Report "WARN" "ANTHROPIC_API_KEY" $apiKeyDetail
 }
+
+# --- Former-name migration. An install under the plugin's former name wrote
+# --- the doctrine file, its stamp and the kaizen signpost under that name, and
+# --- CLAUDE.md imports the doctrine file by it. The doctrine-refresh hook moves
+# --- all four at a session start; this check reads the same four and, under
+# --- -Fix, makes the same moves under the same conditions. A file moves only
+# --- where its current name is absent, so a newer write is never replaced; the
+# --- stamp moves only with its doctrine file, since a lone old stamp beside a
+# --- current file describes some other write; the CLAUDE.md line moves only
+# --- where it is exactly the former token, terminator aside, and no line is
+# --- already exactly the current one. CLAUDE.md is read and written as bytes,
+# --- so every other byte and line ending stays as it was. A pair present
+# --- under both names is reported and left, since only the operator can say
+# --- which holds the write to keep. There is no consent prompt: this is the
+# --- move the hook makes unprompted, onto names the kit owns, and -Fix already
+# --- asked for it. The four old names spell the plugin's former name because
+# --- they read the files earlier installs wrote.
+$migrationOldDoctrine = "claude-kit-doctrine.md"
+$migrationOldStamp = "claude-kit-doctrine.stamp.json"
+$migrationOldSignpost = "claude-kit.local.json"
+$migrationOldImport = "@claude-kit-doctrine.md"
+$migrationNewImport = "@grimoire-doctrine.md"
+$migrationClaudeMd = Join-Path $claudeDir "CLAUDE.md"
+$migrationLatin1 = [System.Text.Encoding]::GetEncoding(28591)
+
+function Test-MigrationFree {
+    param([string]$Old, [string]$New)
+    return (Test-Path -LiteralPath (Join-Path $claudeDir $Old)) -and -not (Test-Path -LiteralPath (Join-Path $claudeDir $New))
+}
+
+# CLAUDE.md as line segments, each keeping its own terminator, and the index
+# of the first exact former-token line, or -1. Exact means the segment less
+# its \r\n or \n terminator.
+function Get-MigrationImportState {
+    $segments = [regex]::Split($migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd)), '(?<=\n)')
+    $texts = @($segments | ForEach-Object { $_ -replace '\r?\n$', '' })
+    return @{
+        Segments = $segments
+        OldAt = [array]::IndexOf($texts, $migrationOldImport)
+        HasNew = $texts -contains $migrationNewImport
+    }
+}
+
+$migrationMoves = @()
+$migrationHeld = @()
+if (Test-MigrationFree $migrationOldDoctrine "grimoire-doctrine.md") {
+    $migrationMoves += @{ Old = $migrationOldDoctrine; New = "grimoire-doctrine.md" }
+    if (Test-MigrationFree $migrationOldStamp "grimoire-doctrine.stamp.json") {
+        $migrationMoves += @{ Old = $migrationOldStamp; New = "grimoire-doctrine.stamp.json" }
+    }
+}
+elseif (Test-Path -LiteralPath (Join-Path $claudeDir $migrationOldDoctrine)) {
+    $migrationHeld += "Both $migrationOldDoctrine and grimoire-doctrine.md exist in $claudeDir; neither is changed. The hook refreshes grimoire-doctrine.md, so delete the old one once you have kept anything you need from it."
+}
+if ((Test-Path -LiteralPath (Join-Path $claudeDir $migrationOldStamp)) -and -not ($migrationMoves | Where-Object { $_.Old -eq $migrationOldStamp })) {
+    $migrationHeld += "$migrationOldStamp exists in $claudeDir and is left: a stamp moves only with its doctrine file and never over grimoire-doctrine.stamp.json, and the kit does not read this one, so it is safe to delete."
+}
+if (Test-MigrationFree $migrationOldSignpost "grimoire.local.json") {
+    $migrationMoves += @{ Old = $migrationOldSignpost; New = "grimoire.local.json" }
+}
+elseif (Test-Path -LiteralPath (Join-Path $claudeDir $migrationOldSignpost)) {
+    $migrationHeld += "Both $migrationOldSignpost and grimoire.local.json exist in $claudeDir; neither is changed. The kit reads grimoire.local.json, so delete the old one once you have kept any key you set in it."
+}
+$migrationImport = $null
+$migrationImportError = $null
+if (Test-Path -LiteralPath $migrationClaudeMd) {
+    try { $migrationImport = Get-MigrationImportState }
+    catch { $migrationImportError = Get-SanitizedLine $_.Exception.Message 200 }
+}
+$migrationImportPending = ($null -ne $migrationImport) -and ($migrationImport.OldAt -ge 0) -and -not $migrationImport.HasNew
+if (($null -ne $migrationImport) -and ($migrationImport.OldAt -ge 0) -and $migrationImport.HasNew) {
+    $migrationHeld += "$migrationClaudeMd imports both $migrationOldImport and $migrationNewImport; the old line is left, so delete it by hand."
+}
+if ($null -ne $migrationImportError) {
+    $migrationHeld += "$migrationClaudeMd is unreadable, so its import line was not checked: $migrationImportError"
+}
+
+$migrationPendingLines = @($migrationMoves | ForEach-Object { "$($_.Old) is present in $claudeDir and $($_.New) is absent." })
+if ($migrationImportPending) { $migrationPendingLines += "$migrationClaudeMd has the line $migrationOldImport, the doctrine file's former name." }
+if ($migrationPendingLines.Count -gt 0 -and $Fix) {
+    $migrationDone = @()
+    $migrationFailed = @()
+    foreach ($move in $migrationMoves) {
+        try {
+            # No -Force: a file that reached the new name since the read above
+            # makes the move fail rather than be replaced.
+            Move-Item -LiteralPath (Join-Path $claudeDir $move.Old) -Destination (Join-Path $claudeDir $move.New) -ErrorAction Stop
+            $migrationDone += "Renamed $($move.Old) to $($move.New)."
+        }
+        catch {
+            $migrationFailed += "Could not rename $($move.Old) to $($move.New): $(Get-SanitizedLine $_.Exception.Message 200)"
+        }
+    }
+    if ($migrationImportPending) {
+        try {
+            $segments = $migrationImport.Segments
+            $segments[$migrationImport.OldAt] = $migrationNewImport + $segments[$migrationImport.OldAt].Substring($migrationOldImport.Length)
+            [System.IO.File]::WriteAllBytes($migrationClaudeMd, $migrationLatin1.GetBytes(-join $segments))
+            $migrationDone += "Changed the line $migrationOldImport in $migrationClaudeMd to $migrationNewImport; no other line changed."
+        }
+        catch {
+            $migrationFailed += "Could not rewrite the import line in ${migrationClaudeMd}: $(Get-SanitizedLine $_.Exception.Message 200)"
+        }
+    }
+    if ($migrationFailed.Count -gt 0) { Report "FAIL" "Former-name migration" ($migrationFailed + $migrationDone) }
+    else { Report "FIXED" "Former-name migration" $migrationDone }
+}
+elseif ($migrationPendingLines.Count -gt 0) {
+    Report "FAIL" "Former-name migration" ($migrationPendingLines + @("Fix: re-run doctor with -Fix, or start a Claude Code session, whose doctrine-refresh hook makes the same moves."))
+}
+elseif ($migrationHeld.Count -eq 0) {
+    Report "PASS" "Former-name migration" @("No file or import line under the plugin's former name remains in $claudeDir.")
+}
+if ($migrationHeld.Count -gt 0) { Report "WARN" "Former-name migration" $migrationHeld }
 
 # --- Doctrine import and freshness. The always-on doctrine loads via a one-line
 # --- import in ~/.claude/CLAUDE.md; the doctrine-refresh SessionStart hook owns
@@ -2525,6 +2642,129 @@ else {
     }
     else {
         Report "PASS" "Auto-compaction window" $detail
+    }
+}
+
+# Runs `claude plugin install <InstallId>` through the claude the caller
+# resolved, and returns its exit code and output lines. It is the Plugin
+# install check's one spawn, defined outside that section so the test suite
+# can stub it.
+function Invoke-KitPluginInstall {
+    param([Parameter(Mandatory = $true)][string]$ClaudeExe, [Parameter(Mandatory = $true)][string]$InstallId)
+    $output = & $ClaudeExe plugin install $InstallId 2>&1
+    return @{ code = $LASTEXITCODE; lines = @($output | ForEach-Object { [string]$_ }) }
+}
+
+# --- Output style. The kit's output style is addressed by plugin name, so a
+# --- settings.json that selected it under the plugin's former name loads no
+# --- style once the plugin is renamed. Claude Code's marketplace rename moves
+# --- enabledPlugins and pluginConfigs but not outputStyle, so this check reads
+# --- it from the settings read the Auto-compaction window check made, and
+# --- -Fix rewrites that one key through Set-UserSettingKey, the writer that
+# --- proves every other key survived. The former value spells the plugin's
+# --- former name because it reads what an earlier install wrote.
+$formerOutputStyle = "claude-kit:Kit"
+$currentOutputStyle = "grimoire:Kit"
+if (-not (Test-Path -LiteralPath $settingsPath)) {
+    Report "PASS" "Output style" @("No user settings.json at $settingsPath, so no output style names the plugin's former name.")
+}
+elseif (-not $settingsReadable) {
+    Report "WARN" "Output style" @("$settingsPath could not be parsed, so the output style cannot be read.")
+}
+elseif (($settingsObj.PSObject.Properties.Name -contains "outputStyle") -and ("$($settingsObj.outputStyle)" -eq $formerOutputStyle)) {
+    $styleByHand = "Set it by hand instead: `"outputStyle`": `"$currentOutputStyle`""
+    if ($Fix -and (Get-Consent "Change outputStyle from $formerOutputStyle to $currentOutputStyle in $settingsPath?")) {
+        $result = Set-UserSettingKey -Path $settingsPath -Key "outputStyle" -Value $currentOutputStyle
+        if ($result.ok) {
+            Report "FIXED" "Output style" @("Changed outputStyle from $formerOutputStyle to $currentOutputStyle.", "Restart Claude Code for it to take effect.")
+            if ($result.backupLeftover) {
+                Report "INFO" "Output style" @("The pre-write backup could not be removed and remains at " + (Get-SanitizedLine $result.backupLeftover 200) + "; it holds a plaintext copy of settings.json, so delete it when convenient.")
+            }
+        }
+        else {
+            # The reason names the pre-write backup's full path, a plaintext
+            # copy of settings.json, so it gets the wider cap the
+            # Auto-compaction window check gives the same line.
+            Report "FAIL" "Output style" @("Could not change it: " + (Get-SanitizedLine $result.reason 400) + ".", $styleByHand)
+        }
+    }
+    else {
+        $styleRemedy = if ($Fix) { $styleByHand } else { "Fix: re-run doctor with -Fix, which asks before writing, or set it by hand." }
+        Report "FAIL" "Output style" @("outputStyle is $formerOutputStyle, the plugin's former name, so the Kit output style does not load.", $styleRemedy)
+    }
+}
+elseif ($settingsObj.PSObject.Properties.Name -contains "outputStyle") {
+    Report "PASS" "Output style" @("outputStyle is '" + (Get-SanitizedLine "$($settingsObj.outputStyle)" 120) + "'.")
+}
+else {
+    Report "PASS" "Output style" @("No outputStyle is set.")
+}
+
+# --- Plugin install. A host that installed the plugin under its former name
+# --- has its enabledPlugins entry renamed by the marketplace's renames map,
+# --- but a marketplace added from a git repository reports the renamed plugin
+# --- not cached until it is installed once under the new name. This check
+# --- reads ~/.claude/plugins/installed_plugins.json, whose plugins object is
+# --- keyed <name>@<marketplace>, and where settings enable the plugin and that
+# --- file has no entry for it, names the install command, which -Fix runs
+# --- behind a consent prompt. Without -Fix it spawns nothing.
+$installId = "grimoire@applefeld"
+$installedPluginsPath = Join-Path $claudeDir "plugins\installed_plugins.json"
+$installByHand = "Run by hand: claude plugin install $installId"
+$installEnabled = $false
+if ($settingsReadable -and ($settingsObj.PSObject.Properties.Name -contains "enabledPlugins") -and
+    ($settingsObj.enabledPlugins -is [System.Management.Automation.PSCustomObject]) -and
+    ($settingsObj.enabledPlugins.PSObject.Properties.Name -contains $installId)) {
+    $enabledValue = $settingsObj.enabledPlugins.PSObject.Properties[$installId].Value
+    $installEnabled = ($enabledValue -is [bool]) -and $enabledValue
+}
+if (-not $installEnabled) {
+    Report "INFO" "Plugin install" @("$installId is not enabled in $settingsPath, so there is no install to check.")
+}
+elseif (-not (Test-Path -LiteralPath $installedPluginsPath)) {
+    Report "WARN" "Plugin install" @("$installId is enabled, but $installedPluginsPath does not exist, so its install cannot be read.")
+}
+else {
+    $installedObj = $null
+    $installedReadError = $null
+    try {
+        $installedObj = Get-Content -LiteralPath $installedPluginsPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+    }
+    catch { $installedReadError = Get-SanitizedLine $_.Exception.Message 200 }
+    if ($null -ne $installedReadError) {
+        Report "WARN" "Plugin install" @("$installedPluginsPath could not be read or parsed, so the install of $installId cannot be read: $installedReadError")
+    }
+    elseif (-not ($installedObj -is [System.Management.Automation.PSCustomObject]) -or
+            -not ($installedObj.plugins -is [System.Management.Automation.PSCustomObject])) {
+        Report "WARN" "Plugin install" @("$installedPluginsPath has no plugins object, so the install of $installId cannot be read.")
+    }
+    elseif ($installedObj.plugins.PSObject.Properties.Name -contains $installId) {
+        Report "PASS" "Plugin install" @("$installId is enabled and installed.")
+    }
+    else {
+        $installGap = "$installId is enabled in settings but $installedPluginsPath has no entry for it, so Claude Code reports it not cached."
+        if (-not $Fix) {
+            Report "FAIL" "Plugin install" @($installGap, "Fix: claude plugin install $installId, or re-run doctor with -Fix to run it.")
+        }
+        else {
+            $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($null -eq $claudeCmd) {
+                Report "FAIL" "Plugin install" @($installGap, "claude is not on PATH, so -Fix cannot run the install.", $installByHand)
+            }
+            elseif (Get-Consent "Run claude plugin install $installId?") {
+                $installRun = Invoke-KitPluginInstall -ClaudeExe $claudeCmd.Source -InstallId $installId
+                $installLines = @($installRun.lines | ForEach-Object { "  " + (Get-SanitizedLine $_ 120) } | Where-Object { $_.Trim() -ne "" })
+                if ($installRun.code -eq 0) {
+                    Report "FIXED" "Plugin install" (@("Ran claude plugin install ${installId}:") + $installLines)
+                }
+                else {
+                    Report "FAIL" "Plugin install" (@("claude plugin install $installId exited $($installRun.code):") + $installLines + @($installByHand))
+                }
+            }
+            else {
+                Report "FAIL" "Plugin install" @($installGap, $installByHand)
+            }
+        }
     }
 }
 
