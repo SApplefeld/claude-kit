@@ -59,7 +59,7 @@ Acceptance:
 - Every sentence in the five paragraphs on `main` before the change is still present, except the deployment paragraph's opening sentence widened in place, the near-neighbours count sentence renumbered, and line 19's "the one party" made "a party".
 - `docs/README.md` line 16 still describes the document; it changes only where the description no longer fits.
 - `node --test test/` passes.
-Files in scope: `docs/security-model.md` (the five paragraphs under `## Threat model`, lines 15 to 23 on `main` today, and the one phrase at line 568), `docs/README.md` (line 16, where needed).
+Files in scope: `docs/security-model.md` (the five paragraphs under `## Threat model`, lines 15 to 23 on `main` today, and the one phrase at line 568), `docs/README.md` (line 16, where needed, and line 15's "one party outside the LAN" phrase, folded in Chapter 1).
 Audience: the security reviewer and scope adjudicator agents, which read the model's sentences before ruling and know the kit's charters; the operator, who reads the model to check what the kit claims about a client host.
 Voice: company, the `prose-register` skill's company voice reference.
 Fact base: the persona plugin's `agent_persona_client-sandbox_spec_v1.md`, its runbook section, for the host's install, in `https://github.com/SApplefeld/agent_persona` under `docs/plans/` or `docs/archive/`; the broker's `channels_client-sandbox_spec_v1.md` section 4 for the senders list, the envelope's class and the label rule, in `https://github.com/SApplefeld/discord-channels` under the same two paths; the doctrine's relay bullet as the liaison-seat plan's section 2 leaves it on `main`; and this plan's Intent for the operator's ruling. Where a companion plan is still on its own branch, the run reads it there, and the run's Chapter names the branch and commit read.
@@ -99,3 +99,35 @@ None. The deliverable is prose the fact base checks.
 - `channels_client-sandbox_spec_v1.md` in the `discord-channels` repository: the senders list and envelope class the out-of-consideration entry is defined on.
 
 ## Chapters
+
+### Chapter 1 - 2026-10-02
+Completed: 1. The threat model's client deployment
+Implemented By: main session (Locus: inline, tier opus; the section writes under `docs/`)
+Metrics: review rounds 1, closed major-closed; provenance: reader and prose findings take no trace, so none counted; advisory: 0 findings; NEEDS_CONTEXT 0; escalations none; consults 0
+Decisions / Surprises:
+- Section 1 open (2026-10-02): the five threat-model paragraphs of docs/security-model.md gain the client sandbox deployment, its asset, three in-consideration relay shapes, the operator-class client account exclusion with its ruling and containment, and a fourth near neighbour; line 19, line 568 and docs/README.md line 15 say "a party outside the LAN"; serves the Goal's four sentences and the nine acceptance bullets; adds no mechanism (prose only); 8 sentences changed or added across 7 lines, about 4.5 KB of prose; not building it leaves the security reviewer on a client host reading a model that never names that host.
+- The run started on the operator's confirmation of 2026-10-02 on the relay channel, which the goal entry required since the plan's grant traces to the coordinator and the architect. `Status:` moved from `Ready` to `In Progress`.
+- Fold: `docs/README.md` line 15, the `architecture.md` entry, carried a third "the one party outside the LAN" the plan's contract sweep missed. It now says "a party". The file was already in Files in scope, so the fold widens only the line named there. A whole-tree `git grep` for "outside the LAN" over every tracked file outside `docs/archive/` found no other carrier; `docs/plans/README.md` line 46 is a past-tense archive entry and stays.
+- Deviation from the Approach's wording, design intent unchanged: the Approach states the liaison's measured refusal as "the supervisor's print-mode launch ... refuses a tool outside the seat's allow list". The runbook's roster (`agent_persona` `docs/client-sandbox.md` at 0245191, the fleet.json entries) runs the steward, architect and dev seats under `bypassPermissions` and only the liaison on `default` with an allow list. The paragraph now states both, keeping "a client operator approves nothing through the thread" as the claim that holds on every seat, and naming the host's containment as what bounds a bypassed seat's tools.
+- Declared in fix round 1 on the two blind reads: Discord's servers are placed in consideration as a party outside the LAN holding every thread message and relay reply, mirroring the TypeSafe entry, so a finding naming Discord has a ruling. Source: the runbook's Client Disclosure fact 2.
+- Fix round 1 also stated the client host's other three egress switches from the runbook (`kit-jev.json` installed, `kit-endpoint.json` and the sidecar spool absent), the ruleset on the client repository's `main` (runbook Client Repository step 5), a file and repository for each companion pointer, the runbook departure as a raisable containment finding citing the assets paragraph, and the mid-turn entry's agreement with the doctrine's relay bullet: the envelope still carries `sender_class`, and only the persona plugin reads none from it.
+- Probe pair: no scenario turned on, since the delta changes no shipped skill or charter; the section's files are `docs/` alone.
+Failed approaches: tried flipping `Status:` with a CRLF-anchored sed, failed because the plan doc is LF, learned to read a file's line endings before anchoring on them.
+Assumptions:
+- assumed 2026-10-02 (route a, executing-work memory `test-suite-invocation`, section 1): the acceptance bullet's `node --test test/` runs as `node --test test/*.test.js`, since the bare directory form dies on Node 24.
+- assumed 2026-10-02 (default, section 1): the fact base is read at the companion repositories' `origin/main`, `agent_persona` 0245191 and `discord-channels` a2af535, where both plans are merged and archived.
+- assumed 2026-10-02 (default, section 1): the `Voice: company` line names no reference, since the prose-register skill carries only `voice-scott.md`; the prose reviewer checked structure and register alone.
+Review Findings: review: document pair (2 readers) at fable, Agent tool, capacity readings `fable capacity: scoped 69%, 7d 54%, 5h 4% (account 5, fetched 12s ago) -> dispatch`, taken back to back for the three dispatches sent in the same minute; `blind: no code diff`. The operator-persona blind brief's Reader line carried the Audience's focus clause, which that reader flagged and read past by reading both documents whole. Majors addressed: prose reviewer, the allow-list refusal stated as the host's bound (fixed, deviation above); the asset and the out-entry pulling the adjudicator two ways (fixed, the runbook-departure sentence); branch protection cited from a paragraph that did not state it (fixed). Blind reads: containment against the runbook's measures, Discord unplaced, the mid-turn gap's citation and its contradiction of line 890, the host's unstated egress switches and the pointers with no location (all fixed in fix round 1); the kaizen push from a client host (out of scope, `docs/backlog.md` entry added). Majors justified: the `## Principals` pointer, the home-network neighbour and the `threat:` citation form, which are pre-existing text the plan does not change. The fix delta is prose alone, so it owed no further round; it took the author's re-read against each finding. Minors: 6 fixed in fix round 1, 0 upgraded, 8 left with the reason (`.kit/scratch/client-threat-model/minors-section-1.md`).
+Stamps: adjudicated 0 from `memq unstamped --since 2h`, whose zeros it reports as an absence of evidence; hand walk owed for that reason, finding one record that shaped the lane command, `test-suite-invocation`, stamped applied.
+Gate: targeted lane, the 11 test files that read `docs/security-model.md` or `docs/README.md`: first green 909/907/0 with 2 skipped, exit 0, 2026-10-02 08:14:28Z to 08:15:36Z, worktree `.kit/wt-client-threat-model` at 5f5d599c plus the section's edits, SCOTT-CLAUDE, no foreign test runner at the poll; after fix round 1 909/907/0 with 2 skipped, exit 0, 63 s, same worktree at 82b60e5b plus the fix round. No baseline on this lane before the change; the two runs agree. Tests added 0, retired 0, edited 0. Contention lane: this repository defines none (`docs/architecture.md:21`).
+Next: finishing-work
+Commit Model: Branch-and-PR
+Delta: 2026-10-02, worktree `.kit/wt-client-threat-model` at 82b60e5b plus fix round 1, SCOTT-CLAUDE.
+```
+repository: wt-client-threat-model
+words: 975058 of cap 975101 across 121 curated files
+test lines: 142497 of cap 142505 across 80 test files
+tests: 4087
+changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+corpus: 105304 words of cap 105304
+```
