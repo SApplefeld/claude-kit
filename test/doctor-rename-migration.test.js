@@ -2,7 +2,8 @@
 // name: "Former-name migration" (the doctrine file, its stamp, the kaizen
 // signpost and the CLAUDE.md import line), "Output style" (settings.json's
 // outputStyle) and "Plugin install" (installed_plugins.json against
-// enabledPlugins).
+// enabledPlugins), and for the "Doctrine import" check's import predicate
+// against the case table the hook shares.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every
 // case builds its own fixture ~/.claude under a short temp directory and
@@ -27,6 +28,8 @@ const { spawnSync } = require('node:child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+
+const { CASES } = require('./doctrine-import-cases.test.js');
 
 const REPO = path.join(__dirname, '..');
 const DOCTOR = path.join(REPO, 'plugins', 'grimoire', 'doctor', 'doctor.ps1');
@@ -218,35 +221,108 @@ test('-Fix moves a home in the former name\'s state onto the current names, and 
     }
 });
 
-// A case-insensitive file system imports @Grimoire-Doctrine.md as the same
-// file as the new token, so the hook leaves the old line, and so does -Fix.
-test('a line reading as the new token in another letter case suppresses the swap, as in the hook', { skip: !isWin }, () => {
+// The import check follows Claude Code's case-sensitive import grammar, so
+// @Grimoire-Doctrine.md does not stop -Fix from swapping the old line, as in
+// the hook.
+test('a line holding the new token in another letter case does not stop the swap, as in the hook', { skip: !isWin }, () => {
     const fx = makeRoot('drm-mig-case-');
     try {
-        const text = '@Grimoire-Doctrine.md\r\n' + OLD.importLine + '\r\n';
-        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), text, 'utf8');
+        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), '@Grimoire-Doctrine.md\r\n' + OLD.importLine + '\r\n', 'utf8');
         const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
-        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
-        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), text);
+        assert.strictEqual(reports[0].Status, 'FIXED', reports[0].Detail);
+        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), '@Grimoire-Doctrine.md\r\n' + NEW.importLine + '\r\n');
     } finally {
         rmDir(fx.root);
     }
 });
 
-// The suppression reads the current token anywhere in the file, in any letter
-// case, as the hook's does, so an indented or annotated import keeps -Fix
-// from swapping the old line into a second import.
-test('an indented or annotated new import suppresses the swap under -Fix and reads WARN naming both imports', { skip: !isWin }, () => {
+// The migration case: the swap takes no "already imported" gate, so the exact
+// old line beside a live annotated import is rewritten under -Fix, as in the
+// hook, leaving two import lines, which load one file.
+test('an annotated new import beside the old line does not stop the swap, and -Fix reads FIXED', { skip: !isWin }, () => {
     const fx = makeRoot('drm-mig-shape-');
     try {
-        const text = '  @grimoire-doctrine.md  # kit doctrine\n' + OLD.importLine + '\n';
-        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), text, 'utf8');
+        const live = '  @grimoire-doctrine.md  # kit doctrine\n';
+        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), live + OLD.importLine + '\n', 'utf8');
         const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
-        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
-        assert.match(reports[0].Detail, /imports both/);
-        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), text);
+        assert.strictEqual(reports[0].Status, 'FIXED', reports[0].Detail);
+        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), live + NEW.importLine + '\n');
+    } finally {
+        rmDir(fx.root);
+    }
+});
+
+// --- Doctrine import check, held to the shared case table the hook's wiring
+// offer is held to in test/doctrine-refresh.test.js. Each row gets its own
+// fixture .claude holding the row's CLAUDE.md and a doctrine file matching a
+// fixture payload's skill body, so an imported row reads PASS and a row that
+// is not an import reads the WARN naming the line to add. One PowerShell
+// process runs the lifted section once per row.
+
+const IMPORT_CHECK = ['# --- Doctrine import and freshness.', '# --- Kaizen signpost + git hooks.'];
+
+function runImportCheck(pluginRoot, claudeDirs) {
+    const outFile = path.join(os.tmpdir(), 'doctor-rename-import-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
+    const script = [
+        '$src = [System.IO.File]::ReadAllText(' + q(DOCTOR) + ')',
+        '$start = $src.IndexOf(' + q(IMPORT_CHECK[0]) + ')',
+        'if ($start -lt 0) { throw "start marker not found" }',
+        '$end = $src.IndexOf(' + q(IMPORT_CHECK[1]) + ', $start)',
+        'if ($end -lt 0) { throw "end marker not found after the start" }',
+        '$section = $src.Substring($start, $end - $start)',
+        'function Get-SanitizedLine { param($Value, $MaxLength = 120) return [string]$Value }',
+        'function Get-PayloadClause { return "" }',
+        'function Report {',
+        '    param([string]$Status, [string]$Name, [string[]]$Detail = @())',
+        '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") }',
+        '}',
+        '$pluginRoot = ' + q(pluginRoot),
+        '$results = @()',
+        'foreach ($claudeDir in @(' + claudeDirs.map(q).join(', ') + ')) {',
+        '    $script:Reports = @()',
+        '    Invoke-Expression $section',
+        '    $results += ,@($script:Reports | Where-Object { $_.Name -eq "Doctrine import" })',
+        '}',
+        '$__json = ConvertTo-Json -InputObject @($results) -Compress -Depth 6',
+        '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
+    ].join('\n');
+    const res = spawnSync('powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], { encoding: 'utf8' });
+    try {
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.strictEqual(res.stderr.trim(), '', res.stderr);
+        return JSON.parse(fs.readFileSync(outFile, 'utf8'));
+    } finally {
+        try { fs.unlinkSync(outFile); } catch { /* best effort */ }
+    }
+}
+
+test('the Doctrine import check reads PASS exactly on the case table\'s imported rows', { skip: !isWin }, () => {
+    const fx = makeRoot('drm-import-');
+    try {
+        const pluginRoot = path.join(fx.root, 'plugin');
+        const skill = path.join(pluginRoot, 'skills', 'operating-instructions', 'SKILL.md');
+        fs.mkdirSync(path.dirname(skill), { recursive: true });
+        fs.writeFileSync(skill, '---\nname: operating-instructions\n---\n\nThe doctrine.\n', 'utf8');
+        const dirs = CASES.map((c, i) => {
+            const dir = path.join(fx.root, 'case' + i, '.claude');
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, 'CLAUDE.md'), c.text, 'utf8');
+            fs.writeFileSync(path.join(dir, NEW.doctrine), 'The doctrine.\n', 'utf8');
+            return dir;
+        });
+        const results = runImportCheck(pluginRoot, dirs);
+        assert.strictEqual(results.length, CASES.length, JSON.stringify(results));
+        const wrong = [];
+        CASES.forEach((c, i) => {
+            const reports = [].concat(results[i]);
+            const status = reports.length === 1 ? reports[0].Status : JSON.stringify(reports);
+            const added = reports.length === 1 && /Add this line/.test(reports[0].Detail);
+            if (c.imported ? status !== 'PASS' : (status !== 'WARN' || !added)) wrong.push(c.name + ': ' + status);
+        });
+        assert.deepStrictEqual(wrong, []);
     } finally {
         rmDir(fx.root);
     }

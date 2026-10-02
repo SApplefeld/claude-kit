@@ -8,9 +8,10 @@
 //
 //   0. Move the files an install under the plugin's former name wrote (the
 //      doctrine file, its stamp and the kaizen signpost) onto the current names,
-//      never over a file already under the current name, and swap a CLAUDE.md
-//      line that is exactly the former import token for the current one, saying
-//      so in one additionalContext line.
+//      never over a file already under the current name, and swap the first
+//      CLAUDE.md line that is exactly the former import token for the current
+//      one, whatever else the file holds, saying so in one additionalContext
+//      line.
 //   1. Read the installed skill's SKILL.md from CLAUDE_PLUGIN_ROOT, strip the YAML
 //      frontmatter, and write one header line plus the body to
 //      ~/.claude/grimoire-doctrine.md whenever it differs. Reading from
@@ -36,17 +37,20 @@
 //      compact it declines silently. The order is time alone: two hashes have no
 //      order, so the hash rides for the decline line only. A missing or malformed
 //      stamp reads as no stamp, and the writer writes and stamps.
-//   2. If ~/.claude/CLAUDE.md does not import that file yet, OFFER (never silently
-//      perform) to add the one-line `@grimoire-doctrine.md` import. The doctrine
-//      file is kit-owned and safe to overwrite silently; the user's personal
-//      CLAUDE.md is not, so adding to it stays consent-gated at the agent layer.
-//      The one change made to it unprompted is step 0's swap of a line that is
-//      exactly the former import token, which is reported after it lands.
+//   2. If ~/.claude/CLAUDE.md does not import that file yet, by Claude Code's
+//      case-sensitive import grammar, OFFER (never silently perform) to add the
+//      one-line `@grimoire-doctrine.md` import. The doctrine file is kit-owned
+//      and safe to overwrite silently; the user's personal CLAUDE.md is not, so
+//      adding to it stays consent-gated at the agent layer. The one change made
+//      to it unprompted is step 0's swap of a line that is exactly the former
+//      import token, which is reported after it lands. Where step 0 kept a temp
+//      file in place of a missing CLAUDE.md, no offer is made.
 //
 // SAFETY: fails OPEN and silent. Missing skill, unreadable/unwritable paths, an
 // up-to-date file with the import already present, or any error -> exit 0, no
 // output. The one error that prints is a step 0 swap that leaves CLAUDE.md
-// missing, which names the kept temp file so the user can put it back.
+// missing, which names the kept temp file, as the rewritten file where its
+// write completed and as a partial copy where it did not.
 
 'use strict';
 
@@ -140,13 +144,28 @@ function renameIfFree(dir, from, to) {
 // A line of CLAUDE.md split with /(?<=\n)/, less its \r\n or \n terminator.
 const lineText = (seg) => seg.replace(/\r?\n$/, '');
 
-// True where the file already imports the current token anywhere, in any
-// letter case, which an import on a case-insensitive file system loads as the
-// same file. Step 0's swap and step 2's wiring offer both ask this, so a file
-// the swap leaves alone is never offered a second import. The token is ASCII,
-// so lowercasing folds it the same in every locale.
+// True where CLAUDE.md's text imports the doctrine file where Claude Code
+// would load it. The check follows Claude Code's import grammar, case-sensitive:
+// HTML comments, fenced code blocks, lines indented four spaces or a tab, and
+// backtick code spans are skipped, and an import is the token, bare or as a
+// ./ or ~/.claude/ path, after a line start or whitespace and before
+// whitespace, a # or the line end. Every doubt reads as not imported, since a
+// missed import costs an extra offer and a false one leaves the doctrine
+// unloaded with no message. The doctor's Doctrine import check is its twin.
+const IMPORT_PATTERN = /(?:^|\s)@(?:\.\/|~\/\.claude\/)?grimoire-doctrine\.md(?=\s|#|$)/;
 function importsDoctrine(text) {
-    return text.toLowerCase().includes(IMPORT_TOKEN.toLowerCase());
+    let fence = null;                                 // the open fence's character, or null
+    for (const line of text.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)) {
+        const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+        if (marker) {
+            if (fence === null) fence = marker[1][0];
+            else if (marker[1][0] === fence) fence = null;
+            continue;
+        }
+        if (fence !== null || /^( {4}|\t)/.test(line)) continue;
+        if (IMPORT_PATTERN.test(line.replace(/`[^`]*`/g, ''))) return true;
+    }
+    return false;
 }
 
 // Move a home an earlier install wrote under the plugin's former name onto the
@@ -154,19 +173,20 @@ function importsDoctrine(text) {
 // stamp moves only in that same run, since a lone old stamp beside a current
 // file describes some other write. The signpost moves on its own. In CLAUDE.md
 // the first line that is exactly the old import token, terminator aside and
-// case-sensitive, becomes the new token, unless the file already imports the
-// current token anywhere, in any letter case (importsDoctrine). The file is
-// read and written as latin1 so every other byte, line endings included, is
-// written back as it was read. A CLAUDE.md that is a link, or a chain of them,
-// is followed to its final target, which is rewritten and the links kept. The
-// rewrite goes to a temp file beside that target, named with the pid and a
-// random suffix and opened exclusively so no existing file is reused, and is
-// renamed over the target, so a killed process never truncates the user's
-// file. Off Windows the temp takes the target's mode before it holds any text,
-// so the file keeps its permission bits. Returns { line, kept }: line is the
-// session-start line reporting the import swap or naming a kept temp file, or
-// null; kept is true where the target is missing and the temp holding the
-// complete rewrite is kept and named in its place.
+// case-sensitive, becomes the new token every time: once the doctrine file is
+// renamed that line imports nothing, whatever else the file holds, and a second
+// import line loads the same file once. The file is read and written as latin1
+// so every other byte, line endings included, is written back as it was read.
+// A CLAUDE.md that is a link, or a chain of them, is followed to its final
+// target, which is rewritten and the links kept. The rewrite goes to a temp
+// file beside that target, named with the pid and a random suffix and opened
+// exclusively so no existing file is reused, and is renamed over the target,
+// so a killed process never truncates the user's file. Off Windows the temp
+// takes the target's mode before it holds any text, so the file keeps its
+// permission bits. Returns { line, kept }: line is the session-start line
+// reporting the import swap or naming a kept temp file, or null; kept is true
+// where the target is missing and the temp, whole or partial, is kept and
+// named in its place.
 function migrateFormerName(claudeDir) {
     if (renameIfFree(claudeDir, OLD_DOCTRINE_FILE, DOCTRINE_FILE)) {
         renameIfFree(claudeDir, OLD_STAMP_FILE, STAMP_FILE);
@@ -179,9 +199,7 @@ function migrateFormerName(claudeDir) {
     let written = false;
     try {
         target = fs.realpathSync(path.join(claudeDir, 'CLAUDE.md'));
-        const text = fs.readFileSync(target, 'latin1');
-        if (importsDoctrine(text)) return quiet;
-        const segments = text.split(/(?<=\n)/);
+        const segments = fs.readFileSync(target, 'latin1').split(/(?<=\n)/);
         const at = segments.findIndex((seg) => lineText(seg) === OLD_IMPORT_TOKEN);
         if (at < 0) return quiet;
         segments[at] = IMPORT_TOKEN + segments[at].slice(OLD_IMPORT_TOKEN.length);
@@ -202,24 +220,27 @@ function migrateFormerName(claudeDir) {
     } catch {
         // Absent or unwritable: give up quietly. A temp file this run created
         // is removed only while the target still exists, so the one complete
-        // copy is never the one deleted; where the target is gone and the temp
-        // holds the complete rewrite, the kept temp is named so the user can
-        // put it back.
+        // copy is never the one deleted; where the target is gone, the kept
+        // temp is named, as the rewritten file where its write completed and
+        // as a partial copy where it did not.
         if (fd !== null) { try { fs.closeSync(fd); } catch { /* best effort */ } }
         if (!tempPath || !target) return quiet;
         if (fs.existsSync(target)) {
             try { fs.unlinkSync(tempPath); } catch { /* best effort */ }
             return quiet;
         }
-        if (!written || !fs.existsSync(tempPath)) return quiet;
+        if (!fs.existsSync(tempPath)) return quiet;
         // Both paths come from disk and enter a channel a model reads, so they
         // take that channel's path renderer.
         try {
             const { displayPath } = require('./kit-compact-lib.js');
+            const kept = written
+                ? `The rewritten file is kept at ${displayPath(tempPath)}; rename it to ${displayPath(target)}.`
+                : `The partial temp file ${displayPath(tempPath)} is kept; its write did not complete, so it is ` +
+                    `not a whole copy of the file.`;
             return {
                 line: `Kit rename incomplete: the rewrite of ~/.claude/CLAUDE.md's import line could not be put in ` +
-                    `place and ${displayPath(target)} is missing. The rewritten file is kept at ${displayPath(tempPath)}; ` +
-                    `rename it to ${displayPath(target)}.`,
+                    `place and ${displayPath(target)} is missing. ${kept}`,
                 kept: true
             };
         } catch { return quiet; }
@@ -288,8 +309,8 @@ function main() {
     } catch { /* unwritable home: give up quietly, never block */ }
 
     // 2. Offer to wire the import if the user's CLAUDE.md does not have it,
-    //    unless step 0 kept its rewrite in place of a missing CLAUDE.md, whose
-    //    line already says how to put the file back.
+    //    unless step 0 kept a temp file in place of a missing CLAUDE.md, whose
+    //    line already names it.
     let userClaudeMd = null;
     try { userClaudeMd = fs.readFileSync(path.join(claudeDir, 'CLAUDE.md'), 'utf8'); } catch { /* absent */ }
     if (!migrated.kept && (userClaudeMd === null || !importsDoctrine(userClaudeMd))) {

@@ -338,10 +338,9 @@ else {
 # --- stamp moves only with its doctrine file, since a lone old stamp beside a
 # --- current file describes some other write; the CLAUDE.md line moves only
 # --- where it is exactly the former token, terminator aside and case-sensitive,
-# --- and the file does not already import the current token anywhere, in any
-# --- letter case, which an import on a case-insensitive file system loads as
-# --- the same file; the hook applies the same two comparisons, and the
-# --- Doctrine import check below asks the second one too. CLAUDE.md is read and
+# --- and there it moves whatever else the file holds, since once the doctrine
+# --- file is renamed that line imports nothing and a second import line loads
+# --- the same file once; the hook applies the same comparison. CLAUDE.md is read and
 # --- written as bytes, so every other byte and line ending stays as it was. A
 # --- CLAUDE.md that is a link, or a chain of them, is followed to its final
 # --- target, which is rewritten and the links kept. The rewrite goes to a temp
@@ -367,19 +366,15 @@ function Test-MigrationFree {
     return (Test-Path -LiteralPath (Join-Path $claudeDir $Old)) -and -not (Test-Path -LiteralPath (Join-Path $claudeDir $New))
 }
 
-# CLAUDE.md as line segments, each keeping its own terminator, the index of
-# the first exact former-token line, or -1, and whether the file already
-# imports the current token anywhere, in any letter case, compared ordinally
-# so the host's culture never changes the fold. Exact means the segment less
-# its \r\n or \n terminator, compared case-sensitively.
+# CLAUDE.md as line segments, each keeping its own terminator, and the index of
+# the first exact former-token line, or -1. Exact means the segment less its
+# \r\n or \n terminator, compared case-sensitively.
 function Get-MigrationImportState {
-    $text = $migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd))
-    $segments = [regex]::Split($text, '(?<=\n)')
+    $segments = [regex]::Split($migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd)), '(?<=\n)')
     $texts = @($segments | ForEach-Object { $_ -replace '\r?\n$', '' })
     return @{
         Segments = $segments
         OldAt = [array]::IndexOf($texts, $migrationOldImport)
-        HasNew = $text.IndexOf($migrationNewImport, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
     }
 }
 
@@ -427,10 +422,7 @@ if (Test-Path -LiteralPath $migrationClaudeMd) {
     try { $migrationImport = Get-MigrationImportState }
     catch { $migrationImportError = Get-SanitizedLine $_.Exception.Message 200 }
 }
-$migrationImportPending = ($null -ne $migrationImport) -and ($migrationImport.OldAt -ge 0) -and -not $migrationImport.HasNew
-if (($null -ne $migrationImport) -and ($migrationImport.OldAt -ge 0) -and $migrationImport.HasNew) {
-    $migrationHeld += "$migrationClaudeMd imports both $migrationOldImport and $migrationNewImport; the old line is left, so delete it by hand."
-}
+$migrationImportPending = ($null -ne $migrationImport) -and ($migrationImport.OldAt -ge 0)
 if ($null -ne $migrationImportError) {
     $migrationHeld += "$migrationClaudeMd is unreadable, so its import line was not checked: $migrationImportError"
 }
@@ -527,6 +519,30 @@ function Get-DoctrineBody {
     return $body -replace "^`r?`n", ""
 }
 
+# True where CLAUDE.md's text imports the doctrine file where Claude Code would
+# load it. The check follows Claude Code's import grammar, case-sensitive: HTML
+# comments, fenced code blocks, lines indented four spaces or a tab, and
+# backtick code spans are skipped, and an import is the token, bare or as a ./
+# or ~/.claude/ path, after a line start or whitespace and before whitespace, a
+# # or the line end. Every doubt reads as not imported, since a missed import
+# costs an extra offer and a false one leaves the doctrine unloaded with no
+# message. The doctrine-refresh hook's importsDoctrine is its twin.
+function Test-DoctrineImported {
+    param([string]$Text)
+    $fence = $null
+    foreach ($line in [regex]::Split([regex]::Replace($Text, '<!--[\s\S]*?-->', ''), '\r?\n')) {
+        $marker = [regex]::Match($line, '^ {0,3}(`{3,}|~{3,})')
+        if ($marker.Success) {
+            if ($null -eq $fence) { $fence = $marker.Groups[1].Value[0] }
+            elseif ($marker.Groups[1].Value[0] -ceq $fence) { $fence = $null }
+            continue
+        }
+        if ($null -ne $fence -or [regex]::IsMatch($line, '^( {4}|\t)')) { continue }
+        if ([regex]::IsMatch([regex]::Replace($line, '`[^`]*`', ''), '(?:^|\s)@(?:\./|~/\.claude/)?grimoire-doctrine\.md(?=\s|#|$)')) { return $true }
+    }
+    return $false
+}
+
 $claudeMd = Join-Path $claudeDir "CLAUDE.md"
 $doctrineFile = Join-Path $claudeDir "grimoire-doctrine.md"
 $doctrineSkill = Join-Path $pluginRoot "skills\operating-instructions\SKILL.md"
@@ -540,10 +556,7 @@ if (Test-Path $claudeMd) {
         $claudeMdReadError = Get-SanitizedLine $_.Exception.Message 200
     }
 }
-# The import is present where the file holds the token anywhere, in any letter
-# case, compared ordinally so the host's culture never changes the fold; the
-# former-name migration above asks the same.
-$importPresent = ($null -ne $claudeMdRaw) -and ($claudeMdRaw.IndexOf("@grimoire-doctrine.md", [System.StringComparison]::OrdinalIgnoreCase) -ge 0)
+$importPresent = ($null -ne $claudeMdRaw) -and (Test-DoctrineImported $claudeMdRaw)
 if ($null -ne $claudeMdReadError) {
     Report "WARN" "Doctrine import" @("$claudeMd is unreadable: $claudeMdReadError")
 }

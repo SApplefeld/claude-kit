@@ -27,6 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const { CASES } = require('./doctrine-import-cases.test.js');
+
 const REPO = path.join(__dirname, '..');
 const HOOK = path.join(REPO, 'plugins', 'grimoire', 'hooks', 'doctrine-refresh.js');
 const DOCTOR = path.join(REPO, 'plugins', 'grimoire', 'doctor', 'doctor.ps1');
@@ -422,26 +424,25 @@ test('a lone old stamp beside a new doctrine file stays put', () => {
     }
 });
 
-// A case-insensitive file system imports @Grimoire-Doctrine.md as the same
-// file as the new token, so swapping the old line would import it twice, and
-// so would accepting a wiring offer for the token the file already imports.
-test('a line reading as the new token in another letter case suppresses the swap and the wiring offer', () => {
+// The import check follows Claude Code's case-sensitive import grammar, so
+// @Grimoire-Doctrine.md imports nothing on a case-sensitive file system, and
+// the old line beside it is swapped, which leaves one live import and no offer.
+test('a line holding the new token in another letter case does not stop the swap', () => {
     const root = makeDir('doctrine-refresh-migrate-case-');
     try {
         const home = makeHome(root);
-        const text = '@Grimoire-Doctrine.md\n' + OLD.importLine + '\n';
-        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), '@Grimoire-Doctrine.md\n' + OLD.importLine + '\n', 'utf8');
         const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
         const out = runHook(home, plugin, 'startup');
-        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
-        assert.doesNotMatch(out, /not wired in/, 'the import is already present: ' + out);
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), '@Grimoire-Doctrine.md\n' + NEW.importLine + '\n');
+        assert.doesNotMatch(out, /not wired in/, 'the swapped line is the import: ' + out);
     } finally {
         rmDir(root);
     }
 });
 
-// The wiring check reads the token anywhere in the file, as the doctor's does,
-// so an indented import or one carrying a trailing note is not offered twice.
+// An import indented under four spaces and carrying a trailing note is still
+// an import, so it is not offered twice.
 test('an import line with indentation or a trailing note draws no wiring offer', () => {
     const root = makeDir('doctrine-refresh-wired-shape-');
     try {
@@ -455,18 +456,35 @@ test('an import line with indentation or a trailing note draws no wiring offer',
     }
 });
 
-// The swap's suppression reads the current token anywhere in the file, in any
-// letter case, as the wiring check does, so an indented or annotated import
-// keeps the old line from being swapped into a second import.
-test('an indented or annotated new import suppresses the swap, so CLAUDE.md is byte-unchanged', () => {
+// Every row of the shared case table, run through the hook: the wiring offer
+// appears exactly where the row is not an import. The doctor's Doctrine import
+// check is held to the same rows in test/doctor-rename-migration.test.js.
+for (const c of CASES) test(`wiring offer, ${c.name}: ${c.imported ? 'none' : 'offered'}`, () => {
+    const root = makeDir('doctrine-refresh-import-case-');
+    try {
+        const home = makeHome(root);
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), c.text, 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const out = runHook(home, plugin, 'startup');
+        if (c.imported) assert.doesNotMatch(out, /not wired in/, out);
+        else assert.match(out, /not wired in/, 'no offer for ' + JSON.stringify(c.text));
+    } finally {
+        rmDir(root);
+    }
+});
+
+// The swap takes no "already imported" gate: once the doctrine file is
+// renamed, the exact old line is dead whatever else the file holds, so an
+// annotated import beside it leaves two import lines, which load one file.
+test('an annotated new import beside the old line does not stop the swap', () => {
     const root = makeDir('doctrine-refresh-migrate-shape-');
     try {
         const home = makeHome(root);
-        const text = '  @grimoire-doctrine.md  # kit doctrine\n' + OLD.importLine + '\n';
-        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
+        const live = '  @grimoire-doctrine.md  # kit doctrine\n';
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), live + OLD.importLine + '\n', 'utf8');
         const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
         const out = runHook(home, plugin, 'startup');
-        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), live + NEW.importLine + '\n');
         assert.doesNotMatch(out, /not wired in/, 'the import is present: ' + out);
     } finally {
         rmDir(root);
@@ -526,15 +544,58 @@ test('a swap that fails leaves CLAUDE.md byte-identical and no temp file', { ski
     }
 });
 
-test('a CLAUDE.md already holding the exact new line keeps its exact old line, so no duplicate import is written', () => {
+// The migration case: the exact old line beside a live new import is
+// rewritten, and the file draws no wiring offer.
+test('a CLAUDE.md holding the exact new line has its exact old line rewritten too, with no wiring offer', () => {
     const root = makeDir('doctrine-refresh-migrate-dup-');
     try {
         const home = makeHome(root);
-        const text = OLD.importLine + '\r\n' + NEW.importLine + '\r\n';
-        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), OLD.importLine + '\r\n' + NEW.importLine + '\r\n', 'utf8');
         const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
-        assert.strictEqual(runHook(home, plugin, 'startup'), '');
-        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
+        const ctx = JSON.parse(runHook(home, plugin, 'startup')).hookSpecificOutput.additionalContext;
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), NEW.importLine + '\r\n' + NEW.importLine + '\r\n');
+        assert.ok(ctx.includes(OLD.importLine), 'the swap is reported: ' + ctx);
+        assert.doesNotMatch(ctx, /not wired in/);
+    } finally {
+        rmDir(root);
+    }
+});
+
+// A write that fails partway after CLAUDE.md is gone. A preload makes the
+// hook's write into the temp file put half the bytes there, remove the
+// target, and throw, which no real disk does on demand.
+test('a partial temp write with CLAUDE.md gone is named as partial, and no wiring offer is made', () => {
+    const root = makeDir('doctrine-refresh-migrate-partial-');
+    try {
+        const home = makeHome(root);
+        const claudeMd = claudePath(home, 'CLAUDE.md');
+        fs.writeFileSync(claudeMd, claudeMdWith(OLD.importLine, '\n'), 'utf8');
+        const preload = path.join(root, 'partial-write.js');
+        fs.writeFileSync(preload, [
+            "const fs = require('fs');",
+            'const real = fs.writeFileSync;',
+            'fs.writeFileSync = function (file, data, ...rest) {',
+            "    if (typeof file !== 'number') return real.call(fs, file, data, ...rest);",
+            '    fs.writeSync(file, data, 0, Math.floor(data.length / 2));',
+            '    fs.unlinkSync(process.env.PARTIAL_TARGET);',
+            "    throw new Error('disk full');",
+            '};',
+            ''
+        ].join('\n'), 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const res = spawnSync(process.execPath, ['--require', preload, HOOK], {
+            input: JSON.stringify({ hook_event_name: 'SessionStart', source: 'startup' }),
+            encoding: 'utf8',
+            env: { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: plugin, PARTIAL_TARGET: claudeMd }
+        });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const temps = fs.readdirSync(path.join(home, '.claude')).filter((n) => /tmp-migrate/.test(n));
+        assert.strictEqual(temps.length, 1, 'the partial temp is kept: ' + temps);
+        const ctx = JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
+        assert.ok(ctx.includes(temps[0]), 'the partial temp is named: ' + ctx);
+        assert.match(ctx, /did not complete/);
+        assert.match(ctx, /not a whole copy/);
+        assert.doesNotMatch(ctx, /not wired in/, 'no offer to create a file whose temp is named: ' + ctx);
     } finally {
         rmDir(root);
     }
