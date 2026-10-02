@@ -182,6 +182,6 @@ Tests: the worktree-local read, since the per-client worktrees are the case the 
 - `docs/archive/claude-kit_memory-database_spec_v1.md`: phase one, which built the database this plan makes the record, and whose Out of Scope named this plan.
 - `docs/archive/claude-kit_persona-memory-port_spec_v1.md`: wrote `memq put` and the judged channel this plan keeps.
 - `docs/archive/claude-kit_automemory-off_spec_v1.md`: made the kit carry the session-start index itself, which is why the read side moves without the harness noticing.
-- Plan 2, retiring the file store, written after this plan is approved and named here when it exists.
+- `claude-kit_retire-file-store_spec_v1.md`: plan 2, which removes the file tiers, the git sync, the local index and the embedder once this plan has run on every machine.
 
 ## Chapters
