@@ -15,7 +15,6 @@ Amending: a row changes when ownership moves. It lands in the same change as the
 | A section's model tier, and the tier bands | `brainstorming` |
 | The scout sweep deriving a section's files in scope | `brainstorming` |
 | Reading a spec against its Goal before arming, the `[unrefusable-frame]` question included | `brainstorming` (step 10, plan review) |
-| The Jev coverage check in self-review, and the recap's closing line | `brainstorming` (step 10, the coverage check) |
 | A hard-to-reverse architecture fork | `design-council` |
 | A verdict on a decision framed with the operator's own preference | doctrine (Match my precision) |
 | Gaps at intake, and how each is routed | doctrine (Enumerate the gaps at intake) |

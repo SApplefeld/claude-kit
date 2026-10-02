@@ -9,7 +9,7 @@ The iron rule: **no fix without a reproduced, understood root cause.** This is t
 
 ## Phase 0: Classify
 
-Before reproducing, sort the failure into one of five bins: code, environment, tool, external service, or unknown. Never change working code to route around an environment problem.
+Before reproducing, decide whether the failure lives in the code or outside it. Never change working code to route around an environment problem.
 
 ## Phase 1: Reproduce
 
@@ -19,13 +19,12 @@ Reproduce the failure reliably before investigating, with a minimal temporary sc
 
 Build the evidence before forming opinions:
 
-- **Read the actual error**: the whole message, stack and log lines, not a summary. Check the project's server-side error log or audit table for the server-side view.
-- **Check what changed**: git log and diff around the onset, and deployment history.
-- **Trace the data flow backward** from the symptom to where reality first diverges from expectation. Dispatch the Explore subagent for unfamiliar territory rather than guessing.
-- **SQL-specific checks** (this stack's recurring root causes):
+- **Read the actual error** whole. Check the project's server-side error log or audit table for the server-side view.
+- **Trace the data flow backward**, dispatching the Explore subagent for unfamiliar territory rather than guessing.
+- **SQL-specific checks** on this stack:
   - Deployment drift: does the deployed object match source? (shell-then-ALTER means a missed deployment leaves a stale proc silently in place - compare `sys.sql_modules` against the file).
   - Security context: is a trigger or nested call running as the caller instead of the impersonated user? `WITH EXECUTE AS` boundaries are a classic invisible cause.
-  - Actual data: query it. The bug is often a data shape nobody believed existed (NULLs, duplicates, empty strings vs NULL).
+  - Actual data: query it for the shape nobody believed existed, such as NULLs, duplicates, or empty strings vs NULL.
   - Isolation level: READ UNCOMMITTED procs can return mid-transaction state; confirm the proc's declared level matches its use.
 
 ## Phase 3: Hypothesize and Test
@@ -34,7 +33,7 @@ State one hypothesis at a time: "X causes Y because Z." Test it with the smalles
 
 ## Phase 4: Fix the Cause
 
-Fix the cause, not the symptom. Verify the repro now passes, and run the targeted lane the doctrine's After-each-step bullet names for a fix round. Bank any durable learning to the kit memory store as the gotcha, not the incident. In a planned effort, record the finding in the plan doc's Chapter.
+Fix the cause, not the symptom, and verify the repro now passes. The doctrine's After-each-step and Close-each-section bullets own the lane, the kit memory store write and the Chapter that follow.
 
 ## Escalation
 

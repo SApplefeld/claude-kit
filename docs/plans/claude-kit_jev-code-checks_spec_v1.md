@@ -6,7 +6,7 @@ Created: 2026-10-01
 
 ## Dispatch Authorization
 
-`Status: Ready` is the parked value the plan-doc contract gives an authored plan; this paragraph decides arming. The plan arms once the mechanism cut, `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, reads Complete, since section 3 here adds sentences to two skills that cut is still trimming. The operator's four rulings under `## Intent` are recorded, so that precondition is met. It has no other precondition.
+`Status: Ready` is the parked value the plan-doc contract gives an authored plan; this paragraph decides arming. The plan is armed. Its one precondition, that the mechanism cut `docs/archive/claude-kit_mechanism-cut_spec_v1.md` reads Complete, since section 3 here adds sentences to two skills that cut was trimming, was met on 2026-10-01 when the cut closed at `ea5456ed` on `main`. The operator's four rulings under `## Intent` are recorded. It has no other precondition.
 
 ## Goal
 
@@ -89,7 +89,7 @@ Tests: no new test. `test/doctrine-parity.test.js` and `test/size-ratchet.test.j
 - Per-function windowing, a string-aware comment stripper, and languages beyond the five extension groups.
 - The fleet-block judge's situation, floors and policy; the persona plugin's own Jev questions.
 - A doctor check for the config or key, and a permission rule for the verb.
-- `docs/backlog.md`'s retire-or-keep item on branch `mechanism-cut/s9`, which this plan closes at its finishing pass once that branch has merged.
+- `docs/backlog.md`'s keep-until-this-plan-lands item, now on `main`, which this plan closes at its finishing pass.
 
 ## Assumptions
 
