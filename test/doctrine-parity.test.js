@@ -211,14 +211,14 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The quantifier, not just the members. Review-Only is the whole of the
     // plan-model override set; Branch-and-PR pushes to its own branch and so
     // performs the default.
-    assert.match(bullet, /What overrides that default: a plan marked Review-Only, and my asking in the session to leave the work uncommitted so I can read it\./,
+    assert.match(bullet, /A plan marked Review-Only, or my asking to leave the work uncommitted, overrides the default\./,
         'the override set no longer reads as Review-Only alone; a set that '
         + 'admits Branch-and-PR tells a session under that model to skip the '
         + 'first-green commits executing-work calls its recovery points');
-    assert.match(bullet, /Branch-and-PR is not an override but an instance of it/,
+    assert.match(bullet, /Branch-and-PR is an instance of the default/,
         'the bullet no longer says Branch-and-PR performs the default rather '
         + 'than overriding it');
-    assert.match(bullet, /the session cutting one first where the checkout sits on a trunk/,
+    assert.match(bullet, /cutting a feature branch first where the checkout sits on a trunk/,
         'Branch-and-PR no longer tells a session on a trunk to cut a feature '
         + 'branch first, so the default sentence two clauses earlier (push the '
         + 'branch you are working from) routes it into pushing the trunk, which '
@@ -232,13 +232,13 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // the question to the owning skill has no such gap, and the floor below is
     // what keeps that assignment from handing an open category to editable
     // skill text.
-    assert.match(bullet, /which acts a model performs is the owning skill's to state and never this bullet's/,
+    assert.match(bullet, /the owning skill states which acts that covers/,
         'the exemption no longer assigns the act list to the owning skill, so '
         + 'the bullet is back to naming acts nothing here can verify');
-    assert.match(bullet, /reaches nothing outside the model's own execution and no statement of a model widens it/,
+    assert.match(bullet, /reaches nothing outside that execution, and no statement of a model widens it/,
         'the exemption no longer closes, so a skill widens it by restating its '
         + 'own commit model more broadly');
-    assert.match(bullet, /no model reaches a deploy or a force push/,
+    assert.match(bullet, /No model reaches a deploy or a force push/,
         'the floor no longer bars a deploy and a force push, which is what stops '
         + 'the assignment from handing an open category to editable skill text');
     assert.match(bullet, /A push that triggers a deploy keeps the deploy's yes/,
@@ -248,7 +248,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The fail-open a garbled commit-model header would otherwise take: the
     // header parser whitelists three literals and reports anything else as
     // unknown, which without this clause falls through to the push default.
-    assert.match(bullet, /absent or reads as none of the three the kit defines takes the ask/,
+    assert.match(bullet, /absent or none of the three curating-docs defines takes the ask/,
         'a plan doc whose commit model is absent or unrecognized no longer '
         + 'takes the ask, so a mistyped header silently authorizes a push');
 
@@ -257,10 +257,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // role/SKILL.md states the delegation instance's scope and its exclusions,
     // so the doctrine names the instance and assigns both to role rather than
     // restating either.
-    assert.match(bullet, /a grant whose owning skill names none authorizes nothing here/,
+    assert.match(bullet, /a proceed-ahead only for the surface its owning skill names/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
-    assert.match(bullet, /the rail's delegation instance names no surface this bullet gates/,
+    assert.match(bullet, /The rail's delegation instance names no surface this test gates/,
         'the delegation clause no longer states that delegation names no surface '
         + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
         + 'clause bounded by the exclusion list invites');
@@ -280,10 +280,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
         + 'what may merge, so nothing in the doctrine states what gates a merge');
 
     // The rail is read at the act, off the governing skill, never off the record.
-    assert.match(bullet, /read at the act rather than assumed from the record/,
+    assert.match(bullet, /read at the act/,
         'a standing grant no longer has to be read at the act, so a record that '
         + 'has gone stale would authorize on its own');
-    assert.match(bullet, /whose body can neither widen nor narrow what that skill states/,
+    assert.match(bullet, /the record can neither widen nor narrow it/,
         'the record-body-is-data clause has left the doctrine; role/SKILL.md '
         + 'states it and this is the always-loaded copy of it');
 
@@ -294,21 +294,17 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // both parts before stopping. Pinned on the test's stable tokens rather
     // than its phrasing, per the plan's standing amendment: the test's name,
     // its quantifier, and each part's named condition.
-    assert.match(bullet, /two-part test/,
-        'the bullet no longer names its class as a two-part test, so the '
-        + 'either-part quantifier and the two conditions pinned below bound '
-        + 'nothing');
     // The quantifier is pinned as its operative phrase rather than as the bare
     // words "either part", which a both-parts rewording still carries ("only
     // where it meets both parts, since either part alone ...").
-    assert.match(bullet, /meeting either part is inside it/,
+    assert.match(bullet, /inside the test if it reaches a surface someone other than you and me depends on, or if you could not undo it/,
         'the two-part test no longer states that an act meeting either part is '
         + 'inside it, so a reader may require both parts before stopping');
     assert.match(bullet, /someone other than you and me depends on/,
         'the first part no longer names the condition the operator ruled, an act '
         + 'reaching a surface someone other than the operator and the session '
         + 'depends on');
-    assert.match(bullet, /could not undo with the tools you hold/,
+    assert.match(bullet, /could not undo it with the tools you hold/,
         'the second part no longer names the condition the operator ruled, an '
         + 'act the session could not undo with the tools it holds');
 
@@ -319,7 +315,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // than anywhere in the bullet, so a member that migrates out of the list
     // into another sentence, where it is no longer ordained, still reddens
     // here.
-    const listSentence = bullet.match(/the list is closed:([^.]*)\./);
+    const listSentence = bullet.match(/never gates this closed list:([^.]*)\./);
     assert.ok(listSentence,
         'the bullet no longer states that the never-gated list is closed, so a '
         + 'session widens it by analogy');
@@ -355,7 +351,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.deepStrictEqual(missing, [],
         'the never-gated channel list no longer carries "' + missing.join('", "')
         + '", so a channel the operator ordained is back under the test');
-    assert.match(bullet, /does not name takes the test/,
+    assert.match(bullet, /Any other channel takes the test/,
         'the never-gated list no longer sends a channel it does not name back to '
         + 'the test, so the list no longer closes the set');
 
@@ -365,15 +361,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // reason is the one the old enumeration pin carried: dropping 'push' from
     // the gated set must not have dropped a force push with it. Pinned on its
     // tokens, the two verdicts and the scope, rather than its phrasing.
-    assert.match(bullet, /force push is never on the list/,
+    assert.match(bullet, /A force push is always inside it/,
         'the bullet no longer states that a force push is never on the '
         + 'never-gated list, so the list\'s "push to the working branch" reads '
         + 'as covering a force push');
-    assert.match(bullet, /always inside the test/,
-        'the bullet no longer keeps a force push always inside the test');
-    assert.match(bullet, /whatever branch it lands on/,
-        'the force-push sentence no longer reaches every branch, so a force '
-        + 'push to the working branch reads as ungated');
 
     // The shared-state reach, stated inside the test's own first part: the
     // old catch-all over shared, global and native state is gone, and this
@@ -392,7 +383,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the other-sessions sentence no longer keys on state other sessions '
         + 'read, which is the trigger that puts a shared-state write inside '
         + 'the class');
-    assert.match(bullet, /reaches a surface the first part names/,
+    assert.match(bullet, /other sessions read is inside the test/,
         'the other-sessions sentence no longer concludes that such a write '
         + 'meets the first part of the test');
 
@@ -403,10 +394,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // that the list above ordains.
     // Pinned on its tokens, the named condition with its verdict and the
     // named exception, rather than its phrasing.
-    assert.match(bullet, /any remote but the working branch's own is inside the test/,
+    assert.match(bullet, /so is a push to any remote but the working branch's own/,
         'the other-remote push no longer sits inside the test, so a push to '
         + 'any other remote is back on inference');
-    assert.match(bullet, /memory store's own sync excepted/,
+    assert.match(bullet, /the memory store's sync excepted/,
         'the other-remote sentence no longer names the memory store\'s own sync '
         + 'as its exception, so the sync the list above ordains is re-gated');
 });
@@ -439,18 +430,25 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
     // standing amendment: the read, the two routes it decides between, and the
     // re-read that closes the check-then-act gap are each a token a prose
     // pass would keep while it reworded the sentence around it.
-    assert.match(bullet, /read the pull request's state/,
+    assert.match(bullet, /Before every push to a branch with a pull request, read its state, and send a merged one's change to a new branch/,
+        'the freeze bullet no longer reads the pull request\'s state before a push, '
+        + 'which executing-work\'s per-section push meets before finishing-work is loaded');
+    assert.match(bullet, /Step 7 of `finishing-work`, Apply the commit model, owns/,
+        'the freeze bullet no longer points at finishing-work step 7, which '
+        + 'carries the reads this bullet once stated');
+    const step7 = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    assert.match(step7, /Before every push to a branch with a pull request, read its state/,
         'the freeze bullet no longer names the state read before a push to a '
         + 'branch with a pull request, so a session pushes after the merge and '
         + 'recreates or extends the head branch as an orphan that reports success');
-    assert.match(bullet, /never back to the merged branch/,
+    assert.match(step7, /never back to the merged branch/,
         'the freeze bullet no longer routes a push on a merged pull request '
         + 'away from the merged branch');
-    assert.match(bullet, /re-read the state or run the strand-check/,
+    assert.match(step7, /re-read the state or run the strand-check/,
         'the freeze bullet no longer closes the check-then-act gap after a '
         + 'push lands, so a read of open taken before the push stands in for '
         + 'where the push landed while the approval merges underneath it');
-    assert.match(bullet, /before the pull request is marked ready/,
+    assert.match(step7, /before the pull request is marked ready/,
         'the freeze bullet no longer commits every durable record before the '
         + 'pull request is marked ready, so with auto-merge armed the approval '
         + 'lands the branch without the record on it');
@@ -511,22 +509,14 @@ test('the chapter-close bullet names the compaction checkpoint in each copy', ()
         const lines = body.split(/\r?\n/).filter((l) => l.startsWith(lead));
         assert.strictEqual(lines.length, 1,
             'expected exactly one chapter-close bullet in the ' + label);
-        assert.ok(lines[0].includes('the compaction checkpoint is opened'),
+        assert.ok(lines[0].includes('the compaction checkpoint'),
             'the chapter-close bullet in the ' + label + ' must name the compaction '
             + 'checkpoint as part of closing a section on a leashed run');
-        assert.ok(lines[0].includes('kit-compact-checkpoint.js open'),
-            'the chapter-close bullet in the ' + label + ' must name the command, '
-            + 'because its audience is a session that never loaded executing-work '
-            + 'and so cannot follow a pointer to it');
-        assert.ok(lines[0].includes(lanePluralDuty + ' that gated it with their '
-            + 'counts and ' + exitCodeDuty),
-            'the chapter-close bullet in the ' + label + ' must require the '
-            + 'Chapter to name every lane that gated the section. Section close '
-            + 'runs the targeted lane, with the contention lane beside it where '
-            + 'the delta touched machine-shared state, so a Chapter that reports '
-            + 'a bare green, or one lane where two ran, says nothing about how '
-            + 'much of the tree that green covered, which is what a later '
-            + 'collateral-red diagnosis reads');
+        assert.ok(lines[0].includes('`skills/executing-work/SKILL.md`')
+            && lines[0].includes('so load it if it is not loaded'),
+            'the chapter-close bullet in the ' + label + ' must send a session '
+            + 'that never loaded executing-work to load it, since that skill now '
+            + 'carries the checkpoint command and the lanes the Chapter records');
     }
 });
 
@@ -574,9 +564,9 @@ test('the Chapter template carries the gate field the doctrine requires', () => 
         + 'though the other never happened');
     assert.ok(field.includes(exitCodeDuty),
         'the Chapter template\'s Gate field no longer asks for ' + exitCodeDuty
-        + ', the phrase the doctrine\'s chapter-close bullet states the duty '
-        + 'in. The two surfaces are pinned on this one shared string so a '
-        + 'reword of either reddens rather than leaving them asking for '
+        + ', the phrase the Gate duty is stated in. The template is that duty\'s '
+        + 'one carrier since the doctrine\'s chapter-close bullet points at '
+        + 'executing-work, so a reword here leaves the Chapter asking for '
         + 'different things');
     assert.ok(field.includes('the code itself rather than a statement that it '
         + 'was read'),
@@ -609,18 +599,17 @@ test('executing-work runs the section close gate after the review fixes', () => 
         + 'the step that states it');
 });
 
-// The two liveness bullets defer their whole operative content to
+// The probe bullet defers its whole operative content to
 // finishing-work: the wedge hallmark, the cadence, and the windows all live
 // there, and standing-watch:75 makes a committed pointer back at the doctrine
-// for the probe habit. Whole-body identity would pass with either bullet
+// for the probe habit. Whole-body identity would pass with the bullet
 // deleted from BOTH copies, leaving that pointer aimed at nothing and the
 // always-on layer silent on the one rule that keeps a session from killing a
 // working agent. The deferral is what earns the pin: a rule carrying its own
 // content fails visibly when deleted, where this one fails by going quiet.
-test('the liveness bullets defer to finishing-work in each copy', () => {
+test('the probe bullet defers to finishing-work in each copy', () => {
     const leads = [
         '- **Probe a dispatched agent with a message',
-        '- **No completion notification is not a stall signal',
     ];
     for (const [label, body] of [['skill body', skillBody()], ['doctrine mirror', mirrorBody()]]) {
         for (const lead of leads) {
@@ -779,17 +768,17 @@ test('the gate bullet routes its lanes to the testing-discipline skill in each c
 // construction and routes the cost shapes, the wall-clock capture, and the
 // comparable-contention rule to the skill that owns them.
 test('the authoring bullet routes its cost shapes to the testing-discipline skill in each copy', () => {
-    const lead = '- **Write tests independent by construction';
+    const lead = '- **After each step, run the lane the moment calls for';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
     assert.strictEqual(inSkill.length, 1,
-        'expected exactly one test-authoring bullet in the skill body');
+        'expected exactly one gate bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
-        'expected exactly one test-authoring bullet in the doctrine mirror');
-    assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
-        'the test-authoring bullet must route to testing-discipline by path: the '
-        + 'spawn pricing, the wall-clock capture, and the comparable-contention '
-        + 'rule live in that skill and in no clause of this bullet');
+        'expected exactly one gate bullet in the doctrine mirror');
+    assert.ok(inSkill[0].includes("a test's cost shapes live in `skills/testing-discipline/SKILL.md`"),
+        'the gate bullet must route a test\'s cost shapes to testing-discipline '
+        + 'by path, since the authoring bullet that carried them is merged '
+        + 'into that skill and no clause of the doctrine states them');
 });
 
 // The box-check rule is stated in full in both the doctrine and the skill, on
@@ -808,7 +797,7 @@ test('the box-check bullet states the class in each copy and in the skill', () =
         'expected exactly one box-check bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one box-check bullet in the doctrine mirror');
-    assert.match(inSkill[0], /instances, not the boundary/,
+    assert.match(inSkill[0], /other process holding the box's memory, CPU or the repo's binaries/,
         'the box-check bullet no longer closes its engine list with the class, '
         + 'so `testhost`, `dotnet`, and `node --test` read as the boundary and a '
         + 'runner in an unnamed engine is licensed to run beside your suite');
@@ -2249,7 +2238,7 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // more: inverting the admission default in place, "...needs stays off"
 // rewritten as "...needs goes on the ledger", leaves every leg in this test
 // green.
-test('standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent', () => {
+test('standing-watch carries its admission default, its prune keep for prohibitions and traps, and its kind fork, and the retired inward sentence is absent', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
     const founding = 'A line you cannot confidently place is situational';
@@ -2279,40 +2268,23 @@ test('standing-watch carries its admission default, its residual exemptions and 
     assert.ok(admission,
         'standing-watch no longer opens its admission-default paragraph with '
         + '"Doubt falls to the cheap side"; the legs below read that '
-        + 'paragraph and the residual one beside it');
+        + 'paragraph');
     assert.ok(admission.includes('tie-break for doubt'),
         'the admission default is no longer stated as the admission test\'s '
-        + 'tie-break for doubt, which is what keeps it residual to the rules '
+        + 'tie-break for doubt, which is what keeps it a fallback for the rules '
         + 'that already place content rather than a stage every line passes');
-    const residual = lines.find((l) => l.startsWith('**The admission default is residual'));
-    assert.ok(residual,
-        'standing-watch no longer carries the residual-default paragraph; the '
-        + 'default decides only what no rule has already placed');
-    assert.ok(residual.includes('Having no other record neither admits a line nor rescues one'),
-        'the residual paragraph no longer states that having no other record '
-        + 'neither admits a line nor rescues one, which is the load-bearing '
-        + 'half: the founding incident\'s content had no other record either');
-    // The default's doubt branch must not reach a recognised prohibition or
-    // trap. Unreached, such a line is kept off and then dropped, since the
-    // destination rule holds no leg for one, and a prohibition off the
-    // standing list leaves the wake prompt and stops binding with no pass
-    // able to notice. The exemption is pinned with the property that earns
-    // it, because an exemption stated on the two members' names alone gives
-    // a consuming skill's equivalent member nothing.
-    assert.ok(residual.includes(
-        "The third shape does not reach two of the standing kind's members"),
-        'the residual paragraph no longer exempts two of the standing kind\'s '
-        + 'members from the default\'s third doubt shape; a recognised '
-        + 'prohibition or trap reached by that shape is kept off the ledger '
-        + 'and dropped, and a prohibition off the standing list stops binding '
-        + 'before any pass reads the ledger');
-    assert.ok(residual.includes(
-        'What earns those two members their exemption is the property rather '
-        + 'than their names'),
-        'the residual paragraph no longer states the exemption on the property '
-        + 'that earns it rather than on the two members\' names, which is what '
-        + 'a consuming skill naming an equivalent member of its own reads to '
-        + 'know the exemption reaches it');
+    // A prohibition or trap must survive the prune however old it is. Pruned,
+    // it leaves the wake prompt and stops binding with no pass able to
+    // notice, so the keep is pinned on the prune rule's own line.
+    const prune = lines.find((l) => l.startsWith('**Prune on a quiet tick**'));
+    assert.ok(prune,
+        'standing-watch no longer opens its prune paragraph with "Prune on a '
+        + 'quiet tick"; the leg below reads that paragraph');
+    assert.ok(prune.includes('Prohibitions and do-not-reopen traps stay on the '
+        + 'ledger, however old, until their source retires them'),
+        'the prune paragraph no longer keeps prohibitions and do-not-reopen '
+        + 'traps on the ledger until their source retires them; a pruned '
+        + 'prohibition stops binding before any pass reads the ledger');
     const fork = lines.find((l) => l.startsWith('**The kind fork'));
     assert.ok(fork,
         'standing-watch no longer carries the kind-fork paragraph; an admitted '
@@ -2389,8 +2361,9 @@ test('the coordinator board default faces outward at both forks', () => {
 });
 
 // The coordinator skill states four counted, drift-prone claims in prose with
-// nothing else exercising them: the four-kinds routing's destinations, homing's
-// no-residue rule with the cut invariant that bounds it, the readability test
+// nothing else exercising them: the four-kinds routing's destinations, the cut
+// rule that a line leaves the board only once its destination write is
+// confirmed, the readability test
 // standing where a size figure would, and the reconciliation paragraph's
 // deliberate exclusion of every memory tier. A claim nothing reads is a claim
 // nothing contradicts, so it rots while keeping its authoritative tone, and an
@@ -2412,10 +2385,9 @@ test('the coordinator board default faces outward at both forks', () => {
 //
 // Each claim's load-bearing words are bound to a contiguous span that includes
 // the words carrying its direction or its condition, because a span starting
-// after them is satisfied by a sentence that reverses the rule: pinning "the
-// round establishes that its own first entry landed" without "before any
-// destination write begins" passes a rewrite that moves the check after the
-// write. A pin here is verbatim by convention: a rewording that keeps the
+// after them is satisfied by a sentence that reverses the rule: pinning "its
+// destination write is confirmed landed" without "only once" passes a rewrite
+// that cuts the line first. A pin here is verbatim by convention: a rewording that keeps the
 // meaning still fails it, and updating the pin belongs to that same edit.
 //
 // The legs that prove an absence each state what they cover rather than
@@ -2430,9 +2402,8 @@ test('the coordinator board default faces outward at both forks', () => {
 //   deliberate: a window naming the board scopes almost nothing here (the word
 //   occurs over two hundred times), so the honest form is the wider sweep plus
 //   this note that a legitimate size figure added anywhere in this file reddens
-//   the leg. That direction is accepted, since the file states no board size figure
-//   today; the one size figure it does state is a 40-character cap on a hostname,
-//   which is not a board ceiling and is why this note reads board rather than any.
+//   the leg. That direction is accepted, since the file states no size figure
+//   today.
 //   The tier-locator leg names one spelling, the memory index filename, and it
 //   does not reach the class of every way a locator could be spelled; the
 //   exclusion sentence pinned beside it is what carries that claim.
@@ -2445,7 +2416,7 @@ test('the coordinator board default faces outward at both forks', () => {
 //   the claim is the pair of skill-side legs below, which read the exclusion
 //   sentence and its route in the coordinator skill itself. A future index that
 //   restates the claim again is a restating surface with no pin, and earns one.
-test('the coordinator skill\'s four counted routing and homing claims are each pinned', () => {
+test('the coordinator skill\'s four counted routing, cut, readability and source claims are each pinned', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
 
@@ -2486,62 +2457,16 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
         'the coordinator skill no longer states the routing\'s residual outcome, that a candidate '
         + 'no kind claims is written nowhere; without it the four-way test has no answer for a '
         + 'candidate that answers to none of its kinds');
-    assert.ok(body.includes('The two board kinds are permissions and the two off-board ones are '
-        + 'refusals'),
-        'the coordinator skill no longer resolves a candidate answering to both a board kind and '
-        + 'an off-board one; the rule is a refusal winning over a permission rather than a '
-        + 'tiebreak, and it stands in place of an enumeration asserted exhaustive and mutually '
-        + 'exclusive');
 
-    // Claim 2: homing is named, distinct from pruning, leaves no residue, and
-    // every cut is bounded by a confirmed landing elsewhere. The
-    // no-residue rule's span runs from its verb through both of its objects,
-    // since binding the clause alone is satisfied by a negating prefix.
-    assert.ok(body.includes('**Homing returns a grown board\'s content to where it belonged, and '
-        + 'it is not a prune.**'),
-        'the coordinator skill no longer names homing as its own operation distinct from a prune; '
-        + 'the prune-versus-home distinction is the claim this leg pins, and collapsing the '
-        + 'two is what leaves a pruning pass destroying the only copy of a line');
-    assert.ok(body.includes('the content then comes off the board outright, with no pointer to the '
-        + 'record now holding it and no tombstone marking that it was ever there'),
-        'the coordinator skill\'s no-residue rule is no longer present verbatim: homed content '
-        + 'comes off the board with no pointer and no tombstone. A board that swapped each homed '
-        + 'line for a pointer would keep a change log where the content had been and accrete at '
-        + 'the rate it homed, which is what the rule refuses. Either the rule was inverted or the '
-        + 'sentence was reworded; a rewording updates this pin in the same edit');
-    assert.ok(body.includes('a round cuts only a line whose content it has confirmed landed '
-        + 'somewhere else'),
-        'the coordinator skill no longer bounds a homing cut on a confirmed landing elsewhere; '
-        + 'this is the one invariant that makes the operation safe, and without it a round that '
-        + 'fails at its destination write still cuts the board\'s only copy');
-    assert.ok(body.includes('A round writes at two moments')
-        && body.includes('The first moment\'s entry carries `fail` and the second `pass`'),
-        'the coordinator skill no longer states the homing round\'s audit as two journal moments '
-        + 'with the first carrying fail and the second pass; the two-moment shape is the round\'s '
-        + 'audit record, and a single moment cannot distinguish a round that died '
-        + 'partway from one that never started');
-    assert.ok(body.includes('Pruning is the other operation and is untouched by this one'),
-        'the coordinator skill no longer holds pruning separate from homing; superseded history '
-        + 'stays pruning\'s business, and merging the two operations is what the separation '
-        + 'refuses');
-    // The span opens at "before any destination write begins" because that is
-    // where the safety lives: a rewrite moving the check after the write leaves
-    // every later word intact.
-    assert.ok(body.includes('before any destination write begins, the round establishes that its '
-        + 'own first entry landed, and whether it landed cut'),
-        'the coordinator skill no longer requires a round to confirm, before any destination write '
-        + 'begins, that its own first journal entry landed and whether it landed cut; without it a '
-        + 'round publishes and cuts on the strength of an account that may not exist, while the '
-        + 'confirming read below covers only the destination write. The span deliberately opens on '
-        + 'the ordering words, since a check moved to after the write keeps every later word');
-    assert.ok(body.includes('An entry the round cannot establish landed, which includes one it '
-        + 'establishes did not, leaves the round performing neither a destination write nor the '
-        + 'cut'),
-        'the coordinator skill no longer states what a round does when it cannot establish that its '
-        + 'own first entry landed. The span includes the condition on purpose, and the condition is '
-        + 'the unknown rather than an observed failure: a clause covering only an entry known not to '
-        + 'have landed lets a round publish and cut on a landing it never established, which is the '
-        + 'direction every other reading in this file takes the other way');
+    // Claim 2: a line comes off the board only once its destination write is
+    // confirmed. The span opens on "only once" because that is where the
+    // safety lives: a rewrite cutting first and writing after keeps every
+    // later word.
+    assert.ok(body.includes('a line comes off the board only once its destination write is '
+        + 'confirmed landed'),
+        'the coordinator skill no longer bounds taking a line off the board on a confirmed '
+        + 'landing at its destination; without it a cut whose destination write failed removes '
+        + 'the board\'s only copy');
 
     // Claim 3: the readability test is the board's health rule and a size
     // figure is not. The absence leg's coverage is stated in the header.
@@ -2550,10 +2475,6 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
         'the coordinator skill no longer states the board\'s readability test as a cold successor '
         + 'taking the seat from one read; this is the property the skill states in place of a '
         + 'byte figure, and it is the test a pass checks and acts on');
-    assert.ok(body.includes('that failure earns a homing round rather than a harder prune'),
-        'the coordinator skill no longer names a homing round as what a readability failure earns; '
-        + 'the test without its action is a recorded-and-ignored proxy, the same failure a byte '
-        + 'figure has');
     assert.deepStrictEqual(sizeFigures(body), [],
         'the coordinator skill states a size figure, where the readability test above is the '
         + 'board\'s health rule: a byte figure is a proxy that gets recorded and ignored, the '
@@ -5174,9 +5095,9 @@ test('the index-window bullet keeps both of its legs in each doctrine copy', () 
     const legs = [
         ['the window lead', 'On a checkout another session may commit to, the '
             + 'index is a window rather than a resting place.'],
-        ['the merge-listing clause', 'and `git show --first-parent --name-only` '
-            + 'for a merge, whose plain form shows the combined diff and omits '
-            + 'every path that merged cleanly from one side'],
+        ['the merge-listing clause', 'or `git show --first-parent --name-only` '
+            + 'for a merge, whose plain form omits every path that merged cleanly '
+            + 'from one side'],
     ];
     const copies = [
         ['home/claude-kit-doctrine.md',
@@ -5764,16 +5685,11 @@ const INTEGRATION_ACTION = new RegExp([
 const GATE_STATED = /whole gate|targeted lane|contention lane|install surface/i;
 
 const INTEGRATION_EXEMPT = [
-    ['skills/brainstorming/SKILL.md', 'land it on main and leave no mess',
-        'names the commit model for a plan header; the push it describes is '
-        + 'executing-work step 7\'s, which names that push\'s lane where it happens'],
-    ['skills/branch-hygiene/SKILL.md', 'Branch fresh from the current integration ref',
+    ['skills/branch-hygiene/SKILL.md', 'Bring the commits over',
         'the stranded-recovery path\'s gate is an open operator decision in '
         + 'docs/backlog.md: a cherry-pick onto a fresh base produces a tree '
         + 'neither parent had, and whether that is the cadence\'s merge moment '
         + 'is a change to the cadence rather than a carrier repair'],
-    ['skills/branch-hygiene/SKILL.md', 'Bring the commits over',
-        'same recovery path, same open decision'],
     ['skills/branch-hygiene/SKILL.md', 'Push the recovery branch',
         'same recovery path; the push lands on a recovery branch rather than on '
         + 'an install-surface trunk, so only the cherry-pick\'s own status is open'],
@@ -6241,13 +6157,13 @@ test('the which-text-governs section is present once in each copy and points at 
         'expected exactly one which-text-governs heading in the doctrine mirror');
     for (const lead of [
         '- **When two surfaces disagree at a moment, rank them before you act.**',
-        '- **A stop read without its exceptions beside it is a pointer, not a bar.**',
-        '- **Authorization for an act the stop-for-a-yes rule gates is positional, never loose prose.**',
         '- **One owner per moment, and the map names it.**',
     ]) {
         assert.strictEqual(inSkill.split('\n').filter((l) => l.startsWith(lead)).length, 1,
             'the which-text-governs section no longer carries exactly one bullet led "' + lead + '"');
     }
+    assert.ok(inSkill.includes('a closed list of three standing grants: the dispatch request, kaizen capture, and the commit-and-push default'),
+        'the ranking bullet no longer closes the doctrine\'s own standing grants at three');
     assert.ok(inSkill.includes('`skills/operating-instructions/references/ownership-map.md` under the kit plugin root'),
         'the one-owner bullet no longer names the ownership map by its plugin-root path; '
         + 'the map pin below reads that path as its near end');
@@ -6282,10 +6198,8 @@ test('the ownership map is tracked and names every shipped skill as an owner', (
 // surfaces need it self-contained. The authoring rule in brainstorming states what
 // an author must write; the charter in blind-reader is read by an agent barred from
 // resolving the term against this repository, so neither surface can point at the
-// other. Divergence here is the one failure the gating litmus cannot survive: the
-// check reads a disagreement between the reader's classification and the author's
-// as evidence about the spec, so two sides handed different class texts manufacture
-// that disagreement themselves and the loudest bucket fills with noise. Compared on
+// other. Divergence hands the author and the reader two different class texts,
+// so the reader's near-miss pairs mark a boundary the author never drew. Compared on
 // collapsed whitespace, since the sentence wraps differently on the two surfaces.
 test('the bounded-artifact class sentence reads the same on both gating surfaces', () => {
     const classSentence = 'a phrase deciding what a bounded artifact admits, '
@@ -6303,9 +6217,9 @@ test('the bounded-artifact class sentence reads the same on both gating surfaces
         const hits = body.split(classSentence).length - 1;
         assert.strictEqual(hits, 1, rel + ' states the bounded-artifact class '
             + 'sentence ' + hits + ' times, not once; both surfaces carry it '
-            + 'verbatim so the gating litmus hands one class to its two sides, '
-            + 'and a divergence manufactures the disagreement the check reads '
-            + 'as evidence about the spec');
+            + 'verbatim so the blind read hands one class to its two sides, '
+            + 'and a divergence makes each near-miss pair answer a definition '
+            + 'the author never wrote');
     }
 });
 

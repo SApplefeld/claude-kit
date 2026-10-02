@@ -445,8 +445,7 @@ test('sections print thinnest first with their means and three lowest topics, th
     assert.equal(server.requests.length, 3);
 
     // The report is pinned on the tokens a reader acts on, never on its
-    // sentences. The one exact line is the closing line, which the
-    // brainstorming skill records.
+    // sentences. The one exact line is the closing line.
     const lines = r.stdout.split(/\r?\n/);
     const closing = 'jev coverage: 3 sections, thinnest 2 at 0.28';
     assert.equal(lines[lines.length - 1], '');

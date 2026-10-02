@@ -1,6 +1,6 @@
 # C# Style
 
-Examples use a generic library, `Acme.Documents`. Substitute the project's own namespaces and type names rather than copying the example names. Inside a repo already in this style, follow a sibling file's layout exactly.
+Substitute the project's own names for the `Acme` examples. Inside a repo already in this style, follow a sibling file's layout exactly.
 
 ## 1. File Structure
 
@@ -15,26 +15,7 @@ namespace Acme.Documents;
 
 Leave existing block-scoped files, such as `Assembly/RegisterServices.cs`, alone.
 
-Write no file header: no copyright, author block or license. Files begin with `using`.
-
 Interfaces live in `Interfaces/`, never beside their implementations.
-
-Example:
-```csharp
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Serilog;
-using Acme.Domain;
-using Acme.Common.Platform;
-using AutoMapper;
-using System.Threading;
-
-namespace Acme.Documents;
-
-public class FormService : IFormService
-```
 
 ## 2. Region Order
 
@@ -118,27 +99,6 @@ In `#region Variables`, group fields under single-line `// Group.` labels, a bla
 
 Write one primary constructor, with no overloads or static factories. With two or more parameters, put each on its own line, indented eight spaces from the class brace. The closing `)` sits on its own line, indented four spaces at the signature's level. The body opens with a section comment naming what gets assigned, then assigns directly. `ArgumentNullException` guards on injected dependencies are optional. Construct AutoMapper inline under `// Save Mapper.`.
 
-Example:
-```csharp
-public FormService(
-        IApiService apiService,
-        IHtmlService htmlService
-)
-{
-    // Save Services.
-    _apiService = apiService;
-    _htmlService = htmlService;
-
-    // Save Mapper.
-    var mapConfig = new MapperConfiguration(c =>
-    {
-        c.CreateMap<Form, FilledForm>();
-        c.CreateMap<FormField, FilledFormField>();
-    });
-    _mapperService = new Mapper(mapConfig);
-}
-```
-
 ## 5. Method Declarations
 
 Async method names end in `Async`. `CancellationToken` is the last parameter. A multi-parameter method puts each parameter on its own line at a four-space indent, with the closing `)` on its own line at the signature's indent. Add no method-level attributes except where required, such as a MediatR handler signature.
@@ -164,56 +124,6 @@ Body conventions:
 - Collection expressions and spreads: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`.
 - Named-type object initializers keep explicit parens: `new FilledForm() { Title = docType }`, not `new FilledForm { Title = docType }`. Target-typed `new()` stays preferred where the type is inferable.
 - String interpolation `$"..."` over `string.Format` or concatenation.
-
-Example:
-```csharp
-public async Task<FilledForm?> ProcessFormAsync(
-    FilledDocument document,
-    CancellationToken cancellationToken
-)
-{
-    // Validate Parameters.
-    if (document is null) return default;
-
-    // Return Value.
-    FilledForm? form = default;
-
-    try
-    {
-        // Extract Document Fields from Document.
-        var values = await ExtractFieldsAsync(document, cancellationToken);
-
-        // Document Form is only known by "FormCode", Validate.
-        _ = values.TryGetValue("FormCode", out var formCode);
-        if (formCode.IsNullOrWhiteSpace()) return default;
-
-        // Get Processed Form with Fields.
-        form = await CreateFilledFormAsync(formCode, values, cancellationToken);
-        form ??= new();
-
-        // Get Document Type.
-        var docType = document.DocumentTypes?.FirstOrDefault() ?? "Document";
-
-        // Set Form Properties.
-        form.Submitted = document.UploadFinishedAt;
-        form.UserId = document.ScannedByUsername;
-        form.Title = header.IsNotNullOrWhiteSpace() ? header : docType;
-
-        // Update HTML with Changes.
-        await UpdateFormHtmlAsync(form, cancellationToken);
-
-        // Apply the Form to the Document.
-        document.FilledForm = form;
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Failure Processing Document.");
-    }
-
-    // Return the Processed Form.
-    return form;
-}
-```
 
 The comments alone should tell the story of the method.
 
@@ -242,31 +152,11 @@ Enable nullable reference types (`<Nullable>enable</Nullable>` in the csproj). A
 
 ## 11. DI Registration
 
-`Assembly/RegisterServices.cs` is the library's Autofac module, and every type registers the same way:
-
-```csharp
-builder.RegisterType<DocumentService>()
-       .AsImplementedInterfaces()
-       .PreserveExistingDefaults();
-```
-
-`.AsImplementedInterfaces()` infers interfaces from the implementation. `.PreserveExistingDefaults()` respects any prior registration.
-
-Group registrations by domain under uppercase label comments. Each label ends with a period, like every other label comment:
+`Assembly/RegisterServices.cs` is the library's Autofac module, and every type registers the same way. Group registrations by domain under uppercase label comments. Each label ends with a period, like every other label comment:
 
 ```csharp
 // HANDLERS.
 builder.RegisterType<AzureFileSaveHandler>()
-       .AsImplementedInterfaces()
-       .PreserveExistingDefaults();
-
-// BACKGROUND.
-builder.RegisterType<DocumentProcessingService>()
-       .AsImplementedInterfaces()
-       .PreserveExistingDefaults();
-
-// SERVICES.
-builder.RegisterType<DocumentOutputService>()
        .AsImplementedInterfaces()
        .PreserveExistingDefaults();
 ```
@@ -275,17 +165,11 @@ For settings, inject `IOptionsMonitor<TSettings>`, not `IOptions<T>`, and read `
 
 ## 12. Naming Conventions
 
-| Suffix | Used for | Example |
-| --- | --- | --- |
-| `Service` | Core operations and orchestration | `DocumentService`, `FormService`, `PdfService` |
-| `Handler` | MediatR notification handlers | `AzureFileSaveHandler`, `NetworkFileSaveHandler` |
-| `Helper` | Static utility methods | `DocumentHelper`, `FieldHelper`, `FormHelper` |
-| `Notification` | MediatR notifications | `DocumentProcessedNotification`, `FileSaveNotification` |
-| `Repository` (Legacy only) | Older data-access objects | `DocumentBatchRepository` |
+Type suffixes: `Service` for core operations and orchestration, `Handler` for MediatR notification handlers, `Helper` for static utility methods, `Notification` for MediatR notifications, and `Repository` only for legacy data-access objects.
 
 Method verb prefixes: `Get*` reads or fetches, `Process*` orchestrates a pipeline, `Create*` builds a new value, `Extract*` pulls data from a structure, `Build*` constructs a complex output, and `Save*` or `Set*` writes or assigns.
 
-Interfaces take an `I` prefix matching the implementation: `IDocumentService` for `DocumentService`.
+Interfaces take an `I` prefix matching the implementation.
 
 ## 13. MediatR Notifications
 
@@ -328,83 +212,6 @@ public string FormCode { get; set; } = string.Empty;
 public FilledForm FilledForm { get; set; } = new();
 ```
 
-## 15. Whitespace
+## 15. New Service Placement
 
-Indent four spaces, never tabs. Put one blank line between methods in a region, and between regions.
-
-## 16. New Service Template
-
-For a brand-new service in `Services/Build/` or `Services/Process/`, use this skeleton:
-
-```csharp
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Serilog;
-using Acme.Domain;
-
-namespace Acme.Documents;
-
-public class WidgetService : IWidgetService
-{
-    #region Variables
-    // Services.
-    private readonly IApiService _apiService;
-    #endregion
-
-    #region Constructor
-    public WidgetService(
-            IApiService apiService
-    )
-    {
-        // Save Services.
-        _apiService = apiService;
-    }
-    #endregion
-
-    #region Widget Processing
-    public async Task<Widget?> ProcessWidgetAsync(
-        WidgetRequest request,
-        CancellationToken cancellationToken
-    )
-    {
-        // Validate Parameters.
-        if (request is null) return default;
-
-        // Return Value.
-        Widget? widget = default;
-
-        try
-        {
-            // Get Widget from API.
-            widget = await _apiService.GetWidgetAsync(request.Id, cancellationToken);
-
-            // Apply Defaults.
-            widget ??= new();
-            widget.ProcessedAt = DateTimeOffset.UtcNow;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failure Processing Widget.");
-        }
-
-        // Return the Processed Widget.
-        return widget;
-    }
-    #endregion
-
-    #region Private Methods
-    // (private helpers here, in nested regions if multiple themes)
-    #endregion
-}
-```
-
-Register it in `Assembly/RegisterServices.cs` under the appropriate label, such as `// SERVICES.`:
-
-```csharp
-builder.RegisterType<WidgetService>()
-       .AsImplementedInterfaces()
-       .PreserveExistingDefaults();
-```
-
-Declare its interface in `Interfaces/IWidgetService.cs`.
+For a brand-new service in `Services/Build/` or `Services/Process/`, start from the section 2 skeleton. Register it in `Assembly/RegisterServices.cs` under a label such as `// SERVICES.`. Declare its interface in `Interfaces/`.

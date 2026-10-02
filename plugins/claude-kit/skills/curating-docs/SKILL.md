@@ -16,18 +16,14 @@ Three zones, each with one job, plus one living document: the backlog.
 | `docs/` root | Stable about-the-solution docs (architecture, security model) and the README index | Updated in place as the solution changes |
 | `docs/plans/` | Active plans only (open or in progress) | A plan leaves the moment it is Complete or abandoned |
 | `docs/archive/` | Finished and abandoned plans (Chapters intact) and dated backlog snapshots | Immutable history; nothing here is live |
-| `docs/backlog.md` | The living handoff and next-steps doc, active items only | Pruned-live: completed items move to a dated snapshot |
-
-A curating pass neither zones nor moves a `docs/coordinator-board.md` in a project's `docs/`. That file belongs to the coordinator seat. It is a leftover of the seat's board from before it moved to the machine directory the role skill's directory contract names.
-
-Two append disciplines stay separate. A plan's Chapters are append-only history and travel with the plan into the archive. The backlog is pruned-live and holds cross-effort next-steps only.
+| `docs/backlog.md` | The living handoff doc for cross-effort next-steps, active items only | Pruned-live: completed items move to a dated snapshot |
 
 ## Archiving a Completed Plan
 
 Run this close path at close-out, in order:
 
 1. Confirm `Status: Complete` (or abandoned) and a final Chapter. If the plan is not done, stop.
-2. Move the file with `git mv docs/plans/<file> docs/archive/<file>` in a git-tracked repo, so history is preserved, or a plain move otherwise. The Chapters travel untouched. Then `git add` the moved file again whenever it carries unstaged edits. `git mv` stages the index content, not the worktree content, so a doc finalized and then moved commits pre-finalization unless re-added. The `RM` pair against the file in `git status --short` is the tell.
+2. Move the file with `git mv docs/plans/<file> docs/archive/<file>` in a git repo, or a plain move otherwise. The Chapters travel untouched. Then `git add` the moved file again whenever it carries unstaged edits. `git mv` stages the index content, not the worktree content, so a doc finalized and then moved commits pre-finalization unless re-added. The `RM` pair against the file in `git status --short` is the tell.
 3. Repoint the plan's own relative links, before or right after the move. An archived sibling reached as `../archive/<file>` from `plans/` is `<file>` once the plan is itself in `archive/`. Grep the moved file for `../archive/` and fix every hit.
 4. Cross-reference. If the plan built on or superseded another, link both through a `## Related` section and mark a superseded plan in its header. Act on any cross-reference gap `docs-curator` flagged. The pointers run one way when the other plan is already archived: the moving plan gets the `## Related` section and the archived one is left alone.
 5. Prune the backlog, per Backlog Pruning below.
@@ -47,7 +43,7 @@ This is the create path. Run it when `brainstorming` writes a new spec, before `
 
 Move a done item into the quarter's snapshot at `docs/archive/backlog-YYYY-QN.md`, creating it if absent and appending within the quarter. Do not strike items through in place.
 
-The prune pass is also the aging check. Name every active item parked more than 90 days ago, with its date, for a promote, retire or keep call. Promote it: spec it now. Retire it: move to the snapshot with the reason. Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays, so it ages from the adjudication. An undated active item is past the threshold by definition. Give it its parked date, from git history, or today's marked `backfilled`, and adjudicate it in the same pass. In a repository whose first commit is younger than the threshold, only undated items can be past it.
+The prune pass is also the aging check. Name every active item parked more than 90 days ago, with its date, for a promote, retire or keep call. Promote it: spec it now. Retire it: move to the snapshot with the reason. Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays. An undated active item is past the threshold: give it its parked date from git history, or today's marked `backfilled`, and adjudicate it in the same pass.
 
 The check also runs without a close-out. When the session-start block reports an oldest item past the threshold and no close-out is near, offer the prune pass in one line. 90 days is the tunable knob, aligned with the quarterly snapshot cadence.
 
@@ -56,7 +52,7 @@ The check also runs without a close-out. When the session-start block reports an
 When asked to tidy or retrofit a `docs/` that predates this structure:
 
 1. **Audit, read-only.** List every doc, read each plan's `Status` header, and classify each: active plan, completed or abandoned plan, about-the-solution doc, or stray.
-2. **Propose the migration.** Name the plans that move to the archive, what the index and backlog will hold, and which READMEs get seeded. Move nothing until it is confirmed. Which plans leave the live library is the operator's call over the library's shape. Where a plan has not already made that call, the stop is the material decision executing-work's blocker set names.
+2. **Propose the migration.** Name the plans that move to the archive, what the index and backlog will hold, and which READMEs get seeded. Move nothing until it is confirmed. Where a plan has not already made that call, the stop is the material decision executing-work's blocker set names.
 3. **Apply on approval.** Create the zones and READMEs from the templates, `git mv` the completed and abandoned plans into the archive, seed the index and backlog, and report what moved. Never delete a file. Relocate it instead.
 
 ## Plan Doc Machine Contract
@@ -77,25 +73,17 @@ A plan doc's header and structure are not just kit convention. An external engin
 | Chapter completed line | `Completed: <value>`, the first one in the Chapter | must start with the section number followed by a period or a space, or equal the section title exactly, case-sensitive and never a substring. Anything else leaves the section permanently open. Check an existing Chapter against these three forms before assuming it registers. A phrasing like `Completed: Section 1, <title>` matches none of them |
 | Chapter next line | `Next: <value>`, the first one in the Chapter | free-form |
 
-Two consumers read this shape at different strictness. The OS repo's `PlanDocParser` reads every row strictly, and it is what this contract protects.
+A plan headed `Complete (archived)` or with any other text after `Complete` still reads complete to the session-start push and the Stop hook's docs-hygiene check, so write the value exactly.
 
-The kit's own readers are looser. The `hooks/session-start.js` plan-recovery push reads only the Status and Commit Model rows, case-insensitively, from the file's first 2048 bytes with a BOM strip. It reports an unrecognized Commit Model value as `unknown` rather than erroring. The status-line widget counts `### N.` sections under `Sections of Work` and reads the Chapters' `Completed:` and `Next:` lines. `hooks/kit-goal-lib.js` reads a `Sections of Work` heading at any level to refuse a `## Dispatch Authorization` section below it. `hooks/chapter-boundary-nudge.js` reads `### Chapter N` headings written to a plan doc.
-
-That push and the Stop hook's docs-hygiene check share one local Status reading, looser than the Status row on trailing text: any value opening with `Complete` reads complete. So a plan headed `Complete (archived)` still in `docs/plans/` draws the unarchived nag at session start and every turn end, though the row says that header does not terminate. An `In Progress` plan is listed for resume. A `Ready` plan, alone or followed by a parenthetical such as `Ready (parked pending the design round)`, is listed as parked with no resume push. A continuation like `Ready for review` reads as unrecognized.
-
-A malformed Status or Commit Model line therefore surfaces locally, since the plan drops out of the recovery inventory. A malformed row elsewhere raises no local error, since those readers miscount or skip, and only the engine notices, silently, later.
-
-The brainstorming skill's Spec Format (`skills/brainstorming/SKILL.md`) normatively instances the Title, Status, Commit Model, `## Sections of Work`, section heading, and section model rows. `executing-work/SKILL.md`'s Chapter format instances the `## Chapters`, Chapter heading, Completed, and Next rows.
+The Spec Format in `skills/brainstorming/SKILL.md` and the Chapter format in `skills/executing-work/SKILL.md` instance these rows.
 
 Changing the shape or value rule of any row is a coordinated, versioned change with the OS repo, never a drive-by edit to plan-doc prose. A value a row's existing rule already decides, `Ready` under the Status row, is not such a change.
 
 None of `## Intent`, `## Assumptions` and `## Dispatch Authorization` appears in any row above, so a plan gains any of them with no contract version change.
 
-`## Dispatch Authorization` goes **above** `## Sections of Work`, the one position that bounds nothing, which is stricter than merely outside it. Two blocks end at the next `##` heading of any kind, so a heading in the wrong place truncates one with no error. Inside `## Sections of Work` it drops every later `### N.` section from the parse. After `## Chapters` it ends the Chapters block, so every Chapter below it stops registering its `Completed:` line and the section count and `Next` pointer freeze.
+`## Dispatch Authorization` goes **above** `## Sections of Work`. `## Intent` and `## Assumptions` go outside `## Sections of Work` and above `## Chapters`. A misplaced heading truncates the parse silently. Inside `## Sections of Work` it drops every later `### N.` section, and after `## Chapters` every Chapter below it stops registering.
 
-`## Intent` and `## Assumptions` take the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template in `skills/brainstorming/SKILL.md` satisfies it for both: `## Intent` sits between `## Goal` and `## Approach`, above the sections block, and `## Assumptions` after `## Out of Scope`, below the sections block and above `## Chapters`.
-
-Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
+Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the freeze rule in `skills/brainstorming/SKILL.md`'s spec format.
 
 ## Templates
 
@@ -104,4 +92,4 @@ Seed the README, index, and backlog skeletons from `references/templates.md` rat
 ## Antipatterns
 
 - Forking a parallel copy of a doc instead of updating it in place.
-- Editing an archived plan to reflect new work. New work gets a new plan, cross-referenced to the one it builds on.
+- Editing an archived plan for new work. New work gets a new plan, cross-referenced to the one it builds on.

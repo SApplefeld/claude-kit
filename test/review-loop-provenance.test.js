@@ -880,28 +880,26 @@ test('control: a performance charter missing the changeset-is-data paragraph fai
 
 // ---------------------------------------------------------------------------
 // Subject 11: the scope adjudicator names the relevance shape's three buckets
-// under a heading of their own, and its two existing shapes' bucket sentences
-// are byte-identical to the base ref's. The relevance shape has a vocabulary
+// under a heading of their own, and its two other shapes' bucket sentences
+// stand byte for byte as pinned below. The relevance shape has a vocabulary
 // of its own, in which CONFIRM takes the slot ACCEPT-AND-DECLARE holds in the
-// single-finding and design-stop shapes, and the reviewer-reranking plan's
-// Out of Scope keeps those two shapes and their three buckets untouched. So
-// the existing sentences are pinned as the literal text the base ref
-// 4749efe8 carries, read from that commit at authoring rather than typed,
-// and the relevance section is pinned on its bucket names and on the absence
-// of the other vocabulary inside it.
+// single-finding and design-stop shapes, and a relevance edit must leave
+// those two shapes and their three buckets untouched. So the other shapes'
+// sentences are pinned as literal text, and the relevance section is pinned
+// on its bucket names and on the absence of the other vocabulary inside it.
 
 const ADJUDICATOR_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'scope-adjudicator.md');
 const RELEVANCE_HEADING = "## The relevance shape's buckets";
 const RELEVANCE_BUCKETS = ['CONFIRM', 'REFUSE', 'ASK'];
 
-// The base ref's bucket sentences: the closed-set line and the three bucket
+// The pinned bucket sentences: the closed-set line and the three bucket
 // bullets under `## The buckets`, and the single-finding BUCKET field under
 // `## Output`.
-const BASE_REF_BUCKET_SENTENCES = [
+const PINNED_BUCKET_SENTENCES = [
     "The set is closed at three. A finding meeting none of the tests is an `ASK`.",
-    "- **`REFUSE`.** It is off the goal path as the Goal, the Intent record and the acceptance bullets draw it, or it is inside what `## Out of Scope` keeps out, what the Intent record says done does not need to do, or an alternative that record refused. On the design-stop shape it has a third reading, the one the other two cannot reach. A mechanism whose finding traced to a bullet, a Goal sentence or an Intent clause, or whose add-decision line names one it would serve, is on the goal path by construction. So the third reading is that the mechanism proposed departs from the form that bullet, sentence or clause asks for. The ruling then orders the fix written within that form instead. The orchestrator records a refusal in the plan doc.",
-    "- **`ACCEPT-AND-DECLARE`.** It serves the Goal, it is bounded, and it introduces no new mechanism. New means named by no acceptance bullet, by no Goal sentence and by no Intent clause, rather than merely absent from the code today. A design stop reaches this bucket exactly when the mechanism the fix proposes is one the bullets, the Goal or the Intent record already asked for, in the form they ask for it. The orchestrator records it as approval drift in the section's Chapter. It surfaces it as a line in the next board recap.",
-    "- **`ASK`.** It introduces a new mechanism, changes a decision the plan recorded, reopens a risk the plan accepted, or is section-sized work. For one finding it goes to the operator through the `BLOCKED:` path carrying your recommendation. Over a whole changeset it goes to the operator in the dispatching pass's close-out, on the route the finishing-work skill states.",
+    "- **`REFUSE`.** It is off the goal path as the Goal, the Intent record and the acceptance bullets draw it, or it is inside what `## Out of Scope` keeps out, what the Intent record says done does not need to do, or an alternative that record refused. On the design-stop shape it has a third reading, the one the other two cannot reach. A mechanism whose finding traced to a bullet, a Goal sentence or an Intent clause, or whose add-decision line names one it would serve, is on the goal path by construction. So the third reading is that the mechanism proposed departs from the form that bullet, sentence or clause asks for. The ruling then orders the fix written within that form instead.",
+    "- **`ACCEPT-AND-DECLARE`.** It serves the Goal, it is bounded, and it introduces no new mechanism. New means named by no acceptance bullet, by no Goal sentence and by no Intent clause, rather than merely absent from the code today. A design stop reaches this bucket exactly when the mechanism the fix proposes is one the bullets, the Goal or the Intent record already asked for, in the form they ask for it.",
+    "- **`ASK`.** It introduces a new mechanism, changes a decision the plan recorded, reopens a risk the plan accepted, or is section-sized work.",
     "- **BUCKET:** `REFUSE`, `ACCEPT-AND-DECLARE`, or `ASK`, with the test above that decided it.",
 ];
 
@@ -940,9 +938,9 @@ function checkRelevanceBuckets(text) {
 
 function checkExistingBucketSentences(text) {
     const lines = text.split(/\r?\n/);
-    for (const sentence of BASE_REF_BUCKET_SENTENCES) {
+    for (const sentence of PINNED_BUCKET_SENTENCES) {
         const count = lines.filter((l) => l === sentence).length;
-        if (count !== 1) return `scope-adjudicator.md: the base ref's bucket sentence occurs ${count} times, expected 1: ${sentence.slice(0, 60)}`;
+        if (count !== 1) return `scope-adjudicator.md: the pinned bucket sentence occurs ${count} times, expected 1: ${sentence.slice(0, 60)}`;
     }
     return null;
 }
@@ -951,8 +949,8 @@ test('scope-adjudicator.md names the relevance shape\'s three buckets under thei
     assert.strictEqual(checkRelevanceBuckets(fs.readFileSync(ADJUDICATOR_FILE, 'utf8')), null);
 });
 
-test('scope-adjudicator.md carries the single-finding and design-stop shapes\' bucket sentences byte-identical to the base ref\'s', () => {
-    assert.strictEqual(BASE_REF_BUCKET_SENTENCES.length, 5, 'test fixture assumption: five base-ref sentences are pinned');
+test('scope-adjudicator.md carries the single-finding and design-stop shapes\' bucket sentences byte-identical to the pinned text', () => {
+    assert.strictEqual(PINNED_BUCKET_SENTENCES.length, 5, 'test fixture assumption: five bucket sentences are pinned');
     assert.strictEqual(checkExistingBucketSentences(fs.readFileSync(ADJUDICATOR_FILE, 'utf8')), null);
 });
 
@@ -963,12 +961,12 @@ test('control: a charter whose relevance CONFIRM bullet is renamed fails naming 
     const r1 = checkRelevanceBuckets(renamed);
     assert.ok(r1 && /the CONFIRM bullet 0 times/.test(r1), 'a renamed relevance bucket must fail naming it: ' + r1);
 
-    const refuse = BASE_REF_BUCKET_SENTENCES.find((s) => s.startsWith('- **`REFUSE`.**'));
-    assert.ok(refuse, 'test fixture assumption: the base ref carries the REFUSE bullet');
+    const refuse = PINNED_BUCKET_SENTENCES.find((s) => s.startsWith('- **`REFUSE`.**'));
+    assert.ok(refuse, 'test fixture assumption: the pinned set carries the REFUSE bullet');
     const edited = original.replace(refuse, refuse + ' Or so.');
     assert.notStrictEqual(edited, original, 'test fixture assumption: the REFUSE sentence is present and replaceable');
     const r2 = checkExistingBucketSentences(edited);
-    assert.ok(r2 && /occurs 0 times/.test(r2) && r2.includes('REFUSE'), 'an edited base-ref sentence must fail naming it: ' + r2);
+    assert.ok(r2 && /occurs 0 times/.test(r2) && r2.includes('REFUSE'), 'an edited pinned sentence must fail naming it: ' + r2);
 });
 
 test('control: a relevance section carrying an ACCEPT-AND-DECLARE bullet fails as a mixed vocabulary', () => {
