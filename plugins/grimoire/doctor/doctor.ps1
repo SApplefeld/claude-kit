@@ -18,12 +18,15 @@
 #                             the memory store's sync repo and allowlist,
 #                             signpost + git hooks on a clone, a memq db-sync
 #                             where the memory database step warns, the move
-#                             of files left under the plugin's former name,
-#                             and, each behind its own consent prompt, the
-#                             autoCompactWindow and outputStyle values written
-#                             into user settings.json and the plugin install).
-#                             The one thing it deletes is the temp file its
-#                             own failed signpost write left behind.
+#                             of files left under the plugin's former name
+#                             and the rewrite of a CLAUDE.md import line that
+#                             is exactly that name's token, and, each behind
+#                             its own consent prompt, the autoCompactWindow
+#                             and outputStyle values written into user
+#                             settings.json and the plugin install). The one
+#                             thing it deletes is a temp file its own failed
+#                             signpost write or import-line rewrite left
+#                             behind.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts -Fix already
 #                             requested, for unattended runs. It authorizes
 #                             nothing by itself.
@@ -337,18 +340,19 @@ else {
 # --- where it is exactly the former token, terminator aside and case-sensitive,
 # --- and no line already reads as the current token in any letter case, which
 # --- an import on a case-insensitive file system loads as the same file; the
-# --- hook applies the same two comparisons. CLAUDE.md is read and written as
-# --- bytes, so every other byte and line ending stays as it was. A CLAUDE.md
-# --- that is a link, or a chain of them, is followed to its final target,
-# --- which is rewritten and the links kept. The rewrite goes to a temp file
-# --- beside that target, created exclusively so no existing file is
-# --- overwritten, and replaces the target with File.Replace, which swaps the
-# --- two in one call, so an interrupted write never truncates it. A pair present
-# --- under both names is reported and left, since only the operator can say
-# --- which holds the write to keep. There is no consent prompt: this is the
-# --- move the hook makes unprompted, onto names the kit owns, and -Fix already
-# --- asked for it. The four old names spell the plugin's former name because
-# --- they read the files earlier installs wrote.
+# --- hook applies the same two line comparisons. CLAUDE.md is read and
+# --- written as bytes, so every other byte and line ending stays as it was. A
+# --- CLAUDE.md that is a link, or a chain of them, is followed to its final
+# --- target, which is rewritten and the links kept. The rewrite goes to a temp
+# --- file beside that target, named with the PID and a random suffix and
+# --- created exclusively so no existing file is overwritten, and replaces the
+# --- target with File.Replace, which swaps the two in one call, so a killed
+# --- process never truncates it. A pair present under both names is reported
+# --- and left, since only the operator can say which holds the write to keep.
+# --- There is no consent prompt: this is the move the hook makes unprompted,
+# --- onto names the kit owns, and -Fix already asked for it. The four old
+# --- names spell the plugin's former name because they read the files earlier
+# --- installs wrote.
 $migrationOldDoctrine = "claude-kit-doctrine.md"
 $migrationOldStamp = "claude-kit-doctrine.stamp.json"
 $migrationOldSignpost = "claude-kit.local.json"
@@ -372,7 +376,7 @@ function Get-MigrationImportState {
     return @{
         Segments = $segments
         OldAt = [array]::IndexOf($texts, $migrationOldImport)
-        HasNew = $texts -contains $migrationNewImport
+        HasNew = $texts -icontains $migrationNewImport
     }
 }
 
@@ -452,7 +456,7 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
             $segments = $migrationImport.Segments
             $segments[$migrationImport.OldAt] = $migrationNewImport + $segments[$migrationImport.OldAt].Substring($migrationOldImport.Length)
             $migrationBytes = $migrationLatin1.GetBytes(-join $segments)
-            $candidate = "$migrationTarget.tmp-migrate-$PID"
+            $candidate = "$migrationTarget.tmp-migrate-$PID-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
             # CreateNew fails where anything already holds the path, so the temp
             # is this run's own from the moment it opens.
             $stream = [System.IO.File]::Open($candidate, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)

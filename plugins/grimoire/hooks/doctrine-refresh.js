@@ -39,13 +39,16 @@
 //   2. If ~/.claude/CLAUDE.md does not import that file yet, OFFER (never silently
 //      perform) to add the one-line `@grimoire-doctrine.md` import. The doctrine
 //      file is kit-owned and safe to overwrite silently; the user's personal
-//      CLAUDE.md is not, so touching it stays consent-gated at the agent layer.
+//      CLAUDE.md is not, so adding to it stays consent-gated at the agent layer.
+//      The one change made to it unprompted is step 0's swap of a line that is
+//      exactly the former import token, which is reported after it lands.
 //
 // SAFETY: fails OPEN and silent. Missing skill, unreadable/unwritable paths, an
 // up-to-date file with the import already present, or any error -> exit 0, no output.
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -132,20 +135,32 @@ function renameIfFree(dir, from, to) {
     } catch { return false; }                         // locked or unwritable: give up quietly
 }
 
+// A line of CLAUDE.md split with /(?<=\n)/, less its \r\n or \n terminator.
+const lineText = (seg) => seg.replace(/\r?\n$/, '');
+
+// True where some line of text, terminator aside, reads as the current import
+// token in any letter case, which an import on a case-insensitive file system
+// loads as the same file. Step 2's wiring check ignores letter case too, so a
+// line this suppresses is never offered a second import.
+function importsDoctrine(text) {
+    return text.split(/(?<=\n)/).some((seg) => lineText(seg).toLowerCase() === IMPORT_TOKEN.toLowerCase());
+}
+
 // Move a home an earlier install wrote under the plugin's former name onto the
 // current names. The doctrine file moves where its new name is absent, and its
 // stamp moves only in that same run, since a lone old stamp beside a current
 // file describes some other write. The signpost moves on its own. In CLAUDE.md
 // the first line that is exactly the old import token, terminator aside, becomes
-// the new token, unless a line already reads as the new token in any letter
-// case, which an import on a case-insensitive file system loads as the same
-// file. The file is read and written as latin1 so every other byte, line
+// the new token, unless importsDoctrine finds a line already reading as the new
+// token. The file is read and written as latin1 so every other byte, line
 // endings included, is written back as it was read. A CLAUDE.md that is a link,
 // or a chain of them, is followed to its final target, which is rewritten and
-// the links kept. The rewrite goes to a temp file beside that target, opened
-// exclusively so no existing file is reused, and is renamed over the target, so
-// an interrupted write never truncates the user's file. Returns the
-// session-start line reporting the import swap, or null.
+// the links kept. The rewrite goes to a temp file beside that target, named with
+// the pid and a random suffix and opened exclusively so no existing file is
+// reused, and is renamed over the target, so a killed process never truncates
+// the user's file. Off Windows the temp takes the target's mode before the
+// rename, so the file keeps its permission bits. Returns the session-start line
+// reporting the import swap, or the line naming a kept temp file, or null.
 function migrateFormerName(claudeDir) {
     if (renameIfFree(claudeDir, OLD_DOCTRINE_FILE, DOCTRINE_FILE)) {
         renameIfFree(claudeDir, OLD_STAMP_FILE, STAMP_FILE);
@@ -156,16 +171,20 @@ function migrateFormerName(claudeDir) {
     let fd = null;
     try {
         target = fs.realpathSync(path.join(claudeDir, 'CLAUDE.md'));
-        const segments = fs.readFileSync(target, 'latin1').split(/(?<=\n)/);
-        const textOf = (seg) => seg.replace(/\r?\n$/, '');
-        if (segments.some((seg) => textOf(seg).toLowerCase() === IMPORT_TOKEN.toLowerCase())) return null;
-        const at = segments.findIndex((seg) => textOf(seg) === OLD_IMPORT_TOKEN);
+        const text = fs.readFileSync(target, 'latin1');
+        if (importsDoctrine(text)) return null;
+        const segments = text.split(/(?<=\n)/);
+        const at = segments.findIndex((seg) => lineText(seg) === OLD_IMPORT_TOKEN);
         if (at < 0) return null;
         segments[at] = IMPORT_TOKEN + segments[at].slice(OLD_IMPORT_TOKEN.length);
-        const candidate = `${target}.tmp-migrate-${process.pid}`;
+        const candidate = `${target}.tmp-migrate-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
         fd = fs.openSync(candidate, 'wx');
         tempPath = candidate;                         // this run created it, so this run owns it
         fs.writeFileSync(fd, Buffer.from(segments.join(''), 'latin1'));
+        // On Windows fchmod maps only the read-only bit, and a read-only temp
+        // could not be unlinked by the failure branch below, so it runs off
+        // Windows only.
+        if (process.platform !== 'win32') fs.fchmodSync(fd, fs.statSync(target).mode & 0o7777);
         fs.closeSync(fd);
         fd = null;
         fs.renameSync(tempPath, target);
@@ -174,10 +193,23 @@ function migrateFormerName(claudeDir) {
     } catch {
         // Absent or unwritable: give up quietly. A temp file this run created
         // is removed only while the target still exists, so the one complete
-        // copy is never the one deleted.
+        // copy is never the one deleted; where the target is gone, the kept
+        // temp is named so the user can put it back.
         if (fd !== null) { try { fs.closeSync(fd); } catch { /* best effort */ } }
-        if (tempPath && target && fs.existsSync(target)) { try { fs.unlinkSync(tempPath); } catch { /* best effort */ } }
-        return null;
+        if (!tempPath || !target) return null;
+        if (fs.existsSync(target)) {
+            try { fs.unlinkSync(tempPath); } catch { /* best effort */ }
+            return null;
+        }
+        if (!fs.existsSync(tempPath)) return null;
+        // Both paths come from disk and enter a channel a model reads, so they
+        // take that channel's path renderer.
+        try {
+            const { displayPath } = require('./kit-compact-lib.js');
+            return `Kit rename incomplete: the rewrite of ~/.claude/CLAUDE.md's import line could not be put in ` +
+                `place and ${displayPath(target)} is missing. The rewritten file is kept at ${displayPath(tempPath)}; ` +
+                `rename it to ${displayPath(target)}.`;
+        } catch { return null; }
     }
 }
 
@@ -245,7 +277,7 @@ function main() {
     // 2. Offer to wire the import if the user's CLAUDE.md does not have it.
     let userClaudeMd = null;
     try { userClaudeMd = fs.readFileSync(path.join(claudeDir, 'CLAUDE.md'), 'utf8'); } catch { /* absent */ }
-    if (userClaudeMd === null || !userClaudeMd.includes(IMPORT_TOKEN)) {
+    if (userClaudeMd === null || !userClaudeMd.toLowerCase().includes(IMPORT_TOKEN.toLowerCase())) {
         lines.push(
             `Kit doctrine not wired in: the operating doctrine is installed and auto-refreshed at ` +
             `~/.claude/${DOCTRINE_FILE}, but ~/.claude/CLAUDE.md does not import it, so it is not loading ` +

@@ -14,7 +14,9 @@
 // The doctor cases lift the "Doctrine import" section of doctor.ps1 as source
 // text and run it inside a harness that stubs Report, the technique
 // test/doctor-goal-state.test.js uses for its own section. They spawn Windows
-// PowerShell and are skipped off Windows, where the doctor does not run.
+// PowerShell and are skipped off Windows, where the doctor does not run. The
+// failed-swap case skips off Windows too, since it drives the failure with a
+// read-only CLAUDE.md, which only Windows refuses to rename over.
 
 'use strict';
 
@@ -421,16 +423,33 @@ test('a lone old stamp beside a new doctrine file stays put', () => {
 });
 
 // A case-insensitive file system imports @Grimoire-Doctrine.md as the same
-// file as the new token, so swapping the old line would import it twice.
-test('a line reading as the new token in another letter case suppresses the swap', () => {
+// file as the new token, so swapping the old line would import it twice, and
+// so would accepting a wiring offer for the token the file already imports.
+test('a line reading as the new token in another letter case suppresses the swap and the wiring offer', () => {
     const root = makeDir('doctrine-refresh-migrate-case-');
     try {
         const home = makeHome(root);
         const text = '@Grimoire-Doctrine.md\n' + OLD.importLine + '\n';
         fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
         const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
-        runHook(home, plugin, 'startup');
+        const out = runHook(home, plugin, 'startup');
         assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
+        assert.doesNotMatch(out, /not wired in/, 'the import is already present: ' + out);
+    } finally {
+        rmDir(root);
+    }
+});
+
+// The wiring check reads the token anywhere in the file, as the doctor's does,
+// so an indented import or one carrying a trailing note is not offered twice.
+test('an import line with indentation or a trailing note draws no wiring offer', () => {
+    const root = makeDir('doctrine-refresh-wired-shape-');
+    try {
+        const home = makeHome(root);
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), '# Global\n  @grimoire-doctrine.md  # kit doctrine\n', 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const out = runHook(home, plugin, 'startup');
+        assert.doesNotMatch(out, /not wired in/, 'the import is present: ' + out);
     } finally {
         rmDir(root);
     }
@@ -469,8 +488,9 @@ test('a linked CLAUDE.md is swapped in its final target, and both links stay lin
 });
 
 // A read-only CLAUDE.md makes the rename over it fail on Windows (EPERM),
-// which drives the failure branch after the temp file was written.
-test('a swap that fails leaves CLAUDE.md byte-identical and no temp file', () => {
+// which drives the failure branch after the temp file was written. POSIX
+// rename(2) replaces a read-only file, so the case skips off Windows.
+test('a swap that fails leaves CLAUDE.md byte-identical and no temp file', { skip: !isWin }, () => {
     const root = makeDir('doctrine-refresh-migrate-fail-');
     const home = makeHome(root);
     const claudeMd = claudePath(home, 'CLAUDE.md');

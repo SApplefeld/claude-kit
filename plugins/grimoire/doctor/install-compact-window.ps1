@@ -9,8 +9,9 @@
 # arrives as a parameter and is never resolved from the environment here.
 # There is no default: the real settings.json carries the permissions block,
 # an env block, and possibly apiKeyHelper, so a forgotten redirect must be a
-# loud parameter error rather than a rewrite of the operator's live settings. This file defines functions only; dot-sourcing it
-# runs nothing and writes nothing.
+# loud parameter error rather than a rewrite of the operator's live settings.
+# This file defines functions only; dot-sourcing it runs nothing and writes
+# nothing.
 
 # Set the top-level $Key to $Value at $Path, preserving everything else.
 # Returns @{ ok = $true } on a verified swap, or @{ ok = $false; reason = ... }
