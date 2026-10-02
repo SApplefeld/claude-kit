@@ -455,6 +455,24 @@ test('an import line with indentation or a trailing note draws no wiring offer',
     }
 });
 
+// The swap's suppression reads the current token anywhere in the file, in any
+// letter case, as the wiring check does, so an indented or annotated import
+// keeps the old line from being swapped into a second import.
+test('an indented or annotated new import suppresses the swap, so CLAUDE.md is byte-unchanged', () => {
+    const root = makeDir('doctrine-refresh-migrate-shape-');
+    try {
+        const home = makeHome(root);
+        const text = '  @grimoire-doctrine.md  # kit doctrine\n' + OLD.importLine + '\n';
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const out = runHook(home, plugin, 'startup');
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
+        assert.doesNotMatch(out, /not wired in/, 'the import is present: ' + out);
+    } finally {
+        rmDir(root);
+    }
+});
+
 // A CLAUDE.md kept in a dotfiles directory and linked into ~/.claude, through
 // a chain of two relative links. Creating a link on Windows needs the
 // symlink privilege or developer mode, so the case skips where it cannot.

@@ -234,6 +234,24 @@ test('a line reading as the new token in another letter case suppresses the swap
     }
 });
 
+// The suppression reads the current token anywhere in the file, in any letter
+// case, as the hook's does, so an indented or annotated import keeps -Fix
+// from swapping the old line into a second import.
+test('an indented or annotated new import suppresses the swap under -Fix and reads WARN naming both imports', { skip: !isWin }, () => {
+    const fx = makeRoot('drm-mig-shape-');
+    try {
+        const text = '  @grimoire-doctrine.md  # kit doctrine\n' + OLD.importLine + '\n';
+        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), text, 'utf8');
+        const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /imports both/);
+        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), text);
+    } finally {
+        rmDir(fx.root);
+    }
+});
+
 // A CLAUDE.md kept in a dotfiles directory and linked into .claude, through a
 // chain of two relative links. Creating a link on Windows needs the symlink
 // privilege or developer mode, so the case skips where it cannot.

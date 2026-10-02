@@ -338,9 +338,10 @@ else {
 # --- stamp moves only with its doctrine file, since a lone old stamp beside a
 # --- current file describes some other write; the CLAUDE.md line moves only
 # --- where it is exactly the former token, terminator aside and case-sensitive,
-# --- and no line already reads as the current token in any letter case, which
-# --- an import on a case-insensitive file system loads as the same file; the
-# --- hook applies the same two line comparisons. CLAUDE.md is read and
+# --- and the file does not already import the current token anywhere, in any
+# --- letter case, which an import on a case-insensitive file system loads as
+# --- the same file; the hook applies the same two comparisons, and the
+# --- Doctrine import check below asks the second one too. CLAUDE.md is read and
 # --- written as bytes, so every other byte and line ending stays as it was. A
 # --- CLAUDE.md that is a link, or a chain of them, is followed to its final
 # --- target, which is rewritten and the links kept. The rewrite goes to a temp
@@ -367,16 +368,18 @@ function Test-MigrationFree {
 }
 
 # CLAUDE.md as line segments, each keeping its own terminator, the index of
-# the first exact former-token line, or -1, and whether any line reads as the
-# current token in any letter case. Exact means the segment less its \r\n or
-# \n terminator, compared case-sensitively.
+# the first exact former-token line, or -1, and whether the file already
+# imports the current token anywhere, in any letter case, compared ordinally
+# so the host's culture never changes the fold. Exact means the segment less
+# its \r\n or \n terminator, compared case-sensitively.
 function Get-MigrationImportState {
-    $segments = [regex]::Split($migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd)), '(?<=\n)')
+    $text = $migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd))
+    $segments = [regex]::Split($text, '(?<=\n)')
     $texts = @($segments | ForEach-Object { $_ -replace '\r?\n$', '' })
     return @{
         Segments = $segments
         OldAt = [array]::IndexOf($texts, $migrationOldImport)
-        HasNew = $texts -icontains $migrationNewImport
+        HasNew = $text.IndexOf($migrationNewImport, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
     }
 }
 
@@ -451,6 +454,7 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
     if ($migrationImportPending) {
         $migrationTarget = $null
         $migrationTmp = $null
+        $migrationWritten = $false
         try {
             $migrationTarget = Resolve-MigrationTarget $migrationClaudeMd
             $segments = $migrationImport.Segments
@@ -463,6 +467,7 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
             $migrationTmp = $candidate
             try { $stream.Write($migrationBytes, 0, $migrationBytes.Length) }
             finally { $stream.Dispose() }
+            $migrationWritten = $true
             # [NullString]::Value, because PowerShell passes a bare $null to a
             # .NET string parameter as "", which Replace rejects as a path.
             [System.IO.File]::Replace($migrationTmp, $migrationTarget, [NullString]::Value)
@@ -471,14 +476,18 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
         catch {
             # The temp this run created is removed only while the target still
             # exists, so the one complete copy is never the one deleted; where
-            # the target is gone, the temp holds the rewritten file and is named.
+            # the target is gone, the temp is kept and named, and called the
+            # rewritten file only where its write and close completed.
             $migrationFailed += "Could not rewrite the import line in ${migrationClaudeMd}: $(Get-SanitizedLine $_.Exception.Message 200)"
             if ($null -ne $migrationTmp -and (Test-Path -LiteralPath $migrationTmp -PathType Leaf)) {
                 if ($null -ne $migrationTarget -and (Test-Path -LiteralPath $migrationTarget -PathType Leaf)) {
                     Remove-Item -LiteralPath $migrationTmp -ErrorAction SilentlyContinue
                 }
-                else {
+                elseif ($migrationWritten) {
                     $migrationFailed += "The rewritten file is kept at $migrationTmp; rename it to $migrationTarget."
+                }
+                else {
+                    $migrationFailed += "$migrationTarget is missing, and the partial temp file $migrationTmp is kept; its write did not complete, so it is not a whole copy of the file."
                 }
             }
         }
@@ -490,7 +499,7 @@ elseif ($migrationPendingLines.Count -gt 0) {
     Report "FAIL" "Former-name migration" ($migrationPendingLines + @("Fix: re-run doctor with -Fix, or start a Claude Code session, whose doctrine-refresh hook makes the same moves."))
 }
 elseif ($migrationHeld.Count -eq 0) {
-    Report "PASS" "Former-name migration" @("No file or import line under the plugin's former name remains in $claudeDir.")
+    Report "PASS" "Former-name migration" @("No file under the plugin's former name, and no CLAUDE.md line that is exactly its import token, remains in $claudeDir.")
 }
 if ($migrationHeld.Count -gt 0) { Report "WARN" "Former-name migration" $migrationHeld }
 
@@ -531,7 +540,10 @@ if (Test-Path $claudeMd) {
         $claudeMdReadError = Get-SanitizedLine $_.Exception.Message 200
     }
 }
-$importPresent = ($null -ne $claudeMdRaw) -and ($claudeMdRaw -match "@grimoire-doctrine\.md")
+# The import is present where the file holds the token anywhere, in any letter
+# case, compared ordinally so the host's culture never changes the fold; the
+# former-name migration above asks the same.
+$importPresent = ($null -ne $claudeMdRaw) -and ($claudeMdRaw.IndexOf("@grimoire-doctrine.md", [System.StringComparison]::OrdinalIgnoreCase) -ge 0)
 if ($null -ne $claudeMdReadError) {
     Report "WARN" "Doctrine import" @("$claudeMd is unreadable: $claudeMdReadError")
 }
