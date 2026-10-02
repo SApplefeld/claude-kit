@@ -20,7 +20,6 @@
 # (kitRepoPath), falling back to this script's own location, so the same
 # command line works on every VM regardless of where the clone sits.
 #
-# The task name 'claude-kit-sidecar-daemon' names host state written by earlier installs, kept so existing hosts still match.
 # Uninstall: Unregister-ScheduledTask -TaskName 'claude-kit-sidecar-daemon' -Confirm:$false
 # (then stop any running daemon and, to disarm capture, delete ~/.claude/kit-sidecar).
 

@@ -46,6 +46,13 @@ Provenance: written by the ARCHITECT persona, session 57239bb8, on 2026-10-02, w
 
 **Branches cut before the merge.** Every branch on origin under `plans/` and `backlog/` at the merge, the kit worker's `plans/jev-code-checks` with its parked plugin commit among them, was cut before this plan. Each owner runs the recipe above at its own tip, commits, then merges trunk; a file the branch added under `plugins/claude-kit/` moves with the `git mv`. The worker posts the recipe to the coordinator at the section close, with `git branch -r` read at that moment.
 
+## Standing Brief Amendments
+
+- A literal that names state outside this repository keeps the old spelling, since a rename there is its own migration, as `## Out of Scope` already rules for `claudekit.memorysync`. The class: the memory-sync allowlist marker in `doctor/install-memory-sync.ps1`, the sidecar daemon's scheduled task name in `sidecar/install-daemon-task.ps1`, a host directory path (a drive path, a `/d/` path, the `D--claude-kit` project segment), and a memory record's name. The marker and the task name each carry a one-line comment saying why they keep it. Every acceptance grep in sections 1 and 2 lists these lines beside the lines it already names.
+- The sidecar batteries' captured data, `sidecar/batteries/*/cases.json`, `sidecar/batteries/*/situations.json` and `sidecar/batteries/recognition-v1/index.md`, is history and a sixth sweep exclusion. Their runners and READMEs take the sweep where they spell the plugin's folder.
+- `.gitignore` keeps the three former build-output lines beside the new ones, so a clone that still holds build output under the old folder stays clean after the merge.
+- The sweep is the byte-preserving node script the section 1 Chapter records, never `sed -i`, which strips CR from the tree's CRLF files under Git Bash.
+
 ## Sections of Work
 
 ### 1. The tree carries the new name, and the validator and the suite pass under it

@@ -109,7 +109,7 @@ function makeLine(overrides) {
         callId: nextCallId(),
         ts: new Date().toISOString(),
         sessionId: 'ses-test',
-        cwd: 'D:/grimoire',
+        cwd: 'D:/claude-kit',
         tool: 'Bash',
         intent: 'list the files',
         command: 'ls -la',

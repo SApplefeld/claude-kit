@@ -2672,7 +2672,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Settle a background run's death by the process list plus the completion notification, never by a frozen output artifact.
 - class: rule
 - source: plugins/grimoire/skills/operating-instructions/SKILL.md:178
-- provenance: d3f987f 2026-08-25, kaizen-batch section 3 amendment (a); the memory record reading-a-running-suite (D--grimoire, same day) narrates the incident: a frozen line count read as a dead run, the output deleted, a second suite launched into the same path while the first went on to exit 0.
+- provenance: d3f987f 2026-08-25, kaizen-batch section 3 amendment (a); the memory record reading-a-running-suite (D--claude-kit, same day) narrates the incident: a frozen line count read as a dead run, the output deleted, a second suite launched into the same path while the first went on to exit 0.
 - verdict: rewrite
 - landed: a2ca9e5 section 1
 - reason: The rule stays with "growth remains honest evidence of life"; only the explanation moves here: a redirected stdout block-buffers in roughly 4KB jumps, so a frozen line count is an unflushed buffer rather than a dead run.

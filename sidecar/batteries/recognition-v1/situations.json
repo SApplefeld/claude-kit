@@ -22,7 +22,7 @@
   },
   {
     "n": 4,
-    "situation": "The agent just merged a branch whose diff touches plugins/grimoire/hooks/, and is about to run the whole test gate on the merged tree.",
+    "situation": "The agent just merged a branch whose diff touches plugins/claude-kit/hooks/, and is about to run the whole test gate on the merged tree.",
     "gold": [
       "merging-hook-edits-staleness-the-build-stamp"
     ]

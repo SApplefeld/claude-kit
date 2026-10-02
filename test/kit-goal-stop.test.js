@@ -1201,7 +1201,7 @@ test('the real namespaced /kit-goal arming record (backtick-wrapped args) binds 
         writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
         assert.strictEqual(armGoal(repo, planRel).ok, true);
         const tx = path.join(repo, 'arming.jsonl');
-        // Verbatim real arming record: namespaced command-name (/grimoire:kit-goal),
+        // A real arming record, its plugin prefix renamed: namespaced command-name (/grimoire:kit-goal),
         // no isMeta field, backtick-wrapped args value. The substring match tolerates
         // the backticks, and the command-name gate accepts the ':kit-goal' suffix.
         writeFile(tx, JSON.stringify({

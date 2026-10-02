@@ -5,11 +5,11 @@ Scott Applefeld's personal Claude Code marketplace. One repo that every project 
 ## STRUCTURE
 
 ```
-grimoire/                          (repo = the marketplace)
+grimoire/                            (repo = the marketplace)
   .claude-plugin/
     marketplace.json                 Marketplace catalog (must live here)
   plugins/
-    grimoire/                      (the plugin)
+    grimoire/                        (the plugin)
       .claude-plugin/plugin.json     Plugin manifest (no version field - every
                                      commit counts as a new version)
       skills/

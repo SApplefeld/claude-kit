@@ -2,7 +2,7 @@
   {
     "n": 1,
     "situation": "The whole test gate, run from a linked worktree under .claude/worktrees/, finished with one red in kit-sidecar-memory-index.test.js, the case that feeds `.` and expects no project. The agent is deciding whether its own diff caused it.",
-    "composed": "D--grimoire kit.gate.whole kit.section.close kit.review.cap",
+    "composed": "D--claude-kit kit.gate.whole kit.section.close kit.review.cap",
     "gold": [
       "the-whole-gate-reds-one-sidecar-test-from-a-linked-worktree"
     ]
@@ -10,25 +10,25 @@
   {
     "n": 2,
     "situation": "The agent cut a skill file down to fit its size cap, checking the length with `wc -w`, and the size ratchet test still reports the file over its cap.",
-    "composed": "D--grimoire kit.size.sync kit.prose-pass.section kit.review.cap",
+    "composed": "D--claude-kit kit.size.sync kit.prose-pass.section kit.review.cap",
     "gold": [
       "size-ratchet-counts-words-after-the-frontmatter-strip"
     ]
   },
   {
     "n": 3,
-    "situation": "A merge of main into the plan branch brought in two changed files under plugins/grimoire/hooks/ with no conflict, and the agent is about to start the whole gate on the merged tree.",
-    "composed": "D--grimoire kit.merge.main kit.gate.whole kit.section.close",
+    "situation": "A merge of main into the plan branch brought in two changed files under plugins/claude-kit/hooks/ with no conflict, and the agent is about to start the whole gate on the merged tree.",
+    "composed": "D--claude-kit kit.merge.main kit.gate.whole kit.section.close",
     "gold": [
       "merging-hook-edits-staleness-the-build-stamp",
-      "grimoire-hook-edits-need-a-build-stamp-refresh",
+      "claude-kit-hook-edits-need-a-build-stamp-refresh",
       "hook-edits-require-rebuild"
     ]
   },
   {
     "n": 4,
     "situation": "Reading `git diff --cached --name-only` before its commit, the agent finds a staged file it never touched, put there by another session working in the same checkout.",
-    "composed": "D--grimoire kit.commit.scope kit.section.close kit.plan.section",
+    "composed": "D--claude-kit kit.commit.scope kit.section.close kit.plan.section",
     "gold": [
       "two-sessions-one-checkout-commit-freeze",
       "the-shared-index-defends-only-the-committing-side"
@@ -37,7 +37,7 @@
   {
     "n": 5,
     "situation": "To report a lane's counts, the agent greps the `node --test` output for lines starting with `# pass` and gets nothing back from a run that exited 0.",
-    "composed": "D--grimoire kit.lane.targeted kit.section.close kit.review.cap",
+    "composed": "D--claude-kit kit.lane.targeted kit.section.close kit.review.cap",
     "gold": [
       "node-test-count-lines-are-not-tap"
     ]
@@ -45,7 +45,7 @@
   {
     "n": 6,
     "situation": "The agent runs a targeted lane by naming three test files to `node --test`. One of the names is a file it renamed earlier in the session, and the run exits 0.",
-    "composed": "D--grimoire kit.lane.targeted kit.test.rename kit.review.cap",
+    "composed": "D--claude-kit kit.lane.targeted kit.test.rename kit.review.cap",
     "gold": [
       "node-test-multi-file-ignores-a-missing-path"
     ]
@@ -53,7 +53,7 @@
   {
     "n": 7,
     "situation": "The agent edited a finished plan's Status line to Complete, then ran `git mv` to move it into docs/archive/, and the commit shows the rename at 100% similarity.",
-    "composed": "D--grimoire kit.plan.archive kit.finishing.close-path kit.section.close",
+    "composed": "D--claude-kit kit.plan.archive kit.finishing.close-path kit.section.close",
     "gold": [
       "git-mv-stages-the-index-content-not-your-edits",
       "git-mv-archive-ordering"
@@ -62,7 +62,7 @@
   {
     "n": 8,
     "situation": "The agent added a new verb to memq in the kit checkout during this session and ran `memq` from the shell to try it. The verb comes back as an unknown subcommand.",
-    "composed": "D--grimoire kit.memq.verb kit.section.close kit.review.cap",
+    "composed": "D--claude-kit kit.memq.verb kit.section.close kit.review.cap",
     "gold": [
       "memq-shim-runs-the-installed-plugin-not-the-tree",
       "a-feature-built-this-session-is-not-installed-yet",
@@ -72,7 +72,7 @@
   {
     "n": 9,
     "situation": "The agent copied a JSON snippet holding `\\u0022` escapes inside its string values out of a tool result and wrote it into a test fixture with the Write tool. The fixture now fails to parse.",
-    "composed": "D--grimoire kit.fixture.write kit.section.close kit.review.cap",
+    "composed": "D--claude-kit kit.fixture.write kit.section.close kit.review.cap",
     "gold": [
       "write-tool-decodes-unicode-escapes-in-content"
     ]
@@ -80,7 +80,7 @@
   {
     "n": 10,
     "situation": "A Windows PowerShell 5.1 helper writes a generated JSON file with `Set-Content -Encoding UTF8`, and the Node script that reads it next throws on the first character.",
-    "composed": "D--grimoire kit.doctor.fix kit.build.ps1 kit.section.close",
+    "composed": "D--claude-kit kit.doctor.fix kit.build.ps1 kit.section.close",
     "gold": [
       "powershell51-utf8-write-adds-bom"
     ]
@@ -88,7 +88,7 @@
   {
     "n": 11,
     "situation": "The agent greps a log the doctor wrote from PowerShell for an error line it can see when it opens the file, and grep reports zero matches.",
-    "composed": "D--grimoire kit.doctor.run kit.lane.targeted kit.review.cap",
+    "composed": "D--claude-kit kit.doctor.run kit.lane.targeted kit.review.cap",
     "gold": [
       "utf16-logs-make-grep-report-a-false-clean"
     ]
@@ -96,7 +96,7 @@
   {
     "n": 12,
     "situation": "From a subdirectory of the checkout, the agent runs the kit goal CLI's status command and reads that no goal is armed, although it armed one at the repository root an hour ago.",
-    "composed": "D--grimoire kit.goal.arm kit.queue.mutation kit.section.close",
+    "composed": "D--claude-kit kit.goal.arm kit.queue.mutation kit.section.close",
     "gold": [
       "kit-cli-cwd-resolution-does-not-walk-up",
       "kit-state-keyed-on-project-directory-follows-the-shell-cwd"
@@ -105,7 +105,7 @@
   {
     "n": 13,
     "situation": "A peer session asks which directory another live session works in, and the agent is about to answer from that session's row in the ListAgents roster.",
-    "composed": "D--grimoire kit.peer.message kit.coordinator.board kit.review.cap",
+    "composed": "D--claude-kit kit.peer.message kit.coordinator.board kit.review.cap",
     "gold": [
       "listagents-rows-carry-no-working-directory"
     ]
@@ -113,73 +113,73 @@
   {
     "n": 14,
     "situation": "The agent reads the documentation page of a public HTTP client library to confirm what a response looks like when a request sets `redirect: 'manual'`.",
-    "composed": "D--grimoire kit.client.transport kit.section.open kit.review.cap",
+    "composed": "D--claude-kit kit.client.transport kit.section.open kit.review.cap",
     "gold": []
   },
   {
     "n": 15,
     "situation": "The agent rewords one paragraph of the draft spec it is still writing, which nobody has reviewed yet, so each sentence carries one idea.",
-    "composed": "D--grimoire kit.spec.draft kit.prose-pass.section kit.review.cap",
+    "composed": "D--claude-kit kit.spec.draft kit.prose-pass.section kit.review.cap",
     "gold": []
   },
   {
     "n": 16,
     "situation": "The agent lists the files under sidecar/prompts/ to see which prompt versions exist.",
-    "composed": "D--grimoire kit.sidecar.read kit.section.open kit.plan.section",
+    "composed": "D--claude-kit kit.sidecar.read kit.section.open kit.plan.section",
     "gold": []
   },
   {
     "n": 17,
     "situation": "The agent reads the one comment a reviewer left on its pull request, which asks it to rename a helper function in one test file.",
-    "composed": "D--grimoire kit.pr.review kit.section.close kit.review.cap",
+    "composed": "D--claude-kit kit.pr.review kit.section.close kit.review.cap",
     "gold": []
   },
   {
     "n": 18,
     "situation": "The agent renames a local variable inside one function of memq.js for readability. Nothing else refers to it and no behaviour changes.",
-    "composed": "D--grimoire kit.memq.refactor kit.review.cap kit.section.close",
+    "composed": "D--claude-kit kit.memq.refactor kit.review.cap kit.section.close",
     "gold": []
   },
   {
     "n": 19,
     "situation": "The agent is drafting the Goal paragraph of a new spec for a colour option in the status line, from the operator's description, and has read no code yet.",
-    "composed": "D--grimoire kit.spec.draft kit.brainstorm.open kit.plan.section",
+    "composed": "D--claude-kit kit.spec.draft kit.brainstorm.open kit.plan.section",
     "gold": []
   },
   {
     "n": 20,
     "situation": "The agent runs `node --version` to note the runtime version in a Chapter.",
-    "composed": "D--grimoire kit.chapter.write kit.section.close kit.lane.targeted",
+    "composed": "D--claude-kit kit.chapter.write kit.section.close kit.lane.targeted",
     "gold": []
   },
   {
     "n": 21,
     "situation": "The agent reads the SQL of the memory database's health procedure to tell the operator which columns it returns. Nothing will be executed.",
-    "composed": "D--grimoire kit.db.read kit.operator.answer kit.review.cap",
+    "composed": "D--claude-kit kit.db.read kit.operator.answer kit.review.cap",
     "gold": []
   },
   {
     "n": 22,
     "situation": "The agent realigns the columns of a markdown table in a backlog entry so it reads cleanly in a plain-text viewer.",
-    "composed": "D--grimoire kit.backlog.edit kit.finishing.docs-drift kit.section.close",
+    "composed": "D--claude-kit kit.backlog.edit kit.finishing.docs-drift kit.section.close",
     "gold": []
   },
   {
     "n": 23,
     "situation": "The agent fetches the README of an unrelated open-source JSON schema validator to tell the operator whether it supports draft 2020-12.",
-    "composed": "D--grimoire kit.operator.answer kit.research.web kit.review.cap",
+    "composed": "D--claude-kit kit.operator.answer kit.research.web kit.review.cap",
     "gold": []
   },
   {
     "n": 24,
     "situation": "The agent converts a duration the operator gave in minutes into hours and minutes, to write it plainly in a reply.",
-    "composed": "D--grimoire kit.reply.write kit.units.convert kit.section.open",
+    "composed": "D--claude-kit kit.reply.write kit.units.convert kit.section.open",
     "gold": []
   },
   {
     "n": 25,
     "situation": "The agent looks up what HTTP status 422 means in the HTTP specification, to name it correctly in the Chapter it is writing.",
-    "composed": "D--grimoire kit.chapter.write kit.client.transport kit.section.close",
+    "composed": "D--claude-kit kit.chapter.write kit.client.transport kit.section.close",
     "gold": []
   }
 ]

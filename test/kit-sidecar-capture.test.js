@@ -156,7 +156,7 @@ function requireRefusingPreload(dir, moduleFile) {
 function bashPayload(overrides) {
     return {
         session_id: SESSION,
-        cwd: 'D:\\grimoire',
+        cwd: 'D:\\claude-kit',
         tool_name: 'Bash',
         hook_event_name: 'PostToolUse',
         tool_input: {
@@ -236,7 +236,7 @@ test('a realistic Bash call produces one schema-complete spool line', () => {
         assert.match(rec.ts, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'ts is ISO 8601 UTC');
         assert.ok(Math.abs(Date.parse(rec.ts) - Date.now()) < 60000, 'ts is the moment of capture');
         assert.strictEqual(rec.sessionId, SESSION);
-        assert.strictEqual(rec.cwd, 'D:\\grimoire');
+        assert.strictEqual(rec.cwd, 'D:\\claude-kit');
         assert.strictEqual(rec.tool, 'Bash');
         assert.strictEqual(rec.intent, 'Show working tree status');
         assert.strictEqual(rec.command, 'git status --porcelain');

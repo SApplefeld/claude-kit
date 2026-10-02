@@ -18670,7 +18670,7 @@ test('sanitizeProjectPath refuses a value that is not a non-empty string', () =>
     }
     // The withheld control: real paths still sanitize, so the throw above is
     // the refusal and not a function that refuses everything.
-    assert.strictEqual(memq.sanitizeProjectPath('D:\\grimoire'), 'D--grimoire');
+    assert.strictEqual(memq.sanitizeProjectPath('D:\\claude-kit'), 'D--claude-kit');
     // The bare literal is refused too, but as a relative spelling rather than
     // by its letters: a directory really named "undefined" is reached through
     // an absolute path, which still sanitizes.
