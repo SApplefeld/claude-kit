@@ -1,6 +1,6 @@
 # A session asks Jev whether its code keeps the section's promises before it spends the reviewers, and again after each fix round
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-10-01
 
@@ -47,6 +47,12 @@ Provenance: distilled by the ARCHITECT persona on 2026-10-01 from the DEV-PLUGIN
 **The check sits at four moments, each one sentence or one field.** Before dispatch, the orchestrator writes `.kit/scratch/<plan-slug>/promises-section-<n>.json` from the section text, one entry per acceptance bullet and per sentence that names a behavior the section builds, and the Dispatch Brief gains an optional `Promise check:` field naming that file and the command, so the implementer runs it over its changed files and carries the closing line and every promise over the re-read line in its report. At step 2, the orchestrator runs the verb over the section's changed source files with `--record`, re-reads each promise over the line against the code, fixes it or records one line in the Chapter, re-runs once after a fix, and then dispatches step 3's reviewers whatever the reading. At step 4, after a fix round's delta, the verb runs with `--against` the step-2 record, and a promise whose doubt rose by 0.3 or more is re-read before the close gate. At finishing, before step 3's final adversarial review, the same verb runs over the changeset's source files against a promises file written from the Goal's sentences, and its closing line rides the final Chapter. No reading reaches a reviewer brief, under step 3's never-pre-judge rule. A `not checked` or `not configured` line is recorded as printed and never retried into a pass.
 
 **The sweep for surfaces that state the rule.** Searches run 2026-10-01 at `61d51d25`: `grep -rn -i "jev\|typesafe"` over `plugins/claude-kit/skills/`, `plugins/claude-kit/agents/`, `docs/`, `test/`, and the three scripts. Found: `brainstorming/SKILL.md` step 10 (the coverage check, which pull request 168 removes), the ownership map's Jev row (which that pull request removes), `docs/security-model.md`'s TypeSafe channel section (two callers, the closed set of eight, what crosses), `docs/architecture.md`'s script entries, `docs/README.md`'s summary lines, `test/kit-jev-check.test.js`, `test/jev-client.test.js`, `test/size-budget.json`'s entries for the two skills, and `docs/backlog.md` on branch `mechanism-cut/s9` (the retire-or-keep item). Section 3 reads `executing-work/SKILL.md` and `finishing-work/SKILL.md` as the mechanism cut left them, since both are being cut while this plan waits.
+
+## Standing Brief Amendments
+
+- Section 1 acceptance: the key-variable shape screens `TYPESAFE_API_KEY` assigned a value, not the bare name, so a body that only names the variable, the kit's own Jev scripts among them, reaches the stand-in server, and a body assigning it a value of 8 or more characters reads `screened`.
+- The gatherer refuses a file by name, never by file type: a path is screened on its given name and parent and again on the name and parent of the file it resolves to, so a link to a refused file is refused by that file's name, and a link to a file with an unlisted name is read as that file would be.
+- Section 1 acceptance: the client's shape list gains the connection-string password, `Password=` followed by 8 or more characters other than `;`, case-insensitive, tested both ways; YAML and dotenv values assigned without quotes stay unscreened, and the docs sentence describing the screen names that gap, with a `.env` file refused by name as the cover for the common case.
 
 ## Sections of Work
 
@@ -110,3 +116,14 @@ Tests: no new test. `test/doctrine-parity.test.js` and `test/size-ratchet.test.j
 - None. Rulings 1 to 4 under `## Intent` are recorded. Ruling 3 was recorded under the operator's stated condition and reverses on one word from him.
 
 ## Chapters
+
+### Interim board 1 - 2026-10-01
+Header: `Status:` moved from `Ready` to `In Progress` when the run started; the first Chapter records it again.
+Section 1 stage: built by implementer-fable, review round 1 (adversarial, blind, security, performance) adjudicated, round 1 fixes in as unstaged edits over the staged round 1 state. Round 2, the adversarial lens alone at fable, re-dispatched after a session restart lost the first dispatch. Not committed: see the blocker below.
+Section 2 stage: implementer-opus re-dispatched on `.kit/scratch/jev-code-checks/brief-s2-redispatch.md` after the restart lost the first dispatch, which had left no edits.
+Section 3 stage: not started. It owes the r1 security Major that `docs/security-model.md` still states eight reasons and two callers, so the pull request is not marked ready before section 3 lands.
+Live dispatches: the section 1 round 2 adversarial review over the round 1 fix delta; the section 2 implementer building the `promises` verb and retiring the `spec` verb.
+Gate baseline: targeted lane (`node --test test/kit-jev-check.test.js test/jev-client.test.js test/jev-gather.test.js test/jev-judge.test.js test/jev-battery.test.js`), 116 tests, 116 pass, 0 fail, exit 0, on 2026-10-01 at 21:31 local, this worktree, uncommitted section 1 state over `b9ac3e0d`.
+Rulings adopted since the run began: the three entries in `## Standing Brief Amendments`; the scope adjudicator confirmed the r1 dot-segment and symlink Majors and refused the symlink design stop on form; the connection-string shape came from the architect pointing at the Assumptions' shape-list rule.
+Blocker: commits touching `plugins/claude-kit/` fail the pre-commit hook, because `claude plugin validate` under Claude Code 2.1.287 refuses the plugin name `claude-kit` as reserved. The operator was asked how to proceed and has not answered. Sections 1 and 2 keep moving and stay uncommitted until he does.
+Next: adjudicate section 1 round 2, then close section 1 at its Chapter; adjudicate section 2's report and run its round 1.
