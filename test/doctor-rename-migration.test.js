@@ -207,7 +207,7 @@ test('-Fix moves a home in the former name\'s state onto the current names, and 
         assert.strictEqual(after[NEW.signpost], before[OLD.signpost]);
         // Every byte but the import line's own text is kept, CRLF included.
         assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), claudeMdWith(NEW.importLine));
-        // The rewrite lands through a sibling temp file, which the rename consumes.
+        // No temp file is left beside CLAUDE.md once the swap has landed.
         assert.deepStrictEqual(fs.readdirSync(fx.claudeDir).filter((n) => /tmp/.test(n)), [], 'no temp file left behind');
 
         const pass = named(runSection(fx, MIGRATION), 'Former-name migration');
@@ -218,15 +218,70 @@ test('-Fix moves a home in the former name\'s state onto the current names, and 
     }
 });
 
-test('a line matching the new token in another case is not the new token, so -Fix swaps the exact old line as the hook does', { skip: !isWin }, () => {
+// A case-insensitive file system imports @Grimoire-Doctrine.md as the same
+// file as the new token, so the hook leaves the old line, and so does -Fix.
+test('a line reading as the new token in another letter case suppresses the swap, as in the hook', { skip: !isWin }, () => {
     const fx = makeRoot('drm-mig-case-');
     try {
-        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), '@Grimoire-Doctrine.md\r\n' + OLD.importLine + '\r\n', 'utf8');
+        const text = '@Grimoire-Doctrine.md\r\n' + OLD.importLine + '\r\n';
+        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), text, 'utf8');
+        const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), text);
+    } finally {
+        rmDir(fx.root);
+    }
+});
+
+// A CLAUDE.md kept in a dotfiles directory and linked into .claude, through a
+// chain of two relative links. Creating a link on Windows needs the symlink
+// privilege or developer mode, so the case skips where it cannot.
+test('-Fix swaps a linked CLAUDE.md in its final target, and both links stay links', { skip: !isWin }, (t) => {
+    const fx = makeRoot('drm-mig-link-');
+    try {
+        const dotfiles = path.join(fx.root, 'dotfiles');
+        fs.mkdirSync(dotfiles);
+        const real = path.join(dotfiles, 'real.md');
+        fs.writeFileSync(real, claudeMdWith(OLD.importLine), 'utf8');
+        try {
+            fs.symlinkSync('real.md', path.join(dotfiles, 'middle.md'), 'file');
+            fs.symlinkSync(path.join('..', 'dotfiles', 'middle.md'), path.join(fx.claudeDir, 'CLAUDE.md'), 'file');
+        } catch (e) {
+            t.skip('cannot create a symbolic link here (' + e.code + ')');
+            return;
+        }
         const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
         assert.strictEqual(reports[0].Status, 'FIXED', reports[0].Detail);
-        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), '@Grimoire-Doctrine.md\r\n' + NEW.importLine + '\r\n');
+        assert.ok(fs.lstatSync(path.join(fx.claudeDir, 'CLAUDE.md')).isSymbolicLink(), 'CLAUDE.md is still a link');
+        assert.ok(fs.lstatSync(path.join(dotfiles, 'middle.md')).isSymbolicLink(), 'the middle link is still a link');
+        assert.strictEqual(fs.readFileSync(real, 'utf8'), claudeMdWith(NEW.importLine));
+        for (const dir of [dotfiles, fx.claudeDir]) {
+            assert.deepStrictEqual(fs.readdirSync(dir).filter((n) => /tmp/.test(n)), [], 'no temp file left in ' + dir);
+        }
     } finally {
+        rmDir(fx.root);
+    }
+});
+
+// A read-only CLAUDE.md makes File.Replace refuse the swap (access denied)
+// after the temp file was written, which drives the failure branch.
+test('a -Fix swap that fails leaves CLAUDE.md byte-identical and no temp file', { skip: !isWin }, () => {
+    const fx = makeRoot('drm-mig-fail-');
+    const claudeMd = path.join(fx.claudeDir, 'CLAUDE.md');
+    try {
+        const text = claudeMdWith(OLD.importLine);
+        fs.writeFileSync(claudeMd, text, 'utf8');
+        fs.chmodSync(claudeMd, 0o444);
+        const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'FAIL', reports[0].Detail);
+        assert.match(reports[0].Detail, /Could not rewrite the import line/);
+        assert.strictEqual(fs.readFileSync(claudeMd, 'utf8'), text);
+        assert.deepStrictEqual(fs.readdirSync(fx.claudeDir).filter((n) => /tmp/.test(n)), [], 'no temp file left behind');
+    } finally {
+        try { fs.chmodSync(claudeMd, 0o644); } catch { /* best effort */ }
         rmDir(fx.root);
     }
 });

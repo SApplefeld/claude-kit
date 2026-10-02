@@ -344,7 +344,7 @@ for (const [label, eol] of [['CRLF', '\r\n'], ['LF', '\n']]) test(`a home in the
         assert.strictEqual(fs.readFileSync(claudePath(home, NEW.signpost), 'utf8'), SIGNPOST_BYTES);
         // Every byte but the import line's own text is kept, line endings included.
         assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), claudeMdWith(NEW.importLine, eol));
-        // The rewrite lands through a sibling temp file, which the rename consumes.
+        // No temp file is left beside CLAUDE.md once the swap has landed.
         assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')).filter((n) => /tmp/.test(n)), [], 'no temp file left behind');
 
         const ctx = JSON.parse(out).hookSpecificOutput.additionalContext;
@@ -420,15 +420,70 @@ test('a lone old stamp beside a new doctrine file stays put', () => {
     }
 });
 
-test('a line matching the new token in another case is not the new token, so the exact old line is still swapped', () => {
+// A case-insensitive file system imports @Grimoire-Doctrine.md as the same
+// file as the new token, so swapping the old line would import it twice.
+test('a line reading as the new token in another letter case suppresses the swap', () => {
     const root = makeDir('doctrine-refresh-migrate-case-');
     try {
         const home = makeHome(root);
-        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), '@Grimoire-Doctrine.md\n' + OLD.importLine + '\n', 'utf8');
+        const text = '@Grimoire-Doctrine.md\n' + OLD.importLine + '\n';
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), text, 'utf8');
         const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
         runHook(home, plugin, 'startup');
-        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), '@Grimoire-Doctrine.md\n' + NEW.importLine + '\n');
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
     } finally {
+        rmDir(root);
+    }
+});
+
+// A CLAUDE.md kept in a dotfiles directory and linked into ~/.claude, through
+// a chain of two relative links. Creating a link on Windows needs the
+// symlink privilege or developer mode, so the case skips where it cannot.
+test('a linked CLAUDE.md is swapped in its final target, and both links stay links', (t) => {
+    const root = makeDir('doctrine-refresh-migrate-link-');
+    try {
+        const home = makeHome(root);
+        const dotfiles = path.join(root, 'dotfiles');
+        fs.mkdirSync(dotfiles);
+        const real = path.join(dotfiles, 'real.md');
+        fs.writeFileSync(real, claudeMdWith(OLD.importLine, '\r\n'), 'utf8');
+        fs.unlinkSync(claudePath(home, 'CLAUDE.md'));
+        try {
+            fs.symlinkSync('real.md', path.join(dotfiles, 'middle.md'), 'file');
+            fs.symlinkSync(path.join('..', '..', 'dotfiles', 'middle.md'), claudePath(home, 'CLAUDE.md'), 'file');
+        } catch (e) {
+            t.skip('cannot create a symbolic link here (' + e.code + ')');
+            return;
+        }
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+        assert.ok(fs.lstatSync(claudePath(home, 'CLAUDE.md')).isSymbolicLink(), 'CLAUDE.md is still a link');
+        assert.ok(fs.lstatSync(path.join(dotfiles, 'middle.md')).isSymbolicLink(), 'the middle link is still a link');
+        assert.strictEqual(fs.readFileSync(real, 'utf8'), claudeMdWith(NEW.importLine, '\r\n'));
+        for (const dir of [dotfiles, path.join(home, '.claude')]) {
+            assert.deepStrictEqual(fs.readdirSync(dir).filter((n) => /tmp/.test(n)), [], 'no temp file left in ' + dir);
+        }
+    } finally {
+        rmDir(root);
+    }
+});
+
+// A read-only CLAUDE.md makes the rename over it fail on Windows (EPERM),
+// which drives the failure branch after the temp file was written.
+test('a swap that fails leaves CLAUDE.md byte-identical and no temp file', () => {
+    const root = makeDir('doctrine-refresh-migrate-fail-');
+    const home = makeHome(root);
+    const claudeMd = claudePath(home, 'CLAUDE.md');
+    try {
+        const text = claudeMdWith(OLD.importLine, '\r\n');
+        fs.writeFileSync(claudeMd, text, 'utf8');
+        fs.chmodSync(claudeMd, 0o444);
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+        assert.strictEqual(fs.readFileSync(claudeMd, 'utf8'), text);
+        assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')).filter((n) => /tmp/.test(n)), [], 'no temp file left behind');
+    } finally {
+        try { fs.chmodSync(claudeMd, 0o644); } catch { /* best effort */ }
         rmDir(root);
     }
 });

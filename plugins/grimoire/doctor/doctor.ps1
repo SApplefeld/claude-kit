@@ -334,13 +334,16 @@ else {
 # --- where its current name is absent, so a newer write is never replaced; the
 # --- stamp moves only with its doctrine file, since a lone old stamp beside a
 # --- current file describes some other write; the CLAUDE.md line moves only
-# --- where it is exactly the former token, terminator aside, and no line is
-# --- already exactly the current one, both compared case-sensitively as the
-# --- hook does. CLAUDE.md is read and written as bytes, so every other byte
-# --- and line ending stays as it was, and the rewrite lands on a sibling temp
-# --- file renamed over it, the signpost section's pattern, so an interrupted
-# --- write never truncates it; a CLAUDE.md that is a link is refused, since
-# --- the rename would replace the link with a plain file. A pair present
+# --- where it is exactly the former token, terminator aside and case-sensitive,
+# --- and no line already reads as the current token in any letter case, which
+# --- an import on a case-insensitive file system loads as the same file; the
+# --- hook applies the same two comparisons. CLAUDE.md is read and written as
+# --- bytes, so every other byte and line ending stays as it was. A CLAUDE.md
+# --- that is a link, or a chain of them, is followed to its final target,
+# --- which is rewritten and the links kept. The rewrite goes to a temp file
+# --- beside that target, created exclusively so no existing file is
+# --- overwritten, and replaces the target with File.Replace, which swaps the
+# --- two in one call, so an interrupted write never truncates it. A pair present
 # --- under both names is reported and left, since only the operator can say
 # --- which holds the write to keep. There is no consent prompt: this is the
 # --- move the hook makes unprompted, onto names the kit owns, and -Fix already
@@ -359,17 +362,36 @@ function Test-MigrationFree {
     return (Test-Path -LiteralPath (Join-Path $claudeDir $Old)) -and -not (Test-Path -LiteralPath (Join-Path $claudeDir $New))
 }
 
-# CLAUDE.md as line segments, each keeping its own terminator, and the index
-# of the first exact former-token line, or -1. Exact means the segment less
-# its \r\n or \n terminator.
+# CLAUDE.md as line segments, each keeping its own terminator, the index of
+# the first exact former-token line, or -1, and whether any line reads as the
+# current token in any letter case. Exact means the segment less its \r\n or
+# \n terminator, compared case-sensitively.
 function Get-MigrationImportState {
     $segments = [regex]::Split($migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd)), '(?<=\n)')
     $texts = @($segments | ForEach-Object { $_ -replace '\r?\n$', '' })
     return @{
         Segments = $segments
         OldAt = [array]::IndexOf($texts, $migrationOldImport)
-        HasNew = [array]::IndexOf($texts, $migrationNewImport) -ge 0
+        HasNew = $texts -contains $migrationNewImport
     }
+}
+
+# The file a CLAUDE.md path finally names: each symbolic link is followed, a
+# relative target read against its link's own directory, until a path that is
+# not a link. A chain longer than 32 links is treated as a loop and throws.
+function Resolve-MigrationTarget {
+    param([string]$Path)
+    $current = [System.IO.Path]::GetFullPath($Path)
+    for ($hop = 0; $hop -lt 32; $hop++) {
+        $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+        if ($item.LinkType -ne "SymbolicLink") { return $current }
+        $linkTarget = @($item.Target)[0]
+        if (-not [System.IO.Path]::IsPathRooted($linkTarget)) {
+            $linkTarget = Join-Path (Split-Path -Parent $current) $linkTarget
+        }
+        $current = [System.IO.Path]::GetFullPath($linkTarget)
+    }
+    throw "$Path is a chain of more than 32 links"
 }
 
 $migrationMoves = @()
@@ -422,26 +444,38 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
             $migrationFailed += "Could not rename $($move.Old) to $($move.New): $(Get-SanitizedLine $_.Exception.Message 200)"
         }
     }
-    $migrationClaudeMdItem = Get-Item -LiteralPath $migrationClaudeMd -Force -ErrorAction SilentlyContinue
-    if ($migrationImportPending -and ($null -ne $migrationClaudeMdItem) -and (($migrationClaudeMdItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)) {
-        $migrationFailed += "Refused to rewrite ${migrationClaudeMd}: it is a link. Change the line $migrationOldImport to $migrationNewImport by hand in the file it points at."
-    }
-    elseif ($migrationImportPending) {
-        $migrationTmp = "$migrationClaudeMd.tmp-migrate-$PID"
-        $migrationTmpWritten = $false
+    if ($migrationImportPending) {
+        $migrationTarget = $null
+        $migrationTmp = $null
         try {
+            $migrationTarget = Resolve-MigrationTarget $migrationClaudeMd
             $segments = $migrationImport.Segments
             $segments[$migrationImport.OldAt] = $migrationNewImport + $segments[$migrationImport.OldAt].Substring($migrationOldImport.Length)
-            [System.IO.File]::WriteAllBytes($migrationTmp, $migrationLatin1.GetBytes(-join $segments))
-            $migrationTmpWritten = $true
-            Move-Item -LiteralPath $migrationTmp -Destination $migrationClaudeMd -Force -ErrorAction Stop
+            $migrationBytes = $migrationLatin1.GetBytes(-join $segments)
+            $candidate = "$migrationTarget.tmp-migrate-$PID"
+            # CreateNew fails where anything already holds the path, so the temp
+            # is this run's own from the moment it opens.
+            $stream = [System.IO.File]::Open($candidate, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            $migrationTmp = $candidate
+            try { $stream.Write($migrationBytes, 0, $migrationBytes.Length) }
+            finally { $stream.Dispose() }
+            # [NullString]::Value, because PowerShell passes a bare $null to a
+            # .NET string parameter as "", which Replace rejects as a path.
+            [System.IO.File]::Replace($migrationTmp, $migrationTarget, [NullString]::Value)
             $migrationDone += "Changed the line $migrationOldImport in $migrationClaudeMd to $migrationNewImport; no other line changed."
         }
         catch {
-            # CLAUDE.md is left as it was; only a temp file this run wrote is removed.
+            # The temp this run created is removed only while the target still
+            # exists, so the one complete copy is never the one deleted; where
+            # the target is gone, the temp holds the rewritten file and is named.
             $migrationFailed += "Could not rewrite the import line in ${migrationClaudeMd}: $(Get-SanitizedLine $_.Exception.Message 200)"
-            if ($migrationTmpWritten -and (Test-Path -LiteralPath $migrationTmp -PathType Leaf)) {
-                Remove-Item -LiteralPath $migrationTmp -ErrorAction SilentlyContinue
+            if ($null -ne $migrationTmp -and (Test-Path -LiteralPath $migrationTmp -PathType Leaf)) {
+                if ($null -ne $migrationTarget -and (Test-Path -LiteralPath $migrationTarget -PathType Leaf)) {
+                    Remove-Item -LiteralPath $migrationTmp -ErrorAction SilentlyContinue
+                }
+                else {
+                    $migrationFailed += "The rewritten file is kept at $migrationTmp; rename it to $migrationTarget."
+                }
             }
         }
     }

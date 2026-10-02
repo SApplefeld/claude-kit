@@ -137,38 +137,46 @@ function renameIfFree(dir, from, to) {
 // stamp moves only in that same run, since a lone old stamp beside a current
 // file describes some other write. The signpost moves on its own. In CLAUDE.md
 // the first line that is exactly the old import token, terminator aside, becomes
-// the new token, unless a line is already exactly the new token. The file is
-// read and written as latin1 so every other byte, line endings included, is
-// written back as it was read. The rewrite lands on a sibling temp file that is
-// renamed over CLAUDE.md, so an interrupted write never truncates the user's
-// file; a CLAUDE.md that is a link is left alone, since the rename would replace
-// the link with a plain file. Returns the session-start line reporting the
-// import swap, or null.
+// the new token, unless a line already reads as the new token in any letter
+// case, which an import on a case-insensitive file system loads as the same
+// file. The file is read and written as latin1 so every other byte, line
+// endings included, is written back as it was read. A CLAUDE.md that is a link,
+// or a chain of them, is followed to its final target, which is rewritten and
+// the links kept. The rewrite goes to a temp file beside that target, opened
+// exclusively so no existing file is reused, and is renamed over the target, so
+// an interrupted write never truncates the user's file. Returns the
+// session-start line reporting the import swap, or null.
 function migrateFormerName(claudeDir) {
     if (renameIfFree(claudeDir, OLD_DOCTRINE_FILE, DOCTRINE_FILE)) {
         renameIfFree(claudeDir, OLD_STAMP_FILE, STAMP_FILE);
     }
     renameIfFree(claudeDir, OLD_SIGNPOST_FILE, SIGNPOST_FILE);
-    const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
-    const tempPath = `${claudeMdPath}.tmp-migrate-${process.pid}`;
-    let tempWritten = false;
+    let target = null;
+    let tempPath = null;
+    let fd = null;
     try {
-        if (fs.lstatSync(claudeMdPath).isSymbolicLink()) return null;
-        const segments = fs.readFileSync(claudeMdPath, 'latin1').split(/(?<=\n)/);
+        target = fs.realpathSync(path.join(claudeDir, 'CLAUDE.md'));
+        const segments = fs.readFileSync(target, 'latin1').split(/(?<=\n)/);
         const textOf = (seg) => seg.replace(/\r?\n$/, '');
-        if (segments.some((seg) => textOf(seg) === IMPORT_TOKEN)) return null;
+        if (segments.some((seg) => textOf(seg).toLowerCase() === IMPORT_TOKEN.toLowerCase())) return null;
         const at = segments.findIndex((seg) => textOf(seg) === OLD_IMPORT_TOKEN);
         if (at < 0) return null;
         segments[at] = IMPORT_TOKEN + segments[at].slice(OLD_IMPORT_TOKEN.length);
-        fs.writeFileSync(tempPath, segments.join(''), { encoding: 'latin1', flag: 'wx' });
-        tempWritten = true;
-        fs.renameSync(tempPath, claudeMdPath);
+        const candidate = `${target}.tmp-migrate-${process.pid}`;
+        fd = fs.openSync(candidate, 'wx');
+        tempPath = candidate;                         // this run created it, so this run owns it
+        fs.writeFileSync(fd, Buffer.from(segments.join(''), 'latin1'));
+        fs.closeSync(fd);
+        fd = null;
+        fs.renameSync(tempPath, target);
         return `Kit renamed: ~/.claude/CLAUDE.md imported "${OLD_IMPORT_TOKEN}", the doctrine file's former ` +
             `name, so that line now reads "${IMPORT_TOKEN}", the file's current name. No other line changed.`;
     } catch {
-        // Absent or unwritable: CLAUDE.md is left as it was, and only
-        // a temp file this run wrote is removed.
-        if (tempWritten) { try { fs.unlinkSync(tempPath); } catch { /* best effort */ } }
+        // Absent or unwritable: give up quietly. A temp file this run created
+        // is removed only while the target still exists, so the one complete
+        // copy is never the one deleted.
+        if (fd !== null) { try { fs.closeSync(fd); } catch { /* best effort */ } }
+        if (tempPath && target && fs.existsSync(target)) { try { fs.unlinkSync(tempPath); } catch { /* best effort */ } }
         return null;
     }
 }
