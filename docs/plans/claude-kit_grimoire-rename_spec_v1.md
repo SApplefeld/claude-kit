@@ -1,0 +1,113 @@
+# The kit plugin is renamed from `claude-kit` to `grimoire`, so Claude Code 2.1.287's validator passes it and every host migrates itself on its next session
+
+Status: Ready
+Commit Model: Branch-and-PR
+Created: 2026-10-02
+
+## Dispatch Authorization
+
+The ARCHITECT persona wrote this plan on 2026-10-02 on the operator's rulings, given on the ARCHITECT's channel that day after the kit worker relayed his words from its thread: the kit is renamed rather than the validator tolerated, the name is Grimoire from his list of four, the GitHub repository is renamed to match, and the doctor and the session-start hook migrate each machine's files. It is the second of the rename's four plans and has two preconditions, on dispatch: the persona repository's `agent_persona_kit-name-tolerance_spec_v1.md` has merged, and the operator has confirmed on the ARCHITECT's channel or the coordinator's that the persona plugin is updated on every fleet host. Until both hold, a host's kit auto-update under the new name would cost every running persona its memory calls and its kit skills. The coordinator queues it for the kit's worker once both hold. The plan on branch `plans/validate-reserved-name`, which tolerated the validator's error instead, closes unrun by its own Dispatch Authorization, and this plan supersedes it.
+
+## Goal
+
+The kit plugin's name is `grimoire` everywhere the name is read: the manifest, the marketplace entry, the plugin folder `plugins/grimoire/`, the skill and agent prefixes a session types, the install id `grimoire@applefeld`, the output style `grimoire:Kit`, the doctrine file `~/.claude/grimoire-doctrine.md` with its import line, stamp and signpost, and the build, hook, doctor and setup scripts that spell any of them. `claude plugin validate` passes the plugin and the marketplace on 2.1.287, so the pre-commit hook lets a plugin commit land again. The marketplace carries a `renames` map, so Claude Code rewrites each host's settings on its own. On a host that still carries the old files, the session-start hook renames the doctrine file, its stamp and the signpost and swaps the import line, and the doctor reads the same four, the output style and the plugin cache, repairing each under `-Fix`. The test suite is green under the new paths, and a search for the old token outside history finds only the renames map, the migration code that must spell it, and this plan.
+
+## Intent
+
+The frame, in the operator's words of 2026-10-02. On the choice: "Kit feels incomplete and short to me. Let's choose one of: Matrix, Substrate, Doctrine, or Grimoire. Pick what you feel is best." On the repository: "Agreed, I'll rename to match." On the machine files: "Agreed, Doctor renames them too." The ARCHITECT chose Grimoire because Substrate already names the kit's PIANO direction note, Doctrine names the document the kit installs on every machine, Matrix collides with build matrices, and Grimoire appears nowhere in the three repositories, which makes the sweep checkable both ways. Both candidate names were run through the installed 2.1.287 validator on the kit's own payload and passed.
+
+What done needs to do. Every tracked file outside history carries `grimoire` where it carried `claude-kit`, and the two paths spelling the token move. The marketplace renames the entry and maps the old name to the new. The session-start hook and the doctor migrate a host's four files, the doctor also the output style and the cache, so an operator runs nothing by hand beyond the doctor on a host it reports. The in-flight branches get a recipe the Chapter records, so each can take the rename before merging trunk.
+
+What done does not need to do. It does not rename the skills `kit-goal` and `kit-doctor`, the output style `Kit`, or the word "kit" in prose, which the operator's ruling did not reach. It does not rewrite archived plans, the kaizen archive, the dated mechanism-cut artifact or the kaizen inbox notes, which are history. It does not rename the active plans' files, whose `claude-kit_` prefix is the handle in-flight worktrees and the goal leash hold. It does not rename the GitHub repository, which is the operator's act, nor rewrite the marketplace's repository pointer in settings, since GitHub redirects the old name. It does not build the public marketplace, which is the fourth plan.
+
+Alternatives refused. Tolerating the validator's error in the pre-commit hook: refused by the operator, who chose the rename. Renaming the active plan files too: refused, since eight worktrees and the kit worker's parked commit hold those names. A tree-wide replace that includes history: refused, since the archive is immutable by the docs taxonomy and a renamed archive would read as if it had always said so. Leaving the machine files under the old name: refused by the operator.
+
+Rulings after the spec shipped: none yet.
+
+Provenance: written by the ARCHITECT persona, session 57239bb8, on 2026-10-02, with the validator runs made on this machine's installed 2.1.287 build and the renames mechanism read from the Claude Code host-marketplace documentation the same day.
+
+## Approach
+
+**The token and its exclusions.** The sweep replaces the exact token `claude-kit` with `grimoire` in every tracked file except: `docs/archive/`, `kaizen/archive/`, `kaizen/notes-*.md`, `tools/corpus-compression/mechanism-cut-2026-09-30.json`, and this plan. The one other spelling, `claudekit.memorysync` at `plugins/claude-kit/doctor/install-memory-sync.ps1:58`, `hooks/memory-session.js:696` and `:929` and four test sites, is a git config key written into every host's memory store repository, so it stays, named under `## Out of Scope`. The counts at origin/main 3551ed71: 409 tracked files carry the token, 237 of them outside `docs/`; the plugin folder holds 170 files; `plugins/claude-kit/` and `home/claude-kit-doctrine.md` are the two tracked paths that spell it outside `docs/`. The recipe, run from the repository root under Git Bash, is `git mv plugins/claude-kit plugins/grimoire`, `git mv home/claude-kit-doctrine.md home/grimoire-doctrine.md`, then `git ls-files -z | grep -zv -e '^docs/archive/' -e '^kaizen/archive/' -e '^kaizen/notes-' -e '^tools/corpus-compression/mechanism-cut-2026-09-30.json$' -e '^docs/plans/claude-kit_grimoire-rename_spec_v1.md$' | xargs -0 sed -i 's/claude-kit/grimoire/g'`. The worker reads `git ls-files --eol` before the sed, since Git Bash `sed -i` strips every carriage return from a CRLF file, and restores any file whose line endings it changed. The Chapter records the exact commands, since every in-flight branch applies the same recipe at its own tip before merging trunk, and identical hunks merge clean.
+
+**The marketplace, `.claude-plugin/marketplace.json`.** The entry's `name` and `source` become `grimoire` and `./plugins/grimoire`, and the file gains a top-level `"renames": { "claude-kit": "grimoire" }`. The documentation read on 2026-10-02 states what that does on a host: Claude Code loads the plugin under the new name, shows `Renamed to "grimoire" in the "applefeld" marketplace` once, and rewrites the old key to the new in `enabledPlugins` and `pluginConfigs` in the user, project and local scopes. For a marketplace added from a git repository, the renamed plugin reports `Plugin "grimoire" not cached` until the host runs `claude plugin install grimoire@applefeld` once, which the doctor does under `-Fix`. The map is append-only history and never shrinks. `claude plugin validate .` checks the chain.
+
+**The plugin folder and the scripts.** `plugins/grimoire/.claude-plugin/plugin.json` carries `"name": "grimoire"`. `.githooks/pre-commit` at `:16` and `:23` watches and validates `plugins/grimoire/`, and the message at `:29` and the zip name follow. `build.ps1` at `:21` and `:83`, `build.sh` at `:11` and `:88`, `.gitignore` at `:11`, `:16` and `:17`, `setup.sh` at `:21`, `:22`, `:60`, `:110` and `:111`, `doctor.ps1` at `:5`, and `home/CLAUDE.md:2` take the sweep. In the payload, the sweep reaches `hooks/doctrine-refresh.js:48` to `:52`, `compact-deferral-nudge.js:471`, `hook-canary.js:306` to `:359`, `kit-goal.js:98` to `:100`, `kit-read-lib.js:174`, `kit-version-nudge.js:60` and `:104`, `memory-recognition-nudge.js:1164`, `session-start.js:152`, `:977` and `:1453`, `scripts/kit-size.js:271` to `:286`, `scripts/memq-shim.js:75`, `doctor/doctor.ps1:210`, `:227`, `:351`, `:363`, `:368`, `:399`, `:410`, `:437`, `:897`, `:898` and `:923`, `doctor/install-memq-shim.ps1:215`, and the agents, skills and rationale ledgers, whose hits are path citations and prefixed agent ids. The cache the engine writes for an installed plugin is `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>/`, so `memq-shim.js`, `kit-goal.js` and `session-start.js` read the new folder name once the host has installed under it.
+
+**The tests, `test/`.** 77 test files outside `test/probes/` carry the token, as paths into the payload, as the doctrine file name, as the signpost name, or as a prefixed agent id, and `test/size-budget.json` keys 74 paths. All take the sweep. The probes under `test/probes/` are prose scenarios and take it too. The suite is `node --test test/*.test.js`, per `docs/architecture.md:21`, and the size ratchet's caps are line counts, so no cap moves.
+
+**The machine migration, in the session-start hook.** `hooks/doctrine-refresh.js` runs at every session start under the kit's hook registration and already owns the doctrine file, its stamp and the import line. Before its refresh step at `:120`, a migration step reads `~/.claude`: where `grimoire-doctrine.md` is absent and `claude-kit-doctrine.md` present, it renames the file, renames `claude-kit-doctrine.stamp.json` to `grimoire-doctrine.stamp.json` where that exists, and renames `claude-kit.local.json` to `grimoire.local.json` where that exists and the new name is absent. Where `~/.claude/CLAUDE.md` holds a line that is exactly `@claude-kit-doctrine.md`, it rewrites that one line to `@grimoire-doctrine.md`, preserving the file's line endings, and reports the rewrite in its session-start lines, since the file is the user's own and the hook today only offers to add the import. A line carrying the old token with anything else on it is left, and the existing offer at `:168` then fires for the new token. Each rename is a `fs.renameSync` that gives up quietly on error, as the hook's writes do. The migration constants are the one place in the payload that still spells the old names, and a comment says why.
+
+**The machine migration, in the doctor.** `doctor/doctor.ps1`'s Doctrine import section at `:351` to `:410` and the signpost section at `:437` read the new names. A migration check before them reports FAIL where any of the four old files or the old import line is present and the new is absent, naming each, and `-Fix` performs the same four renames and the one-line rewrite the hook performs. A check on the output style reads `~/.claude/settings.json`'s `outputStyle`: FAIL where it is `claude-kit:Kit`, and `-Fix` rewrites it to `grimoire:Kit` through the settings writer `install-compact-window.ps1` already uses, preserving the file otherwise. A check on the install reads `installed_plugins.json`: where `enabledPlugins` in settings carries `grimoire@applefeld` and the install file has no `grimoire@applefeld` key, FAIL naming `claude plugin install grimoire@applefeld`, which `-Fix` runs. The memq shim check at `:897` to `:923` already fails where the installed shim differs from the payload's, and `-Fix` already reinstalls it, so the shim's `PLUGIN_NAME` reaches every host through the existing repair. The doctor's settings pointer for the marketplace stays, since GitHub redirects a renamed repository.
+
+**The README and the install text.** `README.md` takes the sweep, and its install step at `:168` to `:191` gains one sentence: a machine that installed the plugin under its old name sees Claude Code rename it once and then needs the one install command, which the doctor runs. `docs/plans/README.md:9`'s naming example stays, since the active plans keep their prefix. `setup.sh:110` and `:111` print the new install id and import line.
+
+**The sweep's control.** After the sweep, `git grep -n -- 'claude-kit'` outside the exclusions must find only `.claude-plugin/marketplace.json`'s renames line, the migration constants and their comment in `doctrine-refresh.js`, the doctor's migration check, the tests pinning those two, and the README's one sentence. The control for the silence is a file planted with the token under `plugins/grimoire/skills/` before the sweep is re-run, which the sweep must change; the Chapter records it.
+
+**In-flight branches.** Nine worktrees and the kit worker's parked Jev code-checks commit sit on branches cut before this plan. Each owner runs the recipe above at its own tip, commits, then merges trunk; a file the branch added under `plugins/claude-kit/` moves with the `git mv`. The worker posts the recipe to the coordinator at the section close.
+
+## Sections of Work
+
+### 1. The tree carries the new name, and the validator and the suite pass under it
+
+Model: sonnet
+
+Acceptance:
+- `claude plugin validate ./plugins/grimoire` and `claude plugin validate .` both end `Validation passed`, exit 0, on 2.1.287.
+- `node --test test/*.test.js` is green against the baseline recorded before the section's first edit, with the pass and fail counts and any failing names in the Chapter.
+- `git grep -n -- 'claude-kit'` over the tree, outside `docs/archive/`, `kaizen/`, `tools/corpus-compression/mechanism-cut-2026-09-30.json` and `docs/plans/`, finds only the marketplace renames line and the sites `## Approach` names as the migration's, each listed in the Chapter.
+- `git ls-files --eol` reads the same line endings per file before and after the sweep, both reads in the Chapter.
+- A commit staging one file under `plugins/grimoire/` passes the pre-commit hook on this host and rebuilds `plugins/grimoire.zip`, the hook's output in the Chapter.
+- The planted-file control changed under the sweep, recorded in the Chapter.
+- The Chapter carries the exact commands run, as the recipe for in-flight branches.
+
+Files in scope: `plugins/claude-kit/` moved whole to `plugins/grimoire/`, `home/claude-kit-doctrine.md` moved to `home/grimoire-doctrine.md`, `.claude-plugin/marketplace.json`, `.githooks/pre-commit`, `.gitignore`, `build.ps1`, `build.sh`, `setup.sh`, `doctor.ps1`, `README.md`, `home/CLAUDE.md`, `docs/README.md`, `docs/plans/README.md`, `docs/*.md`, `docs/plans/*.md` other than this plan, `sidecar/`, `tools/` other than the dated artifact, `kaizen/README.md`, `test/`.
+Tests: the whole suite under the new paths, since every path pin is a reader of the token; the validator on both manifests, since the validator is the gate the rename exists to pass.
+
+### 2. Each host migrates itself: the session-start hook renames the four files, and the doctor reads and repairs the rest
+
+Model: opus
+
+Acceptance:
+- `node --test test/doctrine-refresh.test.js` passes with new cases: a home holding the four old files and an import line that is exactly the old token ends with the four new files, no old file, and the new import line, with the file's line endings kept; a home holding only new files is untouched; a home holding both the old and the new doctrine file leaves both; a `CLAUDE.md` whose old-token line carries other text keeps that line and gets the wiring offer for the new token. The four-old-files case is red before the hook's edit and green after, both runs in the Chapter.
+- The doctor's tests, run with the technique `doctrine-refresh.test.js` and `kaizen-signpost.test.js` use, pass with new cases: a home in the four-old-files state reads FAIL naming each, and `-Fix` leaves it in the migrated state; a settings file with `outputStyle` `claude-kit:Kit` reads FAIL, and `-Fix` rewrites that one key and leaves the rest of the file byte for byte; a settings file enabling `grimoire@applefeld` beside an install file without that key reads FAIL naming the install command, with the command invocation stubbed in the harness.
+- On this host, after the plugin is installed under the new name, one session start leaves `~/.claude/grimoire-doctrine.md`, `grimoire-doctrine.stamp.json` and `grimoire.local.json` present and the old three absent, and `~/.claude/CLAUDE.md` importing `@grimoire-doctrine.md`. The doctor then reads PASS on the migration, the doctrine import, the signpost and the output style. The before and after listings of `~/.claude` are in the Chapter.
+- `node --test test/*.test.js` is green against the section 1 baseline.
+
+Files in scope: `plugins/grimoire/hooks/doctrine-refresh.js`, `plugins/grimoire/doctor/doctor.ps1`, `test/doctrine-refresh.test.js`, the doctor test file that holds the migration cases, `README.md`.
+Tests: the rename of each file both ways, since a hook that renames over an existing new file would discard a newer write; the import line swap only on an exact-token line, since the file is the user's; the output style rewrite leaving every other key, since the settings file holds permissions; the install command named and not run outside `-Fix`, since a read-only doctor run must change nothing.
+
+## Out of Scope
+
+- The persona repository's kit lookup and priming text, which `agent_persona_kit-name-tolerance_spec_v1.md` covers before this plan and the persona rename plan finishes after it.
+- The public marketplace, the publish jobs and the privatizing: the fourth plan.
+- The git config key `claudekit.memorysync`, written into every host's memory store repository by `install-memory-sync.ps1` and read by `memory-session.js`: a rename of a key in other repositories is its own migration and is not the plugin's name.
+- Archived plans, the kaizen archive, the kaizen inbox notes and `tools/corpus-compression/mechanism-cut-2026-09-30.json`, which are history, and the active plans' file names, which are handles in flight.
+- The skills `kit-goal` and `kit-doctor`, the output style file `Kit`, and the word "kit" in prose.
+- The GitHub repository rename and the marketplace pointer in settings, under `## Operator Verification`.
+- The tolerate-the-validator plan on branch `plans/validate-reserved-name`, closed unrun; its branch may be deleted.
+
+## Assumptions
+
+- assumed 2026-10-02 (source: the Claude Code host-marketplace documentation, read that day): a top-level `renames` map migrates `enabledPlugins` and `pluginConfigs` on 2.1.193 and later, and a git-hosted marketplace's renamed plugin needs one install command per host; reversal: a host where the rename notice never shows, which moves the settings rewrite into the doctor's `-Fix`.
+- assumed 2026-10-02 (source: this host's cache at `~/.claude/plugins/cache/applefeld/claude-kit/<sha>/`): the engine names the cache folder after the plugin, so the installed copy lands under `applefeld/grimoire/`; reversal: a folder under another name, which moves `memq-shim.js`'s resolver to read `installed_plugins.json` instead of the folder name.
+- assumed 2026-10-02 (default): the migration lives in `doctrine-refresh.js` rather than a new hook, since that hook already owns three of the four files and runs at every session start; reversal: none needed.
+- assumed 2026-10-02 (default): the doctor's settings rewrite goes through the writer `install-compact-window.ps1` already uses, since it exists and is tested; reversal: a second writer, refused.
+- assumed 2026-10-02 (default): in-flight branches migrate by re-running the recipe at their tips rather than by a committed script; reversal: a script under `tools/`, if two branch owners report conflicts the recipe did not clear.
+
+## Operator Verification
+
+- Rename the GitHub repository `SApplefeld/claude-kit` to `SApplefeld/grimoire` after this merges. GitHub redirects the old name, so no host's settings need to change for it.
+- On each fleet host, after the kit updates: start one session, then run the doctor with `-Fix` and read PASS on the migration, the output style, the memq shim and the install. A host still reading FAIL on the install reopens the doctor's install repair.
+- Confirm on the ARCHITECT's channel that every host runs the persona plugin at or past the tolerance plan's merge before the coordinator dispatches this plan.
+
+## Open Questions
+
+- None.
+
+## Related
+
+- `agent_persona_kit-name-tolerance_spec_v1.md` in the persona repository: the first plan, which this one waits on.
+- Branch `plans/validate-reserved-name`, `claude-kit_validate-reserved-name_spec_v1.md`: the tolerated-error alternative, closed unrun by the operator's ruling and superseded by this plan.
+
+## Chapters
