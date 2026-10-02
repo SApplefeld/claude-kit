@@ -13,12 +13,12 @@ options:
 shapes:
   - name: doctrine-plus-finishing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
   - name: doctrine-plus-output-style
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
 ---
 # An implementer has gone quiet
 

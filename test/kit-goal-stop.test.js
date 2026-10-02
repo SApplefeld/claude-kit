@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-goal-stop.js (the goal-leash Stop hook).
+// Tests for plugins/grimoire/hooks/kit-goal-stop.js (the goal-leash Stop hook).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as a
 // real child process, fed a Stop payload on stdin, and asserted on by its stdout:
@@ -24,28 +24,28 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
-const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal-stop.js');
+const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'grimoire');
 const {
     armGoal, appendGoal, bindSession, advanceGoal, goalPath, composeCondition
-} = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+} = require('../plugins/grimoire/hooks/kit-goal-lib.js');
 // The compaction-checkpoint helpers pin the advance's checkpoint rewrite (the
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
 const {
     writeCheckpoint, readCheckpoint, checkpointPath, checkpointCliClause
-} = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+} = require('../plugins/grimoire/hooks/kit-compact-lib.js');
 // The hold directive and the queue-advance catch-up sentence, both as a
 // function of the checkpoint CLI path, required in-process (never spawned) so
 // a case can inject a fixed path and drive both directions of the command
 // clause without depending on this checkout's own installed location.
-const { boundaryDirective, queueAdvanceCatchUp } = require('../plugins/claude-kit/hooks/kit-goal-stop.js');
+const { boundaryDirective, queueAdvanceCatchUp } = require('../plugins/grimoire/hooks/kit-goal-stop.js');
 // The status-line widget's own sectionProgress, required directly so a
 // Chapter-registration test can confirm the widget reads the same fixture the
 // hold reads: the hook's note and the widget's Sections count share one
 // registration test (kit-goal-statusline.js's registeredSections), and a
 // fixture that fails it should fail it on both surfaces, never on one alone.
-const { sectionProgress: widgetSectionProgress } = require('../plugins/claude-kit/scripts/kit-goal-statusline.js');
+const { sectionProgress: widgetSectionProgress } = require('../plugins/grimoire/scripts/kit-goal-statusline.js');
 
 // The goal-event sink for a case, always inside a temp root that case cleans up,
 // never the real ~/.claude/kit-events.jsonl that a release fired by any spawn
@@ -232,23 +232,23 @@ function armedRepo(assistantTexts, planStatus) {
 }
 
 test('boundaryDirective renders the runnable clause for a conventional path, both verbs', () => {
-    const text = boundaryDirective('D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
-    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+    const text = boundaryDirective('D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js');
+    assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open'),
         'the open mention must render the runnable clause:\n' + text);
-    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" status'),
+    assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" status'),
         'the status mention must render the runnable clause:\n' + text);
     // With whatever the helper rendered removed, no bare mention of the file
     // survives: the acceptance predicate for this section (the literal never
     // appears outside what the helper composed).
-    const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('')
-        .split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" status').join('');
+    const stripped = text.split('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open').join('')
+        .split('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" status').join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
     // Each run instruction says where to run the command from, as the
     // deferral nudge's buildReminder does, pinned per verb so either one
     // losing the phrase reds this case.
     for (const verb of ['open', 'status']) {
-        assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" ' + verb
+        assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" ' + verb
             + ' from the project directory'),
             'the ' + verb + ' run instruction must say to run from the project directory:\n' + text);
     }
@@ -277,14 +277,14 @@ test('boundaryDirective falls back to prose for a path the screen refuses, both 
 
 test('queueAdvanceCatchUp renders the runnable clause for a conventional injected path', () => {
     const text = queueAdvanceCatchUp('the next plan', 'the finished plan',
-        'D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
-    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+        'D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js');
+    assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open'),
         'the catch-up sentence must render the runnable clause:\n' + text);
-    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'
+    assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open'
         + ' from the project directory'),
         'the run instruction says where to run the command from, as the deferral nudge\'s '
         + 'buildReminder does:\n' + text);
-    const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('');
+    const stripped = text.split('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open').join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
 });
@@ -1201,15 +1201,15 @@ test('the real namespaced /kit-goal arming record (backtick-wrapped args) binds 
         writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
         assert.strictEqual(armGoal(repo, planRel).ok, true);
         const tx = path.join(repo, 'arming.jsonl');
-        // Verbatim real arming record: namespaced command-name (/claude-kit:kit-goal),
+        // Verbatim real arming record: namespaced command-name (/grimoire:kit-goal),
         // no isMeta field, backtick-wrapped args value. The substring match tolerates
         // the backticks, and the command-name gate accepts the ':kit-goal' suffix.
         writeFile(tx, JSON.stringify({
             type: 'user', isSidechain: false,
             message: {
                 role: 'user',
-                content: '<command-message>claude-kit:kit-goal</command-message>\n'
-                    + '<command-name>/claude-kit:kit-goal</command-name>\n'
+                content: '<command-message>grimoire:kit-goal</command-message>\n'
+                    + '<command-name>/grimoire:kit-goal</command-name>\n'
                     + '<command-args>`' + planRel + '`</command-args>'
             }
         }) + '\n');
@@ -1248,13 +1248,13 @@ test('a multi-line typed /kit-goal (no harness markup) binds the leash and enfor
     }
 });
 
-test('a namespaced typed lead (/claude-kit:kit-goal <path>, no markup) binds the leash and enforces', () => {
+test('a namespaced typed lead (/grimoire:kit-goal <path>, no markup) binds the leash and enforces', () => {
     const { repo, planRel, local } = armedRepo(['unused']);
     try {
         const tx = path.join(repo, 'typed-namespaced.jsonl');
         writeFile(tx, JSON.stringify({
             type: 'user',
-            message: { role: 'user', content: '/claude-kit:kit-goal ' + planRel }
+            message: { role: 'user', content: '/grimoire:kit-goal ' + planRel }
         }) + '\n');
         const res = runHook({ cwd: repo, transcript_path: tx, session_id: 'typed-ns-sess' }, local);
         const out = JSON.parse(res.stdout);
@@ -2202,7 +2202,7 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
         assert.ok(!/destructive action/i.test(out.reason),
             'the retired destructive-action wording is gone from the blocker set: ' + out.reason);
         const ownerLines = fs.readFileSync(
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'),
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'skills', 'executing-work', 'SKILL.md'),
             'utf8'
         ).split(/\r?\n/);
         const ownerMember = ownerLines.filter(

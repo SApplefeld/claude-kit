@@ -7,7 +7,7 @@
 // whatever a command printed. All three reach stderr, a scrollback, a redirected
 // log, a JSONL record, a rollup and a line delivered back into a session.
 //
-// The screen itself lives in plugins/claude-kit/scripts/kit-endpoint-lib.js and
+// The screen itself lives in plugins/grimoire/scripts/kit-endpoint-lib.js and
 // is re-exported here, because the endpoint client applies it to the endpoint's
 // own error strings and that client ships in the plugin tree while this
 // directory does not. A neutralizing guard is a property of the output channel,
@@ -34,7 +34,7 @@
 
 'use strict';
 
-const lib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
+const lib = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 
 // The longest a neutralized field is let ride onto a rendered surface: a
 // terminal, a status round, the Discord relay. Every producer that reaches
@@ -63,7 +63,7 @@ const TEXT_MAX_CHARS = 2000;
 // sidecar/rollup.js's gap note, gap detail and recognition-gap note; and
 // sidecar/inbox.js's item text. The capture hook holds the other
 // implementation, across the process boundary it cannot require across
-// (plugins/claude-kit/hooks/kit-sidecar-capture.js, pinned equal by a test).
+// (plugins/grimoire/hooks/kit-sidecar-capture.js, pinned equal by a test).
 //
 // The cuts that do NOT carry it are the ones whose output is a prompt or a
 // stored field rather than a rendered one: sidecar/judge.js's and

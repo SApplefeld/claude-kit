@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/doctor/install-compact-window.ps1, the
+// Tests for plugins/grimoire/doctor/install-compact-window.ps1, the
 // doctor's autoCompactWindow writer for user settings.json.
 //
 // Node's built-in test runner, no framework (Node v24). Every case builds its
@@ -23,7 +23,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const INSTALLER = path.join(REPO, 'plugins', 'claude-kit', 'doctor', 'install-compact-window.ps1');
+const INSTALLER = path.join(REPO, 'plugins', 'grimoire', 'doctor', 'install-compact-window.ps1');
 const isWin = process.platform === 'win32';
 
 // Single-quoted PowerShell literal, any embedded quote doubled.

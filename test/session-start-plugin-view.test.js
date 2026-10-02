@@ -1,5 +1,5 @@
 // Tests for the plugin-view staleness notice in
-// plugins/claude-kit/hooks/session-start.js.
+// plugins/grimoire/hooks/session-start.js.
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
 // child process, fed a SessionStart payload on stdin, and asserted on by its
@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
 
 const NOTICE_LEAD = 'Kit version check.';
 const SESSION_LEVEL = 'Session-level:';
@@ -66,9 +66,9 @@ function makeProject({ kit = true } = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-plugin-view-test-'));
     fs.mkdirSync(path.join(dir, 'home', '.claude', 'plugins'), { recursive: true });
     if (kit) {
-        const manifest = path.join(dir, 'plugins', 'claude-kit', '.claude-plugin');
+        const manifest = path.join(dir, 'plugins', 'grimoire', '.claude-plugin');
         fs.mkdirSync(manifest, { recursive: true });
-        fs.writeFileSync(path.join(manifest, 'plugin.json'), '{"name":"claude-kit"}\n', 'utf8');
+        fs.writeFileSync(path.join(manifest, 'plugin.json'), '{"name":"grimoire"}\n', 'utf8');
     }
     return dir;
 }
@@ -138,7 +138,7 @@ function unrelatedCommit(dir) {
 // <plugin>@<marketplace> key, each entry carrying the full sha and a 12-character
 // prefix of it. The marketplace half of the key varies by operator, so cases
 // that vary it prove the match is on the plugin half.
-function writeInstalled(dir, entries, { key = 'claude-kit@applefeld', raw = null } = {}) {
+function writeInstalled(dir, entries, { key = 'grimoire@applefeld', raw = null } = {}) {
     const file = path.join(dir, 'home', '.claude', 'plugins', 'installed_plugins.json');
     if (raw !== null) {
         fs.writeFileSync(file, raw, 'utf8');
@@ -160,7 +160,7 @@ function writeInstalled(dir, entries, { key = 'claude-kit@applefeld', raw = null
 function installedEntry(sha) {
     return {
         scope: 'user',
-        installPath: path.join('cache', 'applefeld', 'claude-kit', sha.slice(0, 12)),
+        installPath: path.join('cache', 'applefeld', 'grimoire', sha.slice(0, 12)),
         version: sha.slice(0, 12),
         installedAt: '2020-01-01T00:00:00.000Z',
         lastUpdated: '2020-01-02T00:00:00.000Z',
@@ -178,7 +178,7 @@ function installedEntry(sha) {
 //
 // A viewSha of null leaves CLAUDE_PLUGIN_ROOT unset, which is the real
 // unreadable-view shape: the hook then falls back to its own parent directory,
-// whose basename is `claude-kit` rather than a sha.
+// whose basename is `grimoire` rather than a sha.
 function runHook(dir, viewSha, extra) {
     const env = { ...process.env };
     for (const k of Object.keys(env)) {
@@ -443,7 +443,7 @@ test('a plugin root that names no sha drops the session-level comparison alone',
         // notice at all.
         const text = context(dir, null);
         assert.strictEqual(block(text, NOTICE_LEAD), '',
-            'a plugin root named `claude-kit` is a directory name, not a version: ' + text);
+            'a plugin root named `grimoire` is a directory name, not a version: ' + text);
 
         const notice = block(context(dir, first.slice(0, 12)), NOTICE_LEAD);
         assert.ok(notice.includes(SESSION_LEVEL),
@@ -496,7 +496,7 @@ test('an absent, malformed or unmatched install record drops both comparisons', 
         // would report on, so what the silence measures is the ceiling.
         const oversized = {
             version: 2,
-            plugins: { 'claude-kit@applefeld': [installedEntry(second)] },
+            plugins: { 'grimoire@applefeld': [installedEntry(second)] },
             comment: 'x'.repeat(1024 * 1024)
         };
         writeInstalled(dir, [], { raw: JSON.stringify(oversized) });
@@ -508,7 +508,7 @@ test('an absent, malformed or unmatched install record drops both comparisons', 
         // The control for all of them: a well-formed entry under a key whose
         // marketplace half is some other operator's still matches, since the
         // plugin half is the part that identifies the kit.
-        writeInstalled(dir, [installedEntry(second)], { key: 'claude-kit@someone-else' });
+        writeInstalled(dir, [installedEntry(second)], { key: 'grimoire@someone-else' });
         const notice = block(context(dir, view), NOTICE_LEAD);
         assert.ok(notice.includes(SESSION_LEVEL),
             'a readable record under any marketplace name is a reading: ' + notice);

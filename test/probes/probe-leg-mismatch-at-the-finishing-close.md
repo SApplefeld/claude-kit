@@ -13,20 +13,20 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/skills/writing-skills/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/writing-skills/SKILL.md
   - name: doctrine-plus-finishing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
 ---
 # The after leg returns one mismatch at the close
 
 You are running the finishing pass for `docs/plans/claude-kit_session-banner_spec_v1.md` in the kit's own repository. Steps 1 through 5 are done. At step 6 you appended the final Chapter with its `Gate:` line left open.
 
-The changeset touched `plugins/claude-kit/skills/executing-work/SKILL.md`, which several probe shapes under `test/probes/` name. You backgrounded the after leg with its output redirected to a log and its own exit marker. Its marker now reads 1, and the log ends with this summary line:
+The changeset touched `plugins/grimoire/skills/executing-work/SKILL.md`, which several probe shapes under `test/probes/` name. You backgrounded the after leg with its output redirected to a log and its own exit marker. Its marker now reads 1, and the log ends with this summary line:
 
     probe-corpus: 8 pairs, 1 mismatches (0 on proposed rulings, 0 designed), 0 errors, exit 1, tier sonnet, report .kit/probe-runs/2026-09-26T14-02-11-508Z/report.md
 

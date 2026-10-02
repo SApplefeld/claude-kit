@@ -2,7 +2,7 @@
 
 Status: Handoff (non-executable; authors no sections)
 Created: 2026-09-19
-Origin: a claude.ai design conversation on the operator's behalf, working from a clone of `SApplefeld/claude-kit` at `main` 2d2ead9 and the `feat/memory-database` branch at 1e3bdd7 (pull request 59). Anchors are authoring-time; re-locate every hit by content.
+Origin: a claude.ai design conversation on the operator's behalf, working from a clone of `SApplefeld/grimoire` at `main` 2d2ead9 and the `feat/memory-database` branch at 1e3bdd7 (pull request 59). Anchors are authoring-time; re-locate every hit by content.
 Distilled into: `claude-kit_jev-recollection-judge_spec_v1.md`, which adopts applications A and E below and declines B, C and D with reasons.
 Companion files: `run.js` (the battery-to-SystemOne harness) and `report.md` (the live run's output) were delivered beside this brief to the operator and are not in the repository; the spec's section 1 lands the harness.
 
@@ -99,7 +99,7 @@ Recollection today serves one seam of the turn, retroactively, and the whole sid
 
 ### The sidecar flow
 
-The capture hook spools every Bash call at PostToolUse. The daemon wakes on a 2 second poll and clears "one to two verdicts a second" against "a few thousand calls a day" from the fleet (`sidecar/daemon.js:177-181`). Recognition runs for every captured call whose project has a memory index, sends the whole index as prompt text under `INDEX_PROMPT_CAP = 32768` characters with a cut index stated as cut (`sidecar/prompts/recognition-v1.js:60`), and names at most `MAX_RECORDS = 3` records. The pointer lands in the session's inbox, and the valve emits it "through the same hook, one tool call later" (`plugins/claude-kit/hooks/kit-sidecar-capture.js:14-16`). So a pointer about call N cannot reach the model before the result of call N+1, and under queue depth it is later. Judgment (`sidecar/prompts/judgment-v5.js`) returns one of achieved, failed, diverged, unproven plus a reason, and its fencing, nonces and partial-input paragraphs exist because an instruction-following judge reads text written by the party it judges.
+The capture hook spools every Bash call at PostToolUse. The daemon wakes on a 2 second poll and clears "one to two verdicts a second" against "a few thousand calls a day" from the fleet (`sidecar/daemon.js:177-181`). Recognition runs for every captured call whose project has a memory index, sends the whole index as prompt text under `INDEX_PROMPT_CAP = 32768` characters with a cut index stated as cut (`sidecar/prompts/recognition-v1.js:60`), and names at most `MAX_RECORDS = 3` records. The pointer lands in the session's inbox, and the valve emits it "through the same hook, one tool call later" (`plugins/grimoire/hooks/kit-sidecar-capture.js:14-16`). So a pointer about call N cannot reach the model before the result of call N+1, and under queue depth it is later. Judgment (`sidecar/prompts/judgment-v5.js`) returns one of achieved, failed, diverged, unproven plus a reason, and its fencing, nonces and partial-input paragraphs exist because an instruction-following judge reads text written by the party it judges.
 
 ### The seams of a turn
 

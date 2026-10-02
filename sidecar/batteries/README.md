@@ -144,7 +144,7 @@ too, because they live in a file the sweep's own declared scope includes.
 | account-bearing absolute path | `` /(?:[A-Za-z]:[\\/]Users[\\/]\|\/home\/\|\/Users\/)[^\s"'\\/]+/g `` | `C:/Users/EXAMPLE-ACCOUNT/notes.md and /home/EXAMPLE-ACCOUNT/notes.md` (2) | `C:/Users/EXAMPLE-ACCOUNT`, the recorded placeholder, twice in `cases.json`. In this file: this row's two control strings, this row's own mention of the placeholder, and the mention in the fixture-hygiene steps above |
 | UUID (session or subagent id) | `/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g` | `session 11111111-2222-3333-4444-555555555555` (1) | the nil UUID `00000000-0000-0000-0000-000000000000`, the recorded placeholder, once in `cases.json`. In this file: this row's control string and this row's own spelling of the nil UUID |
 | long hex id (agent or transcript id) | `/\b[0-9a-fA-F]{16,}\b/g` | `agent 0123456789abcdef0123456789abcdef` (1) | in `cases.json`: the zero-filled agent id placeholder `0000000000000000` twice (case 2's `command` and its `result`), and `ce013625030ba8dba906f756967f9e9ca394464a`, a git object id inside a code literal in case 9's own command text. In this file: this row's control string, this row's own spelling of that git object id, and this row's own spelling of the zero-filled placeholder |
-| absolute local path rooted at a volume | `` /(?:\b[A-Za-z]:[\\/]+\|\/[a-z]\/)[A-Za-z0-9._-]+/g `` | `D:/claude-kit and D:\claude-kit and /d/claude-kit and E:/an-unrelated-checkout` (4) | in `cases.json`: `/d/claude-kit` seven times, `D:\claude-kit` three times and `D:/claude-kit` once, all inspected and left in place (recorded below), plus `C:/Users` twice, the volume-rooted head of the recorded placeholder the account-path row counts whole. In this file: this row's four control strings, the three checkout-path spellings in this cell, the three in the record below, the two further mentions of `E:/an-unrelated-checkout` (this cell's own and the coverage paragraph's below), and the `C:/Users` head of the account-path row's control strings and placeholder mentions |
+| absolute local path rooted at a volume | `` /(?:\b[A-Za-z]:[\\/]+\|\/[a-z]\/)[A-Za-z0-9._-]+/g `` | `D:/grimoire and D:\grimoire and /d/grimoire and E:/an-unrelated-checkout` (4) | in `cases.json`: `/d/grimoire` seven times, `D:\grimoire` three times and `D:/grimoire` once, all inspected and left in place (recorded below), plus `C:/Users` twice, the volume-rooted head of the recorded placeholder the account-path row counts whole. In this file: this row's four control strings, the three checkout-path spellings in this cell, the three in the record below, the two further mentions of `E:/an-unrelated-checkout` (this cell's own and the coverage paragraph's below), and the `C:/Users` head of the account-path row's control strings and placeholder mentions |
 | URL or endpoint address | `` /\b(?:https?\|ftp):\/\/[^\s"']+/g `` | `http://203.0.113.5:9999/api/generate` (1) | in `jev-recognition-v1/run.js`: the vendor's public endpoint once, the harness's default, inspected and left in place since it is the published address every live run is disclosed as reaching. In this file: only this table's own control string |
 | bare IPv4 address | `/\b(?:\d{1,3}\.){3}\d{1,3}\b/g` | `the host at 198.51.100.7 answered` (1) | in `jev-recognition-v1/run.js`: the loopback range's base address once, inside the comment defining loopback, inspected and left in place since it names no host. In this file: only the two documentation addresses this table records as controls |
 | host name on a private suffix | `` /\b[A-Za-z0-9][A-Za-z0-9-]*\.(?:local\|lan\|internal\|home\|corp)\b/g `` | `workstation.local and box.internal` (2) | only this table's own two control strings |
@@ -200,8 +200,8 @@ standing exemption for host names.
 
 The checkout path, inspected and left in place, with the reason so a reader can
 check it rather than take it. It appears ten times across cases 2, 4, 5, 7, 8,
-9, 12 and 13, in three spellings of one directory (`/d/claude-kit`, `D:\claude-kit`
-and `D:/claude-kit`), always as the working directory or a path operand inside
+9, 12 and 13, in three spellings of one directory (`/d/grimoire`, `D:\grimoire`
+and `D:/grimoire`), always as the working directory or a path operand inside
 captured command and result text. It is a drive letter plus this repository's
 own name: it carries no account name, names no host and names no network
 destination, and the same three spellings already appear in this repository's
@@ -365,7 +365,7 @@ listed here beyond those are the written cases'.
 | account-bearing absolute path | `C:/Users/EXAMPLE-ACCOUNT` twice, the recorded placeholder in carried case 2 |
 | UUID | the nil UUID once, carried case 2's recorded placeholder |
 | long hex id | the zero-filled agent id twice and the git object id in case 9's command, all carried; and three invented 40-hex commit ids in written case 22, one each, which resolve to no object in this repository (`git cat-file -e` fails on each) |
-| absolute local path rooted at a volume | `/d/claude-kit` seven times, `D:\claude-kit` three times, `D:/claude-kit` once and `C:/Users` twice, all in carried cases and recorded under the v1 sweep; the written cases carry no absolute path |
+| absolute local path rooted at a volume | `/d/grimoire` seven times, `D:\grimoire` three times, `D:/grimoire` once and `C:/Users` twice, all in carried cases and recorded under the v1 sweep; the written cases carry no absolute path |
 | URL or endpoint address | none |
 | bare IPv4 address | none |
 | host name on a private suffix | none |
@@ -439,6 +439,6 @@ attribute is set, and the files inherit the containing tree's ACL, per
 operator's; the run prints the path and says so.
 
 Neither battery ships with the kit plugin: `sidecar/`
-sits outside `plugins/claude-kit/`, which is the only tree `build.ps1`
+sits outside `plugins/grimoire/`, which is the only tree `build.ps1`
 packages, so these fixtures and the runner are dev-time evaluation artifacts
 by construction.

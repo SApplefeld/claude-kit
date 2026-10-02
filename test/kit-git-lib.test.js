@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-git-lib.js, the shared git runner every
+// Tests for plugins/grimoire/hooks/kit-git-lib.js, the shared git runner every
 // kit hook's git calls run through.
 //
 // Node's built-in test runner, no framework. The subject is the two properties
@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-git-lib.js');
+const LIB = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-git-lib.js');
 const HOOKS_DIR = path.dirname(LIB);
 const { gitRun, gitOutput, gitChildEnv } = require(LIB);
 

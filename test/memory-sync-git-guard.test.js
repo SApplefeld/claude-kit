@@ -1,4 +1,4 @@
-// Tests for the git child environment that plugins/claude-kit/doctor/
+// Tests for the git child environment that plugins/grimoire/doctor/
 // install-memory-sync.ps1 builds inside Invoke-MemorySyncGit, the single
 // funnel every git call in the memory store's sync path passes through.
 //
@@ -25,7 +25,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memory-sync.ps1');
 const isWin = process.platform === 'win32';
 

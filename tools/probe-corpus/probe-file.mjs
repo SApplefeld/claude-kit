@@ -38,7 +38,7 @@ import { createRequire } from 'node:module';
 // the scan cap reports that it was bounded instead of returning a short list
 // that reads exactly like a small corpus.
 const require_ = createRequire(import.meta.url);
-const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require_('../../plugins/claude-kit/hooks/kit-read-lib.js');
+const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require_('../../plugins/grimoire/hooks/kit-read-lib.js');
 
 export const VERDICTS = ['RESOLVED', 'CONTESTED', 'SILENT'];
 
@@ -83,7 +83,7 @@ const FILE_ENTRY = /^[A-Za-z0-9._][A-Za-z0-9._/-]*$/;
 // Exported because a consumer that copies a shape's files out of a real tree
 // decides where an entry resolves from the same two roots, and a second
 // spelling of either is a second allowlist.
-export const PLUGIN_PREFIX = 'plugins/claude-kit/';
+export const PLUGIN_PREFIX = 'plugins/grimoire/';
 const HOME_PREFIX = 'home/';
 export const HOME_ENTRY = /^home\/[A-Za-z0-9._-]+\.md$/;
 

@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/scripts/memory-index.js.
+// Tests for plugins/grimoire/scripts/memory-index.js.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every case
 // that sweeps points the store root at a fresh temp directory through
@@ -32,8 +32,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const memq = require('../plugins/claude-kit/scripts/memq.js');
-const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+const memq = require('../plugins/grimoire/scripts/memq.js');
+const mi = require('../plugins/grimoire/scripts/memory-index.js');
 
 // Whether the optional embedding stack is installed where this run points.
 // Read once, before any case rewrites the environment, so the skip reason names

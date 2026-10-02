@@ -54,7 +54,7 @@ async function scanFile(file, kind, parentSession) {
       // roughly the iteration count (observed: a top-level 710,223 over three
       // iterations of ~355,000 each). Measure the largest iteration instead,
       // matching the compaction gate's reader in
-      // plugins/claude-kit/hooks/kit-compact-gate.js. Absent or empty, the top
+      // plugins/grimoire/hooks/kit-compact-gate.js. Absent or empty, the top
       // level is the reading, which is every single-iteration turn.
       const its = Array.isArray(msg.usage.iterations) ? msg.usage.iterations : null;
       const u = (its && its.length)

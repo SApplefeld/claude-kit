@@ -17,7 +17,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
+const SCRIPTS = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts');
 const TOOL = path.join(SCRIPTS, 'kit-jev-check.js');
 const tool = require(TOOL);
 

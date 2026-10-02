@@ -16,8 +16,8 @@ const os = require('os');
 const path = require('path');
 const util = require('util');
 
-const client = require('../plugins/claude-kit/scripts/jev-client.js');
-const { MAX_BODY_BYTES } = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
+const client = require('../plugins/grimoire/scripts/jev-client.js');
+const { MAX_BODY_BYTES } = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 
 // A recognizable key, planted in the environment so any artifact carrying it
 // or any eight characters of it fails the sweep below.

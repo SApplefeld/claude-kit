@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/memory-recognition-nudge.js (the memory
+// Tests for plugins/grimoire/hooks/memory-recognition-nudge.js (the memory
 // recognition nudge, on its four boundaries: PreToolUse, PostToolUse,
 // UserPromptSubmit and SubagentStart).
 //
@@ -40,9 +40,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-recognition-nudge.js');
-const hook = require('../plugins/claude-kit/hooks/memory-recognition-nudge.js');
-const memq = require('../plugins/claude-kit/scripts/memq.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memory-recognition-nudge.js');
+const hook = require('../plugins/grimoire/hooks/memory-recognition-nudge.js');
+const memq = require('../plugins/grimoire/scripts/memq.js');
 
 // A sha shaped like a git blob name. The sha is never consulted at match
 // time, which one of the anchor cases below pins directly.
@@ -120,7 +120,7 @@ function rmStore(store) {
 // through the hook's own naming functions so a rename of either cannot leave
 // these cases asserting about paths nothing writes.
 function stateDir(store) {
-    return path.join(store.tmp, 'claude-kit-recognition');
+    return path.join(store.tmp, 'grimoire-recognition');
 }
 function cachePath(store) {
     return hook.cacheFile(stateDir(store), store.memDir);
@@ -392,7 +392,7 @@ test('a skill: trigger fires on the skill invoked, and not on a skill whose name
         writeRecord(store, 'memory-store-rules.md', { triggers: 'skill:memory-system' });
         const fired = runHook(store, prePayload(store, {
             tool_name: 'Skill',
-            tool_input: { command: 'claude-kit:memory-system' }
+            tool_input: { command: 'grimoire:memory-system' }
         }));
         assertNames(assertNudge(fired, 'PreToolUse', 'skill fire'), 'memory-store-rules.md',
             'skill:memory-system', 'skill fire');
@@ -401,7 +401,7 @@ test('a skill: trigger fires on the skill invoked, and not on a skill whose name
             writeRecord(control, 'memory-store-rules.md', { triggers: 'skill:memory' });
             assertSilent(runHook(control, prePayload(control, {
                 tool_name: 'Skill',
-                tool_input: { command: 'claude-kit:memory-system' }
+                tool_input: { command: 'grimoire:memory-system' }
             })), 'skill control (an identifier type matches whole, never by containment)');
         } finally { rmStore(control); }
     } finally { rmStore(store); }
@@ -413,7 +413,7 @@ test('an agent: trigger fires on the agent type dispatched, and not on a differe
         writeRecord(store, 'first-turn-reading-path.md', { triggers: 'agent:implementer' });
         const fired = runHook(store, prePayload(store, {
             tool_name: 'Agent',
-            tool_input: { subagent_type: 'claude-kit:implementer', prompt: 'go' }
+            tool_input: { subagent_type: 'grimoire:implementer', prompt: 'go' }
         }));
         assertNames(assertNudge(fired, 'PreToolUse', 'agent fire'), 'first-turn-reading-path.md',
             'agent:implementer', 'agent fire');
@@ -422,7 +422,7 @@ test('an agent: trigger fires on the agent type dispatched, and not on a differe
             writeRecord(control, 'first-turn-reading-path.md', { triggers: 'agent:implementer' });
             assertSilent(runHook(control, prePayload(control, {
                 tool_name: 'Agent',
-                tool_input: { subagent_type: 'claude-kit:adversarial-reviewer', prompt: 'go' }
+                tool_input: { subagent_type: 'grimoire:adversarial-reviewer', prompt: 'go' }
             })), 'agent control');
         } finally { rmStore(control); }
     } finally { rmStore(store); }
@@ -521,17 +521,17 @@ test('an err: trigger reads the failure shapes a tool answers with', () => {
 test('a glob: trigger fires at PostToolUse on a path the call touched, and not on a path outside it', () => {
     const store = makeStore();
     try {
-        writeRecord(store, 'merging-hook-edits-staleness.md', { triggers: 'glob:plugins/claude-kit/hooks/*.js' });
+        writeRecord(store, 'merging-hook-edits-staleness.md', { triggers: 'glob:plugins/grimoire/hooks/*.js' });
         const fired = runHook(store, postPayload(store, {
-            tool_input: { file_path: path.join(store.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+            tool_input: { file_path: path.join(store.cwd, 'plugins', 'grimoire', 'hooks', 'x.js') }
         }));
         assertNames(assertNudge(fired, 'PostToolUse', 'glob fire'), 'merging-hook-edits-staleness.md',
-            'glob:plugins/claude-kit/hooks/*.js', 'glob fire');
+            'glob:plugins/grimoire/hooks/*.js', 'glob fire');
         const control = makeStore();
         try {
-            writeRecord(control, 'merging-hook-edits-staleness.md', { triggers: 'glob:plugins/claude-kit/hooks/*.js' });
+            writeRecord(control, 'merging-hook-edits-staleness.md', { triggers: 'glob:plugins/grimoire/hooks/*.js' });
             assertSilent(runHook(control, postPayload(control, {
-                tool_input: { file_path: path.join(control.cwd, 'plugins', 'claude-kit', 'scripts', 'x.js') }
+                tool_input: { file_path: path.join(control.cwd, 'plugins', 'grimoire', 'scripts', 'x.js') }
             })), 'glob control');
         } finally { rmStore(control); }
     } finally { rmStore(store); }
@@ -542,17 +542,17 @@ test('a glob: trigger fires at PostToolUse on a path the call touched, and not o
 test('a file anchor fires at PostToolUse on its path, whatever sha it carries', () => {
     const store = makeStore();
     try {
-        writeRecord(store, 'anchored-record.md', { anchors: 'plugins/claude-kit/scripts/memq.js@' + SHA });
+        writeRecord(store, 'anchored-record.md', { anchors: 'plugins/grimoire/scripts/memq.js@' + SHA });
         const fired = runHook(store, postPayload(store, {
-            tool_input: { file_path: path.join(store.cwd, 'plugins', 'claude-kit', 'scripts', 'memq.js') }
+            tool_input: { file_path: path.join(store.cwd, 'plugins', 'grimoire', 'scripts', 'memq.js') }
         }));
         const text = assertNudge(fired, 'PostToolUse', 'anchor fire');
-        assertNames(text, 'anchored-record.md', 'anchor:plugins/claude-kit/scripts/memq.js', 'anchor fire');
+        assertNames(text, 'anchored-record.md', 'anchor:plugins/grimoire/scripts/memq.js', 'anchor fire');
         const control = makeStore();
         try {
-            writeRecord(control, 'anchored-record.md', { anchors: 'plugins/claude-kit/scripts/memq.js@' + SHA });
+            writeRecord(control, 'anchored-record.md', { anchors: 'plugins/grimoire/scripts/memq.js@' + SHA });
             assertSilent(runHook(control, postPayload(control, {
-                tool_input: { file_path: path.join(control.cwd, 'plugins', 'claude-kit', 'scripts', 'other.js') }
+                tool_input: { file_path: path.join(control.cwd, 'plugins', 'grimoire', 'scripts', 'other.js') }
             })), 'anchor control');
         } finally { rmStore(control); }
     } finally { rmStore(store); }
@@ -1097,7 +1097,7 @@ test('the state directory resolver refuses a name something else stands at', () 
     const clean = fs.mkdtempSync(path.join(os.tmpdir(), 'recognition-clean-'));
     const before = { TMPDIR: process.env.TMPDIR, TEMP: process.env.TEMP, TMP: process.env.TMP };
     try {
-        fs.writeFileSync(path.join(planted, 'claude-kit-recognition'), 'not a directory', 'utf8');
+        fs.writeFileSync(path.join(planted, 'grimoire-recognition'), 'not a directory', 'utf8');
         process.env.TMPDIR = planted;
         process.env.TEMP = planted;
         process.env.TMP = planted;
@@ -1105,7 +1105,7 @@ test('the state directory resolver refuses a name something else stands at', () 
         process.env.TMPDIR = clean;
         process.env.TEMP = clean;
         process.env.TMP = clean;
-        assert.strictEqual(hook.stateDir(), path.join(clean, 'claude-kit-recognition'),
+        assert.strictEqual(hook.stateDir(), path.join(clean, 'grimoire-recognition'),
             'control: a clean temp directory answers with the state directory');
     } finally {
         for (const [key, value] of Object.entries(before)) {
@@ -1293,11 +1293,11 @@ test('a marker carrying a non-finite count is read as spent, not as unlimited', 
 
 test('the glob matcher answers the shapes a path glob is written in', () => {
     const cases = [
-        ['plugins/claude-kit/hooks/*.js', 'D:/repo/plugins/claude-kit/hooks/x.js', true],
-        ['plugins/claude-kit/hooks/*.js', 'D:/repo/plugins/claude-kit/hooks/x.md', false],
-        ['plugins/claude-kit/hooks/*.js', 'D:\\repo\\plugins\\claude-kit\\hooks\\x.js', true],
-        ['plugins/claude-kit/hooks/*', 'D:/repo/plugins/claude-kit/hooks/sub/x.js', false],
-        ['plugins/**/x.js', 'D:/repo/plugins/claude-kit/hooks/x.js', true],
+        ['plugins/grimoire/hooks/*.js', 'D:/repo/plugins/grimoire/hooks/x.js', true],
+        ['plugins/grimoire/hooks/*.js', 'D:/repo/plugins/grimoire/hooks/x.md', false],
+        ['plugins/grimoire/hooks/*.js', 'D:\\repo\\plugins\\grimoire\\hooks\\x.js', true],
+        ['plugins/grimoire/hooks/*', 'D:/repo/plugins/grimoire/hooks/sub/x.js', false],
+        ['plugins/**/x.js', 'D:/repo/plugins/grimoire/hooks/x.js', true],
         ['docs/plans/*_spec_v?.md', 'D:/repo/docs/plans/a_spec_v1.md', true],
         ['docs/plans/*_spec_v?.md', 'D:/repo/docs/plans/a_spec_v11.md', false],
         ['docs/plans/*.md', 'D:/repo/other/docs/plans/a.md', true],
@@ -1424,14 +1424,14 @@ test('the wiring reaches the recognition nudge on both tool boundaries, matching
     // memories can ever fire, and a `tool:` trigger may name any tool.
     const MATCH_ALL = ['*', '.*', '', undefined];
     const wiring = JSON.parse(fs.readFileSync(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'hooks.json'), 'utf8'));
     // The two tool boundaries are wired to hook-dispatch.js, and
     // dispatch-table.json, in hooks.json's own shape, routes each hook from
     // there. Both layers have to reach every tool: a narrowed matcher on the
     // dispatcher would starve the table's match-all entry exactly as a
     // narrowed entry would.
     const table = JSON.parse(fs.readFileSync(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'dispatch-table.json'), 'utf8'));
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'dispatch-table.json'), 'utf8'));
     for (const boundary of ['PreToolUse', 'PostToolUse']) {
         const dispatchers = (wiring.hooks[boundary] || []).filter((entry) => (entry.hooks || [])
             .some((h) => typeof h.command === 'string' && h.command.includes('hook-dispatch.js')));
@@ -1531,7 +1531,7 @@ test('the whole-token matcher answers on token boundaries and refuses sub-word h
         ['read', 'read this'],
         ['read', 'do the read'],
         ['read', 'read'],
-        ['implementer-opus', 'dispatch claude-kit:implementer-opus now'],
+        ['implementer-opus', 'dispatch grimoire:implementer-opus now'],
         ['memory-system', 'load memory-system, then go'],
         ['multiedit', 'use MultiEdit here'.toLowerCase()],
         // The same three characters as punctuation rather than as joiners: a
@@ -1540,7 +1540,7 @@ test('the whole-token matcher answers on token boundaries and refuses sub-word h
         // true match to buy the false one it exists to refuse.
         ['read', 'use the read.'],
         ['memory-system', 'load memory-system.'],
-        ['implementer-opus', 'dispatch claude-kit:implementer-opus.'],
+        ['implementer-opus', 'dispatch grimoire:implementer-opus.'],
         ['read', 'the read/ helper'],
         ['read', 'read- this'],
         // The slash is a boundary rather than a joiner, wherever it stands. A
@@ -1593,7 +1593,7 @@ test('the whole-token matcher answers on token boundaries and refuses sub-word h
     // The qualifier case the token rule exists to keep matching, stated beside
     // the hyphen refusal above because the two are one rule: the colon is the
     // boundary, so a bare identifier still answers a scoped spelling of itself.
-    assert.strictEqual(hook.matchesToken('implementer-opus', 'dispatch claude-kit:implementer-opus'), true,
+    assert.strictEqual(hook.matchesToken('implementer-opus', 'dispatch grimoire:implementer-opus'), true,
         'a colon is a boundary, so a scoped spelling still answers the bare identifier');
     // Every occurrence is examined, not the first: a text carrying the pattern
     // inside a longer word BEFORE it carries it as a token still matches.
@@ -1707,7 +1707,7 @@ test('typographic punctuation bounds a token where an above-ASCII letter joins i
 });
 
 test('two project stores never share an index cache', () => {
-    const dir = path.join('C:', 'tmp', 'claude-kit-recognition');
+    const dir = path.join('C:', 'tmp', 'grimoire-recognition');
     const a = path.join('C:', 'store-a', 'memory');
     const b = path.join('C:', 'store-b', 'memory');
     assert.notStrictEqual(hook.cacheFile(dir, a), hook.cacheFile(dir, b));
@@ -1752,7 +1752,7 @@ test('every type UserPromptSubmit matches is matched against the prompt text', (
         ['cmd:node --test', 'run node --test now'],
         ['err:ENOTEMPTY', 'the build died with ENOTEMPTY again'],
         ['skill:memory-system', 'load the memory-system skill first'],
-        ['agent:claude-kit:implementer-opus', 'dispatch claude-kit:implementer-opus for this'],
+        ['agent:grimoire:implementer-opus', 'dispatch grimoire:implementer-opus for this'],
         ['tool:MultiEdit', 'use MultiEdit rather than one Edit per hunk']
     ];
     for (const [trigger, prompt] of cases) {
@@ -1781,7 +1781,7 @@ test('a glob: trigger never fires at UserPromptSubmit, and the same record fires
     try {
         writeRecord(store, 'hook-family.md', { triggers: 'glob:plugins/*/hooks/*' });
         assertSilent(runHook(store, promptPayload(store, {
-            prompt: 'edit plugins/claude-kit/hooks/memory-recognition-nudge.js please'
+            prompt: 'edit plugins/grimoire/hooks/memory-recognition-nudge.js please'
         })), 'a glob against prompt prose');
         // The control: the same fixture, matched at the boundary that carries
         // paths, so the silence above is the exclusion and not a glob nothing
@@ -1790,7 +1790,7 @@ test('a glob: trigger never fires at UserPromptSubmit, and the same record fires
         try {
             writeRecord(control, 'hook-family.md', { triggers: 'glob:plugins/*/hooks/*' });
             assertNames(assertNudge(runHook(control, postPayload(control, {
-                tool_input: { file_path: path.join(control.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+                tool_input: { file_path: path.join(control.cwd, 'plugins', 'grimoire', 'hooks', 'x.js') }
             })), 'PostToolUse', 'glob control'), 'hook-family.md', 'glob:plugins/*/hooks/*', 'glob control');
         } finally { rmStore(control); }
     } finally { rmStore(store); }
@@ -1852,7 +1852,7 @@ test('an identifier trigger matches a prompt on a whole token, and a fragment tr
         try {
             writeRecord(scoped, 'implementer-lore.md', { triggers: 'agent:implementer-opus' });
             assertNudge(runHook(scoped, promptPayload(scoped, {
-                prompt: 'dispatch claude-kit:implementer-opus for the fix round'
+                prompt: 'dispatch grimoire:implementer-opus for the fix round'
             })), 'UserPromptSubmit', 'a bare identifier inside a qualified spelling');
         } finally { rmStore(scoped); }
         // And the fragment types are unchanged: a cmd: pattern is a fragment of
@@ -1943,7 +1943,7 @@ test('a dispatch whose agent_type carries an agent: trigger nudges at SubagentSt
         try {
             writeRecord(control, 'reviewer-conventions.md', { triggers: 'agent:general-purpose' });
             assertSilent(runHook(control, dispatchPayload(control, {
-                agent_type: 'claude-kit:explorer'
+                agent_type: 'grimoire:explorer'
             })), 'dispatch control');
         } finally { rmStore(control); }
     } finally { rmStore(store); }
@@ -1954,7 +1954,7 @@ test('a scoped agent_type answers a trigger naming its bare last segment', () =>
     try {
         writeRecord(store, 'implementer-conventions.md', { triggers: 'agent:implementer-opus' });
         assertNames(assertNudge(runHook(store, dispatchPayload(store, {
-            agent_type: 'claude-kit:implementer-opus'
+            agent_type: 'grimoire:implementer-opus'
         })), 'SubagentStart', 'scoped dispatch'), 'implementer-conventions.md',
         'agent:implementer-opus', 'scoped dispatch');
     } finally { rmStore(store); }
@@ -1993,7 +1993,7 @@ test('a dispatch of a read-only judgment seat receives no pointer, where a gate 
         try {
             writeRecord(store, 'seat-lore.md', { triggers: 'agent:' + type });
             assertSilent(runHook(store, dispatchPayload(store, {
-                agent_type: 'claude-kit:' + type
+                agent_type: 'grimoire:' + type
             })), 'a dispatch of ' + type);
         } finally { rmStore(store); }
     }
@@ -2004,7 +2004,7 @@ test('a dispatch of a read-only judgment seat receives no pointer, where a gate 
         try {
             writeRecord(store, 'seat-lore.md', { triggers: 'agent:' + type });
             assertNames(assertNudge(runHook(store, dispatchPayload(store, {
-                agent_type: 'claude-kit:' + type
+                agent_type: 'grimoire:' + type
             })), 'SubagentStart', 'a dispatch of ' + type),
             'seat-lore.md', 'agent:' + type, 'a dispatch of ' + type);
         } finally { rmStore(store); }
@@ -2207,12 +2207,12 @@ test('an identifier named by a prompt and then dispatched nudges once at each bo
     try {
         writeRecord(store, 'implementer-lore.md', { triggers: 'agent:implementer-opus' });
         assertNames(assertNudge(runHook(store, promptPayload(store, {
-            prompt: 'dispatch claude-kit:implementer-opus for the fix round'
+            prompt: 'dispatch grimoire:implementer-opus for the fix round'
         })), 'UserPromptSubmit', 'the prompt naming the agent type'),
         'implementer-lore.md', 'agent:implementer-opus', 'the prompt naming the agent type');
         assertNames(assertNudge(runHook(store, prePayload(store, {
             tool_name: 'Agent',
-            tool_input: { subagent_type: 'claude-kit:implementer-opus', prompt: 'go' }
+            tool_input: { subagent_type: 'grimoire:implementer-opus', prompt: 'go' }
         })), 'PreToolUse', 'the call that dispatches it'),
         'implementer-lore.md', 'agent:implementer-opus', 'the call that dispatches it');
         // The control that keeps the two fires above meaning "the boundary is in
@@ -2220,7 +2220,7 @@ test('an identifier named by a prompt and then dispatched nudges once at each bo
         // boundary class finds the trigger spent.
         assertSilent(runHook(store, prePayload(store, {
             tool_name: 'Agent',
-            tool_input: { subagent_type: 'claude-kit:implementer-opus', prompt: 'again' }
+            tool_input: { subagent_type: 'grimoire:implementer-opus', prompt: 'again' }
         })), 'a second dispatch call at the same boundary class');
     } finally { rmStore(store); }
 });
@@ -2557,7 +2557,7 @@ test('the nudge log and its stamp-rate report resolve to the main checkout root,
 test('nudgeStampRate refuses rather than silently succeeds against a memq missing a symbol '
     + 'this report needs', () => {
     const store = makeStore();
-    const memqPath = require.resolve('../plugins/claude-kit/scripts/memq.js');
+    const memqPath = require.resolve('../plugins/grimoire/scripts/memq.js');
     const real = require(memqPath);
     try {
         writeRecord(store, 'skewed.md', { triggers: 'cmd:node --test' });
@@ -3237,18 +3237,18 @@ test('under a store pin a glob: trigger takes no tier at all, and fires with no 
     try {
         const pinnedDir = path.join(store.root, 'projects', PATH_PIN_SEGMENT, 'memory');
         writeRecordIn(pinnedDir, 'pinned-glob.md',
-            { triggers: 'glob:plugins/claude-kit/hooks/*.js, cmd:zpool status' });
+            { triggers: 'glob:plugins/grimoire/hooks/*.js, cmd:zpool status' });
         assertSilent(runHook(store, postPayload(store, {
-            tool_input: { file_path: path.join(store.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+            tool_input: { file_path: path.join(store.cwd, 'plugins', 'grimoire', 'hooks', 'x.js') }
         }), { KIT_MEMORY_PROJECT: PATH_PIN_SEGMENT }), 'a pinned glob at the post boundary');
 
         const unpinned = makeStore();
         try {
-            writeRecord(unpinned, 'pinned-glob.md', { triggers: 'glob:plugins/claude-kit/hooks/*.js' });
+            writeRecord(unpinned, 'pinned-glob.md', { triggers: 'glob:plugins/grimoire/hooks/*.js' });
             assertNames(assertNudge(runHook(unpinned, postPayload(unpinned, {
-                tool_input: { file_path: path.join(unpinned.cwd, 'plugins', 'claude-kit', 'hooks', 'x.js') }
+                tool_input: { file_path: path.join(unpinned.cwd, 'plugins', 'grimoire', 'hooks', 'x.js') }
             })), 'PostToolUse', 'the same glob with no pin in effect'),
-            'pinned-glob.md', 'glob:plugins/claude-kit/hooks/*.js', 'the same glob with no pin in effect');
+            'pinned-glob.md', 'glob:plugins/grimoire/hooks/*.js', 'the same glob with no pin in effect');
         } finally { rmStore(unpinned); }
 
         // The pinned record's cmd: trigger still fires at a tool boundary,

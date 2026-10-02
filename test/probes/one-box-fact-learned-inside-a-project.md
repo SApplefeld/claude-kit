@@ -13,14 +13,14 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/memory-system/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/memory-system/SKILL.md
   - name: doctrine-plus-memory-system
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/memory-system/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/memory-system/SKILL.md
 ---
 # A fact about this machine, learned inside one project
 

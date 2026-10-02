@@ -24,15 +24,15 @@ Pass the waves as `args`:
   "waves": [
     { "id": "doctrine-draft", "track": "doctrine", "kind": "draft", "config": "opus-medium", "prompt": "..." },
     { "id": "doctrine-review-1", "track": "doctrine", "kind": "review", "round": 1, "reviews": [
-      { "agentType": "claude-kit:prose-reviewer", "prompt": "..." },
-      { "agentType": "claude-kit:blind-reader", "prompt": "..." }
+      { "agentType": "grimoire:prose-reviewer", "prompt": "..." },
+      { "agentType": "grimoire:blind-reader", "prompt": "..." }
     ] }
   ],
   "done": ["doctrine-draft"]
 }
 ```
 
-Every wave is checked before the first dispatch, so a malformed list dispatches nothing. The main thread writes every prompt, and authors a blind reviewer's prompt as its own literal sharing nothing with a sighted one. The script cannot check that, since prompts arrive in `args`. A review wave may name only the reviewer types in `REVIEWERS`, each governed by the read-only guard. The drafter is `claude-kit:corpus-drafter`, also read-only.
+Every wave is checked before the first dispatch, so a malformed list dispatches nothing. The main thread writes every prompt, and authors a blind reviewer's prompt as its own literal sharing nothing with a sighted one. The script cannot check that, since prompts arrive in `args`. A review wave may name only the reviewer types in `REVIEWERS`, each governed by the read-only guard. The drafter is `grimoire:corpus-drafter`, also read-only.
 
 The Workflow tool evaluates the file as an async body with `agent`, `log`, `phase` and `args` in scope, and the top-level `return` is the run's result.
 

@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
 const RELOAD_MARK = 'Context was just compacted. Anything a tool call loaded into context before it is gone';
 
 function makeRepo() {

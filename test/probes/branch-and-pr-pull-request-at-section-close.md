@@ -12,22 +12,22 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
-      - plugins/claude-kit/skills/curating-docs/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/curating-docs/SKILL.md
   - name: doctrine-plus-ownership-map
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
   - name: doctrine-plus-the-contested-surfaces
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/skills/curating-docs/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/curating-docs/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
 ---
 # The first section closes on a plan whose header reads Branch-and-PR
 

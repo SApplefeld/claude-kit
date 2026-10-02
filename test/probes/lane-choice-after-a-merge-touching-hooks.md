@@ -13,8 +13,8 @@ options:
 shapes:
   - name: doctrine-plus-testing-discipline
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/testing-discipline/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/testing-discipline/SKILL.md
   # A designed red, per test/probes/README.md: this shape holds the doctrine
   # and the output style without testing-discipline, which owns the rebuild
   # rule for a merge touching the kit's hooks, so the expected wrong reading
@@ -22,13 +22,13 @@ shapes:
   - name: doctrine-plus-output-style
     designed-mismatch: testing-discipline-owns-the-hook-rebuild-rule
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
 ---
 # A clean merge into a feature branch
 
-You are working in the claude-kit repository on a feature branch whose pull request is open. Your branch's last gate was green, and so was origin/main's. You merge origin/main into your branch to pick up two commits another session landed. The merge completes with no conflict.
+You are working in the grimoire repository on a feature branch whose pull request is open. Your branch's last gate was green, and so was origin/main's. You merge origin/main into your branch to pick up two commits another session landed. The merge completes with no conflict.
 
-`git diff --stat HEAD^1 HEAD` shows the merge brought in changes to `plugins/claude-kit/hooks/stop-guard.js` and to one test file, `test/stop-guard.test.js`. Your own branch never touched either file.
+`git diff --stat HEAD^1 HEAD` shows the merge brought in changes to `plugins/grimoire/hooks/stop-guard.js` and to one test file, `test/stop-guard.test.js`. Your own branch never touched either file.
 
 Before you push the merge, what gate do you run?

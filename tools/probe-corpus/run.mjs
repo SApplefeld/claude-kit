@@ -42,13 +42,13 @@
 //
 // Zero dependencies, ESM, no shell anywhere: git and the reader CLI are spawned
 // with argument arrays, matching the git boundary in
-// plugins/claude-kit/hooks/kit-git-lib.js (gitRun). That guard's spawn working
+// plugins/grimoire/hooks/kit-git-lib.js (gitRun). That guard's spawn working
 // directory is its own hooks directory, which sits outside the repository it
 // asks about; this file sits inside the repository it reads, so it spawns git
 // from the directory the resolved git binary itself lives in. The containment
 // judgment on every file read out of the worktree or the home directory is that
 // boundary's own guard, containedRealPath from
-// plugins/claude-kit/hooks/kit-read-lib.js, called rather than restated.
+// plugins/grimoire/hooks/kit-read-lib.js, called rather than restated.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -85,7 +85,7 @@ let containedRealPath = null;
 // plugin directory.
 function containedPath(rootDir, filePath) {
     if (containedRealPath === null) {
-        const lib = path.join(REPO_ROOT, 'plugins', 'claude-kit', 'hooks', 'kit-read-lib.js');
+        const lib = path.join(REPO_ROOT, 'plugins', 'grimoire', 'hooks', 'kit-read-lib.js');
         containedRealPath = requireFromHere(lib).containedRealPath;
     }
     return containedRealPath(rootDir, filePath);
@@ -102,7 +102,7 @@ function containedPath(rootDir, filePath) {
 let scrubLine = null;
 export function elided(text) {
     if (scrubLine === null) {
-        const lib = path.join(REPO_ROOT, 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+        const lib = path.join(REPO_ROOT, 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
         try {
             scrubLine = requireFromHere(lib).scrub;
         } catch (err) {
@@ -302,7 +302,7 @@ export function resolveGitBinary(env) {
 
 // Run git with an argument array and no shell, against repoDir. The GIT_* scrub,
 // the terminal-prompt suppression and the timeout follow the boundary guard in
-// plugins/claude-kit/hooks/kit-git-lib.js, and the repository is named with `-C`
+// plugins/grimoire/hooks/kit-git-lib.js, and the repository is named with `-C`
 // rather than entered. The spawn runs from the directory holding the resolved
 // git binary: that guard runs from its own hooks directory, which is outside the
 // repository it asks about, and this file is inside the repository it reads, so
@@ -894,7 +894,7 @@ export function readerArgs(model) {
 // has no part in. ANTHROPIC_* goes the same way, so the reader authenticates and
 // bills through the copied credentials rather than through an API key or a base
 // URL the parent shell carried. The scrub follows gitChildEnv in
-// plugins/claude-kit/hooks/kit-git-lib.js, which drops GIT_* for the same reason.
+// plugins/grimoire/hooks/kit-git-lib.js, which drops GIT_* for the same reason.
 //
 // What the scrub deliberately leaves is the machine's network plumbing:
 // HTTP_PROXY, HTTPS_PROXY, NO_PROXY, NODE_EXTRA_CA_CERTS and SSL_CERT_FILE are
@@ -1247,7 +1247,7 @@ export function copyCredentials(configDir, homeDir, liveDir) {
     // whatever is at it, so the token lands in the scratch or nowhere.
     //
     // The temp name and the cleanup follow atomicTmpPath and its writers in
-    // plugins/claude-kit/hooks/kit-compact-lib.js, which that file does not
+    // plugins/grimoire/hooks/kit-compact-lib.js, which that file does not
     // export: the name is unpredictable and the create is exclusive, so a name
     // an attacker could guess cannot aim this writer's own unlink at a file of
     // their choosing, and the unlink runs only where this call's own create

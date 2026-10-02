@@ -1,5 +1,5 @@
 // Tests for the shared-checkout advisory in
-// plugins/claude-kit/hooks/session-start.js.
+// plugins/grimoire/hooks/session-start.js.
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
 // child process, fed a SessionStart payload on stdin, and asserted on by its
@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
 
 const OWN_ID = '11111111-2222-3333-4444-555555555555';
 const FOREIGN_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';

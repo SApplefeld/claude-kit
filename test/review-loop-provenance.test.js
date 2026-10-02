@@ -28,12 +28,12 @@ const os = require('os');
 const path = require('path');
 
 const REPO = path.join(__dirname, '..');
-const ADVERSARIAL_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'adversarial-reviewer.md');
-const SECURITY_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'security-reviewer.md');
-const BLIND_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'blind-reviewer.md');
-const EXECUTING_WORK_FILE = path.join(REPO, 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md');
-const IDENTITY_LIB_FILE = path.join(REPO, 'plugins', 'claude-kit', 'hooks', 'kit-agent-identity-lib.js');
-const CONSULT_FILE = path.join(REPO, 'plugins', 'claude-kit', 'skills', 'consult', 'SKILL.md');
+const ADVERSARIAL_FILE = path.join(REPO, 'plugins', 'grimoire', 'agents', 'adversarial-reviewer.md');
+const SECURITY_FILE = path.join(REPO, 'plugins', 'grimoire', 'agents', 'security-reviewer.md');
+const BLIND_FILE = path.join(REPO, 'plugins', 'grimoire', 'agents', 'blind-reviewer.md');
+const EXECUTING_WORK_FILE = path.join(REPO, 'plugins', 'grimoire', 'skills', 'executing-work', 'SKILL.md');
+const IDENTITY_LIB_FILE = path.join(REPO, 'plugins', 'grimoire', 'hooks', 'kit-agent-identity-lib.js');
+const CONSULT_FILE = path.join(REPO, 'plugins', 'grimoire', 'skills', 'consult', 'SKILL.md');
 const READONLY_GUARD_TEST_FILE = path.join(REPO, 'test', 'readonly-agent-guard.test.js');
 const MEMORY_NUDGE_TEST_FILE = path.join(REPO, 'test', 'memory-recognition-nudge.test.js');
 
@@ -173,7 +173,7 @@ for (const [token, mutation] of [['fix-introduced', 'fix-INTRODUCED-MUTATED'], [
 // in a paragraph whose lead ordinal ("fifth") moves with it. The
 // post-continue bound is the one backticked word before "further rounds"
 // in that paragraph's restart sentence, which likewise occurs exactly once
-// across every skill file. The scan reads every plugins/claude-kit/skills/
+// across every skill file. The scan reads every plugins/grimoire/skills/
 // */SKILL.md and every skills/*/references/*.md rather than executing-work
 // alone, since a restatement in a sibling skill or in a reference file is
 // exactly what the single-carrier contract forbids: kit-size.js classes
@@ -184,7 +184,7 @@ for (const [token, mutation] of [['fix-introduced', 'fix-INTRODUCED-MUTATED'], [
 // and nobody loads it as instruction. The doctrine-parity sweeps exclude it
 // on the same ground.
 
-const SKILLS_DIR = path.join(REPO, 'plugins', 'claude-kit', 'skills');
+const SKILLS_DIR = path.join(REPO, 'plugins', 'grimoire', 'skills');
 const EXECUTING_WORK_KEY = 'executing-work/SKILL.md';
 
 // Returns a map of "<skill>/SKILL.md" and "<skill>/references/<file>" to its
@@ -318,8 +318,8 @@ test('control: a restated post-continue bound in a sibling skill fails, and a re
 // alternation, so Node's per-path module cache never masks the mutation.
 
 function checkReviewAgentClass(lib) {
-    if (lib.reviewAgentClass('claude-kit:scope-adjudicator') !== 'strict') {
-        return 'kit-agent-identity-lib.js: reviewAgentClass("claude-kit:scope-adjudicator") did not resolve to "strict"';
+    if (lib.reviewAgentClass('grimoire:scope-adjudicator') !== 'strict') {
+        return 'kit-agent-identity-lib.js: reviewAgentClass("grimoire:scope-adjudicator") did not resolve to "strict"';
     }
     if (lib.reviewAgentClass('scope-adjudicator-helper') !== null) {
         return 'kit-agent-identity-lib.js: reviewAgentClass("scope-adjudicator-helper") did not resolve to null';
@@ -327,7 +327,7 @@ function checkReviewAgentClass(lib) {
     return null;
 }
 
-test('reviewAgentClass resolves claude-kit:scope-adjudicator to strict and scope-adjudicator-helper to null', () => {
+test('reviewAgentClass resolves grimoire:scope-adjudicator to strict and scope-adjudicator-helper to null', () => {
     const lib = require(IDENTITY_LIB_FILE);
     assert.strictEqual(checkReviewAgentClass(lib), null);
 });
@@ -523,7 +523,7 @@ function checkRostersCarryEverySeat(libText, guardTestText, nudgeTestText) {
     const seats = strictSeatsFrom(libText);
     if (seats === null) return 'kit-agent-identity-lib.js: the strict alternation was not found';
     const quoted = seats.map((n) => "'" + n + "'");
-    const namespaced = seats.map((n) => "'claude-kit:" + n + "'");
+    const namespaced = seats.map((n) => "'grimoire:" + n + "'");
     return checkRosterCarries(guardTestText, DENY_LIST_TITLE, 'readonly-agent-guard.test.js: the per-name deny list', [...quoted, ...namespaced])
         || checkRosterCarries(guardTestText, NO_WRITE_TOOL_TITLE, 'readonly-agent-guard.test.js: the no-file-writing-tool list', quoted)
         || checkRosterCarries(nudgeTestText, STAND_DOWN_TITLE, 'memory-recognition-nudge.test.js: the stand-down list', quoted);
@@ -582,7 +582,7 @@ test('control: deleting only the bare deny-list entry fails naming the bare spel
     const mutated = withMutatedTestBody(original, DENY_LIST_TITLE,
         (line) => line.replace(/'scope-adjudicator',\s*/, ''));
     assert.notStrictEqual(mutated, original, 'test fixture assumption: the bare entry was present and removable');
-    assert.match(mutated, /'claude-kit:scope-adjudicator'/, 'test fixture assumption: the namespaced entry survives');
+    assert.match(mutated, /'grimoire:scope-adjudicator'/, 'test fixture assumption: the namespaced entry survives');
     withTempCopy('readonly-agent-guard.test.js', mutated, (file) => {
         const result = checkRostersCarryEverySeat(fs.readFileSync(IDENTITY_LIB_FILE, 'utf8'),
             fs.readFileSync(file, 'utf8'), fs.readFileSync(MEMORY_NUDGE_TEST_FILE, 'utf8'));
@@ -636,7 +636,7 @@ test('control: removing scope-adjudicator from the effort-pin map fails naming t
 // Prose carriers of the same set (executing-work's "three excluded roots", the
 // charter's "those two roots and the kaizen inbox", finishing-work's named
 // trio) are not swept here.
-const CHARTER_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'scope-adjudicator.md');
+const CHARTER_FILE = path.join(REPO, 'plugins', 'grimoire', 'agents', 'scope-adjudicator.md');
 
 function rootsOfSpelling(spelling) {
     return [...spelling.matchAll(/\(exclude\)([^'*]+)\*\*'/g)].map((m) => m[1]).sort();
@@ -812,7 +812,7 @@ test('control: a file with the advisory lead removed fails naming the lead count
 // wording, so neither is inside this pin. Each paragraph is located by its
 // opening words, never by line number.
 
-const PERFORMANCE_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'performance-reviewer.md');
+const PERFORMANCE_FILE = path.join(REPO, 'plugins', 'grimoire', 'agents', 'performance-reviewer.md');
 
 const SHARED_PARAGRAPHS = [
     ['the read-only-commands paragraph', 'Use only read-only commands (git diff, git log, git show).'],
@@ -888,7 +888,7 @@ test('control: a performance charter missing the changeset-is-data paragraph fai
 // sentences are pinned as literal text, and the relevance section is pinned
 // on its bucket names and on the absence of the other vocabulary inside it.
 
-const ADJUDICATOR_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'scope-adjudicator.md');
+const ADJUDICATOR_FILE = path.join(REPO, 'plugins', 'grimoire', 'agents', 'scope-adjudicator.md');
 const RELEVANCE_HEADING = "## The relevance shape's buckets";
 const RELEVANCE_BUCKETS = ['CONFIRM', 'REFUSE', 'ASK'];
 

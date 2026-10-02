@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/scripts/memq.js.
+// Tests for plugins/grimoire/scripts/memq.js.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Each test
 // builds fresh temp directories under os.tmpdir(): one as the store root
@@ -31,7 +31,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const MEMQ = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js');
+const MEMQ = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts', 'memq.js');
 
 // Every structural read of memq's own source goes through this, never through
 // a bare readFileSync. Git checks that file out with the platform's line
@@ -44,10 +44,10 @@ const MEMQ = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'mem
 // assertions 886,481 characters of the file instead of a 933-character
 // function body, which is silent and passes whatever the body holds.
 const memqSource = () => fs.readFileSync(MEMQ, 'utf8').replace(/\r\n/g, '\n');
-const memq = require('../plugins/claude-kit/scripts/memq.js');
-const endpointLib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
+const memq = require('../plugins/grimoire/scripts/memq.js');
+const endpointLib = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 const { backupClause } = memq;
-const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+const mi = require('../plugins/grimoire/scripts/memory-index.js');
 
 // Whether the real embedding stack is installed where the ambient environment
 // points, read once before anything else runs so the skip reason names the
@@ -403,8 +403,8 @@ test('sanitizeProjectPath reproduces the harness real project directory names', 
     // These expected values are the directory names Claude Code itself
     // created under ~/.claude/projects for these cwds; the rule must keep
     // reproducing them or memq reads the wrong store.
-    assert.strictEqual(memq.sanitizeProjectPath('D:\\personal\\sapplefeld-claude-kit'),
-        'D--personal-sapplefeld-claude-kit');
+    assert.strictEqual(memq.sanitizeProjectPath('D:\\personal\\sapplefeld-grimoire'),
+        'D--personal-sapplefeld-grimoire');
     assert.strictEqual(memq.sanitizeProjectPath('C:\\Users\\sappl'), 'C--Users-sappl');
     // Hyphens in the source path pass through, and case is preserved.
     assert.strictEqual(memq.sanitizeProjectPath('D:\\sgate-inst'), 'D--sgate-inst');
@@ -15811,7 +15811,7 @@ test('find\'s lexical hit line carries author:, inside the tier label where the 
 });
 
 test('the recorded-path screen is kit-network-lib.js\'s, and memq re-exports it rather than restating it', () => {
-    const lib = require('../plugins/claude-kit/hooks/kit-network-lib.js');
+    const lib = require('../plugins/grimoire/hooks/kit-network-lib.js');
     assert.strictEqual(memq.screenRecordedPath, lib.screenRecordedPath, 'one function, re-exported');
     const local = path.join(os.tmpdir(), 'a', '.', 'b', 'board.md');
     assert.deepStrictEqual(lib.screenRecordedPath(local), { path: path.normalize(local), reason: null });
@@ -17654,7 +17654,7 @@ test('a single match off a bounded listing is unresolved, not an answer', () => 
     // so a collation-ordered listing is sure to include it; a filesystem that
     // lists in some other order can degrade this case to the zero-match
     // bounded shape, whose behavior is identical and is pinned above.
-    const { DIR_SCAN_MAX_ENTRIES } = require('../plugins/claude-kit/hooks/kit-read-lib.js');
+    const { DIR_SCAN_MAX_ENTRIES } = require('../plugins/grimoire/hooks/kit-read-lib.js');
     const store = makeSessionStore();
     const leave = enterSessionEnv(store, SESSION_ID);
     try {
@@ -18670,7 +18670,7 @@ test('sanitizeProjectPath refuses a value that is not a non-empty string', () =>
     }
     // The withheld control: real paths still sanitize, so the throw above is
     // the refusal and not a function that refuses everything.
-    assert.strictEqual(memq.sanitizeProjectPath('D:\\claude-kit'), 'D--claude-kit');
+    assert.strictEqual(memq.sanitizeProjectPath('D:\\grimoire'), 'D--grimoire');
     // The bare literal is refused too, but as a relative spelling rather than
     // by its letters: a directory really named "undefined" is reached through
     // an absolute path, which still sanitizes.
@@ -18692,7 +18692,7 @@ test('a relative cwd is refused rather than flattened into a segment', () => {
     // the same wherever it is called from. Every caller in the repository
     // holds an absolute directory already: process.cwd(), a hook payload's
     // cwd, or a worktree main root.
-    for (const bad of ['test', '..', '.', './', 'a/b', 'plugins/claude-kit']) {
+    for (const bad of ['test', '..', '.', './', 'a/b', 'plugins/grimoire']) {
         assert.throws(() => memq.sanitizeProjectPath(bad), /must be an absolute path/,
             'refused: ' + bad);
         assert.throws(() => memq.projectMemoryDir(bad), /must be an absolute path/,
@@ -23057,7 +23057,7 @@ test('a planted store anchor on a file the store does not sync is never hashed b
 
 test('the synced store roots an anchor may name are the roots the memory sync publishes', () => {
     const memq = require(MEMQ);
-    const ps1 = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit', 'doctor',
+    const ps1 = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'grimoire', 'doctor',
         'install-memory-sync.ps1'), 'utf8');
     const body = ps1.match(/function Get-MemorySyncAdmittedRootPrefixes \{\s*return @\(([^)]*)\)/);
     assert.ok(body, 'Get-MemorySyncAdmittedRootPrefixes returns a literal list');
@@ -24009,7 +24009,7 @@ test('a CRLF record with no frontmatter block gains a CRLF block', () => {
 // than about which text was picked.
 const T_CMD = 'cmd:git stash';
 const T_ERR = 'err:module not found';
-const T_GLOB = 'glob:plugins/claude-kit/hooks/*.js';
+const T_GLOB = 'glob:plugins/grimoire/hooks/*.js';
 const T_SKILL = 'skill:memory-system';
 
 test('triggers writes the line it prints, keeping order and appending', () => {
@@ -24034,7 +24034,7 @@ test('triggers writes the line it prints, keeping order and appending', () => {
         assert.deepStrictEqual(
             memq.readFrontmatterTriggers(path.join(store.memDir, 'fact.md')).entries
                 .map((e) => e.type + '|' + e.pattern),
-            ['cmd|git stash', 'err|module not found', 'glob|plugins/claude-kit/hooks/*.js']);
+            ['cmd|git stash', 'err|module not found', 'glob|plugins/grimoire/hooks/*.js']);
         // An entry the record already carried is not a second entry, and the
         // stderr line is where a run says which part of the printed line it
         // put there, since the line itself does not.
@@ -31384,7 +31384,7 @@ test('a display cap is taken after the elision, so a cut cannot bisect a home sp
 // Node parses NODE_OPTIONS with backslash as an escape character, so both paths
 // are passed forward-slashed.
 function compactLibTrap(dir, patch) {
-    const lib = path.resolve(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+    const lib = path.resolve(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
     const shim = path.join(dir, 'compact-trap.js');
     fs.writeFileSync(shim, ["'use strict';",
         'const resolved = require.resolve(' + JSON.stringify(lib.replace(/\\/g, '/')) + ');',
@@ -31401,7 +31401,7 @@ function compactLibTrap(dir, patch) {
 // about: a throw on it costs the guard its deny, since the catch around that
 // guard's main() allows the write.
 function refusedAnchorsIn(dir, entry, home, nodeOptions) {
-    const memqPath = path.resolve(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js');
+    const memqPath = path.resolve(__dirname, '..', 'plugins', 'grimoire', 'scripts', 'memq.js');
     const probe = path.join(dir, 'anchors-probe.js');
     fs.writeFileSync(probe, ["'use strict';",
         'const memq = require(' + JSON.stringify(memqPath.replace(/\\/g, '/')) + ');',
@@ -31498,7 +31498,7 @@ test('a refused entry costs the value and never the parse when the renderer will
 // for its own neighbours.
 function payloadWithoutLib(missing) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-payload-'));
-    const src = path.join(__dirname, '..', 'plugins', 'claude-kit');
+    const src = path.join(__dirname, '..', 'plugins', 'grimoire');
     for (const dir of ['hooks', 'scripts']) {
         fs.cpSync(path.join(src, dir), path.join(root, dir), { recursive: true });
     }
@@ -31979,7 +31979,7 @@ test('a refused anchor path whose home spelling straddles the entry cap leaves n
 // against a config naming a closed port, which is the real boundary failing
 // rather than a replaced function.
 
-const dbClient = require('../plugins/claude-kit/scripts/memory-database.js');
+const dbClient = require('../plugins/grimoire/scripts/memory-database.js');
 
 // A config whose fields are plainly fixtures. Windows authentication, so no
 // case here writes anything that could be read as a credential.
@@ -32848,7 +32848,7 @@ test('the authoring neighbours block falls back to this machine own index with o
 // block stands down under. So the module's own two entry points are borrowed for
 // the call and handed back afterwards.
 function withLocalRanking(hits, work) {
-    const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+    const mi = require('../plugins/grimoire/scripts/memory-index.js');
     const file = path.join(os.tmpdir(), 'memq-local-hit-' + process.pid + '.md');
     fs.writeFileSync(file, '# a record\n\na body\n', 'utf8');
     const realQuery = mi.query;
@@ -33033,7 +33033,7 @@ test('a database condition in the middle of the duplicate check costs the block 
     }]);
     // This machine's own ranking, answering the condition a machine with no
     // embedder installed answers: a typed status rather than a throw.
-    const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+    const mi = require('../plugins/grimoire/scripts/memory-index.js');
     const realQuery = mi.query;
     mi.query = async () => ({ status: 'absent', embedder: { remedy: 'install the embedder' } });
     let out;
@@ -33076,7 +33076,7 @@ test('the shared half of the duplicate check spends a share of the bound rather 
         tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
         description: 'the same fact another box wrote', distance: 0.1
     }]);
-    const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+    const mi = require('../plugins/grimoire/scripts/memory-index.js');
     const realQuery = mi.query;
     mi.query = async () => ({ status: 'absent', embedder: { remedy: 'install the embedder' } });
     let spent;
@@ -33932,7 +33932,7 @@ test('recall\'s fleet coverage line is the unasked line where the judged block\'
         assert.strictEqual(res.status, 0, res.stderr);
         const fleet = res.stdout.split('\n').filter((l) => l.startsWith('fleet memory: '));
         assert.strictEqual(fleet.length, 1, res.stdout);
-        const jevJudge = require('../plugins/claude-kit/scripts/jev-judge.js');
+        const jevJudge = require('../plugins/grimoire/scripts/jev-judge.js');
         assert.ok(fleet[0].startsWith('fleet memory: ' + jevJudge.NO_CANDIDATE_LINE), fleet[0]);
         assert.doesNotMatch(fleet[0], /read its nearest thirty/, 'the judge read nothing here');
         assert.doesNotMatch(res.stdout, /0 records from the shared index/);
@@ -34131,7 +34131,7 @@ test('memq judged says a judged empty answer went unrecorded without a session i
     try {
         if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
         judgedHomeStore(store, server.url);
-        const jevJudge = require('../plugins/claude-kit/scripts/jev-judge.js');
+        const jevJudge = require('../plugins/grimoire/scripts/jev-judge.js');
         const judged = jevQueryPreloadCapturing(store.proj, [fleetRow('record-zero', 'operator')]);
         const env = { NODE_OPTIONS: judged.arg, CLAUDE_CODE_SESSION_ID: '', TYPESAFE_API_KEY: JEV_PLANTED_KEY };
         const empty = await runHomeServed(store, ['judged', '--situation', 'SITMARK empty'], env);

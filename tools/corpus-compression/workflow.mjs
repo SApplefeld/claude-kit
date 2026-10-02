@@ -42,15 +42,15 @@ const REVIEW_EFFORT = 'low'
 const DRAFT_MODEL = { 'opus-medium': 'opus', 'fable-low': 'fable' }
 const DRAFT_EFFORT = { 'opus-medium': 'medium', 'fable-low': 'low' }
 
-const DRAFTER = 'claude-kit:corpus-drafter'
+const DRAFTER = 'grimoire:corpus-drafter'
 
 // The reviewers a review wave may dispatch: each is a read-only type the
 // readonly-agent-guard governs, which is what keeps the dispatch inside the
 // doctrine's standing Workflow grant.
 const REVIEWERS = [
-  'claude-kit:prose-reviewer', 'claude-kit:blind-reader',
-  'claude-kit:adversarial-reviewer', 'claude-kit:blind-reviewer',
-  'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
+  'grimoire:prose-reviewer', 'grimoire:blind-reader',
+  'grimoire:adversarial-reviewer', 'grimoire:blind-reviewer',
+  'grimoire:security-reviewer', 'grimoire:performance-reviewer',
 ]
 
 function validate(waves, done) {

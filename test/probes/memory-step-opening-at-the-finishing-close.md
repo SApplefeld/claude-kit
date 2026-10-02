@@ -13,14 +13,14 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/skills/memory-system/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/memory-system/SKILL.md
   - name: doctrine-plus-finishing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
 ---
 # The memory step at the end of a finishing pass
 

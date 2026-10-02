@@ -1,5 +1,5 @@
 // Tests for the memory database host probe,
-// plugins/claude-kit/db/Test-MemoryDatabaseHost.ps1.
+// plugins/grimoire/db/Test-MemoryDatabaseHost.ps1.
 //
 // Node's built-in test runner, no framework, no install (Node v24). The probe
 // is PowerShell 7 (its -SkipHttpErrorCheck is how it reads the embedding
@@ -35,7 +35,7 @@ const net = require('node:net');
 const http = require('node:http');
 
 const REPO = path.join(__dirname, '..');
-const PROBE = path.join(REPO, 'plugins', 'claude-kit', 'db', 'Test-MemoryDatabaseHost.ps1');
+const PROBE = path.join(REPO, 'plugins', 'grimoire', 'db', 'Test-MemoryDatabaseHost.ps1');
 const LIVE = process.env.KIT_MEMORY_DB_LIVE === '1';
 
 // The line shape the doctor's memory-database step parses: a status, two

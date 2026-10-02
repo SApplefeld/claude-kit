@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/readonly-agent-guard.js (the read-only
+// Tests for plugins/grimoire/hooks/readonly-agent-guard.js (the read-only
 // contract of the kit's judgment agents).
 //
 // Node's built-in test runner, no framework (Node v24). The guard is spawned as a
@@ -24,10 +24,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const agentLib = require('../plugins/claude-kit/hooks/kit-agent-identity-lib.js');
+const agentLib = require('../plugins/grimoire/hooks/kit-agent-identity-lib.js');
 
-const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'readonly-agent-guard.js');
-const AGENTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
+const GUARD = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'readonly-agent-guard.js');
+const AGENTS = path.join(__dirname, '..', 'plugins', 'grimoire', 'agents');
 
 // A repo root on the running platform's own root (D:\repo on Windows, /repo on
 // POSIX), so path classification is tested with real platform semantics. It holds
@@ -40,8 +40,8 @@ const OUTSIDE = path.resolve('/elsewhere/file');
 const REPO = path.resolve(__dirname, '..');
 const REPO_SUBDIR = __dirname;
 
-const STRICT = 'claude-kit:adversarial-reviewer';
-const GATE = 'claude-kit:qa-verifier';
+const STRICT = 'grimoire:adversarial-reviewer';
+const GATE = 'grimoire:qa-verifier';
 
 // Reason fragments the guard reports, so a deny is pinned to its cause.
 const GIT = /a git state change \(git /;
@@ -103,11 +103,11 @@ test('all twelve read-only agents resolve to the strict class, namespaced or bar
     for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'performance-reviewer',
         'council-member', 'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer',
         'plan-reviewer', 'scope-adjudicator', 'corpus-drafter',
-        'claude-kit:adversarial-reviewer',
-        'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
-        'claude-kit:council-member', 'claude-kit:design-facilitator', 'claude-kit:consultant',
-        'claude-kit:blind-reader', 'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer',
-        'claude-kit:scope-adjudicator', 'claude-kit:corpus-drafter']) {
+        'grimoire:adversarial-reviewer',
+        'grimoire:blind-reviewer', 'grimoire:security-reviewer', 'grimoire:performance-reviewer',
+        'grimoire:council-member', 'grimoire:design-facilitator', 'grimoire:consultant',
+        'grimoire:blind-reader', 'grimoire:prose-reviewer', 'grimoire:plan-reviewer',
+        'grimoire:scope-adjudicator', 'grimoire:corpus-drafter']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
 });
@@ -121,7 +121,7 @@ test('a type planted under the bare `type` spelling alone is judged, not passed 
         tool_name: 'Bash',
         tool_input: { command: 'git commit -m x' },
         cwd: CWD,
-        type: 'claude-kit:blind-reviewer'
+        type: 'grimoire:blind-reviewer'
     });
     assert.strictEqual(r.status, 2, 'expected deny for a type planted only under `type`');
     assert.match(r.stderr, /may not change the state under review/);
@@ -150,7 +150,7 @@ test('a type that merely contains a judgment agent name is not governed', () => 
 // does: diff and log reads, a grep whose pattern contains a governed word, a
 // suite run, and a scratch write under .kit/.
 test('performance-reviewer: write-shaped commands are denied and read-shaped ones allowed, in both spellings', () => {
-    for (const t of ['claude-kit:performance-reviewer', 'performance-reviewer']) {
+    for (const t of ['grimoire:performance-reviewer', 'performance-reviewer']) {
         denyAll(t, [
             ['git commit -m x', GIT],
             ['git push origin main', GIT],
@@ -171,7 +171,7 @@ test('performance-reviewer: write-shaped commands are denied and read-shaped one
 // depth, and package installs. `touch` on a fresh path is the discriminator:
 // strict denies it, the gate class allows it deliberately for test scaffolding.
 test('consultant: git state changes, tree writes, and path mutations are denied', () => {
-    denyAll('claude-kit:consultant', [
+    denyAll('grimoire:consultant', [
         ['git commit -m x', GIT],
         ['echo findings > src/notes.md', WRITE],
         ['rm src/a.cs', PATHMUT],
@@ -304,7 +304,7 @@ test('strict class: writes into the tree are denied', () => {
         ['node x.js | tee report.md', WRITE],
         ['node x.js | tee -a report.md', WRITE],
         ['node x.js | tee .kit/log src/file', WRITE],
-        ["sed -i 's/a/b/' plugins/claude-kit/hooks/x.js", WRITE],
+        ["sed -i 's/a/b/' plugins/grimoire/hooks/x.js", WRITE],
         ["sed -i 's|a|b|' src/x.cs", WRITE],
         ["sed -i 's/a/b/;s/c/d/' src/x.cs", WRITE],
         ["sed -i -e 's/a/b/' -e 's/c/d/' src/x.cs", WRITE],
@@ -342,7 +342,7 @@ test('strict class: a move deletes its source, so both operands count', () => {
         ['Rename-Item src/a.js b.js', PATHMUT],
     ]);
     // A copy leaves its source in place, so only the destination counts.
-    allowAll(STRICT, ['cp plugins/claude-kit/hooks/x.js .kit/x.js',
+    allowAll(STRICT, ['cp plugins/grimoire/hooks/x.js .kit/x.js',
         'Copy-Item -Path src/a.txt -Destination .kit/a.txt', 'Copy-Item src/a.txt .kit/a.txt',
         `cp src/a.txt ${OUTSIDE}`]);
 });
@@ -354,7 +354,7 @@ test('strict class: file mutation commands are denied in the tree, allowed into 
         ['rmdir src/empty', PATHMUT],
         ['touch src/x.cs', PATHMUT],
         ['chmod +x scripts/run.sh', PATHMUT],
-        ['cp plugins/claude-kit/hooks/x.js plugins/claude-kit/hooks/y.js', PATHMUT],
+        ['cp plugins/grimoire/hooks/x.js plugins/grimoire/hooks/y.js', PATHMUT],
     ]);
     allowAll(STRICT, ['rm -rf .kit/tmp', `rm ${OUTSIDE}`, `chmod 755 ${OUTSIDE}`, 'ls -la src',
         'cat src/x', 'rg pattern plugins/']);
@@ -523,7 +523,7 @@ test('strict class: PowerShell writers into the tree are denied', () => {
 test('strict class: the PowerShell aliases carry the same policy as their cmdlets', () => {
     denyAll(STRICT, [
         ['ri -Recurse -Force plugins', PATHMUT],
-        ['del plugins\\claude-kit\\hooks\\x.js', PATHMUT],
+        ['del plugins\\grimoire\\hooks\\x.js', PATHMUT],
         ['erase src/x.js', PATHMUT],
         ['rd src/empty', PATHMUT],
         ['mi src/a src/b', PATHMUT],
@@ -615,8 +615,8 @@ test('containment is judged against the git root, not the payload cwd', () => {
     // The payload cwd is a real subdirectory of a real git repo, so the root walk
     // finds the repo above it and a relative path back out stays in the tree.
     assertDeniedAt(REPO_SUBDIR, STRICT, 'rm ../README.md', PATHMUT);
-    assertDeniedAt(REPO_SUBDIR, STRICT, 'rm ../plugins/claude-kit/hooks/docs-write-guard.js', PATHMUT);
-    assertDeniedAt(REPO_SUBDIR, STRICT, 'sed -i s/a/b/ ../plugins/claude-kit/hooks/docs-write-guard.js', WRITE);
+    assertDeniedAt(REPO_SUBDIR, STRICT, 'rm ../plugins/grimoire/hooks/docs-write-guard.js', PATHMUT);
+    assertDeniedAt(REPO_SUBDIR, STRICT, 'sed -i s/a/b/ ../plugins/grimoire/hooks/docs-write-guard.js', WRITE);
     assertDeniedAt(REPO_SUBDIR, STRICT, `rm ${path.join(REPO, 'README.md')}`, PATHMUT);
     assertDeniedAt(REPO_SUBDIR, STRICT, 'rm x.log', PATHMUT);
     assertAllowedAt(REPO_SUBDIR, STRICT, 'rm ../.kit/scratch.md');
@@ -735,8 +735,8 @@ test('the gate-runner allowance covers no commonly tracked directory', () => {
 });
 
 test('ungoverned agent types allow a command a strict agent is denied', () => {
-    for (const t of ['claude-kit:implementer-opus', 'claude-kit:implementer-sonnet', 'claude',
-        'claude-kit:docs-curator', 'general-purpose', 'Explore', 'some-unknown-type']) {
+    for (const t of ['grimoire:implementer-opus', 'grimoire:implementer-sonnet', 'claude',
+        'grimoire:docs-curator', 'general-purpose', 'Explore', 'some-unknown-type']) {
         assertAllowed(t, 'git commit -m x');
     }
 });
@@ -821,7 +821,7 @@ test('a git alias defined on the command line denies, since the real subcommand 
 test('the denial names the agent, the cause and the scratch path', () => {
     const r = runGuard(bash(STRICT, 'git checkout main'));
     assert.strictEqual(r.status, 2);
-    assert.match(r.stderr, /claude-kit:adversarial-reviewer/);
+    assert.match(r.stderr, /grimoire:adversarial-reviewer/);
     assert.match(r.stderr, /a git state change \(git checkout\)/);
     assert.match(r.stderr, /\.kit\//);
 });
@@ -1798,7 +1798,7 @@ test('every read-only agent definition is a governed seat, derived from the defi
     assert.ok(derived.length >= 11,
         'the derivation must find the read-only definitions, got: ' + derived.join(', '));
     for (const name of derived) {
-        const cls = agentLib.reviewAgentClass('claude-kit:' + name);
+        const cls = agentLib.reviewAgentClass('grimoire:' + name);
         assert.ok(cls !== null, `${name}.md grants no file-writing tool, so it is a read-only seat, `
             + 'and no policy class governs it: add it to reviewAgentClass');
         if (name !== 'qa-verifier') {
@@ -1808,8 +1808,8 @@ test('every read-only agent definition is a governed seat, derived from the defi
     }
     // The two positive controls on the other side of the line, so the derivation
     // above cannot pass by classifying everything.
-    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:qa-verifier'), 'gate');
-    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:implementer-opus'), null);
+    assert.strictEqual(agentLib.reviewAgentClass('grimoire:qa-verifier'), 'gate');
+    assert.strictEqual(agentLib.reviewAgentClass('grimoire:implementer-opus'), null);
 });
 
 // The guard reads its policy class out of a shared library at the deny path, and

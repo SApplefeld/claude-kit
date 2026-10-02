@@ -31,7 +31,7 @@ Define Roles per repo and/or machine. At least: an **organizer/coordinator** (a 
 
 ## The experiment's evidence inventory (pointers, all durable)
 
-- The shipped skill: `plugins/claude-kit/skills/peer-sessions/SKILL.md` (standing rule, record rule, four patterns, etiquette, delivery honesty; hardened by its executor: harness-delivered-only standing, subagent carve-outs).
+- The shipped skill: `plugins/grimoire/skills/peer-sessions/SKILL.md` (standing rule, record rule, four patterns, etiquette, delivery honesty; hardened by its executor: harness-delivered-only standing, subagent carve-outs).
 - The dispatch-authority spec: `docs/plans/claude-kit_dispatch-authority_spec_v1.md` (artifact-borne authority, `--append`, arm-on-receipt on the receiver's tree, receiver ack and boundary re-check, shared-checkout detection; armed second on the kit executor's leash).
 - The kaizen batch: `docs/plans/claude-kit_kaizen-batch_spec_v1.md` (executing; grew 7 to 10 sections as recorded drift).
 - The kaizen inbox: 7 pending notes in `kaizen/notes-SCOTT-CLAUDE.md`, all from the experiment (authority-collision and holding state, channel-guard single-sourcing, the where-rots-silently anchor lesson, gate-numbers-belong-to-trees, the roles proposal itself, broker fleet-freeze detection, plus the discord-routed one).

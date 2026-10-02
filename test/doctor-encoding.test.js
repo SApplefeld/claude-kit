@@ -33,7 +33,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const isWin = process.platform === 'win32';
 
@@ -117,12 +117,12 @@ function readClaudeMd(content) {
 }
 
 test('CLAUDE.md doctrine-import read round-trips a non-ASCII character', { skip: !isWin }, () => {
-    const content = '@claude-kit-doctrine.md  # café\n';
+    const content = '@grimoire-doctrine.md  # café\n';
     assert.strictEqual(readClaudeMd(content), content);
 });
 
 test('CLAUDE.md doctrine-import read is unchanged on ASCII content (control)', { skip: !isWin }, () => {
-    const content = '@claude-kit-doctrine.md\n';
+    const content = '@grimoire-doctrine.md\n';
     assert.strictEqual(readClaudeMd(content), content);
 });
 
@@ -133,7 +133,7 @@ const READ_SIGNPOST = extractLine('Get-Content $signpost -Raw', 1);
 function readSignpost(content) {
     const dir = makeDir('doctor-enc-signpost-');
     try {
-        const signpost = path.join(dir, 'claude-kit.local.json');
+        const signpost = path.join(dir, 'grimoire.local.json');
         fs.writeFileSync(signpost, content, 'utf8');
         return runSnippet(
             ['$signpost = ' + q(signpost)],
@@ -450,7 +450,7 @@ function runSignpostSection(claudeDir, fix, lockPath, access, share) {
 }
 
 function makeSignpostFixture(dir, content) {
-    const signpost = path.join(dir, 'claude-kit.local.json');
+    const signpost = path.join(dir, 'grimoire.local.json');
     fs.writeFileSync(signpost, content, 'utf8');
     return signpost;
 }
@@ -465,7 +465,7 @@ test('an unreadable clone signpost is refused rather than overwritten under -Fix
         const after = fs.readFileSync(signpost);
         assert.deepStrictEqual(after, before, 'signpost bytes must be unchanged');
         const all = reports.map((r) => r.Detail).join('\n');
-        assert.doesNotMatch(all, /Wrote .*claude-kit\.local\.json/, all);
+        assert.doesNotMatch(all, /Wrote .*grimoire\.local\.json/, all);
         assert.match(all, /unreadable/, all);
         assert.ok(!fs.existsSync(signpost + '.tmp'), 'no leftover .tmp file');
     } finally {
@@ -511,7 +511,7 @@ test('a readable clone signpost with an unresolvable kitRepoPath is rewritten un
         assert.strictEqual(after.kitRepoPath, REPO);
         assert.strictEqual(after.compactNudgeFloor, 7);
         const all = reports.map((r) => r.Detail).join('\n');
-        assert.match(all, /Wrote .*claude-kit\.local\.json/, all);
+        assert.match(all, /Wrote .*grimoire\.local\.json/, all);
     } finally {
         rmDir(dir);
     }
@@ -529,7 +529,7 @@ test('a failed Move-Item while writing the signpost is refused, not reported as 
         const signpost = makeSignpostFixture(dir, content);
         const reports = runSignpostSection(dir, true, signpost, 'Read', 'Read');
         const all = reports.map((r) => r.Detail).join('\n');
-        assert.doesNotMatch(all, /Wrote .*claude-kit\.local\.json/, all);
+        assert.doesNotMatch(all, /Wrote .*grimoire\.local\.json/, all);
         assert.match(all, /Failed to write/, all);
         assert.ok(!fs.existsSync(signpost + '.tmp'), 'no leftover .tmp file after a failed rename');
     } finally {

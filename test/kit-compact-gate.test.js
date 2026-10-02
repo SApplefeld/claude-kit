@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-compact-gate.js (the PreCompact
+// Tests for plugins/grimoire/hooks/kit-compact-gate.js (the PreCompact
 // boundary gate) and kit-compact-checkpoint.js (the checkpoint CLI).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
@@ -24,19 +24,19 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-gate.js');
-const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-checkpoint.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-gate.js');
+const CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-checkpoint.js');
 // The goal CLI, which the boundary note names as where a bound session's id is
 // printed: the checkpoint CLI's own status never prints the binding, its
 // checkpoint, gate-state and hold-stamp reports carrying no session id at all and
 // its marker legs naming each marker's own session instead, so a note that sent
 // the operator there for the id consent needs would send them to a report that
 // does not carry it.
-const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
+const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal.js');
 // The lib source, read as text by the pin that holds the gate record's reason
 // vocabulary against the match rule's own literals.
-const LIB_SOURCE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
-const { armGoal, bindSession, readGoal, goalPathKind } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+const LIB_SOURCE = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
+const { armGoal, bindSession, readGoal, goalPathKind } = require('../plugins/grimoire/hooks/kit-goal-lib.js');
 const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
     commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan, userCommandArgTexts,
@@ -49,7 +49,7 @@ const {
     ROLE_BOUNDARY_MAX_AGE_MS,
     markerMomentHolds, transcriptPosition, sessionTranscriptPath, GATE_REASONS,
     checkpointMatches, ensureScratchDirIgnored
-} = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+} = require('../plugins/grimoire/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
 // full deny state is the baseline and each case negates exactly one condition.
@@ -971,12 +971,12 @@ test('gate: a multi-line typed /kit-goal (no harness markup) claims the binding:
     }
 });
 
-test('gate: a namespaced typed lead (/claude-kit:kit-goal <path>, no markup) claims: deny-boundary', () => {
+test('gate: a namespaced typed lead (/grimoire:kit-goal <path>, no markup) claims: deny-boundary', () => {
     const { repo, planRel, transcript } = armedRepo({ unbound: true });
     try {
         writeLeadEntryTranscript(transcript, {
             type: 'user',
-            message: { role: 'user', content: '/claude-kit:kit-goal ' + planRel }
+            message: { role: 'user', content: '/grimoire:kit-goal ' + planRel }
         }, 50000);
         assertDeny(runGate(gatePayload(repo, transcript)));
         assert.strictEqual(readGoal(repo).boundSession, SESSION, 'the namespaced typed lead binds this session');
@@ -6189,7 +6189,7 @@ test('cli: the readings the status verb promises a replacement for are the libra
     // is replaced by the next directive. Each side tested against its own literal
     // is how a sixth reason added to the healable set leaves the promise withheld
     // from a file the writer now replaces, with both suites green.
-    const { HOLD_NUDGE_HEALABLE } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+    const { HOLD_NUDGE_HEALABLE } = require('../plugins/grimoire/hooks/kit-compact-lib.js');
     const { repo } = armedRepo();
     const shimDir = makeDir('kit-compact-gate-shim-');
     const stampPath = holdNudgePath(repo);
@@ -6901,7 +6901,7 @@ test('cli: a value whose home prefix is followed by a mark still has it elided',
 // the CLI destructures, and it runs before the CLI is loaded, so the CLI's own
 // binding is the throwing one.
 function throwingStatusReadPreload(dir) {
-    const lib = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+    const lib = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
     const shim = path.join(dir, 'throw-in-status.js');
     writeFile(shim, [
         "'use strict';",
@@ -9409,8 +9409,8 @@ function entryText(sessionId) {
     return [
         'Name: KIT: Fixture',
         'Role: Worker',
-        'Repo: claude-kit',
-        'Workdir: claude-kit',
+        'Repo: grimoire',
+        'Workdir: grimoire',
         'Session: ' + sessionId,
         'Started: 2026-01-01T00:00:00Z',
         'Status-updated: 2026-01-01T00:00:00Z',
@@ -11059,9 +11059,9 @@ function scratchResolverNamesFromSource(source) {
 }
 
 function scratchPathResolvers() {
-    const lib = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+    const lib = require('../plugins/grimoire/hooks/kit-compact-lib.js');
     const src = fs.readFileSync(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js'), 'utf8');
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js'), 'utf8');
     const names = scratchResolverNamesFromSource(src);
     // Five resolvers compose a file under the scratch directory today: the
     // checkpoint, the gate state and its log, the hold stamps and the consent

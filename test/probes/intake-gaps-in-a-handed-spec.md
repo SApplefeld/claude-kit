@@ -13,12 +13,12 @@ options:
 shapes:
   - name: doctrine-plus-output-style
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
   - name: doctrine-plus-executing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
 ---
 # A handed spec leaves three things unsaid
 

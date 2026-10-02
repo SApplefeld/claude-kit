@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/pr-docs-guard.js (the PreToolUse guard
+// Tests for plugins/grimoire/hooks/pr-docs-guard.js (the PreToolUse guard
 // that blocks creating a PR while docs/ still has uncommitted changes).
 //
 // Node's built-in test runner, no framework. The guard is spawned as a real
@@ -18,7 +18,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'pr-docs-guard.js');
+const GUARD = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'pr-docs-guard.js');
 
 // Spawn the guard with `payload` (JSON-encoded) on stdin. Returns
 // { code, stdout, stderr }.

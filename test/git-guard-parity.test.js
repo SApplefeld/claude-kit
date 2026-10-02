@@ -1,7 +1,7 @@
 // Behavioural pin between the two git-invocation guards this repo carries:
-// the Node hook side (plugins/claude-kit/hooks/kit-git-lib.js's
+// the Node hook side (plugins/grimoire/hooks/kit-git-lib.js's
 // gitChildEnv()) and the PowerShell doctor side
-// (plugins/claude-kit/doctor/install-memory-sync.ps1's Invoke-MemorySyncGit).
+// (plugins/grimoire/doctor/install-memory-sync.ps1's Invoke-MemorySyncGit).
 // Neither language can call the other's, so the two implementations are
 // restated rather than shared, and nothing today would notice if one gained
 // a key, lost an ordering guarantee, or dropped a value the other did not.
@@ -102,8 +102,8 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const JS_PATH = path.join(REPO, 'plugins', 'claude-kit', 'hooks', 'kit-git-lib.js');
-const PS_PATH = path.join(REPO, 'plugins', 'claude-kit', 'doctor', 'install-memory-sync.ps1');
+const JS_PATH = path.join(REPO, 'plugins', 'grimoire', 'hooks', 'kit-git-lib.js');
+const PS_PATH = path.join(REPO, 'plugins', 'grimoire', 'doctor', 'install-memory-sync.ps1');
 const isWin = process.platform === 'win32';
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
@@ -153,8 +153,8 @@ const PLANTED = { ...PLANTED_NOISE, ...PLANTED_GUARD_OVERWRITE, ...PLANTED_SURVI
 const PLANTED_NAMES_THAT_MUST_NOT_SURVIVE = Object.keys(PLANTED_NOISE);
 
 // The literal value each planted guard name changes to, confirmed against
-// plugins/claude-kit/hooks/kit-git-lib.js:100-116 and
-// plugins/claude-kit/doctor/install-memory-sync.ps1:452-487. GIT_CONFIG_VALUE_1
+// plugins/grimoire/hooks/kit-git-lib.js:100-116 and
+// plugins/grimoire/doctor/install-memory-sync.ps1:452-487. GIT_CONFIG_VALUE_1
 // is not here: it is checked by shape further down (against its own
 // planted-then-changed delta entry) rather than by comparing to a literal
 // target, since its value is a fresh GUID-bearing path.

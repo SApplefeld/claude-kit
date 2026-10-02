@@ -1,4 +1,4 @@
-// Tests for the plan-recovery inventory in plugins/claude-kit/hooks/session-start.js.
+// Tests for the plan-recovery inventory in plugins/grimoire/hooks/session-start.js.
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
 // child process, fed a SessionStart payload on stdin, and asserted on by its
@@ -20,9 +20,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
 const { armGoal } = require(path.join(
-    __dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-lib.js'));
+    __dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal-lib.js'));
 
 function makeProject() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-plans-test-'));

@@ -1,9 +1,9 @@
-// The Kit output style, plugins/claude-kit/output-styles/kit.md, carries the
+// The Kit output style, plugins/grimoire/output-styles/kit.md, carries the
 // doctrine's communication core inside a marked region so the register rides
 // the system prompt as well as CLAUDE.md. That region is a copy, and a copy
 // drifts, so every element in it is pinned here against both doctrine copies:
-// plugins/claude-kit/skills/operating-instructions/SKILL.md (the source) and
-// home/claude-kit-doctrine.md (the mirror). Sync direction is skill to mirror
+// plugins/grimoire/skills/operating-instructions/SKILL.md (the source) and
+// home/grimoire-doctrine.md (the mirror). Sync direction is skill to mirror
 // to style core; the doctrine copies carry no markers, so the elements are
 // located in them by bullet lead.
 //
@@ -29,10 +29,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SKILL = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+const SKILL = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
     'operating-instructions', 'SKILL.md');
-const MIRROR = path.join(__dirname, '..', 'home', 'claude-kit-doctrine.md');
-const STYLE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'output-styles',
+const MIRROR = path.join(__dirname, '..', 'home', 'grimoire-doctrine.md');
+const STYLE = path.join(__dirname, '..', 'plugins', 'grimoire', 'output-styles',
     'kit.md');
 
 const BEGIN = 'KIT-REGISTER-CORE:BEGIN';

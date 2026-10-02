@@ -1,4 +1,4 @@
-// Unit tests for plugins/claude-kit/hooks/kit-goal-lib.js.
+// Unit tests for plugins/grimoire/hooks/kit-goal-lib.js.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Each test
 // builds a fresh temp directory under os.tmpdir() as a fake repo cwd, writes
@@ -39,9 +39,9 @@ const {
     queuePosition,
     sessionHoldsLeash,
     sessionDirectoryCheck
-} = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+} = require('../plugins/grimoire/hooks/kit-goal-lib.js');
 
-const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
+const CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal.js');
 
 // Scrub the run-scoped variables for the file's whole run. This suite runs
 // inside fleet workers too, where the engine sets KIT_RUN_ID, and an inherited
@@ -1765,7 +1765,7 @@ test('CLI arm gate: a typed /kit-goal naming the plan arms, bare and --append, i
             ['typed lead', [lead('/kit-goal\ndocs/plans/a.md\ndocs/plans/b.md\n')]],
             ['typed lead, array content', [{
                 type: 'user',
-                message: { role: 'user', content: [{ type: 'text', text: '/claude-kit:kit-goal docs/plans/a.md docs/plans/b.md' }] }
+                message: { role: 'user', content: [{ type: 'text', text: '/grimoire:kit-goal docs/plans/a.md docs/plans/b.md' }] }
             }]]
         ]) {
             const env = typedArmEnv(repo, entries);
@@ -1992,14 +1992,14 @@ test('CLI arm refuses an unknown leading-dash token, naming it and the CLI versi
 
         // The build stamp under the plugin root is the version the message
         // names, and a root directory named for no build at all does not
-        // displace it: the stamp is read from a root spelled `claude-kit`,
+        // displace it: the stamp is read from a root spelled `grimoire`,
         // which is what both a dev checkout and a marketplace clone spell.
         const stamped = makeRepo();
-        writePlan(stamped, path.join('claude-kit', '.claude-plugin', 'build-info.json'),
-            JSON.stringify({ name: 'claude-kit', hash: 'ab12cd3' }));
+        writePlan(stamped, path.join('grimoire', '.claude-plugin', 'build-info.json'),
+            JSON.stringify({ name: 'grimoire', hash: 'ab12cd3' }));
         const bogus = spawnSync(process.execPath, [CLI, 'arm', '--bogus'], {
             cwd: repo, encoding: 'utf8',
-            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(stamped, 'claude-kit') }
+            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(stamped, 'grimoire') }
         });
         assert.strictEqual(bogus.status, 1);
         assert.match(bogus.stderr, /--bogus/);
@@ -2021,15 +2021,15 @@ test('CLI arm refuses an unknown leading-dash token, naming it and the CLI versi
         // marker: a directory name is not a build identity, so the message that
         // exists to say which build is running never presents one as a version.
         const bare = makeRepo();
-        fs.mkdirSync(path.join(bare, 'claude-kit'));
+        fs.mkdirSync(path.join(bare, 'grimoire'));
         const unstamped = spawnSync(process.execPath, [CLI, 'arm', '--bogus'], {
             cwd: repo, encoding: 'utf8',
-            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(bare, 'claude-kit') }
+            env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(bare, 'grimoire') }
         });
         rmRepo(bare);
         assert.strictEqual(unstamped.status, 1);
         assert.match(unstamped.stderr, /version unknown\b/);
-        assert.doesNotMatch(unstamped.stderr, /version claude-kit/);
+        assert.doesNotMatch(unstamped.stderr, /version grimoire/);
 
         // A real plan path, no bogus flag involved, still arms: the refusal
         // targets only an unrecognized leading-dash token.
@@ -2338,7 +2338,7 @@ test('armGoal rejects a plan path carrying control characters', () => {
 // (USERPROFILE/HOME) without touching this process's real environment.
 function spawnEmit(details, extraEnv) {
     const script = 'const { emitGoalEvent } = require(' + JSON.stringify(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-lib.js')
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal-lib.js')
     ) + '); emitGoalEvent(' + JSON.stringify(details) + ');';
     const env = { ...process.env };
     // Scrub this process's own ambient values first, so a case that omits one

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # pre-commit - keep the installable plugin zip in sync with committed sources.
 #
-# When a commit touches plugins/claude-kit/, rebuild plugins/claude-kit.zip so
+# When a commit touches plugins/grimoire/, rebuild plugins/grimoire.zip so
 # the artifact you upload to Cowork/Chat always matches HEAD. The zip is
 # gitignored, so this only refreshes the local file - nothing is staged.
 #
@@ -13,20 +13,20 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
 
 # Only rebuild when plugin sources are part of this commit.
-if ! git diff --cached --name-only -- 'plugins/claude-kit/' | grep -q .; then
+if ! git diff --cached --name-only -- 'plugins/grimoire/' | grep -q .; then
     exit 0
 fi
 
 # Validate before packaging: a frontmatter parse error ships silently otherwise
 # (the agent loads with empty metadata at runtime). Skip quietly if the CLI is absent.
 if command -v claude >/dev/null 2>&1; then
-    if ! claude plugin validate ./plugins/claude-kit; then
+    if ! claude plugin validate ./plugins/grimoire; then
         echo "[pre-commit] plugin validation failed - fix before committing." >&2
         exit 1
     fi
 fi
 
-echo "[pre-commit] plugin sources changed - rebuilding plugins/claude-kit.zip"
+echo "[pre-commit] plugin sources changed - rebuilding plugins/grimoire.zip"
 
 # Prefer PowerShell on Windows (no 'zip' in stock Git Bash); fall back to build.sh.
 if command -v pwsh >/dev/null 2>&1; then

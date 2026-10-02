@@ -1,6 +1,6 @@
-// Tests for plugins/claude-kit/hooks/doctrine-refresh.js, the SessionStart
+// Tests for plugins/grimoire/hooks/doctrine-refresh.js, the SessionStart
 // hook that writes the operating-instructions skill body to
-// ~/.claude/claude-kit-doctrine.md, and for the doctor's comparison of that
+// ~/.claude/grimoire-doctrine.md, and for the doctor's comparison of that
 // written file against the skill body.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every
@@ -26,11 +26,11 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const HOOK = path.join(REPO, 'plugins', 'claude-kit', 'hooks', 'doctrine-refresh.js');
-const DOCTOR = path.join(REPO, 'plugins', 'claude-kit', 'doctor', 'doctor.ps1');
+const HOOK = path.join(REPO, 'plugins', 'grimoire', 'hooks', 'doctrine-refresh.js');
+const DOCTOR = path.join(REPO, 'plugins', 'grimoire', 'doctor', 'doctor.ps1');
 const isWin = process.platform === 'win32';
 
-const HEADER_OPEN = '<!-- Written by the claude-kit doctrine-refresh hook';
+const HEADER_OPEN = '<!-- Written by the grimoire doctrine-refresh hook';
 const T1 = new Date('2026-09-01T10:00:00Z');
 const T2 = new Date('2026-09-01T10:02:00Z');
 
@@ -47,7 +47,7 @@ function rmDir(dir) {
 function makeHome(root) {
     const home = path.join(root, 'home');
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), '@claude-kit-doctrine.md\n', 'utf8');
+    fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), '@grimoire-doctrine.md\n', 'utf8');
     return home;
 }
 
@@ -77,8 +77,8 @@ function runHook(home, plugin, source) {
     return res.stdout;
 }
 
-const doctrinePath = (home) => path.join(home, '.claude', 'claude-kit-doctrine.md');
-const stampPath = (home) => path.join(home, '.claude', 'claude-kit-doctrine.stamp.json');
+const doctrinePath = (home) => path.join(home, '.claude', 'grimoire-doctrine.md');
+const stampPath = (home) => path.join(home, '.claude', 'grimoire-doctrine.stamp.json');
 const readDoctrine = (home) => fs.readFileSync(doctrinePath(home), 'utf8');
 const readStamp = (home) => JSON.parse(fs.readFileSync(stampPath(home), 'utf8'));
 
@@ -125,11 +125,11 @@ for (const source of ['startup', 'resume']) test(`an older writer declines at ${
         const ctx = parsed.hookSpecificOutput.additionalContext;
         assert.match(ctx, /aaa1111/);
         assert.match(ctx, /bbb2222/);
-        assert.match(ctx, /claude-kit-doctrine\.md/);
+        assert.match(ctx, /grimoire-doctrine\.md/);
         // The line names this session's plugin root by its directory name and
         // gives the recovery that works: a restart reaches the same older root.
         assert.match(ctx, /cache-v1/);
-        assert.match(ctx, /claude-kit-doctrine\.stamp\.json/);
+        assert.match(ctx, /grimoire-doctrine\.stamp\.json/);
         assert.doesNotMatch(ctx, /restart/i);
         assert.ok(!ctx.includes('\n'), 'the decline is one line: ' + ctx);
     } finally {
@@ -344,7 +344,7 @@ test('the doctor still WARNs where the body under the header differs (control)',
         assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
         // The remedy names the decline and the stamp that clears it, since a
         // session on an older plugin than the last writer does not refresh.
-        assert.match(reports[0].Detail, /claude-kit-doctrine\.stamp\.json/);
+        assert.match(reports[0].Detail, /grimoire-doctrine\.stamp\.json/);
         assert.match(reports[0].Detail, /declin/i);
     } finally {
         rmDir(root);

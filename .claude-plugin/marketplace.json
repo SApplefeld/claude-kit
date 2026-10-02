@@ -7,13 +7,14 @@
   "description": "Scott Applefeld's personal plugin marketplace.",
   "plugins": [
     {
-      "name": "claude-kit",
-      "source": "./plugins/claude-kit",
+      "name": "grimoire",
+      "source": "./plugins/grimoire",
       "description": "Workflow skills (brainstorm/execute/finish), eight review agents, C# and T-SQL style guides, and compaction-recovery hooks.",
       "author": {
         "name": "Scott Applefeld",
         "email": "scott@applefeld.com"
       }
     }
-  ]
+  ],
+  "renames": { "claude-kit": "grimoire" }
 }

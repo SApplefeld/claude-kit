@@ -1,4 +1,4 @@
-# Project memory: claude-kit
+# Project memory: grimoire
 
 - [Run the suite as `node --test test/*.test.js`](test-suite-invocation.md) - the bare directory form dies with module-not-found on Node 24 before running anything
 - [The suite is not zero-fail: one intermittent red and one this box makes permanent](suite-baseline-is-not-zero-fail.md) - baseline 1,875 tests / 1 fail; the memory-session path-length red is this machine's short TEMP, not a regression
@@ -18,7 +18,7 @@
 
 - [A manual `/compact` never reaches the compaction gate](manual-compact-never-reaches-the-gate.md) - the PreCompact matcher is auto-only, so the in-code `not-auto` clause is anti-rewiring defence rather than a live path, it allows rather than refuses, and a manual landing spends no release marker
 
-- [A merge that touches any hook leaves the build stamp stale, with no conflict](merging-hook-edits-staleness-the-build-stamp.md) - the stamp hashes bytes while git merges lines, so rebuild before gating a merge whose diff touches plugins/claude-kit/hooks/
+- [A merge that touches any hook leaves the build stamp stale, with no conflict](merging-hook-edits-staleness-the-build-stamp.md) - the stamp hashes bytes while git merges lines, so rebuild before gating a merge whose diff touches plugins/grimoire/hooks/
 
 - [Specs handed over by the KIT: Messaging session are pre-authorized to arm](kit-messaging-handoffs-are-pre-authorized.md) - decided 2026-08-25 by the operator; the peer-standing rule still holds for everything else, and this is the operator's own answer to it rather than a peer's assertion
 
@@ -38,7 +38,7 @@
 - [A seat that declines to give a direction names who acts](a-declining-seat-names-who-acts.md) - two seats each correctly declining produces a stall that reads like discipline; fold the name-who-acts clause into seat-infrastructure Section 3's standing-delegation block when it resumes
 - [Unlazy was evaluated; one rule adopted, the machinery declined](unlazy-evaluated-one-rule-adopted.md) - the kit's specs, reviewers, and leash cover its gates-and-stop-hook territory; the keeper was positive controls for absence-proving acceptance checks
 
-- [The doctrine has three copies and the third is a gitignored build artifact](doctrine-has-a-third-gitignored-copy.md) - plugins/claude-kit/claude-kit-doctrine.md is regenerated build staging, so a tree-wide doctrine grep returns three hits where two surfaces own it
+- [The doctrine has three copies and the third is a gitignored build artifact](doctrine-has-a-third-gitignored-copy.md) - plugins/grimoire/grimoire-doctrine.md is regenerated build staging, so a tree-wide doctrine grep returns three hits where two surfaces own it
 
 Outcomes: outcomes.jsonl holds the action journal; query with memq find <term>.
 - [Line endings here are git's, not the file's](line-endings-are-governed-by-autocrlf.md) - core.autocrlf=true with no .gitattributes, so every committed blob is LF and only the worktree diff a reviewer reads depends on preserving a file's endings
@@ -46,7 +46,7 @@ Outcomes: outcomes.jsonl holds the action journal; query with memq find <term>.
 - [memq's `find` semantic channel is cwd-dependent](memq-find-semantic-channel-is-cwd-dependent.md) - it calls projectSegment(process.cwd()) itself, so a network stand-down refuses the whole verb rather than just the lexical block
 - [A parity pin over data shape is blind to a divergence in control flow](parity-pin-over-shape-misses-control-flow.md) - two surfaces can agree on what a record carries and disagree on whether it is written at all, so a contract mirrored across surfaces needs one pin leg per axis
 - [Factoring N call sites into one shared constant asserts that they are the same](factoring-call-sites-asserts-sameness.md) - the claim arrives in the one form that reads as tidiness, so trace each site to its writer before folding them together
-- [A filename grep over test/ is not the whole pin surface](a-filename-grep-misses-a-test-that-walks-a-tree.md) - doctrine-parity walks plugins/claude-kit to depth 6 and names no file, so resolving pins by path literal silently misses it
+- [A filename grep over test/ is not the whole pin surface](a-filename-grep-misses-a-test-that-walks-a-tree.md) - doctrine-parity walks plugins/grimoire to depth 6 and names no file, so resolving pins by path literal silently misses it
 - [The session-start git snapshot is a point-in-time reading](session-start-git-snapshot-goes-stale.md) - a `??` marker expires at the session's own first commit, so re-derive tracking with git ls-files before marking it confirmed
 - [A finding's suggested fix carries a scope claim the finding itself does not](a-findings-fix-line-is-a-scope-claim-too.md) - confirm the observation, then ask separately whether repairing it needs acceptance the section lacks
 - [Prose written to justify a rule invents the incident that would justify it](justifying-prose-invents-its-own-incident.md) - a consequence in the source becomes a past event in the draft; check the tense against the record

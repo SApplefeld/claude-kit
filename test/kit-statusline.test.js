@@ -1,4 +1,4 @@
-// Unit tests for the plugins/claude-kit/scripts/kit-statusline.js launcher:
+// Unit tests for the plugins/grimoire/scripts/kit-statusline.js launcher:
 // the in-process render path, the file-backed render cache under the project's
 // .kit/, and the stale-but-drawn fallback. The launcher's payload resolution
 // and its blank answer to a payload from before the widget existed are covered
@@ -18,10 +18,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
+const SCRIPTS = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts');
 const WIDGET = path.join(SCRIPTS, 'kit-goal-statusline.js');
 const LAUNCHER = path.join(SCRIPTS, 'kit-statusline.js');
-const GOAL_LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-lib.js');
+const GOAL_LIB = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-goal-lib.js');
 
 const PLAN_REL = 'docs/plans/widget_spec_v1.md';
 const CACHE_REL = path.join('.kit', 'statusline-cache.json');
@@ -44,7 +44,7 @@ function makeRepo() {
 // the hooks library, the same shape memq-shim.test.js builds.
 function makePayload() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-launcher-plugins-'));
-    const entry = path.join(root, 'cache', 'applefeld', 'claude-kit', 'v1');
+    const entry = path.join(root, 'cache', 'applefeld', 'grimoire', 'v1');
     fs.mkdirSync(path.join(entry, 'scripts'), { recursive: true });
     fs.mkdirSync(path.join(entry, 'hooks'), { recursive: true });
     fs.writeFileSync(path.join(entry, 'scripts', 'memq.js'), '', 'utf8');
@@ -52,7 +52,7 @@ function makePayload() {
     fs.copyFileSync(GOAL_LIB, path.join(entry, 'hooks', 'kit-goal-lib.js'));
     fs.writeFileSync(path.join(root, 'installed_plugins.json'), JSON.stringify({
         version: 2,
-        plugins: { 'claude-kit@applefeld': [{ scope: 'user', installPath: entry, version: 'v1' }] }
+        plugins: { 'grimoire@applefeld': [{ scope: 'user', installPath: entry, version: 'v1' }] }
     }), 'utf8');
     return { root, entry };
 }

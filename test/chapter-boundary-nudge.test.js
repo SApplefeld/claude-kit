@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/chapter-boundary-nudge.js (the
+// Tests for plugins/grimoire/hooks/chapter-boundary-nudge.js (the
 // PostToolUse chapter-boundary nudge).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
@@ -25,9 +25,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'chapter-boundary-nudge.js');
-const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
-const { reminderText } = require('../plugins/claude-kit/hooks/chapter-boundary-nudge.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'chapter-boundary-nudge.js');
+const { armGoal, bindSession } = require('../plugins/grimoire/hooks/kit-goal-lib.js');
+const { reminderText } = require('../plugins/grimoire/hooks/chapter-boundary-nudge.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
 // full fire state is the baseline and each silent case negates exactly one
@@ -212,15 +212,15 @@ test('the reminder carries its pinned fragments', () => {
 });
 
 test('reminderText renders the runnable clause for a conventional path', () => {
-    const text = reminderText('D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
-    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+    const text = reminderText('D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js');
+    assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open'),
         'the reminder must render the runnable clause:\n' + text);
-    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open)'
+    assert.ok(text.includes('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open)'
         + ' from the project directory'),
         'the reminder must say to run the command from the project directory:\n' + text);
     // With whatever the helper rendered removed, no bare mention of the file
     // survives.
-    const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('');
+    const stripped = text.split('node "D:/kit/plugins/grimoire/hooks/kit-compact-checkpoint.js" open').join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
 });

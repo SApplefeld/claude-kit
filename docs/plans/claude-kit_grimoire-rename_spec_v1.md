@@ -1,6 +1,6 @@
 # The kit plugin is renamed from `claude-kit` to `grimoire`, so Claude Code 2.1.287's validator passes it and every host migrates itself on its next session
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-10-02
 

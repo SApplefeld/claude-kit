@@ -1,5 +1,5 @@
-// Tests for plugins/claude-kit/scripts/memq-shim.js and its installer,
-// plugins/claude-kit/doctor/install-memq-shim.ps1.
+// Tests for plugins/grimoire/scripts/memq-shim.js and its installer,
+// plugins/grimoire/doctor/install-memq-shim.ps1.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every
 // case spawns the shim as a child process with KIT_PLUGINS_ROOT pointed at a
@@ -25,8 +25,8 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const SHIM = path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memq-shim.js');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const SHIM = path.join(REPO, 'plugins', 'grimoire', 'scripts', 'memq-shim.js');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memq-shim.ps1');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const isWin = process.platform === 'win32';
@@ -69,10 +69,10 @@ function rmDir(dir) {
     }
 }
 
-// A fake cache entry <root>/cache/<marketplace>/claude-kit/<version>, valid
+// A fake cache entry <root>/cache/<marketplace>/grimoire/<version>, valid
 // (carrying the stub memq.js) unless noScript asks for a half-removed one.
 function addCacheEntry(root, marketplace, version, options) {
-    const dir = path.join(root, 'cache', marketplace, 'claude-kit', version);
+    const dir = path.join(root, 'cache', marketplace, 'grimoire', version);
     fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
     if (!(options && options.noScript)) {
         fs.writeFileSync(path.join(dir, 'scripts', 'memq.js'), FAKE_MEMQ, 'utf8');
@@ -87,7 +87,7 @@ function setEntryMtime(dir, isoDate) {
 
 function writeManifest(root, installPath, key) {
     const plugins = {};
-    plugins[key || 'claude-kit@applefeld'] = [{ scope: 'user', installPath, version: 'x' }];
+    plugins[key || 'grimoire@applefeld'] = [{ scope: 'user', installPath, version: 'x' }];
     fs.writeFileSync(path.join(root, 'installed_plugins.json'),
         JSON.stringify({ version: 2, plugins }) + '\n', 'utf8');
 }
@@ -140,7 +140,7 @@ test('survives a cache hash change without re-install: a stale manifest falls ba
         writeManifest(root, a);
         // Simulate a kit update replacing the cache entry: the directory the
         // manifest points at is gone, and only the new hash exists.
-        const b = path.join(root, 'cache', 'applefeld', 'claude-kit', 'bbbb');
+        const b = path.join(root, 'cache', 'applefeld', 'grimoire', 'bbbb');
         fs.renameSync(a, b);
         const res = runShim(root, []);
         assert.strictEqual(res.status, 0, res.stderr);
@@ -182,7 +182,7 @@ test('the no-payload note names no path, since nothing here could elide one', ()
     try {
         const res = runShim(root, ['find', 'x']);
         assert.strictEqual(res.status, 1);
-        assert.match(res.stderr, /no installed claude-kit payload/,
+        assert.match(res.stderr, /no installed grimoire payload/,
             'test setup: the note under test is the one this fixture stages: ' + res.stderr);
         assert.ok(!res.stderr.includes(root),
             'the searched directory is withheld rather than printed: ' + res.stderr);
@@ -225,7 +225,7 @@ test('a spawn this shim cannot start reports the code, and neither the payload p
         const res = runShim(root, ['find', 'x'],
             { NODE_OPTIONS: spawnRefusingPreload(root) });
         assert.strictEqual(res.status, 1, res.stderr);
-        assert.match(res.stderr, /could not run the installed claude-kit payload/,
+        assert.match(res.stderr, /could not run the installed grimoire payload/,
             'test setup: the spawn was refused, which is the leg under test: '
             + JSON.stringify(res.stderr));
         assert.ok(!res.stderr.includes(entry),
@@ -279,7 +279,7 @@ test('KIT_PLUGINS_ROOT alone is ignored, loudly: it selects code, so it needs it
 test('the scan pins the marketplace the manifest names', () => {
     const root = makePluginsRoot();
     try {
-        // Two marketplaces each ship a directory named claude-kit. The
+        // Two marketplaces each ship a directory named grimoire. The
         // manifest says whose kit this machine runs, so a newer entry from
         // the other publisher must not win, even though its mtime is later
         // and the manifest's own installPath no longer exists.
@@ -287,7 +287,7 @@ test('the scan pins the marketplace the manifest names', () => {
         const theirs = addCacheEntry(root, 'someone-else', 'zzzz');
         setEntryMtime(mine, '2026-01-01T00:00:00Z');
         setEntryMtime(theirs, '2026-07-01T00:00:00Z');
-        writeManifest(root, path.join(root, 'cache', 'applefeld', 'claude-kit', 'gone'));
+        writeManifest(root, path.join(root, 'cache', 'applefeld', 'grimoire', 'gone'));
         const res = runShim(root, []);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.ok(res.stdout.includes('FAKE-MEMQ ' + scriptsDirOf(mine)), res.stdout);

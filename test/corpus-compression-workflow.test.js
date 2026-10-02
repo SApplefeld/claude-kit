@@ -27,7 +27,7 @@ const SCRIPT = path.join(ROOT, 'tools', 'corpus-compression', 'workflow.mjs');
 // Read with LF endings, since a Windows checkout may carry CRLF and the
 // checks below anchor on line ends.
 const SOURCE = fs.readFileSync(SCRIPT, 'utf8').replace(/\r\n/g, '\n');
-const { reviewAgentClass } = require(path.join(ROOT, 'plugins', 'claude-kit', 'hooks', 'kit-agent-identity-lib.js'));
+const { reviewAgentClass } = require(path.join(ROOT, 'plugins', 'grimoire', 'hooks', 'kit-agent-identity-lib.js'));
 
 // The argument text of every agent( call, read by balancing parentheses from
 // the opening one. Line comments are dropped first, since the script's own
@@ -105,10 +105,10 @@ function stub({ fail = [], empty = [] } = {}) {
 const WAVES = [
     { id: 'd1', kind: 'draft', config: 'fable-low', prompt: 'd1' },
     { id: 'r1', kind: 'review', round: 1, reviews: [
-        { agentType: 'claude-kit:prose-reviewer', prompt: 'r1a' },
-        { agentType: 'claude-kit:blind-reader', prompt: 'r1b' },
-        { agentType: 'claude-kit:blind-reader', prompt: 'r1c' },
-        { agentType: 'claude-kit:blind-reader', prompt: 'r1d' },
+        { agentType: 'grimoire:prose-reviewer', prompt: 'r1a' },
+        { agentType: 'grimoire:blind-reader', prompt: 'r1b' },
+        { agentType: 'grimoire:blind-reader', prompt: 'r1c' },
+        { agentType: 'grimoire:blind-reader', prompt: 'r1d' },
     ] },
     { id: 'd2', kind: 'draft', config: 'opus-medium', prompt: 'd2' },
 ];
@@ -175,7 +175,7 @@ test('the order check reds when a draft wave is not awaited', async () => {
 test('each dispatch carries the constants for its kind', async () => {
     const { s } = await dryRun(SOURCE, WAVES, []);
     const byPrompt = Object.fromEntries(s.calls.map(c => [c.prompt, c.opts]));
-    assert.deepStrictEqual([byPrompt.d1.model, byPrompt.d1.effort, byPrompt.d1.agentType], ['fable', 'low', 'claude-kit:corpus-drafter']);
+    assert.deepStrictEqual([byPrompt.d1.model, byPrompt.d1.effort, byPrompt.d1.agentType], ['fable', 'low', 'grimoire:corpus-drafter']);
     assert.deepStrictEqual([byPrompt.d2.model, byPrompt.d2.effort], ['opus', 'medium']);
     for (const p of ['r1a', 'r1b', 'r1c', 'r1d']) {
         assert.deepStrictEqual([byPrompt[p].model, byPrompt[p].effort], ['fable', 'low']);
@@ -235,7 +235,7 @@ function maxTracks(src) {
 function trackWaves(t, reviewers = 2) {
     return [
         { id: `${t}d`, track: t, kind: 'draft', config: 'opus-medium', prompt: `${t}d` },
-        { id: `${t}r`, track: t, kind: 'review', round: 1, reviews: Array.from({ length: reviewers }, (_, i) => ({ agentType: 'claude-kit:prose-reviewer', prompt: `${t}r${'abcd'[i]}` })) },
+        { id: `${t}r`, track: t, kind: 'review', round: 1, reviews: Array.from({ length: reviewers }, (_, i) => ({ agentType: 'grimoire:prose-reviewer', prompt: `${t}r${'abcd'[i]}` })) },
     ];
 }
 

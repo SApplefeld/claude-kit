@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/stop-docs-hygiene.js (the docs-library Stop hook).
+// Tests for plugins/grimoire/hooks/stop-docs-hygiene.js (the docs-library Stop hook).
 //
 // Node's built-in test runner (Node v24), no framework. The hook is spawned as a
 // real child process, fed a Stop payload on stdin, and asserted on by its stdout:
@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'stop-docs-hygiene.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'stop-docs-hygiene.js');
 
 function makeDir(prefix) {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
