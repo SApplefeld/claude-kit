@@ -107,7 +107,7 @@ else
 fi
 
 echo "Next:"
-echo "  1. Install the plugin:  /plugin marketplace add <your-github-username>/grimoire ; /plugin install grimoire@applefeld"
+echo "  1. Install the plugin:  /plugin marketplace add <your-github-username>/claude-kit ; /plugin install grimoire@applefeld"
 echo "  2. (Claude Code, once per machine) add to ~/.claude/CLAUDE.md so the doctrine loads always-on:  @grimoire-doctrine.md"
 echo "  3. (Cowork/Chat, once per account) add to your account preferences:  Before any non-trivial task, consult the operating-instructions skill."
 

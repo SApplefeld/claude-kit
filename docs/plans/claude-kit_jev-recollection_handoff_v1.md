@@ -2,7 +2,7 @@
 
 Status: Handoff (non-executable; authors no sections)
 Created: 2026-09-19
-Origin: a claude.ai design conversation on the operator's behalf, working from a clone of `SApplefeld/grimoire` at `main` 2d2ead9 and the `feat/memory-database` branch at 1e3bdd7 (pull request 59). Anchors are authoring-time; re-locate every hit by content.
+Origin: a claude.ai design conversation on the operator's behalf, working from a clone of `SApplefeld/claude-kit` at `main` 2d2ead9 and the `feat/memory-database` branch at 1e3bdd7 (pull request 59). Anchors are authoring-time; re-locate every hit by content.
 Distilled into: `claude-kit_jev-recollection-judge_spec_v1.md`, which adopts applications A and E below and declines B, C and D with reasons.
 Companion files: `run.js` (the battery-to-SystemOne harness) and `report.md` (the live run's output) were delivered beside this brief to the operator and are not in the repository; the spec's section 1 lands the harness.
 

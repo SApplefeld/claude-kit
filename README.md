@@ -173,7 +173,7 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
 
 3. In Claude Code:
    ```
-   /plugin marketplace add <your-github-username>/grimoire
+   /plugin marketplace add <your-github-username>/claude-kit
    /plugin install grimoire@applefeld
    ```
    Default scope is user, so every project picks it up. If the marketplace was added before a structure fix, refresh it first: `/plugin marketplace update applefeld` (or remove and re-add). A machine that installed the plugin under its former name sees Claude Code rename it once, and then needs the one install command `claude plugin install grimoire@applefeld`, which the doctor runs.

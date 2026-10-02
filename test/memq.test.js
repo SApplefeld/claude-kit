@@ -403,8 +403,8 @@ test('sanitizeProjectPath reproduces the harness real project directory names', 
     // These expected values are the directory names Claude Code itself
     // created under ~/.claude/projects for these cwds; the rule must keep
     // reproducing them or memq reads the wrong store.
-    assert.strictEqual(memq.sanitizeProjectPath('D:\\personal\\sapplefeld-grimoire'),
-        'D--personal-sapplefeld-grimoire');
+    assert.strictEqual(memq.sanitizeProjectPath('D:\\personal\\sapplefeld-claude-kit'),
+        'D--personal-sapplefeld-claude-kit');
     assert.strictEqual(memq.sanitizeProjectPath('C:\\Users\\sappl'), 'C--Users-sappl');
     // Hyphens in the source path pass through, and case is preserved.
     assert.strictEqual(memq.sanitizeProjectPath('D:\\sgate-inst'), 'D--sgate-inst');
