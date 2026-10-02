@@ -27,8 +27,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const { CASES } = require('./doctrine-import-cases.test.js');
-
 const REPO = path.join(__dirname, '..');
 const HOOK = path.join(REPO, 'plugins', 'grimoire', 'hooks', 'doctrine-refresh.js');
 const DOCTOR = path.join(REPO, 'plugins', 'grimoire', 'doctor', 'doctor.ps1');
@@ -424,9 +422,9 @@ test('a lone old stamp beside a new doctrine file stays put', () => {
     }
 });
 
-// The import check follows Claude Code's case-sensitive import grammar, so
-// @Grimoire-Doctrine.md imports nothing on a case-sensitive file system, and
-// the old line beside it is swapped, which leaves one live import and no offer.
+// The swap takes no "already imported" gate, so a line holding the new token
+// in another letter case leaves the old line swapped, and the swapped line
+// holds the exact token, so no offer is made.
 test('a line holding the new token in another letter case does not stop the swap', () => {
     const root = makeDir('doctrine-refresh-migrate-case-');
     try {
@@ -441,8 +439,8 @@ test('a line holding the new token in another letter case does not stop the swap
     }
 });
 
-// An import indented under four spaces and carrying a trailing note is still
-// an import, so it is not offered twice.
+// A line holding the import token with indentation and a trailing note
+// contains the token, so it is not offered twice.
 test('an import line with indentation or a trailing note draws no wiring offer', () => {
     const root = makeDir('doctrine-refresh-wired-shape-');
     try {
@@ -451,23 +449,6 @@ test('an import line with indentation or a trailing note draws no wiring offer',
         const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
         const out = runHook(home, plugin, 'startup');
         assert.doesNotMatch(out, /not wired in/, 'the import is present: ' + out);
-    } finally {
-        rmDir(root);
-    }
-});
-
-// Every row of the shared case table, run through the hook: the wiring offer
-// appears exactly where the row is not an import. The doctor's Doctrine import
-// check is held to the same rows in test/doctor-rename-migration.test.js.
-for (const c of CASES) test(`wiring offer, ${c.name}: ${c.imported ? 'none' : 'offered'}`, () => {
-    const root = makeDir('doctrine-refresh-import-case-');
-    try {
-        const home = makeHome(root);
-        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), c.text, 'utf8');
-        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
-        const out = runHook(home, plugin, 'startup');
-        if (c.imported) assert.doesNotMatch(out, /not wired in/, out);
-        else assert.match(out, /not wired in/, 'no offer for ' + JSON.stringify(c.text));
     } finally {
         rmDir(root);
     }
@@ -612,6 +593,26 @@ test('an old-token line carrying other text is kept, and the wiring offer names 
         assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), text);
         assert.match(ctx, /not wired in/);
         assert.ok(ctx.includes('"' + NEW.importLine + '"'), ctx);
+    } finally {
+        rmDir(root);
+    }
+});
+
+// A UTF-8 file can open with a byte order mark, which sits ahead of line 1's
+// text. The exact old line after it is swapped, and the mark is kept.
+test('an exact old line on line 1 after a UTF-8 BOM is swapped, and the BOM and every other byte stay', () => {
+    const root = makeDir('doctrine-refresh-migrate-bom-');
+    try {
+        const home = makeHome(root);
+        const bom = Buffer.from([0xEF, 0xBB, 0xBF]);
+        const rest = '\r\nKeep this line, café.\r\n';
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), Buffer.concat([bom, Buffer.from(OLD.importLine + rest, 'utf8')]));
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        const out = runHook(home, plugin, 'startup');
+        const want = Buffer.concat([bom, Buffer.from(NEW.importLine + rest, 'utf8')]);
+        assert.ok(fs.readFileSync(claudePath(home, 'CLAUDE.md')).equals(want),
+            'CLAUDE.md: ' + JSON.stringify(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'latin1')));
+        assert.doesNotMatch(out, /not wired in/, 'the swapped line is the import: ' + out);
     } finally {
         rmDir(root);
     }

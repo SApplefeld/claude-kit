@@ -360,20 +360,27 @@ $migrationOldImport = "@claude-kit-doctrine.md"
 $migrationNewImport = "@grimoire-doctrine.md"
 $migrationClaudeMd = Join-Path $claudeDir "CLAUDE.md"
 $migrationLatin1 = [System.Text.Encoding]::GetEncoding(28591)
+$migrationLatin1Bom = $migrationLatin1.GetString([byte[]](0xEF, 0xBB, 0xBF))
 
 function Test-MigrationFree {
     param([string]$Old, [string]$New)
     return (Test-Path -LiteralPath (Join-Path $claudeDir $Old)) -and -not (Test-Path -LiteralPath (Join-Path $claudeDir $New))
 }
 
-# CLAUDE.md as line segments, each keeping its own terminator, and the index of
-# the first exact former-token line, or -1. Exact means the segment less its
-# \r\n or \n terminator, compared case-sensitively.
+# CLAUDE.md as line segments, each keeping its own terminator, the UTF-8 byte
+# order mark as latin1 text where line 1 opens with one, or "", and the index
+# of the first exact former-token line, or -1. Exact means the segment less its
+# \r\n or \n terminator, and on line 1 less the mark, compared
+# case-sensitively. The line is matched by its text alone, so a line inside a
+# comment or a code block counts too.
 function Get-MigrationImportState {
     $segments = [regex]::Split($migrationLatin1.GetString([System.IO.File]::ReadAllBytes($migrationClaudeMd)), '(?<=\n)')
     $texts = @($segments | ForEach-Object { $_ -replace '\r?\n$', '' })
+    $bom = if ($texts[0].StartsWith($migrationLatin1Bom, [System.StringComparison]::Ordinal)) { $migrationLatin1Bom } else { "" }
+    $texts[0] = $texts[0].Substring($bom.Length)
     return @{
         Segments = $segments
+        Bom = $bom
         OldAt = [array]::IndexOf($texts, $migrationOldImport)
     }
 }
@@ -450,7 +457,8 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
         try {
             $migrationTarget = Resolve-MigrationTarget $migrationClaudeMd
             $segments = $migrationImport.Segments
-            $segments[$migrationImport.OldAt] = $migrationNewImport + $segments[$migrationImport.OldAt].Substring($migrationOldImport.Length)
+            $lead = if ($migrationImport.OldAt -eq 0) { $migrationImport.Bom } else { "" }
+            $segments[$migrationImport.OldAt] = $lead + $migrationNewImport + $segments[$migrationImport.OldAt].Substring($lead.Length + $migrationOldImport.Length)
             $migrationBytes = $migrationLatin1.GetBytes(-join $segments)
             $candidate = "$migrationTarget.tmp-migrate-$PID-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
             # CreateNew fails where anything already holds the path, so the temp
@@ -519,30 +527,6 @@ function Get-DoctrineBody {
     return $body -replace "^`r?`n", ""
 }
 
-# True where CLAUDE.md's text imports the doctrine file where Claude Code would
-# load it. The check follows Claude Code's import grammar, case-sensitive: HTML
-# comments, fenced code blocks, lines indented four spaces or a tab, and
-# backtick code spans are skipped, and an import is the token, bare or as a ./
-# or ~/.claude/ path, after a line start or whitespace and before whitespace, a
-# # or the line end. Every doubt reads as not imported, since a missed import
-# costs an extra offer and a false one leaves the doctrine unloaded with no
-# message. The doctrine-refresh hook's importsDoctrine is its twin.
-function Test-DoctrineImported {
-    param([string]$Text)
-    $fence = $null
-    foreach ($line in [regex]::Split([regex]::Replace($Text, '<!--[\s\S]*?-->', ''), '\r?\n')) {
-        $marker = [regex]::Match($line, '^ {0,3}(`{3,}|~{3,})')
-        if ($marker.Success) {
-            if ($null -eq $fence) { $fence = $marker.Groups[1].Value[0] }
-            elseif ($marker.Groups[1].Value[0] -ceq $fence) { $fence = $null }
-            continue
-        }
-        if ($null -ne $fence -or [regex]::IsMatch($line, '^( {4}|\t)')) { continue }
-        if ([regex]::IsMatch([regex]::Replace($line, '`[^`]*`', ''), '(?:^|\s)@(?:\./|~/\.claude/)?grimoire-doctrine\.md(?=\s|#|$)')) { return $true }
-    }
-    return $false
-}
-
 $claudeMd = Join-Path $claudeDir "CLAUDE.md"
 $doctrineFile = Join-Path $claudeDir "grimoire-doctrine.md"
 $doctrineSkill = Join-Path $pluginRoot "skills\operating-instructions\SKILL.md"
@@ -556,7 +540,7 @@ if (Test-Path $claudeMd) {
         $claudeMdReadError = Get-SanitizedLine $_.Exception.Message 200
     }
 }
-$importPresent = ($null -ne $claudeMdRaw) -and (Test-DoctrineImported $claudeMdRaw)
+$importPresent = ($null -ne $claudeMdRaw) -and ($claudeMdRaw -match "@grimoire-doctrine\.md")
 if ($null -ne $claudeMdReadError) {
     Report "WARN" "Doctrine import" @("$claudeMd is unreadable: $claudeMdReadError")
 }
