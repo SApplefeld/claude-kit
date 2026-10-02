@@ -22,7 +22,7 @@ Always invoke the `.cmd` wrapper, not the `.ps1`.
 ## Check and Fix Modes
 
 - **Check first, always:** run with no flags and show me the PASS/WARN/FAIL lines. Read each WARN and FAIL in one line: what it breaks and its printed remedy.
-- **`-Fix` only on my word:** it prompts before installing anything. Its repairs include installing the local embedding stack and committing the store's sync through its gated allowlist. It runs `memq db-sync` unprompted where the memory database step warns. It deletes only the temp file its own failed signpost write left.
+- **`-Fix` only on my word:** it prompts before installing anything. Its repairs include installing the local embedding stack and committing the store's sync through its gated allowlist. It runs `memq db-sync` unprompted where the memory database step warns. It deletes only temp files and backups its own run wrote.
 - **`-Fix -Yes` only on my word:** for an unattended run, or through a tool shell after my yes in chat. `-Yes` pre-answers the consent prompts `-Fix` already asked for. It authorizes nothing by itself, so name that before running it. The doctor declines prompts on a redirected stdin, so for an install through a tool shell, ask me in chat first.
 
 ## Reading the Report

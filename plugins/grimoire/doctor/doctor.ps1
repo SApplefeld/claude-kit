@@ -23,10 +23,11 @@
 #                             is exactly that name's token, and, each behind
 #                             its own consent prompt, the autoCompactWindow
 #                             and outputStyle values written into user
-#                             settings.json and the plugin install). The one
-#                             thing it deletes is a temp file its own failed
-#                             signpost write or import-line rewrite left
-#                             behind.
+#                             settings.json and the plugin install). It
+#                             deletes only files its own run wrote: the temp
+#                             file a failed signpost write or import-line
+#                             rewrite left, and the settings writer's temp
+#                             file and pre-write backup.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts -Fix already
 #                             requested, for unattended runs. It authorizes
 #                             nothing by itself.
@@ -2719,9 +2720,10 @@ function Invoke-KitPluginInstall {
 }
 
 # --- Output style. The kit's output style is addressed by plugin name, so a
-# --- settings.json that selected it under the plugin's former name loads no
-# --- style once the plugin is renamed. Claude Code's marketplace rename moves
-# --- enabledPlugins and pluginConfigs but not outputStyle, so this check reads
+# --- settings.json that selected it under the plugin's former name names a
+# --- style no installed plugin provides once the plugin is renamed.
+# --- Claude Code's marketplace rename moves enabledPlugins and
+# --- pluginConfigs but not outputStyle, so this check reads
 # --- it from the settings read the Auto-compaction window check made, and
 # --- -Fix rewrites that one key through Set-UserSettingKey, the writer that
 # --- proves every other key survived. The former value spells the plugin's
@@ -2753,7 +2755,7 @@ elseif (($settingsObj.PSObject.Properties.Name -contains "outputStyle") -and ("$
     }
     else {
         $styleRemedy = if ($Fix) { $styleByHand } else { "Fix: re-run doctor with -Fix, which asks before writing, or set it by hand." }
-        Report "FAIL" "Output style" @("outputStyle is $formerOutputStyle, the plugin's former name, so the Kit output style does not load.", $styleRemedy)
+        Report "FAIL" "Output style" @("outputStyle is $formerOutputStyle, the plugin's former name, a style no installed plugin provides.", $styleRemedy)
     }
 }
 elseif ($settingsObj.PSObject.Properties.Name -contains "outputStyle") {
