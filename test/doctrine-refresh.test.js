@@ -344,6 +344,8 @@ for (const [label, eol] of [['CRLF', '\r\n'], ['LF', '\n']]) test(`a home in the
         assert.strictEqual(fs.readFileSync(claudePath(home, NEW.signpost), 'utf8'), SIGNPOST_BYTES);
         // Every byte but the import line's own text is kept, line endings included.
         assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), claudeMdWith(NEW.importLine, eol));
+        // The rewrite lands through a sibling temp file, which the rename consumes.
+        assert.deepStrictEqual(fs.readdirSync(path.join(home, '.claude')).filter((n) => /tmp/.test(n)), [], 'no temp file left behind');
 
         const ctx = JSON.parse(out).hookSpecificOutput.additionalContext;
         assert.ok(ctx.includes(NEW.importLine) && ctx.includes(OLD.importLine), 'the rewrite is reported: ' + ctx);
@@ -413,6 +415,19 @@ test('a lone old stamp beside a new doctrine file stays put', () => {
         runHook(home, plugin, 'startup');
         assert.strictEqual(fs.readFileSync(claudePath(home, OLD.stamp), 'utf8'), '{"payloadMtimeMs":1}\n');
         assert.strictEqual(readStamp(home).hash, 'aaa1111', 'the new stamp is the refresh\'s own');
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('a line matching the new token in another case is not the new token, so the exact old line is still swapped', () => {
+    const root = makeDir('doctrine-refresh-migrate-case-');
+    try {
+        const home = makeHome(root);
+        fs.writeFileSync(claudePath(home, 'CLAUDE.md'), '@Grimoire-Doctrine.md\n' + OLD.importLine + '\n', 'utf8');
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+        assert.strictEqual(fs.readFileSync(claudePath(home, 'CLAUDE.md'), 'utf8'), '@Grimoire-Doctrine.md\n' + NEW.importLine + '\n');
     } finally {
         rmDir(root);
     }

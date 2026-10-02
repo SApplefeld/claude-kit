@@ -78,7 +78,9 @@ function makeRoot(prefix) {
 
 // Runs one lifted section with the given flags. claudeOnPath false leaves
 // PATH holding only an empty directory, so Get-Command finds no claude.
-function runSection(fx, section, { fix = false, yes = false, claudeOnPath = true } = {}) {
+// claudeFunction defines a PowerShell function named claude, which the
+// install check must never take for the application.
+function runSection(fx, section, { fix = false, yes = false, claudeOnPath = true, claudeFunction = false } = {}) {
     const outFile = path.join(os.tmpdir(), 'doctor-rename-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
     const script = [
         '$src = [System.IO.File]::ReadAllText(' + q(DOCTOR) + ')',
@@ -123,6 +125,7 @@ function runSection(fx, section, { fix = false, yes = false, claudeOnPath = true
         '    catch {}',
         '}',
         '$env:Path = ' + q(claudeOnPath ? fx.bin + ';' + process.env.SystemRoot + '\\System32' : fx.empty),
+        ...(claudeFunction ? ['function claude { }'] : []),
         '',
         'Invoke-Expression $section',
         '',
@@ -204,10 +207,25 @@ test('-Fix moves a home in the former name\'s state onto the current names, and 
         assert.strictEqual(after[NEW.signpost], before[OLD.signpost]);
         // Every byte but the import line's own text is kept, CRLF included.
         assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), claudeMdWith(NEW.importLine));
+        // The rewrite lands through a sibling temp file, which the rename consumes.
+        assert.deepStrictEqual(fs.readdirSync(fx.claudeDir).filter((n) => /tmp/.test(n)), [], 'no temp file left behind');
 
         const pass = named(runSection(fx, MIGRATION), 'Former-name migration');
         assert.strictEqual(pass.length, 1, JSON.stringify(pass));
         assert.strictEqual(pass[0].Status, 'PASS', pass[0].Detail);
+    } finally {
+        rmDir(fx.root);
+    }
+});
+
+test('a line matching the new token in another case is not the new token, so -Fix swaps the exact old line as the hook does', { skip: !isWin }, () => {
+    const fx = makeRoot('drm-mig-case-');
+    try {
+        fs.writeFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), '@Grimoire-Doctrine.md\r\n' + OLD.importLine + '\r\n', 'utf8');
+        const reports = named(runSection(fx, MIGRATION, { fix: true }), 'Former-name migration');
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'FIXED', reports[0].Detail);
+        assert.strictEqual(fs.readFileSync(path.join(fx.claudeDir, 'CLAUDE.md'), 'utf8'), '@Grimoire-Doctrine.md\r\n' + NEW.importLine + '\r\n');
     } finally {
         rmDir(fx.root);
     }
@@ -348,6 +366,21 @@ test('under -Fix the install is invoked once, through the claude Get-Command res
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
         assert.strictEqual(reports[0].Status, 'FIXED', reports[0].Detail);
         assert.ok(!fs.existsSync(fx.marker), 'the spawn went through the stub');
+    } finally {
+        rmDir(fx.root);
+    }
+});
+
+test('a PowerShell function named claude is not taken for the application', { skip: !isWin }, () => {
+    const fx = makeRoot('drm-install-fn-');
+    try {
+        writeSettings(fx, SETTINGS);
+        writeInstalled(fx, installedWith(['other@market']));
+        const out = runSection(fx, STYLE_AND_INSTALL, { fix: true, yes: true, claudeOnPath: false, claudeFunction: true });
+        const reports = named(out, 'Plugin install');
+        assert.strictEqual(reports[0].Status, 'FAIL', reports[0].Detail);
+        assert.match(reports[0].Detail, /not on PATH/);
+        assert.deepStrictEqual(out.InstallCalls, []);
     } finally {
         rmDir(fx.root);
     }

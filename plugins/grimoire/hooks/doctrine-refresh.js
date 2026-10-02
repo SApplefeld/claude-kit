@@ -139,25 +139,38 @@ function renameIfFree(dir, from, to) {
 // the first line that is exactly the old import token, terminator aside, becomes
 // the new token, unless a line is already exactly the new token. The file is
 // read and written as latin1 so every other byte, line endings included, is
-// written back as it was read. Returns the session-start line reporting the
+// written back as it was read. The rewrite lands on a sibling temp file that is
+// renamed over CLAUDE.md, so an interrupted write never truncates the user's
+// file; a CLAUDE.md that is a link is left alone, since the rename would replace
+// the link with a plain file. Returns the session-start line reporting the
 // import swap, or null.
 function migrateFormerName(claudeDir) {
     if (renameIfFree(claudeDir, OLD_DOCTRINE_FILE, DOCTRINE_FILE)) {
         renameIfFree(claudeDir, OLD_STAMP_FILE, STAMP_FILE);
     }
     renameIfFree(claudeDir, OLD_SIGNPOST_FILE, SIGNPOST_FILE);
+    const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
+    const tempPath = `${claudeMdPath}.tmp-migrate-${process.pid}`;
+    let tempWritten = false;
     try {
-        const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
+        if (fs.lstatSync(claudeMdPath).isSymbolicLink()) return null;
         const segments = fs.readFileSync(claudeMdPath, 'latin1').split(/(?<=\n)/);
         const textOf = (seg) => seg.replace(/\r?\n$/, '');
         if (segments.some((seg) => textOf(seg) === IMPORT_TOKEN)) return null;
         const at = segments.findIndex((seg) => textOf(seg) === OLD_IMPORT_TOKEN);
         if (at < 0) return null;
         segments[at] = IMPORT_TOKEN + segments[at].slice(OLD_IMPORT_TOKEN.length);
-        fs.writeFileSync(claudeMdPath, segments.join(''), 'latin1');
+        fs.writeFileSync(tempPath, segments.join(''), { encoding: 'latin1', flag: 'wx' });
+        tempWritten = true;
+        fs.renameSync(tempPath, claudeMdPath);
         return `Kit renamed: ~/.claude/CLAUDE.md imported "${OLD_IMPORT_TOKEN}", the doctrine file's former ` +
             `name, so that line now reads "${IMPORT_TOKEN}", the file's current name. No other line changed.`;
-    } catch { return null; }                          // absent or unwritable: nothing to swap
+    } catch {
+        // Absent or unwritable: CLAUDE.md is left as it was, and only
+        // a temp file this run wrote is removed.
+        if (tempWritten) { try { fs.unlinkSync(tempPath); } catch { /* best effort */ } }
+        return null;
+    }
 }
 
 function main() {

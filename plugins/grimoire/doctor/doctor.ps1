@@ -335,8 +335,12 @@ else {
 # --- stamp moves only with its doctrine file, since a lone old stamp beside a
 # --- current file describes some other write; the CLAUDE.md line moves only
 # --- where it is exactly the former token, terminator aside, and no line is
-# --- already exactly the current one. CLAUDE.md is read and written as bytes,
-# --- so every other byte and line ending stays as it was. A pair present
+# --- already exactly the current one, both compared case-sensitively as the
+# --- hook does. CLAUDE.md is read and written as bytes, so every other byte
+# --- and line ending stays as it was, and the rewrite lands on a sibling temp
+# --- file renamed over it, the signpost section's pattern, so an interrupted
+# --- write never truncates it; a CLAUDE.md that is a link is refused, since
+# --- the rename would replace the link with a plain file. A pair present
 # --- under both names is reported and left, since only the operator can say
 # --- which holds the write to keep. There is no consent prompt: this is the
 # --- move the hook makes unprompted, onto names the kit owns, and -Fix already
@@ -364,7 +368,7 @@ function Get-MigrationImportState {
     return @{
         Segments = $segments
         OldAt = [array]::IndexOf($texts, $migrationOldImport)
-        HasNew = $texts -contains $migrationNewImport
+        HasNew = [array]::IndexOf($texts, $migrationNewImport) -ge 0
     }
 }
 
@@ -418,15 +422,27 @@ if ($migrationPendingLines.Count -gt 0 -and $Fix) {
             $migrationFailed += "Could not rename $($move.Old) to $($move.New): $(Get-SanitizedLine $_.Exception.Message 200)"
         }
     }
-    if ($migrationImportPending) {
+    $migrationClaudeMdItem = Get-Item -LiteralPath $migrationClaudeMd -Force -ErrorAction SilentlyContinue
+    if ($migrationImportPending -and ($null -ne $migrationClaudeMdItem) -and (($migrationClaudeMdItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)) {
+        $migrationFailed += "Refused to rewrite ${migrationClaudeMd}: it is a link. Change the line $migrationOldImport to $migrationNewImport by hand in the file it points at."
+    }
+    elseif ($migrationImportPending) {
+        $migrationTmp = "$migrationClaudeMd.tmp-migrate-$PID"
+        $migrationTmpWritten = $false
         try {
             $segments = $migrationImport.Segments
             $segments[$migrationImport.OldAt] = $migrationNewImport + $segments[$migrationImport.OldAt].Substring($migrationOldImport.Length)
-            [System.IO.File]::WriteAllBytes($migrationClaudeMd, $migrationLatin1.GetBytes(-join $segments))
+            [System.IO.File]::WriteAllBytes($migrationTmp, $migrationLatin1.GetBytes(-join $segments))
+            $migrationTmpWritten = $true
+            Move-Item -LiteralPath $migrationTmp -Destination $migrationClaudeMd -Force -ErrorAction Stop
             $migrationDone += "Changed the line $migrationOldImport in $migrationClaudeMd to $migrationNewImport; no other line changed."
         }
         catch {
+            # CLAUDE.md is left as it was; only a temp file this run wrote is removed.
             $migrationFailed += "Could not rewrite the import line in ${migrationClaudeMd}: $(Get-SanitizedLine $_.Exception.Message 200)"
+            if ($migrationTmpWritten -and (Test-Path -LiteralPath $migrationTmp -PathType Leaf)) {
+                Remove-Item -LiteralPath $migrationTmp -ErrorAction SilentlyContinue
+            }
         }
     }
     if ($migrationFailed.Count -gt 0) { Report "FAIL" "Former-name migration" ($migrationFailed + $migrationDone) }
@@ -2747,7 +2763,8 @@ else {
             Report "FAIL" "Plugin install" @($installGap, "Fix: claude plugin install $installId, or re-run doctor with -Fix to run it.")
         }
         else {
-            $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue | Select-Object -First 1
+            # Applications only, so a function or alias named claude is never taken.
+            $claudeCmd = Get-Command claude -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($null -eq $claudeCmd) {
                 Report "FAIL" "Plugin install" @($installGap, "claude is not on PATH, so -Fix cannot run the install.", $installByHand)
             }
