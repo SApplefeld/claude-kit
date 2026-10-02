@@ -197,3 +197,10 @@ for (const f of fs.readFileSync(0, 'latin1').split('\0').filter(Boolean)) {
 }
 console.log('changed', changed);
 ```
+
+### Interim board 1 - 2026-10-02
+Section 2 stage: review round 3 in flight over a3903323..5f8c620d, after two fix rounds (a0aedf0a, 5f8c620d). Round 1 (fable, code pair plus security and performance) and round 2 (adversarial at opus, Workflow) are adjudicated; round 2's Critical re-raised round 3 to round 1's roster.
+Live dispatches: adversarial, blind, security and performance reviewers at fable through the Agent tool, each reviewing `git diff a3903323 5f8c620d`, asked for severity-ranked findings.
+Gate baseline: the whole suite at b4f98711 on this worktree, 2026-10-02 15:54-16:03Z, SCOTT-CLAUDE, clean worktree: 4338/4327/1, skipped 10, exit 1 (the linked-worktree sidecar test). Section 2's targeted lane at 5f8c620d, 2026-10-02, this worktree: 150/150, exit 0.
+Rulings since the last boundary: test/size-budget.json folded into section 2's Files in scope (the size ratchet caps grew with the section's tests). Scope adjudicator, relevance shape: the security lens's comment Major refused as security (docs/security-model.md:21 places the machine-account holder out of consideration); the stale comment is fixed as a claim at the close pass. Scope adjudicator, design stop: the CLAUDE.md link refusal REFUSED on form; the swap happens at the link's final target and the link stays a link.
+Next: adjudicate round 3; then the close pass over minors-section-2.md, the close gate, and Chapter 2. The section's rename-sweep.js keep rule is in scratch and proved idempotent at a3903323 (changed 1, the planted control only).
