@@ -1,6 +1,7 @@
 # The pre-commit hook tolerates the reserved-name error Claude Code 2.1.287 raises on the plugin's name, so a commit touching the plugin lands again
 
-Status: Ready
+Status: Abandoned
+Superseded by: claude-kit_grimoire-rename_spec_v1.md, pull request #177, which renames the plugin so the reserved-name error never fires, so this plan never ran.
 Commit Model: Branch-and-PR
 Created: 2026-10-01
 
