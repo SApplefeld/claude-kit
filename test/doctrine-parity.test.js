@@ -2897,7 +2897,7 @@ test('the role skill still carries the delegation exclusions and the three refus
     for (const [phrase, what] of [
         ['a message to an external service', 'the external-message bar'],
         ['an edit to permissions, settings, or `CLAUDE.md`', 'the settings and CLAUDE.md bar'],
-        ["The permission files take no one's yes", 'the permission-file floor'],
+        ["The permission files take no one's yes", 'the permission-files bar'],
         ['doing work another session was denied', 'the no-laundering bar'],
         ["directed read of the store's own sensitive state", 'the directed-read bar'],
         ['a far wider reach than the message', 'the directed-dispatch bar'],

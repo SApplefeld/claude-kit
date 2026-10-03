@@ -4100,8 +4100,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/grimoire/skills/operating-instructions/references/ownership-map.md:87
 - provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
 - verdict: keep
-- reason: The steer's reach was the one moment the persona plugin's instruction and the role skill's exclusions read differently, and the operator ruled for the plugin's wider reading, so the row assigns the moment to the role skill, whose delegation model the plan's section 3 brings to that reading, rather than recording a contest.
-- passage: | What a worker's act is on a delegated seat's steer: a push, a deploy, a settings edit or a commit-model change | `role` (the delegation model) |
+- reason: The steer's reach was the one moment the persona plugin's instruction and the role skill's exclusions read differently, and the operator ruled for the plugin's wider reading, so the row assigns the moment to the role skill, whose delegation model the plan's section 3 brings to that reading on the push, the deploy and the commit-model change, rather than recording a contest. The settings edit stays in the row because the role skill answers it too: on the operator's ruling of 2026-10-03 it goes to the operator, whoever steers.
+- passage: | What a worker's act is on a delegated seat's steer: a push, a deploy or a commit-model change, and the settings edit the steer never covers | `role` (the delegation model) |
 
 ## plugins/grimoire/output-styles/kit.md
 
