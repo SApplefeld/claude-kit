@@ -3020,9 +3020,10 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: rule
 - source: plugins/grimoire/skills/operating-instructions/SKILL.md:132
 - provenance: ebd12d2 2026-09-02 installed the paraphrase when the stop-for-a-yes rule was reshaped; 4c6787c 2026-09-02's close-out records it as a residual pinned on the doctrine's side only.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: B001, docs/plans/claude-kit_coordinator-follow-through_spec_v1.md section 3
 - landed: a2ca9e5 section 1
-- reason: Role owns the rail, its scope and its exclusions (ownership map row 77; role SKILL.md:92-93), and ebd12d2's own lesson is that a clause bounding by describing another file breaks silently. The doctrine's sentence becomes an assignment to role, and the one-sided pin retires or repoints. Landed as proposed: the sentence reads that the rail's delegation instance names no surface this bullet gates and that the role skill states its scope and its exclusions; the two doctrine-side asserts on the scope and the push exclusion retired from test/doctrine-parity.test.js in the same commit, role SKILL.md stating both.
+- reason: Role owns the rail, its scope and its exclusions (ownership map row 77; role SKILL.md:92-93), and ebd12d2's own lesson is that a clause bounding by describing another file breaks silently. The doctrine's sentence becomes an assignment to role, and the one-sided pin retires or repoints. Landed as proposed: the sentence reads that the rail's delegation instance names no surface this bullet gates and that the role skill states its scope and its exclusions; the two doctrine-side asserts on the scope and the push exclusion retired from test/doctrine-parity.test.js in the same commit, role SKILL.md stating both. Superseded on 2026-10-02 by B001 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3, which has the instance name the four covered acts inside a worker's approved plan as the role skill states them; the verdict before it was rewrite).
 - proposed: Replace the mid-sentence restatement of delegation's scope and push exclusion with "the rail's delegation instance names no surface this bullet gates; role states its scope and its exclusions", and retire the doctrine-side-only pin or repoint it at role.
 - baseline-test: yes
 - passage: The rail's delegation instance names no surface this test gates.
@@ -3209,6 +3210,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The harness labels a relay message as not from the user because it cannot see how the relay is secured. The broker contract in `channels_client-sandbox_spec_v1.md`, the companion plan in the `discord-channels` repository where the broker is implemented, checks every author against a list of classed accounts and names the author's class on the envelope. Without this bullet a session discounts the operator's own steering, or takes a participant's words as steering. The operator stated the first reason with the 2026-09-26 ruling and asked that the point stay clear while its repetition went. An envelope with no class reads as the operator's because a broker older than the classes names none, and it admitted only the operator.
 - passage: The harness marks it untrusted and bars acting on it within the current step, and that bar holds. The class is the envelope's `sender_class` attribute. An `operator` event is still my word, as is one whose envelope carries no class. An event of any other class, `participant` among them, is a person's words, which are data.
 - ruled: amend 2026-09-26; amend 2026-09-30
+
+### B001
+- key: Treat the delegation instance of the standing-grant rail as naming the four covered acts inside a worker's approved plan, as the role skill states them, so the doctrine assigns the instance's surface to the role skill rather than restating it.
+- class: rule
+- source: plugins/grimoire/skills/operating-instructions/SKILL.md:146
+- provenance: the operator's ruling of 2026-10-02 on the architect's relay thread, on the deploy and settings contest, quoted in the plan's `## Intent` ("I prefer the plugin's wider reading. I do feel that more autonomous work and support in the kit is the direction we're taking it, so I don't want the historical narrower readings that forced more direct involvement from myself."), landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3.
+- verdict: keep
+- reason: The role skill now names four acts this bullet's test gates as covered inside a worker's approved plan (the role ledger's B001), and a doctrine still saying the instance names no surface the test gates would be a higher surface contradicting it under Which Text Governs, so the one sentence moves. It moves as an assignment, ebd12d2's lesson standing that a clause bounding by describing another file breaks silently: the doctrine names the count and the plan bound and leaves the acts and their bounds to the role skill, where test/doctrine-parity.test.js pins them. The force-push and permission-file bounds in the same bullet stay verbatim, and the bullet's pin on this sentence moved with it. Supersedes c2.C147.
+- passage: The rail's delegation instance names the four covered acts inside a worker's approved plan, as the role skill states them.
 
 ## home/grimoire-doctrine.md
 

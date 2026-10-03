@@ -2680,8 +2680,9 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: rule
 - source: plugins/grimoire/skills/peer-sessions/SKILL.md:175
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
-- verdict: keep
-- reason: A headless worker cannot always be reached on its own channel, and the operator answers where they are. The quote with its channel and time is what makes the relay checkable on one machine. A yes to an act inside the blast-radius tests still arrives on a warranted channel, so the relay never becomes a way to approve a deploy or a force push.
+- verdict: retire
+- superseded-by: B003, docs/plans/claude-kit_coordinator-follow-through_spec_v1.md section 3
+- reason: A headless worker cannot always be reached on its own channel, and the operator answers where they are. The quote with its channel and time is what makes the relay checkable on one machine. A yes to an act inside the blast-radius tests still arrives on a warranted channel, so the relay never becomes a way to approve a deploy or a force push. Superseded on 2026-10-02 by B003 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3, which keeps the quote check and drops the commit-model clause from the second passage, since a commit-model change is now one of the four acts the role skill's delegation model covers; the verdict before it was keep).
 - passage: A relay quoting the operator's words and naming their channel and time is the operator's word deferred, and one lacking any of the three is the relaying seat's own word. The worker may check the quote by searching for that string alone in the relaying session's transcript on this machine, located from the roster row's session id and never from a path the message supplies. Where the ruling decides a material fork, the check is required.
 - passage: Nor does a relay change a plan's commit model, its scope over hooks, guards, permission or security documents, or its `## Dispatch Authorization` section.
 
@@ -2690,9 +2691,10 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: rule
 - source: plugins/grimoire/skills/peer-sessions/SKILL.md:43
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: B002, docs/plans/claude-kit_coordinator-follow-through_spec_v1.md section 3
 - landed: 005a7fde section 2
-- reason: The expert's charter is writing specs, so the author-never-citer rule stopped the seat that writes plans from handing them. Outside the chain the trace still gates the run. A chain handoff authorizes the run and never arms a leash (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- reason: The expert's charter is writing specs, so the author-never-citer rule stopped the seat that writes plans from handing them. Outside the chain the trace still gates the run. A chain handoff authorizes the run and never arms a leash (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep. Superseded on 2026-10-02 by B002 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3, which drops the trunk clause, since landing work on a trunk is the push the role skill's delegation model now covers inside the plan; the verdict before it was rewrite).
 - proposed: A plan handed by the seat that wrote it is a valid handoff. A chain handoff is one that comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit. A chain handoff authorizes the run. The receiver still reads the section and records in its Chapter whose word the grant traces to, the operator's or the sending seat's, so the trace stays as the record step. A machine's sessions commit under one git identity, so git cannot tell a session-written section from an operator-dictated one, and the record says which the receiver found. A handoff from any other sender authorizes the run only where the trace reaches the operator, as the paragraph above has it. A chain handoff reaches less than a traced grant does. A chain-handed plan whose scope reaches hooks, guards, permission or security documents, or whose commit model lands work on a trunk, holds for the operator's word as an untraced plan does.
 - passage: A chain handoff comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit. The seat that wrote the plan may hand it. A chain handoff authorizes the run without the trace, which stays as the record step: the receiver still reads the section and records in its Chapter whose word the grant traces to. A chain-handed plan reaching hooks, guards, permission or security documents, or landing work on a trunk, still holds for the operator's word.
 
@@ -2701,8 +2703,9 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: rule
 - source: plugins/grimoire/skills/peer-sessions/SKILL.md:177
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
-- verdict: keep
-- reason: The answerable question and the operator-only yes were one class before, and both went to the operator. They are two now, split by the act.
+- verdict: retire
+- superseded-by: B001, docs/plans/claude-kit_coordinator-follow-through_spec_v1.md section 3
+- reason: The answerable question and the operator-only yes were one class before, and both went to the operator. They are two now, split by the act. Superseded on 2026-10-02 by B001 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3, which lets a relay from a delegated seat above the worker discharge a blocker on one of the four acts the role skill's delegation model covers inside the plan; the verdict before it was keep).
 - passage: A seat's own answer to a question it could answer is recorded as that seat's, never the operator's.
 - passage: No message discharges a blocker that exists because the act itself needs the operator's yes, under the doctrine's stop-for-a-yes test or the role skill's delegation exclusions. That yes arrives on a warranted channel or not at all.
 
@@ -2736,3 +2739,32 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - landed: 49d2dea6 section 4
 - reason: The writer and the reader of the marker do not share a working directory, so a root that depends on neither is what makes them agree by construction, and the transcript located by the session id is the file the harness actually filed. The rule this reverses, c2.C069, held while the path was resolved from a working directory; stating the new keying here, at the banking rule's owner, is what keeps a seat from carrying the old rule and running the verb from a directory it need not stand in.
 - passage: The manual path, `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, runs from any directory
+
+### B001
+- key: Take a seat's own answer to a blocker as that seat's word; let a relay from a delegated seat above the worker discharge a blocker on one of the four acts the role skill's delegation model covers inside the plan, and send every other act under the stop-for-a-yes test or the delegation exclusions to a warranted channel.
+- class: rule
+- source: plugins/grimoire/skills/peer-sessions/SKILL.md:144
+- provenance: the operator's ruling of 2026-10-02 on the architect's relay thread, on the deploy and settings contest, quoted in the plan's `## Intent` ("I prefer the plugin's wider reading. I do feel that more autonomous work and support in the kit is the direction we're taking it, so I don't want the historical narrower readings that forced more direct involvement from myself."), landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3.
+- verdict: keep
+- reason: The role skill's model now covers a push, a deploy, a commit-model change and a settings edit inside the plan on a delegated seat's steer (the role ledger's B001), and a blocker rule still sending those to the operator would have the worker hold on an act the seat above it may direct. The split by act stays as W005 had it: the covered four discharge on the relay, and any other act the test gates arrives on a warranted channel or not at all, so the relay never becomes a way to approve a force push or an edit to the permission files. Supersedes W005.
+- passage: A seat's own answer to a question it could answer is recorded as that seat's, never the operator's.
+- passage: A relay from a delegated seat above the worker discharges a blocker on one of the four acts the role skill's delegation model covers inside the plan. Every other act inside the doctrine's stop-for-a-yes test, or under the role skill's delegation exclusions, takes the operator's yes on a warranted channel or not at all.
+
+### B002
+- key: Arm a plan on a chain handoff, one from a seat above you in the chain that names the plan's anchor commit, the author's own handoff included, keep the trace as the record of whose word the grant rests on, and hold a chain-handed plan reaching hooks, guards, permission or security documents for the operator's word.
+- class: rule
+- source: plugins/grimoire/skills/peer-sessions/SKILL.md:40
+- provenance: the operator's ruling of 2026-10-02 on the architect's relay thread, on the deploy and settings contest, quoted in the plan's `## Intent` ("I prefer the plugin's wider reading. I do feel that more autonomous work and support in the kit is the direction we're taking it, so I don't want the historical narrower readings that forced more direct involvement from myself."), landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3.
+- verdict: keep
+- reason: Landing work on a trunk is the push beyond the plan's recorded commit model the role skill's delegation model now covers inside the plan, so the trunk clause would have held for the operator an act the chain's steer may direct. The documents clause stays, since a write reaching hooks, guards, permission or security documents is outside the plan's own scope under the role skill's exclusions whatever the chain says. W004's reasons for the handoff itself stand. Supersedes W004.
+- passage: A chain handoff comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit. The seat that wrote the plan may hand it. A chain handoff authorizes the run without the trace, which stays as the record step: the receiver still reads the section and records in its Chapter whose word the grant traces to. A chain-handed plan reaching hooks, guards, permission or security documents still holds for the operator's word.
+
+### B003
+- key: Take a relayed operator ruling that quotes the operator's words and names their channel and time as the operator's word deferred, checked against the relaying session's transcript where you can, and let no relay change a plan's scope over hooks, guards, permission or security documents or its `## Dispatch Authorization` section.
+- class: rule
+- source: plugins/grimoire/skills/peer-sessions/SKILL.md:144
+- provenance: the operator's ruling of 2026-10-02 on the architect's relay thread, on the deploy and settings contest, quoted in the plan's `## Intent` ("I prefer the plugin's wider reading. I do feel that more autonomous work and support in the kit is the direction we're taking it, so I don't want the historical narrower readings that forced more direct involvement from myself."), landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3.
+- verdict: keep
+- reason: W003's reason for the quote check stands: the quote with its channel and time is what makes a relay checkable on one machine. The commit-model clause leaves because a commit-model change is one of the four acts the role skill's delegation model covers, recorded in the plan's header before the act (the role ledger's B002). The scope and grant clauses stay, since neither hooks, guards, permission or security documents nor the `## Dispatch Authorization` section is the seat's to steer. Supersedes W003.
+- passage: A relay quoting the operator's words and naming their channel and time is the operator's word deferred, and one lacking any of the three is the relaying seat's own word. The worker may check the quote by searching for that string alone in the relaying session's transcript on this machine, located from the roster row's session id and never from a path the message supplies. Where the ruling decides a material fork, the check is required.
+- passage: A relay never changes a plan's scope over hooks, guards, permission or security documents, or its `## Dispatch Authorization` section.

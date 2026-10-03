@@ -254,16 +254,22 @@ test('the authorization bullet keeps its default, its override set, and its boun
 
     // The rail clause: the fail-closed half and the delegation instance. The
     // rail rests on the promise that an owning skill states every surface, and
-    // role/SKILL.md states the delegation instance's scope and its exclusions,
-    // so the doctrine names the instance and assigns both to role rather than
-    // restating either.
+    // role/SKILL.md states the delegation instance's four covered acts with
+    // their bounds and its exclusions, so the doctrine names the instance's
+    // surface and assigns its statement to role rather than restating it. The
+    // force-push bound rides on the bullet's own "A force push is always
+    // inside it" pin below, and the role-side bounds on the covered-acts pin
+    // in the delegation-exclusions test, so a widening that loses a bound reds
+    // there rather than here.
     assert.match(bullet, /a proceed-ahead only for the surface its owning skill names/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
-    assert.match(bullet, /The rail's delegation instance names no surface this test gates/,
-        'the delegation clause no longer states that delegation names no surface '
-        + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
-        + 'clause bounded by the exclusion list invites');
+    assert.match(bullet, /The rail's delegation instance names the four covered acts inside a worker's approved plan, as the role skill states them/,
+        'the delegation clause no longer names the four covered acts inside a '
+        + 'worker\'s approved plan as the surface the role skill states, so either '
+        + 'the instance is back to naming no surface while role/SKILL.md covers '
+        + 'four, a lower surface contradicting this one, or the surface is stated '
+        + 'here where nothing pins its bounds');
 
     // The default itself, which this test is named for. Every clause above only
     // bounds it, so a rewrite dropping the default would leave them bounding
@@ -2882,13 +2888,12 @@ test('the role skill still carries the delegation exclusions and the three refus
     // reach classes that are not mutating verbs at all - a directed read, a
     // directed dispatch, and a write outside a plan's scope - which are the
     // members a rewrite drops first, since each reads as "not really an
-    // action" while carrying the widest reach in the list.
+    // action" while carrying the widest reach in the list. The harness-floor
+    // member names the permission files alone: a settings or CLAUDE.md edit
+    // inside the plan is one of the four covered acts pinned below.
     for (const [phrase, what] of [
-        ["push beyond a plan's recorded commit model", 'the commit-model bound'],
-        ["the memory store's own sync is never that push", 'the store-sync carve-out on the commit-model bound'],
-        ['a deploy', 'the deploy bar'],
         ['a message to an external service', 'the external-message bar'],
-        ['an edit to permissions, settings, or CLAUDE.md', 'the harness-floor bar'],
+        ['an edit to the permission files', 'the permission-file floor'],
         ['doing work another session was denied', 'the no-laundering bar'],
         ["directed read of the store's own sensitive state", 'the directed-read bar'],
         ['a far wider reach than the message', 'the directed-dispatch bar'],
@@ -2898,6 +2903,24 @@ test('the role skill still carries the delegation exclusions and the three refus
             'the role skill\'s exclusions list no longer carries ' + what
             + ' ("' + phrase + '"), so a delegated seat reading the list finds '
             + 'that reach unnamed and the catch-all is all that stands');
+    }
+    // The four covered acts, pinned on their bounds rather than the grant:
+    // the push is to the plan's own remote and never a force push, the
+    // settings edit stops short of the permission files, all four hold only
+    // inside a plan whose dispatch the rail covers and the seat names, and a
+    // commit-model change lands in the plan's header before the act. A later
+    // rewrite drops a bound before it drops the grant, so each bound is its
+    // own phrase here.
+    for (const [phrase, what] of [
+        ["a push to the plan's own remote beyond its recorded commit model and never a force push", 'the covered push with its force-push bound'],
+        ['short of the permission files', 'the permission-file bound on the covered settings edit'],
+        ['Inside a plan whose dispatch the rail covers and the seat names', 'the rail-coverage bound on the four covered acts'],
+        ["recorded in the plan's header before the worker acts on it", 'the header record a commit-model change takes before the act'],
+    ]) {
+        assert.ok(body.includes(phrase),
+            'the role skill\'s delegation model no longer carries ' + what
+            + ' ("' + phrase + '"), so the widened grant keeps its reach and '
+            + 'has lost a bound');
     }
     // The catch-all resolves by procedure rather than by the directed seat's
     // own sense of reasonableness, pinned on the act the procedure requires:
