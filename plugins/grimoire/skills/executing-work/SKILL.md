@@ -94,6 +94,8 @@ Run each Section of Work in order. Sections run concurrently only where the disj
 
    **At each section open, grep the plan doc for its `Standing Brief Amendments` block and hold every entry as binding.** Step 4 writes to the block mid-run, so an earlier read is stale. A grep that finds nothing is still the read. On the dispatch path the entries ride into the brief, and an inline section has only the grep. The same open writes the add-decision line for the section as a whole to the scratch file step 4 names. Step 4 owns the line's five parts, and this one fires no stop.
 
+   **The same open writes the section's promises file, `.kit/scratch/<plan-slug>/promises-section-<n>.json`.** It holds one `{ id, promise }` entry per acceptance bullet and per sentence naming a behavior the section builds. A dispatched implementer runs it through the brief's `Promise check:` field.
+
    - **A section that writes under `docs/` goes to the main thread whatever its tier.** An implementer may draft the prose and return it in its final message, but the `docs/` write is the main thread's. This overrides routing, not tier. Record `Locus: inline` under the `Model:` line, which keeps the bare tier the section earned.
    - **Tier `haiku` / `sonnet` / `opus` / `fable`:** dispatch the matching `implementer-<tier>` agent with a complete brief built from the Dispatch Brief template. A `fable` override dispatch takes the capacity reading below first.
 
@@ -178,6 +180,10 @@ Run each Section of Work in order. Sections run concurrently only where the disj
        from copies taken before the first mutation
      - Workaround bar: a workaround needing a paragraph to justify means fix the
        code or escalate
+     - [optional] Promise check: the promises file's path and the command
+       `node <root>/scripts/kit-jev-check.js promises <that file> <your changed
+       source files>`, run before you report, with its closing line and every
+       promise over 0.6 carried in the report
      - When returning NEEDS_CONTEXT on a hard question, state it consult-shaped:
        the decision, the options you see, the evidence, and your lean
      - Style-skill file paths (agents inherit no skills): resolve the plugin
@@ -234,6 +240,8 @@ Run each Section of Work in order. Sections run concurrently only where the disj
    **Hunt the fail-dangerous patterns specifically:** a delete-everything-not-in-this-set with no empty-set guard, a destructive loop under one outer try/catch, a hardening change that turns a benign path into a throw without auditing its callers. Hunt too the call-site bugs implementer code introduces that pass "no suites failed": a parameter name or type that does not match the callee, a silently changed error semantic (truncate instead of hard-fail), a hard-delete flipped to soft, an explicit NULL overriding a column default. Settle the test question per `skills/testing-discipline/SKILL.md` under the kit plugin root, whose litmus decides what earns a durable test: leave a durable test and show it passing, watching it fail first. If no test was warranted, say so and why. Use the temporary repro-script discipline from the global rules for debugging, never as the home for new behavior.
 
    **A tree-mutating probe is exclusive.** Run one under the doctrine's rule for it in Tests and Their Blind Spots, awaiting or TaskStopping every subagent first. When the state under test is already committed, run the probe in a separate worktree, which needs no exclusivity.
+
+   **Then run the promises check before step 3:** `node <plugin-root>/scripts/kit-jev-check.js promises .kit/scratch/<plan-slug>/promises-section-<n>.json <the section's changed source files> --record .kit/scratch/<plan-slug>/promises-section-<n>.record.json`. Re-read each promise over 0.6 against the code, then fix it or record one `Decisions / Surprises:` line. After a fix, re-run once without `--record`. Step 3 dispatches whatever the reading, and no reading enters a review brief. A `not checked` or `not configured` line is recorded as printed and never retried into a pass.
 
 3. **Review.** On round 1, dispatch the `adversarial-reviewer` agent and the `blind-reviewer` agent in parallel with each other, overlapping no run of yours. Step 2's targeted run has finished before this step opens, and under Branch-and-PR its first-green commit has already landed at step 7. Their fixes land in step 4, which runs the section's close gate after them, so the gate that closes the section covers what the round changed (the lanes and their moments are owned by the operating doctrine's gate bullet). The adversarial-reviewer gets the spec path, the base git ref or changed-file list, the section name, and a REQUIRED `Amendments in effect:` line filled from the plan doc's `Standing Brief Amendments` block or explicitly `none`. When the section touched C# or T-SQL, it also gets the csharp-style or sql-style absolute paths, resolved by the Dispatch Brief template's style-skill ladder.
 
@@ -395,6 +403,8 @@ Run each Section of Work in order. Sections run concurrently only where the disj
    A fix correcting a claim in curated prose, a deletion included, takes the paragraph as its edit unit rather than the sentence, and carries the claim's other carriers with it, per the writing-skills skill (`skills/writing-skills/SKILL.md` under the kit plugin root). A carrier in a file outside `Files in scope:` takes the out-of-scope route, since the scope check never sees an edit there.
 
    **The recurrence rule:** when a review surfaces a finding class an earlier section's review already surfaced, fix the instance and amend the plan's `Standing Brief Amendments` block, which step 1 delivers on both paths, so every later section inherits the guard. Only a behavior class takes an amendment. A claim held to the behavior bar counts as behavior here. Any other second instance of a claims class takes a mechanical check or a deletion sweep. A sibling already in flight takes the amendment at its next review round. Where the plan has no block, create it as its own `##` heading above `## Sections of Work`, never inside it. Record the amendment in the Chapter as approval drift, since the block sits inside the approval-scoped fingerprint.
+
+   **After each fix round, re-run step 2's promises command with `--against` its record in place of `--record`.** Before the close gate, re-read every promise over 0.6 or whose doubt rose 0.3 or more.
 
    **This step runs the section's close gate, once the fixes, the folds and the Minor pass are in.** It is the section-close lane the doctrine's gate bullet names, with the contention lane where that bullet says so, and its counts and exit code go to the Chapter's `Gate:` line. That run is what the fold predicate below means by the gate you are about to run.
 

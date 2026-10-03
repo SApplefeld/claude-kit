@@ -2,11 +2,12 @@
 
 // The Jev client's contract: the fixed config path and its four refusals, the
 // cleartext refusal on everything but https and loopback, the key read at each
-// call, the one deadline over retries, the closed set of eight reasons, and
-// the guarantee that the key reaches no artifact a call produces. Every call
-// runs against a stand-in server on 127.0.0.1 or a recording fetch stub, so
-// nothing here leaves the machine. Tests in this file run serially, since the
-// home directory and the key are process environment.
+// call, the one deadline over retries, the closed set of nine reasons, the
+// credential screen over every body, and the guarantee that the key reaches no
+// artifact a call produces. Every call runs against a stand-in server on
+// 127.0.0.1 or a recording fetch stub, so nothing here leaves the machine.
+// Tests in this file run serially, since the home directory and the key are
+// process environment.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,6 +18,7 @@ const path = require('path');
 const util = require('util');
 
 const client = require('../plugins/grimoire/scripts/jev-client.js');
+const { gatherCode } = require('../plugins/grimoire/scripts/jev-gather.js');
 const { MAX_BODY_BYTES } = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 
 // A recognizable key, planted in the environment so any artifact carrying it
@@ -28,7 +30,7 @@ const PLANTED_KEY = 'PLANTED-KEY-7f3a9c';
 const BS = String.fromCharCode(92);
 
 const REASONS = ['not configured', 'config unusable', 'no key', 'timeout',
-    'unreachable', 'refused', 'busy', 'unusable answer'];
+    'unreachable', 'refused', 'busy', 'unusable answer', 'screened'];
 
 const QUESTIONS = {
     q_a: { type: 'noul', instructions: 'Is the sky blue?', criteria: { true: 'yes', false: 'no' } },
@@ -201,7 +203,7 @@ function assertRefusal(made, reason) {
     const out = made.result;
     assert.equal(out.ok, false, JSON.stringify(out));
     assert.equal(out.reason, reason, JSON.stringify(out));
-    assert.ok(REASONS.includes(out.reason), 'reason is one of the eight');
+    assert.ok(REASONS.includes(out.reason), 'reason is one of the nine');
     assert.ok(!('answers' in out), 'a failure never carries answers');
     if ('detail' in out) assert.equal(typeof out.detail, 'string');
     assertClean(made);
@@ -577,6 +579,143 @@ test('a call that asked no question is unusable answer before any socket opens, 
         assertRefusal(made, 'unusable answer');
     }
     assert.equal(calls.length, 0, 'no fetch call for an empty, null or array question set');
+});
+
+// ---------------------------------------------------------------- the screen --
+
+// The credential shapes the client screens a body for, one row per class:
+// its name for the assertion messages, two or more instances built to the
+// shape's rule, and the near-misses built just under the rule's bound. Each
+// instance is at least eight characters, so a detail that quoted any part of
+// it would be named by `keyTraces`. The near-misses are shaped from the rule,
+// not cut from the instances: one token character short, a lower-case letter
+// in the literal, a hyphen for the underscore, a seven-character literal, the
+// key variable named but not assigned, and a letter or digit directly before
+// `sk-`, which makes a longer word (`risk-`) and not the shape. A literal
+// with an escaped pair or an apostrophe inside it is an instance, since the
+// pair is one unit of the literal and the apostrophe is a character of a
+// double-quoted one.
+const SHAPES = [
+    ['the key variable assigned', [
+        'TYPESAFE_API_KEY=PLANTEDKEY0', 'export TYPESAFE_API_KEY="PLANTEDKEY1"', "TYPESAFE_API_KEY: 'PLANTEDKEY2'", '"TYPESAFE_API_KEY": "PLANTEDKEY3"'
+    ], [
+        'TYPESAFE_API_KEY', 'export TYPESAFE_API_KEY=1', 'TYPESAFE_API_KEY="abcdefg"', "TYPESAFE_API_KEY: 'abcdefg'",
+        'Typesafe_api_key=PLANTEDKEY', 'stood down because TYPESAFE_API_KEY is not set in this process',
+        'TYPESAFE_API_KEY===undefined'
+    ]],
+    ['a bearer token', ['Bearer ' + 'A'.repeat(16), 'Bearer zyx.9_8~7+6/5=4-3Q'], ['Bearer ' + 'A'.repeat(15)]],
+    ['an sk- key', ['sk-' + 'b'.repeat(20), 'sk-' + 'Qq0-_'.repeat(4), '"sk-' + 'd'.repeat(20) + '"'],
+        ['sk-' + 'b'.repeat(19), 'risk-assessment-report-2026', 'disk-encryption-enabled-flag']],
+    // Each prefix with twenty or more token characters. The near-misses are
+    // each prefix with nineteen, and a hyphen in place of a prefix underscore.
+    ['a GitHub token', ['ghp_' + 'PLANTED0'.repeat(3), 'gho_' + 'PLANTED1'.repeat(3), 'github_pat_' + 'PLANTED2'.repeat(2) + '_' + 'PLANTED3'],
+        ['ghp_' + 'P'.repeat(19), 'gho_' + 'Q'.repeat(19), 'github_pat_' + 'R'.repeat(19), 'ghp-' + 'S'.repeat(20), 'github-pat_' + 'T'.repeat(20)]],
+    ['a Slack token', ['xoxb-1234-PLANTED', 'xoxp-PLANTED-5678', 'xoxa-PLANTED1', 'xoxr-PLANTED2', 'xoxs-PLANTED3'], ['xoxz-1234-PLANTED', 'xoxb_1234-PLANTED']],
+    ['an AWS access key id', ['AKIAABCDEFGHIJKLMNOP', 'AKIA0123456789ABCDEF'], ['AKIAABCDEFGHIJKLMNO', 'AKIAabcdefghijklmnop']],
+    ['a private key block', ['-----BEGIN RSA PRIVATE KEY-----', '-----BEGIN OPENSSH PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----'], ['-----BEGIN CERTIFICATE-----', '-----BEGIN RSA PUBLIC KEY-----']],
+    // The name in any case behind the left boundary, or capitalized directly
+    // after a lower-case letter as camelCase writes it, assigned a literal in
+    // double quotes, single quotes or backticks. The near-misses are a
+    // seven-unit literal in each quote, an unquoted or computed right-hand
+    // side, a lower-case continuation of the name (`tokens`, `passwordHash`,
+    // `secret_keys`, `secretKeys`), and an upper-case continuation (`myTOKEN`),
+    // which is neither form.
+    ['a credential assignment', [
+        'password = "hunter22!"', "passwd: 'abcdefgh'", 'SECRET="PLANTED-SECRET"', "api_key = 'PLANTEDKEY1'",
+        'ApiKey: "PLANTEDKEY2"', 'token = "PLANTEDTOKEN"', 'db_password = "PLANTEDPASS"', 'db-password = "PLANTEDPASS2"',
+        '"token": "PLANTEDTOKEN9"', 'password = "abc\tdefghij"', 'password = "abc\\tdefghij"', 'password = "it\'s-a-secret"',
+        "clientSecret = 'PLANTED-SECRET2'", 'accessToken = "PLANTEDTOKEN4"', "dbPassword = 'PLANTEDPASS5'",
+        'apiToken: "PLANTEDTOKEN3"', 'nextToken = "identifier"', 'csrfToken: "x-csrf-token"', '"accessToken": "PLANTEDTOKEN6"',
+        'token = `PLANTEDTOKEN7`', 'SECRET_KEY = "PLANTED-SECRET3"', "secretKey = 'PLANTED-SECRET4'"
+    ], [
+        'password = "abcdefg"', 'password = abcdefghij', 'tokens = "PLANTEDTOKEN"', 'password_hash = "PLANTEDHASH"',
+        'accessToken = getToken();', "clientSecret = 'short'", 'passwordHash = "PLANTEDHASH2"', 'myTOKEN = "PLANTEDTOKEN5"',
+        'secret = `short`', 'secret_keys = "PLANTEDSECRET5"', "secretKeys = 'PLANTED-SECRET6'"
+    ]],
+    // A connection string's password field: the name `Password`, then `=`,
+    // then a value of eight or more characters with no `;`, whitespace, quote
+    // or backslash, in any case and behind the same left boundary. The
+    // near-misses are an empty value, a
+    // seven-character value, a letter directly before the name, a comparison
+    // and a quoted value, and a value cut short by a space, a quote or a `)`
+    // and the space after it.
+    ['a connection-string password', ['Server=x;User Id=sa;Password=Hunter22222;', 'PASSWORD=abcdefghij'],
+        ['Password=;', 'Password=short7;', 'dbPassword=PLANTEDPASS4;', 'if (password==null) return;', "password='ab'",
+            'password=abc defghij', 'password=abc"defghij"', 'set(password=abcd) and go on']]
+];
+
+function planted(text) {
+    return { spec: `the section text, then ${text}, then more text` };
+}
+
+test('every credential shape in a body is screened, with a fixed detail per class that never carries the match', async (t) => {
+    const server = await startServer(t, () => ({ body: GOOD_BODY }));
+    arm(t, server);
+    const details = new Map();
+    for (const [label, instances] of SHAPES) {
+        const seen = new Set();
+        for (let i = 0; i < instances.length; i += 1) {
+            const made = await call([planted(instances[i]), QUESTIONS, 5000]);
+            assertRefusal(made, 'screened');
+            assert.equal(server.requests.length, 0, `${label} ${i}: no socket opened`);
+            assert.deepEqual(keyTraces(instances[i], artifactsOf(made)), [], `${label} ${i}: no part of the match reaches an artifact`);
+            assert.ok(typeof made.result.detail === 'string' && made.result.detail !== '', `${label} ${i}: the detail names a class`);
+            seen.add(made.result.detail);
+        }
+        assert.equal(seen.size, 1, `${label}: one detail across its instances, so it is the class and not the match`);
+        details.set(label, [...seen][0]);
+    }
+    assert.equal(new Set(details.values()).size, SHAPES.length, 'each class has its own detail');
+
+    // The withheld controls: the same key, server and question set, with a
+    // body just under each shape's bound, reach the server. The screen is what
+    // refused the instances above, since nothing else differs.
+    let reached = 0;
+    for (const [label, , nearMisses] of SHAPES) {
+        for (let i = 0; i < nearMisses.length; i += 1) {
+            const made = await call([planted(nearMisses[i]), QUESTIONS, 5000]);
+            assert.equal(made.result.ok, true, `${label} near-miss ${i}: ${JSON.stringify(made.result)}`);
+            reached += 1;
+            assert.equal(server.requests.length, reached, `${label} near-miss ${i}: reached the server`);
+        }
+    }
+});
+
+test('the screen runs on the whole body, before the key is read, so a screened body never reads the key', async (t) => {
+    const calls = stubFetch(t);
+    const home = tempHome(t);
+    writeConfig(home, { endpoint: 'http://127.0.0.1:1', model: 'm' });
+
+    // A shape inside a question is screened as one inside the state is.
+    setEnv(t, 'TYPESAFE_API_KEY', PLANTED_KEY);
+    const inQuestion = { q_a: { ...QUESTIONS.q_a, instructions: 'Is sk-' + 'c'.repeat(20) + ' a key?' } };
+    assertRefusal(await call([STATE, inQuestion, 1000]), 'screened');
+
+    // With no key in the environment the refusal is still the screen's, not
+    // `no key`, which is the order: config, question, body, screen, key.
+    setEnv(t, 'TYPESAFE_API_KEY', undefined);
+    assertRefusal(await call([planted('AKIAABCDEFGHIJKLMNOP'), QUESTIONS, 1000]), 'screened');
+    assertRefusal(await call([STATE, QUESTIONS, 1000]), 'no key');
+    assert.equal(calls.length, 0, 'no fetch call for a screened body or a missing key');
+});
+
+// The kit's own Jev scripts name the key variable and spell the shape list
+// out, so a shape that matched its own prefix or name alone would refuse the
+// scripts the promises check exists to read. They are gathered as that check
+// gathers them, comments stripped, and sent as its state.
+test('the kit\'s own Jev scripts, gathered as the promises check sends them, reach the server unscreened', async (t) => {
+    const scriptsDir = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts');
+    const gathered = gatherCode(['jev-client.js', 'jev-gather.js', 'jev-judge.js'].map((name) => path.join(scriptsDir, name)));
+    assert.equal(gathered.ok, true, JSON.stringify(gathered));
+    assert.equal(gathered.files, 3);
+
+    const server = await startServer(t, () => ({ body: GOOD_BODY }));
+    arm(t, server);
+    const made = await call([{ code: gathered.code }, QUESTIONS, 5000]);
+    assert.equal(made.thrown, undefined);
+    assert.equal(made.result.ok, true, JSON.stringify(made.result));
+    assert.equal(server.requests.length, 1, 'the gathered scripts reached the server');
+    assertClean(made);
 });
 
 test('the env fixture restores a name set twice in one test to its original value', async (t) => {
