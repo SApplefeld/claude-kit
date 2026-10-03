@@ -14,7 +14,7 @@ The seat is event-driven, waking on the BLOCKED funnel's messages and the operat
 A cold start opens as every pass does, in the chassis's order:
 
 1. **Arm the wake first**, before any read, on any restart, so a crash mid-read still leaves a timer.
-2. **Read the board** at `coordinator/<machine>/board.md`, because everything the seat has promised or brokered lives there and nowhere else. The read takes the role skill's stamp self-check, and a stamp ahead of the clock is named on the board. A missing `board.md` concludes nothing, since a `/role` takeover's registry write creates the directory alone. The seat reports it and holds under the no-board rule below until the operator answers on a warranted channel, and that answer licenses one write creating the board.
+2. **Read the board** at `coordinator/<machine>/board.md`, because everything the seat has promised or brokered lives there and nowhere else, save the dispatched plans and operator requests its own goal tree carries on the persona plugin. The read takes the role skill's stamp self-check, and a stamp ahead of the clock is named on the board. A missing `board.md` concludes nothing, since a `/role` takeover's registry write creates the directory alone. The seat reports it and holds under the no-board rule below until the operator answers on a warranted channel, and that answer licenses one write creating the board.
 3. **Then the pass runs the chassis's remaining steps**, re-derive through act, write the board, arm the next wake, and declare the pass-end boundary. Any takeover announcement and status round come after the read. A seat restarted on the persona plugin reads its own goal tree as it reads the board, under the reconciliation guard below, before its first report.
 
 ## Four Functions

@@ -202,9 +202,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:15
 - provenance: ebf5ee0 2026-08-28, step 2 of the tick order; 5b7dba3 2026-09-02 added the takeover pointer beside it.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: B020
 - landed: fe0f812 section 23
-- reason: The instruction stands as the lead of a compressed step 2 (A022); the sync-repository history and the state-file analysis around it move to c1.C021's and c1.C022's entries.
+- reason: The instruction stands as the lead of a compressed step 2 (A022); the sync-repository history and the state-file analysis around it move to c1.C021's and c1.C022's entries. Superseded on 2026-10-03 by B020 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` finishing pass, which names the goal tree as the one carrier beside the board; the verdict before it was rewrite).
 - proposed: Compress step 2 to C019, C020, C021 with its one-sentence bound, C023, C024 as a pointer (A029), C025 and C026 as the pointer and the board disposition, and C027; move the sync-repository history, the state-file analysis and the second-board failure modes (C022) to this ledger.
 - baseline-test: yes
 - passage: 2. **Read the board** at `coordinator/<machine>/board.md`, because everything the seat has promised or brokered lives there and nowhere else.
@@ -4419,3 +4420,12 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: A state carried from an earlier read is a summary that has outlived its source, and the operator acts on the report as current. The doctrine's "A summary outlives its source" and "cannot measure" bullets own the principle, and this sentence applies them at the seat's one voice toward the operator.
 - passage: A report naming a pull request or a worker step as open, merged, done or queued reads that state from its source below in the same pass. An unreachable source is reported as cannot measure, never as the last reading carried forward, per the doctrine's "A summary outlives its source" bullet.
+
+### B020
+- key: Read the board at `coordinator/<machine>/board.md` next, because everything the seat has promised or brokered lives there, save what the seat's own goal tree carries on the persona plugin.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:17
+- provenance: the docs-curator's drift item D1 in the finishing pass of `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md`, 2026-10-03, on section 1's goal-tree carrier (B012).
+- verdict: keep
+- reason: Section 1 moved the dispatched plan and the operator request onto the persona plugin's goal tree, so the board-read reason saying the board holds everything and nowhere else became false on that plugin, and a seat trusting it could skip a commitment held only on its goal tree. The goal-tree read itself sits in step 3 (B013), and this clause keeps step 2's reason true beside it.
+- passage: 2. **Read the board** at `coordinator/<machine>/board.md`, because everything the seat has promised or brokered lives there and nowhere else, save the dispatched plans and operator requests its own goal tree carries on the persona plugin.
