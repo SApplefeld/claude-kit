@@ -4082,7 +4082,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
 - verdict: keep
 - reason: Two documents speak to the moment, so the row states the precedence rather than leaving it under Unowned or contested: the plugin's instruction owns how a record is written and counted, and the coordinator skill's Dispatch and Redirect Rule owns what a dispatch or redirect may do (its ledger's B001 to B005).
-- passage: | The coordinator seat on a fleet under the persona plugin: dispatching a plan to a persona worker, tracking it and redirecting it | the persona plugin's coordinator instruction for the record mechanics, and `coordinator` (Dispatch and Redirect Rule) for the seat's bounds; the instruction governs the record and the skill governs the bound |
+- passage: | The coordinator seat on a fleet under the persona plugin: dispatching a plan to a persona worker, tracking it and redirecting it | the persona plugin's coordinator instruction, `bin/supervise-holder.sh` in the `agent_persona` repository, for the record mechanics, and `coordinator` (Dispatch and Redirect Rule) for the seat's bounds; the instruction governs the record and the skill governs the bound |
 
 ### D002
 - key: Own what a worker's push, deploy, settings edit or commit-model change is on a delegated seat's steer under the `role` skill's delegation model.
