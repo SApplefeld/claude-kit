@@ -271,3 +271,22 @@ Gate: whole gate as the handoff gate, run from 2026-10-02 03:31:36Z to 03:40:48Z
 Probe pair: after leg selected 33 moments and was stopped before any pair finished; deferred to the post-rename resume, recorded above.
 Next: step 7 of finishing-work once the kit rename merges, per the `docs/backlog.md` handoff item
 Commit Model: Branch-and-PR
+
+### Chapter 5 - 2026-10-02 (post-rename landing)
+Completed: finishing-work step 7, resumed once the grimoire rename merged (PR #177), per the `docs/backlog.md` handoff item Chapter 4 names.
+Base Ref: `176fcb6a`, the merge of `origin/main` into this branch, which this Chapter's gate and probe legs measure against.
+Metrics: dispatches 0; this resume ran in the main thread. Review rounds 0, since the code is the code sections 1 to 3 reviewed, carried across the rename unchanged but for the token.
+Decisions / Surprises: the held edits crossed the rename by the archived rename plan's sweep, not by a patch apply. For all 12 held files trunk also holds, sweeping the merge-base version reproduced trunk byte for byte, so each held file swept is its merged result; the carried diff matched the held patch's per-file line counts, and `test/size-budget.json` took a clean 3-way merge. Five docs files conflicted on the merge; each 3-way merge was re-run with the sweep applied to the base and branch sides, so only content conflicts remained, and single lines both sides edited merged at word level with each seam read.
+- One trunk sentence in `docs/security-model.md` said the kit sends TypeSafe "the coverage check's plan sections" from a client host. This plan retires that check, so the merge commit makes it name the promises check's source code, with its paths, and its promise text.
+- The index chains now run grimoire rename, client threat model, this plan, mechanism cut, by archive date.
+- The six `landed:` lines crossed each ledger's exact word cap, so `test/size-budget.json` raised the three caps by the lines' own words: 20, 5 and 5.
+- The probe after leg ran against `176fcb6a` rather than the handoff's `3551ed71`, since after the merge that range holds the whole rename; it selects the same 33 moments the stopped leg selected.
+Failed approaches: none.
+Assumptions: decided 2026-10-02 (finishing): the post-rename resume's probe leg measures against the merge commit, so it reads this plan's delta alone.
+Review Findings: none new; the reviews Chapters 1 to 4 record cover the carried code.
+Commits: `176fcb6a` (merge), the rename sweep changed 0 on its first and second runs with a planted-token control speaking; `549de22b` (code, tests and skill prose); `6e4866b4` (the six `landed:` lines and the three caps); and this Chapter's commit with the backlog prune.
+Gate: whole gate, this worktree, 00:42:28Z to 00:50:15Z on 2026-10-03, over `176fcb6a` plus the carried code, box clear of foreign test runners by a poll before the start: 4378 tests, 4367 pass, 1 fail, 10 skipped, exit 1 read from the run's own marker. Baseline at `176fcb6a` in a detached worktree: 4370 tests, 4359 pass, 1 fail, 10 skipped, exit 1. Baseline 1 failing {`test/kit-sidecar-memory-index.test.js` "loadIndex answers a status, never a throw, for a cwd the store refuses to name"} -> still 1 failing {that test}, the linked-worktree red. After the `landed:` lines: the five test files that read the ledgers, 246 tests, 246 pass, exit 0; `kit-size.js check` exit 0. Contention lane: this repo defines none.
+Probe pair: after leg `node tools/probe-corpus/run.mjs --touching 176fcb6a`, 00:53Z to 01:07Z on 2026-10-03, the same 33 moments the stopped leg selected: 75 pairs, 72 match, 0 errors, exit 2 read from the run's own marker, with three non-match readings re-run once each with `--only`. `compaction-nudge-mid-section-with-no-checkpoint-open` read designed both times, stable. `merged-plan-branch-delete-on-an-armed-run` read designed-agreed, then a mismatch, and `peer-message-asking-a-leashed-session-for-work` read designed-agreed, then designed; both are unstable and count as mismatches. Their before legs at `176fcb6a` (`--only <moment> --before 176fcb6a`) each read 3 pairs with 1 mismatch, so both mismatch without this plan's changes and are the corpus's, the first the same moment the grimoire rename's probe set found unstable at its own base.
+Operator Handoff: the live check in `## Operator Verification`, after the pull request merges and the plugin updates; the backlog item on refusing memory record files by name.
+Next: none. PR #170 is ready with auto-merge armed.
+Commit Model: Branch-and-PR
