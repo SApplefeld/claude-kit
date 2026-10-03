@@ -63,9 +63,15 @@ BEGIN	-- PROCEDURE
 							it: a NULL parameter keeps the
 							column and a non-NULL one, an empty JSON array included, is the
 							new value, and the row's embeddings are deleted only where
-							@p_Body is non-NULL. Where no live row has the name, the record
-							is inserted, into the store's deleted row holding the same file
-							key where there is one, since the file key is unique in a store.
+							@p_Body is non-NULL. Where no live row has the name and @p_Body is
+							NULL, whatever @p_Replace reads, nothing is written: no store is
+							created, no deleted row is touched, no stamp is recorded, and the
+							answer is refused with a NULL description, since a write of some
+							fields alone has no record to land on. An empty-string body is a
+							body. Where no live row has the name and a body is given, the
+							record is inserted, into the store's deleted row holding the same
+							file key where there is one, since the file key is unique in a
+							store.
 
 							Every row written reads [Origin] memq and [Visibility] shared and
 							carries the writing sandbox, and a stored write that carried a
@@ -185,7 +191,8 @@ BEGIN	-- PROCEDURE
 						AND S.[ProjectKey] IS NULL
 			END
 
-			;IF ( @StoreId IS NULL )
+			/* A Write With No Body Creates No Store, Since It Can Only Land on a Row Already There. */
+			;IF ( @StoreId IS NULL AND @p_Body IS NOT NULL )
 			BEGIN
 				;INSERT INTO mem.Store (
 					 [SandboxId]
@@ -259,9 +266,17 @@ BEGIN	-- PROCEDURE
 			END
 
 			/************************************************************************************
+				ABSENT WITH NO BODY: REFUSE, WRITING NOTHING.
+			************************************************************************************/
+			;IF ( @RecordId IS NULL AND @p_Body IS NULL )
+			BEGIN
+				;SET @Status = 'refused'
+			END
+
+			/************************************************************************************
 				ABSENT: INSERT, INTO THE DELETED ROW HOLDING THE FILE KEY WHERE THERE IS ONE.
 			************************************************************************************/
-			;IF ( @RecordId IS NULL )
+			;IF ( @RecordId IS NULL AND @Status IS NULL )
 			BEGIN
 				;IF EXISTS (	SELECT	NULL
 								FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )

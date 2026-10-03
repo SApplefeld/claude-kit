@@ -3085,6 +3085,67 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             }
         });
 
+        await t.test('a write with no body on an absent name writes nothing and is refused, and usp_Health keeps fleet rows out of its shared counts', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const keyThree = 'remote:example.test/three-' + runId;
+                const storesFor = (key) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Store WHERE [ProjectKey] = N'" + key + "';"), 'n'));
+                const rowsNamed = (name) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Name] = N'" + name + "';"), 'n'));
+                const ledgerRows = (stamp) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.RecordStamp WHERE [StampId] = N'" + stamp + "';"), 'n'));
+                const refusedNull = (res, what) => {
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    assert.deepStrictEqual({ status: res.value.status, recordId: res.value.recordId, description: res.value.description },
+                        { status: 'refused', recordId: null, description: null }, what + ': ' + JSON.stringify(res.value));
+                };
+
+                // (a) An absent name, a key whose store does not exist yet: an
+                // anchors-only replace, and a no-body write with no flag, each
+                // refused, with no row, no store and no stamp written.
+                const absent = 'absent-' + runId;
+                const stampA = crypto.randomUUID();
+                refusedNull(put({ Tier: 'project', ProjectKey: keyThree, Name: absent, Anchors: '["a.js"]', Replace: 1, StampId: stampA }), 'an anchors-only replace on an absent name');
+                refusedNull(put({ Tier: 'project', ProjectKey: keyThree, Name: absent, Description: 'no body', Replace: 0 }), 'a no-body write with no flag');
+                assert.deepStrictEqual([rowsNamed(absent), storesFor(keyThree), ledgerRows(stampA)], [0, 0, 0], 'nothing is written');
+
+                // The control, withheld from the refusals above: an empty-string
+                // body on the same absent name is a body, and inserts.
+                const empty = put({ Tier: 'project', ProjectKey: keyThree, Name: absent, Body: '' });
+                assert.ok(!empty.error && empty.value.status === 'stored', 'an empty body inserts: ' + JSON.stringify(empty));
+                assert.deepStrictEqual([rowsNamed(absent), storesFor(keyThree)], [1, 1]);
+
+                // (b) A deleted row holding the file key is left as it stands.
+                const gone = 'gone-' + runId;
+                const written = put({ Tier: 'project', ProjectKey: keyOne, Name: gone, Description: 'deleted row', Body: 'deleted body', Anchors: '["old.js"]' });
+                assert.ok(!written.error && written.value.status === 'stored', JSON.stringify(written));
+                const deleted = call('usp_ArchiveRecord', paramsOf({ Tier: 'project', ProjectKey: keyOne, Name: gone, Delete: 1 }));
+                assert.deepStrictEqual(deleted.value, { status: 'deleted', recordId: written.value.recordId }, JSON.stringify(deleted));
+                const deletedState = recordState(written.value.recordId);
+                const stampB = crypto.randomUUID();
+                refusedNull(put({ Tier: 'project', ProjectKey: keyOne, Name: gone, Anchors: '["new.js"]', Replace: 1, StampId: stampB }), 'an anchors-only replace over a deleted row');
+                assert.deepStrictEqual(recordState(written.value.recordId), deletedState, 'the deleted row\'s body and fields are unchanged');
+                assert.strictEqual(ledgerRows(stampB), 0, 'and no stamp is recorded');
+
+                // usp_Health: a fleet project record and its embedding move the
+                // fleet counts and not the shared ones.
+                const health = () => {
+                    const res = call('usp_Health', "@p_ModelIdentity = 'test-model'");
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    const h = res.value;
+                    return { sharedRecords: h.sharedRecords, sharedEmbeddings: h.sharedEmbeddings, fleetRecords: h.fleetRecords, fleetEmbeddings: h.fleetEmbeddings };
+                };
+                const before = health();
+                const counted = put({ Tier: 'project', ProjectKey: keyOne, Name: 'health-' + runId, Description: 'a fleet row to count', Body: 'b' });
+                assert.ok(!counted.error && counted.value.status === 'stored', JSON.stringify(counted));
+                const vector = call('usp_UpsertEmbeddings', "@p_Embeddings = N'" + JSON.stringify([{ recordId: counted.value.recordId, chunkIndex: 0, chunkOffset: 0,
+                    chunkLength: 1, vector: JSON.parse(axisVector(900)), model: 'test-model', dimensions: DIMENSIONS }]) + "'");
+                assert.deepStrictEqual(vector.value, { inserted: 1, updated: 0, rejected: 0 }, JSON.stringify(vector));
+                assert.deepStrictEqual(health(), { ...before, fleetRecords: before.fleetRecords + 1, fleetEmbeddings: before.fleetEmbeddings + 1 },
+                    'a fleet record moves fleetRecords and fleetEmbeddings and not the shared counts');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
         await t.test('every procedure that resolves a name addresses the newest undeleted row of it, and a repeated archive changes nothing', () => {
             const name = 'one-name-' + runId;
             mapConnection('SCOTT-CLAUDE');

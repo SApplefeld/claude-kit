@@ -30,6 +30,9 @@ BEGIN	-- PROCEDURE
 							records of every project's fleet store, which belongs to no
 							sandbox and so is counted in no sandbox's line, and their
 							embeddings, for the model @p_ModelIdentity names when given.
+							sharedRecords and sharedEmbeddings leave those rows out, so they
+							count the operator and type tiers and any older sandbox-store
+							row still marked shared, and the two pairs are disjoint.
 
 							Returns one row, one column [Json], a JSON object
 							{schemaVersion, sharedRecords, sharedEmbeddings, fleetRecords,
@@ -94,17 +97,26 @@ BEGIN	-- PROCEDURE
 		FROM	mem.SchemaVersion V
 
 		/* The Fleet-Wide Counts. */
+		/* Shared Rows Outside the Fleet Project Stores, Which the Fleet Counts Below Carry. */
 		;SELECT	@SharedRecords = COUNT(*)
 		FROM	mem.Record R
+				INNER JOIN mem.Store S
+					ON S.[StoreId] = R.[StoreId]
 		WHERE	R.[DeletedDt] IS NULL
 				AND R.[Visibility] = 'shared'
+				AND NOT (	S.[Tier] = 'project'
+							AND S.[SandboxId] IS NULL	)
 
 		;SELECT	@SharedEmbeddings = COUNT(*)
 		FROM	mem.Embedding E
 				INNER JOIN mem.Record R
 					ON R.[RecordId] = E.[RecordId]
+				INNER JOIN mem.Store S
+					ON S.[StoreId] = R.[StoreId]
 		WHERE	R.[DeletedDt] IS NULL
 				AND R.[Visibility] = 'shared'
+				AND NOT (	S.[Tier] = 'project'
+							AND S.[SandboxId] IS NULL	)
 				AND (	@p_ModelIdentity IS NULL
 						OR E.[ModelIdentity] = @p_ModelIdentity	)
 
