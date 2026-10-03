@@ -168,8 +168,7 @@ BEGIN	-- PROCEDURE
 				RESOLVE THE STORE, CREATING A PROJECT OR TYPE STORE WRITTEN FOR THE FIRST TIME.
 			************************************************************************************/
 			/* Each Tier's Store is Named by Equality on its Key, Under a Range Lock so a Concurrent First Write Queues. */
-			;IF ( @Tier = 'project' )
-			BEGIN
+			;IF ( @Tier = 'project' ) BEGIN
 				;SELECT	@StoreId = S.[StoreId]
 				FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
 				WHERE	S.[Tier] = 'project'

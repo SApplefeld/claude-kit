@@ -33,12 +33,12 @@ BEGIN	-- PROCEDURE
 							its name: a project record by @p_ProjectKey, a type record by
 							@p_TypeName, an operator record by neither. The row comes from
 							mem.udf_VisibleRecords for the sandbox mem.CallerSandbox()
-							resolves, so an unmapped login is answered with no row. A name
-							resolves to the newest undeleted row of it in the store, archived
-							or not, as it does in every procedure that resolves a record by
-							name, and that row is answered only where it is unarchived: a
-							name whose newest row is archived, or which the store does not
-							hold, is answered with no row.
+							resolves, so an unmapped login is answered with no row, and so is
+							a name the store holds no undeleted row of. A name resolves to
+							the newest undeleted row of it in the store, archived or not, as
+							it does in every procedure that resolves a record by name, and
+							that row is answered with its archived flag, so an archived
+							record is still read by name.
 
 							Returns no row, or one row, one column [Json], holding {recordId,
 							tier, projectKey, typeName, name, description, body, tags,
@@ -59,7 +59,6 @@ BEGIN	-- PROCEDURE
 	********************************************************************************************/
 	;DECLARE @SandboxId			INT				= NULL
 			,@RecordId			BIGINT			= NULL
-			,@IsArchived		BIT				= NULL
 			,@Tier				VARCHAR(20)		= LOWER(LTRIM(RTRIM(@p_Tier)))
 			,@Name				NVARCHAR(200)	= NULLIF(LTRIM(RTRIM(@p_Name)), '')
 			,@ProjectKey		NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_ProjectKey)), '')
@@ -78,8 +77,7 @@ BEGIN	-- PROCEDURE
 
 		/* The Newest Undeleted Row of That Name in the Named Store, Archived or Not. */
 		;SELECT	TOP ( 1 )
-				 @RecordId		= V.[RecordId]
-				,@IsArchived	= V.[IsArchived]
+				@RecordId = V.[RecordId]
 		FROM	mem.udf_VisibleRecords(@SandboxId) V
 		WHERE	V.[Tier] = @Tier
 				AND V.[StoreSandboxId] IS NULL
@@ -88,10 +86,6 @@ BEGIN	-- PROCEDURE
 								SELECT @ProjectKey, @TypeName	)
 				AND V.[Name] = @Name
 		ORDER BY V.[RecordId] DESC
-
-		/* An Archived Newest Row is Answered With No Row. */
-		;IF ( @IsArchived = 1 )
-			SET @RecordId = NULL
 
 		/****************************************************************************************
 			DATASET 1: THE RECORD.

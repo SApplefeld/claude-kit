@@ -2889,7 +2889,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 const state = recordState(putIds.stamped);
                 assert.deepStrictEqual([state.IsArchived, state.DeletedDt], [true, null]);
                 assert.ok(!indexed(), 'an archived record leaves the index');
-                assert.deepStrictEqual(getStamped(), [], 'a name whose newest row is archived is answered with no row');
+                assert.strictEqual(getStamped()[0].archived, true, 'and is still read by name, marked archived');
 
                 const deleted = call('usp_ArchiveRecord', archiveParams({ Delete: 1 }));
                 assert.ok(!deleted.error, JSON.stringify(deleted.error));
@@ -3184,7 +3184,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.deepStrictEqual(archived.value, { status: 'archived', recordId: newer }, JSON.stringify(archived));
                 const newerArchived = recordState(newer);
                 assert.strictEqual(newerArchived.IsArchived, true);
-                assert.deepStrictEqual(get(), [], 'a name whose newest row is archived is answered with no row');
+                assert.deepStrictEqual(get().map((r) => [r.recordId, r.archived]), [[newer, true]], 'get answers the newest row, marked archived');
                 const again = call('usp_ArchiveRecord', named);
                 assert.deepStrictEqual(again.value, { status: 'archived', recordId: newer }, 'a resent archive answers archived: ' + JSON.stringify(again));
                 assert.deepStrictEqual(recordState(newer), newerArchived, 'and changes nothing on the newest row');

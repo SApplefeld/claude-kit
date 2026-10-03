@@ -26,7 +26,7 @@ BEGIN	-- PROCEDURE
 		VERSION:	v1.2
 	*********************************************************************************************
 		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
-							The report adds fleetRecords and fleetEmbeddings: the live
+							The report adds fleetRecords and fleetEmbeddings: the undeleted
 							records of every project's fleet store, which belongs to no
 							sandbox and so is counted in no sandbox's line, and their
 							embeddings, for the model @p_ModelIdentity names when given.

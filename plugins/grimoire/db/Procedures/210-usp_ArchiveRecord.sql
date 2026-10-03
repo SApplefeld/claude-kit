@@ -41,8 +41,11 @@ BEGIN	-- PROCEDURE
 							or not, as it does in every procedure that resolves a record by
 							name. Where that row is already archived, an archive without
 							@p_Delete changes nothing and answers archived, so a resent
-							archive never reaches an older row. The caller's sandbox comes
-							from mem.CallerSandbox() and an unmapped login is refused.
+							archive without @p_Delete writes nothing. A delete takes its row
+							out of that resolution, so a resent delete answers absent, or
+							reaches the next undeleted row of the name where the store holds
+							one. The caller's sandbox comes from mem.CallerSandbox() and an
+							unmapped login is refused.
 
 							Returns one row, one column [Json], holding {status, recordId},
 							status archived, deleted or absent.
