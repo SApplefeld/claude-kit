@@ -253,3 +253,14 @@ tests: 4127
 changed paths under no measured root: 4 (4 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 corpus: 105549 words of cap 105550
 ```
+
+### Interim board 3 - 2026-10-03
+- Section 2, stage: review round 2 adjudicated, its fix round in flight. Commits on `plans/memory-in-sql-run`: `992f0d6c` (first green) and `b43fb4b7` (round 1 fixes, the marker-drain ruling, the security-model correction), both pushed.
+- Live dispatch: the section 2 implementer (implementer-opus), asked for three fixes. (1) The publish's embedding leg lists fleet project rows through a second `usp_ListRecords` call at `@p_IncludeFleet = 1`, feeding the embed set only. (2) `usp_UpsertRecords`' set-based archive-keep applies in every store, so a version 6 republish never un-archives a promoted old-store row. (3) The adopt call carries both keys at the procedure's 400 width, and the procedure refuses a longer key.
+- Gate baseline: the targeted lane (memq, memory-database, the live install lane, size-ratchet, memq-grant) at `b43fb4b7`, clean worktree, SCOTT-CLAUDE local SQL Server, 2026-10-03, reads 1155 tests, 1153 pass, 0 fail, 2 skipped, exit 0, 282 s.
+- Rulings since board 2:
+  - ARCHITECT ruling D on the folder key, confirmed by the operator. The publish keys every folder `path:<folder name>`, and `usp_AdoptProjectStore` re-keys it from a working directory.
+  - ARCHITECT ruling A on the marker branch: drain, send no record, exit by the drain's verdict. The doctor's stale-publish warning on a migrated machine stays a declared limit until plan 2.
+  - Section 4 embeds with `@p_IncludeFleet = 1`.
+  - Round 1 and round 2 adjudications are in `.kit/scratch/memory-in-sql/s2/`. Refuted twice: the marker on a partial walk. Justified on the Intent's "the files are history from that run on": a held republish after an adoption retired the row, and a file deletion after the migration.
+- Next: verify the fix round, commit it, then run review round 3 with the full roster at fable, since round 2 carried a Critical that survived adjudication. Then the Minor close pass from `minors-section-2.md`, two security-model sentences in the main thread among them, and the close gate and Chapter 2.
