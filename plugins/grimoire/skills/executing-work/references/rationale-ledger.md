@@ -11245,6 +11245,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/grimoire/skills/executing-work/SKILL.md:97
 - provenance: `docs/plans/claude-kit_jev-code-checks_spec_v1.md` section 3, 2026-10-01, on the operator's frame of that date and rulings 1 and 2 under its Intent.
 - verdict: keep
+- landed: 549de22b section 3
 - reason: Jev answers only the question it is asked, and the experiment behind the check found that questions drawn from the section's own promises separated broken code from fixed while broad quality scales did not. Writing the file at the open, before any code exists, keeps the questions the plan's and never the implementer's.
 - passage: **The same open writes the section's promises file, `.kit/scratch/<plan-slug>/promises-section-<n>.json`.** It holds one `{ id, promise }` entry per acceptance bullet and per sentence naming a behavior the section builds.
 
@@ -11254,6 +11255,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/grimoire/skills/executing-work/SKILL.md:183
 - provenance: `docs/plans/claude-kit_jev-code-checks_spec_v1.md` section 3, 2026-10-01, on the operator's frame of that date and rulings 1 and 2 under its Intent.
 - verdict: keep
+- landed: 549de22b section 3
 - reason: An implementer that reads its own doubted promises before reporting fixes what it can while it still holds the context, and one optional brief field places the check with no charter edit. The questions stay the orchestrator's, so an implementer never grades itself on questions it wrote.
 - passage: - [optional] Promise check: the promises file's path and the command `node <root>/scripts/kit-jev-check.js promises <that file> <your changed source files>`, run before you report, with its closing line and every promise over 0.6 carried in the report
 
@@ -11263,6 +11265,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/grimoire/skills/executing-work/SKILL.md:244
 - provenance: `docs/plans/claude-kit_jev-code-checks_spec_v1.md` section 3, 2026-10-01, on the operator's frame of that date and rulings 1 and 2 under its Intent.
 - verdict: keep
+- landed: 549de22b section 3
 - reason: The operator asked for a cheap first reading that sends the session back over its own acceptance criteria before the slower reviewers run, as advice and never a gate. The 0.6 line is the operator's ruled hand-off point, and every promise over it is re-read because the check costs seconds. A reading that reached a reviewer would pre-judge the review, so none does.
 - passage: **Then run the promises check before step 3:** `node <plugin-root>/scripts/kit-jev-check.js promises .kit/scratch/<plan-slug>/promises-section-<n>.json <the section's changed source files> --record .kit/scratch/<plan-slug>/promises-section-<n>.record.json`.
 - passage: Re-read each promise over 0.6 against the code, then fix it or record one `Decisions / Surprises:` line. After a fix, re-run once without `--record`.
@@ -11274,6 +11277,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/grimoire/skills/executing-work/SKILL.md:407
 - provenance: `docs/plans/claude-kit_jev-code-checks_spec_v1.md` section 3, 2026-10-01, on the operator's frame of that date and rulings 1 and 2 under its Intent.
 - verdict: keep
+- landed: 549de22b section 3
 - reason: A fix that breaks a promise it did not aim at is the regression a fix round is most likely to ship, and the delta against the first reading points at it. The 0.6 line holds at every reading, by the operator's ruling that every promise over it is re-read, and the 0.3 rise is the plan's declared default.
 - passage: **After each fix round, re-run step 2's promises command with `--against` its record in place of `--record`.** Before the close gate, re-read every promise over 0.6 or whose doubt rose 0.3 or more.
 

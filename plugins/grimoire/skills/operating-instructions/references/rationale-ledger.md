@@ -4081,6 +4081,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/grimoire/skills/operating-instructions/references/ownership-map.md:43
 - provenance: `docs/plans/claude-kit_jev-code-checks_spec_v1.md` section 3, 2026-10-01, on the operator's frame of that date and rulings 1 and 2 under its Intent.
 - verdict: keep
+- landed: 549de22b section 3
 - reason: The check runs at three moments in executing-work and one in finishing-work, and step 2 states the run, the 0.6 re-read and the Chapter line whole (executing-work's B003); step 4 reuses its command and finishing-work's step 3 re-reads as it does. A moment needs one owner for a later change to the re-read line to reach every placement.
 - passage: | The Jev promise check before review, its re-read line and its Chapter line | `executing-work` (step 2) |
 

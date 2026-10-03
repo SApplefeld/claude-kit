@@ -7081,5 +7081,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/grimoire/skills/finishing-work/SKILL.md:96
 - provenance: `docs/plans/claude-kit_jev-code-checks_spec_v1.md` section 3, 2026-10-01, on the operator's frame of that date and rulings 1 and 2 under its Intent.
 - verdict: keep
+- landed: 549de22b section 3
 - reason: The section checks read each section's own promises, and only a reading over the Goal asks whether the sections together built what the plan set out to. Quoting the closing line leaves the reading in the record whatever it said, so a not-checked run is visible rather than silent.
 - passage: Before this dispatch, write `.kit/scratch/<plan-slug>/promises-goal.json`, one entry per Goal sentence, and run `node <plugin-root>/scripts/kit-jev-check.js promises <that file> <the changeset's source files>`. Re-read each promise over 0.6 as executing-work's step 2 does, and quote its `jev promises:` line on the final Chapter's `Gate:` line.
