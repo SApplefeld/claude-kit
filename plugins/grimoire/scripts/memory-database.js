@@ -3017,13 +3017,15 @@ async function publish(options) {
     // modification times, so a shared record another machine published reads as
     // older on every later run from this one.
     //
-    // Only a shared record is withheld, because only a shared record can be the
-    // older one: the procedure reaches that disposition for a row whose store
-    // carries no sandbox, which is what a type or operator store is, and a
-    // project store carries this sandbox. A project record therefore keeps its
-    // place in the embedding leg beside a withheld shared one, and since a
-    // batch is a slice of the walk's order, any store of fewer than a batch's
-    // records mixes the two tiers in one call.
+    // Only a shared record is withheld. A project record can be answered older
+    // too, a version 7 copy that lost a twin, but the fleet row it lost to is
+    // not in the inventory the embedding leg reads, which holds this sandbox's
+    // own older project rows and the shared tiers alone, so no project record
+    // reaches that leg against another copy's text and none needs withholding.
+    // A project record of a version 6 batch keeps its place in the embedding
+    // leg beside a withheld shared one, and since a batch is a slice of the
+    // walk's order, any store of fewer than a batch's records mixes the two
+    // tiers in one call.
     const withheld = new Set();
     for (let at = 0; at < walk.records.length; at += RECORD_BATCH) {
         const batch = walk.records.slice(at, at + RECORD_BATCH);

@@ -3707,18 +3707,19 @@ function frontmatterBody(raw) {
 // The fields a publish carries for a record beside its description, tags,
 // machine and supersedes pointer, read from its text by the store's own field
 // readers: triggers and anchors as arrays of the entries that parse, pinned as
-// whether a `pinned:` line pins, created as a YYYY-MM-DD date or null, author
+// whether a `pinned:` line pins, created as the YYYY-MM-DD the value opens
+// with, sent as written and never parsed into a date, or null, author
 // as authorOrNull admits it, and body as frontmatterBody's prose.
 function publishedFields(raw) {
     const triggers = frontmatterTriggers(raw);
     const anchors = frontmatterAnchors(raw);
     const created = frontmatterValue(raw, 'created');
-    const createdMs = typeof created === 'string' ? Date.parse(created.trim()) : NaN;
+    const createdDay = typeof created === 'string' ? /^\d{4}-\d{2}-\d{2}/.exec(created.trim()) : null;
     return {
         triggers: triggers === null ? [] : triggers.entries.map((entry) => entry.text),
         anchors: anchors === null ? [] : anchors.entries.map((entry) => entry.text),
         pinned: typeof frontmatterValue(raw, 'pinned') === 'string',
-        created: Number.isFinite(createdMs) ? new Date(createdMs).toISOString().slice(0, 10) : null,
+        created: createdDay === null ? null : createdDay[0],
         author: authorOrNull(frontmatterValue(raw, 'author')),
         body: frontmatterBody(raw)
     };
@@ -20506,6 +20507,12 @@ function cmdDecayDone(argv) {
 // repository keeps on every other machine. `options` carries a config and the
 // client's boundary seams for an in-process caller.
 const MARKER_SHOWN_CAP = 2000;
+
+// A value off the wire for a db-sync line: the store's display cap and charset
+// reduction, or `absent` where the host sent no value at all.
+function wireText(value, cap, absent) {
+    return value === null || value === undefined ? absent : sanitize(String(value), cap);
+}
 async function cmdDbSync(argv, options) {
     const opts = options || {};
     let again = false;
@@ -20581,7 +20588,9 @@ async function cmdDbSync(argv, options) {
             process.stderr.write('memq: ' + shownText('the queue (' + (drain.cause || 'unclear') + '): '
                 + drain.detail, DB_SYNC_REASON_CAP) + '\n');
         }
-        if (!drained.ok) process.exitCode = 1;
+        // A row the host would not record is a stamp lost to it, which fails the
+        // run here as it fails a publish.
+        if (!drained.ok || drain.rejected > 0) process.exitCode = 1;
         return;
     }
     const result = await memoryDatabase.publish({ config: opts.config, deps: opts.deps });
@@ -20628,8 +20637,8 @@ async function cmdDbSync(argv, options) {
     const twins = result.summary.twins;
     if (twins.length > 0) {
         process.stdout.write('db-sync: ' + twins.length + ' twin record(s) resolved, the newer copy kept: '
-            + twins.map((t) => sanitize(String(t.name), NAME_CAP) + ' (kept ' + sanitize(String(t.winner), MACHINE_CAP)
-                + ', retired ' + sanitize(String(t.loser), MACHINE_CAP) + ')').join(', ') + '\n');
+            + twins.map((t) => wireText(t.name, NAME_CAP, 'unknown') + ' (kept ' + wireText(t.winner, MACHINE_CAP, 'unknown sandbox')
+                + ', retired ' + wireText(t.loser, MACHINE_CAP, 'unknown sandbox') + ')').join(', ') + '\n');
     }
     // The working directory's folder store into its remote key. A key this
     // process cannot resolve, or one that is a folder name, adopts nothing.
@@ -20657,7 +20666,7 @@ async function cmdDbSync(argv, options) {
                 + sanitize(key, PATH_DISPLAY_CAP) + ' (moved ' + adoption.moved + ', merged ' + adoption.merged
                 + ', left in place ' + adoption.skipped + ')'
                 + (adoption.skippedNames.length > 0 ? '; left in place because another record holds the name: '
-                    + adoption.skippedNames.map((n) => sanitize(String(n), NAME_CAP)).join(', ') : '')
+                    + adoption.skippedNames.map((n) => wireText(n, NAME_CAP, 'unknown')).join(', ') : '')
                 + '\n');
         }
     }

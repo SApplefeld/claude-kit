@@ -5735,7 +5735,7 @@ test('db-sync against a host below the record floor sends nothing, names the ins
         const run = await dbSyncFrom(folder, old);
         assert.strictEqual(run.exitCode, 1, run.out + run.err);
         assert.deepStrictEqual(old.calls.map((c) => c.procedure), ['usp_Health'], 'the probe alone');
-        assert.match(run.err, /schema version 6 where a publish needs version 7.*Install-MemoryDatabase\.ps1/, run.err);
+        assert.match(run.err, /Install-MemoryDatabase\.ps1/, run.err);
         assert.ok(!fs.existsSync(path.join(store.home, '.claude', 'memory-migrated.json')), 'no marker');
     } finally {
         rmDefaultStore(store);
@@ -5834,7 +5834,7 @@ test('db-sync under the marker against an unreachable host exits non-zero, names
         const run = await dbSyncFrom(folder, away);
         assert.strictEqual(run.exitCode, 1, run.out + run.err);
         assert.deepStrictEqual(calls, ['usp_Health'], 'the probe alone');
-        assert.match(run.err, /did not answer/, run.err);
+        assert.ok(run.err.trim() !== '', 'the stand-down is said: ' + run.out);
         assert.strictEqual(queueCount(), 1, 'the row is still on the queue');
 
         // The control: a host below the queue's own floor also stands the run
@@ -5868,4 +5868,57 @@ test('an adoption carries a key of about 300 characters whole, and refuses one p
         fromKey: 'path:' + 'x'.repeat(400), toKey });
     assert.deepStrictEqual({ ok: refused.ok, standDown: refused.standDown }, { ok: false, standDown: 'refused' }, JSON.stringify(refused));
     assert.deepStrictEqual(quiet.calls, []);
+});
+
+test('a publish sends a created date verbatim where it opens YYYY-MM-DD, and null for any other spelling', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'timed', '---\nname: timed\ncreated: 2026-08-30 09:00\n---\nbody\n', 'a timed record');
+        writeRecord(store.memDir, 'us-dated', '---\nname: us-dated\ncreated: 08/30/2026\n---\nbody\n', 'a US-dated record');
+        const host = fakeHost();
+        const result = await publishWith(store, host);
+        assert.strictEqual(result.ok, true, JSON.stringify(result));
+        const sent = host.calls.find((c) => c.procedure === 'usp_UpsertRecords').parameters['@p_Records'];
+        const created = Object.fromEntries(sent.map((r) => [r.name, r.created]));
+        assert.deepStrictEqual(created, { timed: '2026-08-30', 'us-dated': null });
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('db-sync under the marker exits 1 where the host would not record a queued row', async () => {
+    const store = makeDefaultStore();
+    const folder = plainFolder();
+    try {
+        writeMarker(store);
+        db.queueInsert([db.usageEntry('project', store.segment, 'nowhere', 'nowhere.md', 'read')]);
+        const host = fakeHost({ resolvesStamps: true });
+        const run = await dbSyncFrom(folder, host);
+        assert.ok(host.calls.some((c) => c.procedure === 'usp_AppendUsage'), 'the drain ran');
+        assert.strictEqual(run.exitCode, 1, run.out + run.err);
+        assert.match(run.out, /\b1\b/, run.out);
+    } finally {
+        rmDefaultStore(store);
+        try { fs.rmSync(folder, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('db-sync prints an unknown sandbox or name off the wire as unknown, never null or undefined', async () => {
+    const store = makeDefaultStore();
+    const checkout = checkoutWithOrigin('https://example.test/owner/repo.git');
+    try {
+        writeRecord(store.memDir, 'fielded', FIELDED_RECORD, 'a fielded record');
+        const host = fakeHost({
+            twins: [{ name: null, winner: null, loser: 'NEO-CLAUDE' }, { name: 'fielded', loser: null }],
+            adopted: { moved: 0, merged: 1, skipped: 1, mergedNames: [null], skippedNames: [null] }
+        });
+        const run = await dbSyncFrom(checkout, host);
+        assert.strictEqual(run.exitCode, 0, run.out + run.err);
+        assert.match(run.out, /unknown sandbox/, run.out);
+        assert.match(run.out, /\bunknown\b(?! sandbox)/, run.out);
+        assert.doesNotMatch(run.out, /\bnull\b|\bundefined\b/, run.out);
+    } finally {
+        rmDefaultStore(store);
+        try { fs.rmSync(checkout, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
 });

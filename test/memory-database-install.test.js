@@ -3651,6 +3651,105 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.deepStrictEqual(rowsNamed(all), afterFirst, 'the second adoption changes no row');
         });
 
+        // One adoption over a fresh pair of stores: the remote store holds one
+        // target row, set up by `target`, and the folder store one source row,
+        // written by `source`; answers the adoption and both rows after it.
+        const adoptOne = (label, target, source) => {
+            const from = 'path:seg-' + label + '-' + runId;
+            const to = 'remote:example.test/' + label + '-' + runId;
+            const name = label + '-' + runId;
+            target({ to, name });
+            const sourceId = source({ from, name });
+            mapConnection('SCOTT-CLAUDE');
+            let adopted;
+            try {
+                adopted = call('usp_AdoptProjectStore', paramsOf({ FromKey: from, ToKey: to }));
+            } finally {
+                mapConnection(null);
+            }
+            assert.ok(!adopted.error, JSON.stringify(adopted.error));
+            const rows = rowsNamed([name, name.toUpperCase()]);
+            return { from, to, name, adopted: adopted.value, rows, source: rows.find((r) => r.RecordId === sourceId) };
+        };
+        const fileTarget = (extra, retire) => ({ to, name }) => {
+            const landed = upsertAs('NEO-CLAUDE', [fileRow({ segment: 'seg-target-' + name, projectKey: to, name: (extra && extra.name) || name,
+                fileKey: name + '.md', body: 'target', fileModified: '2026-09-09T00:00:00Z' })]);
+            assert.ok(!landed.error && landed.value.added === 1, JSON.stringify(landed));
+            if (retire) {
+                mapConnection('NEO-CLAUDE');
+                try {
+                    assert.ok(!call('usp_ArchiveRecord', paramsOf({ Tier: 'project', ProjectKey: to, Name: (extra && extra.name) || name, ...retire })).error);
+                } finally {
+                    mapConnection(null);
+                }
+            }
+        };
+        const memqSource = ({ from, name }) => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const written = put({ Tier: 'project', ProjectKey: from, Name: name, Description: 'corrected', Body: 'memq body' });
+                assert.ok(!written.error && written.value.status === 'stored', JSON.stringify(written));
+                return written.value.recordId;
+            } finally {
+                mapConnection(null);
+            }
+        };
+
+        await t.test('usp_AdoptProjectStore moves a memq source row over a live, newer file target and retires the file row', () => {
+            const r = adoptOne('adopt-mq-wins', fileTarget(), memqSource);
+            assert.deepStrictEqual(r.adopted.mergedNames, [r.name], JSON.stringify(r.adopted));
+            assert.deepStrictEqual([r.source.ProjectKey, r.source.DeletedDt, r.source.Origin], [r.to, null, 'memq'], JSON.stringify(r.rows));
+            const file = r.rows.find((row) => row.Origin === 'file');
+            assert.ok(file.ProjectKey === r.from && file.DeletedDt !== null, 'the file row is retired into the folder store: ' + JSON.stringify(file));
+        });
+
+        await t.test('usp_AdoptProjectStore leaves a memq source row live in place over an archived file target, named skipped', () => {
+            const r = adoptOne('adopt-mq-held', fileTarget(null, {}), memqSource);
+            assert.deepStrictEqual(r.adopted.skippedNames, [r.name], JSON.stringify(r.adopted));
+            assert.deepStrictEqual([r.source.ProjectKey, r.source.DeletedDt], [r.from, null], JSON.stringify(r.rows));
+        });
+
+        await t.test('usp_AdoptProjectStore leaves a source row in place over a deleted target of another name sharing its file key, named skipped', () => {
+            const r = adoptOne('adopt-case', fileTarget({ name: ('adopt-case-' + runId).toUpperCase() }, { Delete: 1 }), ({ from, name }) => {
+                const landed = upsertAs('SCOTT-CLAUDE', [fileRow({ segment: 'seg-source-' + name, projectKey: from, name,
+                    fileKey: name + '.md', body: 'source', fileModified: '2026-09-10T00:00:00Z' })]);
+                assert.ok(!landed.error && landed.value.added === 1, JSON.stringify(landed));
+                return rowsNamed([name]).find((row) => row.ProjectKey === from).RecordId;
+            });
+            assert.deepStrictEqual({ merged: r.adopted.mergedNames, skipped: r.adopted.skippedNames }, { merged: [], skipped: [r.name] },
+                JSON.stringify(r.adopted));
+            assert.deepStrictEqual([r.source.ProjectKey, r.source.DeletedDt], [r.from, null], JSON.stringify(r.rows));
+        });
+
+        await t.test('usp_AdoptProjectStore refuses a key whose prefix differs in case alone, writing nothing', () => {
+            const from = 'path:seg-adopt-case-key-' + runId;
+            const to = 'remote:example.test/adopt-case-key-' + runId;
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const written = put({ Tier: 'project', ProjectKey: from, Name: 'adopt-case-key-' + runId, Body: 'b' });
+                assert.ok(!written.error, JSON.stringify(written.error));
+                for (const [a, b] of [['PATH:' + from.slice(5), to], [from, 'REMOTE:' + to.slice(7)]]) {
+                    const refused = call('usp_AdoptProjectStore', paramsOf({ FromKey: a, ToKey: b }));
+                    assert.ok(refused.error && refused.error.number === 50000 && /path:.*remote:/.test(refused.error.message),
+                        a + ' into ' + b + ': ' + JSON.stringify(refused.error || refused.value));
+                }
+                assert.deepStrictEqual(rowsNamed(['adopt-case-key-' + runId]).map((r) => r.ProjectKey), [from], 'nothing moved');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('usp_UpsertRecords refuses a projectKey that opens neither path: nor remote:', () => {
+            for (const projectKey of ['foo', 'PATH:seg', 'Remote:example.test/x']) {
+                const refused = upsertAs('SCOTT-CLAUDE', [fileRow({ segment: 'seg-badkey-' + runId, projectKey, name: 'badkey-' + runId,
+                    body: 'b', fileModified: '2026-09-01T00:00:00Z' })]);
+                assert.ok(refused.error && refused.error.number === 50000 && /path:.*remote:/.test(refused.error.message),
+                    projectKey + ': ' + JSON.stringify(refused.error || refused.value));
+            }
+            const named = Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Name] = N'badkey-" + runId + "';"), 'n'));
+            assert.strictEqual(named, 0, 'a refused batch writes nothing');
+        });
+
         // The upgrade the fleet host takes: a version 6 database built by the
         // installer as it stood at e4712827, read out of git into this run's
         // temp directory, holding records, embeddings and usage, then

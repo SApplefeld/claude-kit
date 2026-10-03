@@ -28,12 +28,13 @@ BEGIN	-- PROCEDURE
 	*********************************************************************************************
 		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
 							A record may carry projectKey, triggers, anchors, pinned,
-							created and author beside the fields below. A project record
-							carrying a projectKey lands in that key's fleet store, created
-							where absent, as a shared file row; one carrying none lands in
-							the caller's own older store as before. The segment stays
-							required on a project record, since it names the caller's older
-							store for that project.
+							created and author beside the fields below. A projectKey opens
+							path: or remote:, compared case-sensitively, or the batch is
+							refused. A project record carrying a projectKey lands in that
+							key's fleet store, created where absent, as a shared file row;
+							one carrying none lands in the caller's own older store as
+							before. The segment stays required on a project record, since
+							it names the caller's older store for that project.
 
 							A fleet project record resolves against the fleet store's row
 							of its file key and the caller's older store's row of it, both
@@ -52,8 +53,8 @@ BEGIN	-- PROCEDURE
 							no live older row nothing is written. A twin is named in the
 							answer, with the sandbox whose copy won and the one whose copy
 							lost, only by the call that retires a row for it, so a later
-							publish of the same losing copy names none. After any of these, the caller's older row of the file key
-							carries no live record.
+							publish of the same losing copy names none. After any of these,
+							the caller's older row of the file key carries no live record.
 
 							A publish never undoes a database verb. A row whose [Origin] is
 							memq is never written, and neither is a fleet row carrying the
@@ -293,6 +294,14 @@ BEGIN	-- PROCEDURE
 								OR ( I.[Triggers] IS NOT NULL AND ISJSON(I.[Triggers], ARRAY) <> 1 )
 								OR ( I.[Anchors] IS NOT NULL AND ISJSON(I.[Anchors], ARRAY) <> 1 )	)
 			THROW 50000, 'mem.usp_UpsertRecords: a projectKey rides on a project record only and holds at most 400 characters, and triggers and anchors are each a JSON array when given.', 1
+
+		/* Refuse a Project Key That Opens Neither Prefix a Key Takes, Compared Case-Sensitively. */
+		;IF EXISTS (	SELECT	NULL
+						FROM	@Incoming I
+						WHERE	I.[ProjectKey] IS NOT NULL
+								AND LEFT(I.[ProjectKey], 5) COLLATE Latin1_General_CS_AS <> 'path:'
+								AND LEFT(I.[ProjectKey], 7) COLLATE Latin1_General_CS_AS <> 'remote:'	)
+			THROW 50000, 'mem.usp_UpsertRecords: a projectKey opens path: or remote:, in lower case.', 1
 
 		/* A Key Named Twice Keeps Its Last Entry; INTERSECT Treats Two NULL Segments as Equal. */
 		;DELETE I

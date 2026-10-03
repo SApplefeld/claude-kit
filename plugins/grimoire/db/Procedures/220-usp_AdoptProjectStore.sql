@@ -30,26 +30,33 @@ BEGIN	-- PROCEDURE
 							Moves a project's records from the fleet store keyed by its
 							folder name, @p_FromKey, which opens path:, into the fleet store
 							keyed by its git remote, @p_ToKey, which opens remote:, creating
-							that store where absent. Any other pair of keys is refused and
-							nothing is written, and so is a key longer than the 400
-							characters a store's key holds, which the parameters take whole
-							so that no longer key is cut to name another store. The caller's sandbox comes from
+							that store where absent. Both prefixes compare case-sensitively.
+							Any other pair of keys is refused and nothing is written, and so
+							is a key longer than the 400 characters a store's key holds,
+							which the parameters take whole so that no longer key is cut
+							to name another store. The caller's sandbox comes from
 							mem.CallerSandbox() and an unmapped login is refused.
 
 							A row moves by its [StoreId] alone, so its embeddings and its
 							mem.Usage rows travel with it. Where the target store holds a
 							row of the same file key, compared under the database's
-							collation, the two are one record: the target row wins unless
-							it is live, neither archived nor deleted, of [Origin] file, and
-							older by [FileModifiedDt] than an undeleted source row. A
-							winning source row takes the target's slot and the target row
-							moves into the source store with the deleted mark, in one
-							UPDATE; a losing source row takes the deleted mark where it
-							stands. So an adoption never writes a memq row and never clears
-							an archived flag or a deleted mark. A source row whose file key
-							an undeleted target row of another name holds is left in place
-							and named. A second call changes nothing, since what stays in
-							the source store is a deleted loser or a named row left in place.
+							collation, the two are one record, and the rules run in order.
+							A target row whose name differs from the source row's, in case
+							alone included where the target is deleted, or by more where it
+							is not, leaves the source row in place, named as skipped. A
+							source row of [Origin] memq is never deleted: over a live,
+							unarchived file-origin target it wins whatever the file times,
+							and over any other target it stays in place, named as skipped.
+							Otherwise the target row wins unless it is live, neither
+							archived nor deleted, of [Origin] file, and older by
+							[FileModifiedDt] than an undeleted source row. A winning source
+							row takes the target's slot and the target row moves into the
+							source store with the deleted mark, in one UPDATE; a losing
+							source row takes the deleted mark where it stands. So an
+							adoption never writes or deletes a memq row and never clears an
+							archived flag or a deleted mark. A second call changes nothing,
+							since what stays in the source store is a deleted loser or a
+							named row left in place.
 
 							Calls serialize with every publish on the fleet publish lock.
 							Returns one row, one column [Json], holding {moved, merged,
@@ -81,6 +88,7 @@ BEGIN	-- PROCEDURE
 			,@Name				NVARCHAR(200)	= NULL
 			,@SourceDeletedDt	DATETIMEOFFSET	= NULL
 			,@SourceModifiedDt	DATETIMEOFFSET	= NULL
+			,@SourceOrigin		VARCHAR(10)		= NULL
 			,@TargetName		NVARCHAR(200)	= NULL
 			,@TargetDeletedDt	DATETIMEOFFSET	= NULL
 			,@TargetIsArchived	BIT				= NULL
@@ -108,8 +116,8 @@ BEGIN	-- PROCEDURE
 		/* Only a Folder-Name Key Is Adopted, and Only Into a Remote Key. */
 		;IF (	@FromKey IS NULL
 				OR @ToKey IS NULL
-				OR LEFT(@FromKey, 5) <> 'path:'
-				OR LEFT(@ToKey, 7) <> 'remote:'
+				OR LEFT(@FromKey, 5) COLLATE Latin1_General_CS_AS <> 'path:'
+				OR LEFT(@ToKey, 7) COLLATE Latin1_General_CS_AS <> 'remote:'
 				OR LEN(@FromKey) < 6
 				OR LEN(@ToKey) < 8	)
 			THROW 50000, 'mem.usp_AdoptProjectStore: @p_FromKey must open path: and @p_ToKey must open remote:.', 1
@@ -167,6 +175,7 @@ BEGIN	-- PROCEDURE
 			;SELECT	 @Name				= R.[Name]
 					,@SourceDeletedDt	= R.[DeletedDt]
 					,@SourceModifiedDt	= R.[FileModifiedDt]
+					,@SourceOrigin		= R.[Origin]
 					,@TargetRecordId	= NULL
 					,@TargetName		= NULL
 					,@TargetDeletedDt	= NULL
@@ -201,11 +210,31 @@ BEGIN	-- PROCEDURE
 				;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
 				SELECT @RecordId, @Name, 'moved'
 			END
-			ELSE IF ( @TargetDeletedDt IS NULL AND @TargetName <> @Name )
+			ELSE IF (	( @TargetDeletedDt IS NULL AND @TargetName <> @Name )
+						OR ( @TargetDeletedDt IS NOT NULL AND @TargetName COLLATE Latin1_General_CS_AS <> @Name COLLATE Latin1_General_CS_AS )	)
 			BEGIN
-				/* An Undeleted Target Row of Another Name Holds the File Key: the Row Stays and is Named. */
+				/* A Target Row of Another Name Holds the File Key: the Row Stays and is Named. A Deleted One Differing in Case Alone is Another Name. */
 				;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
 				SELECT @RecordId, @Name, 'skipped'
+			END
+			ELSE IF ( @SourceDeletedDt IS NULL AND @SourceOrigin = 'memq' )
+			BEGIN
+				/* A memq Source Row is Never Deleted: It Takes a Live, Unarchived File Target's Slot Whatever the Times, and Otherwise Stays and is Named. */
+				;IF ( @TargetDeletedDt IS NULL AND @TargetIsArchived = @False AND @TargetOrigin = 'file' )
+				BEGIN
+					;UPDATE R
+					SET		 [StoreId]		= CASE WHEN R.[RecordId] = @RecordId THEN @TargetStoreId ELSE @SourceStoreId END
+							,[DeletedDt]	= CASE WHEN R.[RecordId] = @RecordId THEN R.[DeletedDt] ELSE @Now END
+							,[UpdatedDt]	= @Now
+					FROM	mem.Record R
+					WHERE	R.[RecordId] IN ( @RecordId, @TargetRecordId )
+
+					;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
+					SELECT @RecordId, @Name, 'merged'
+				END ELSE BEGIN
+					;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
+					SELECT @RecordId, @Name, 'skipped'
+				END
 			END
 			ELSE IF (	@SourceDeletedDt IS NULL
 						AND @TargetDeletedDt IS NULL
