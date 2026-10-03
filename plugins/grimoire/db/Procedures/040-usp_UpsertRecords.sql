@@ -29,9 +29,10 @@ BEGIN	-- PROCEDURE
 		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
 							A record may carry projectKey, triggers, anchors, pinned,
 							created and author beside the fields below. A projectKey opens
-							path: or remote:, compared case-sensitively, or the batch is
-							refused. A project record carrying a projectKey lands in that
-							key's fleet store, created where absent, as a shared file row;
+							path: or remote:, compared case-sensitively, and names
+							something after the prefix, or the batch is refused. A project
+							record carrying a projectKey lands in that key's fleet store,
+							created where absent, as a shared file row;
 							one carrying none lands in the caller's own older store as
 							before. The segment stays required on a project record, since
 							it names the caller's older store for that project.
@@ -42,8 +43,12 @@ BEGIN	-- PROCEDURE
 							only in case are one record. Where the fleet store holds no row,
 							the caller's older row moves into it, keeping its usage and its
 							embeddings, or a new row is inserted. Where the fleet row is the
-							caller's own, or holds the same body, it is updated or left
-							unchanged as any row is. Where it is another sandbox's copy with
+							caller's own, it is updated or left unchanged as any row is.
+							Where it is another sandbox's copy holding the same body, it is
+							updated or left unchanged the same way unless the caller's file
+							modification time is older than the row's; then nothing is
+							written to it, not even the publish stamp, and the record
+							answers unchanged. Where it is another sandbox's copy with
 							a different body, the copies are twins: the newer file
 							modification time wins, and a tie or a missing time keeps the
 							fleet row. A winning copy takes the fleet slot, the fleet row
@@ -302,6 +307,15 @@ BEGIN	-- PROCEDURE
 								AND LEFT(I.[ProjectKey], 5) COLLATE Latin1_General_CS_AS <> 'path:'
 								AND LEFT(I.[ProjectKey], 7) COLLATE Latin1_General_CS_AS <> 'remote:'	)
 			THROW 50000, 'mem.usp_UpsertRecords: a projectKey opens path: or remote:, in lower case.', 1
+
+		/* Refuse a Project Key That is the Bare Prefix, With Nothing After It. */
+		;IF EXISTS (	SELECT	NULL
+						FROM	@Incoming I
+						WHERE	(	LEFT(I.[ProjectKey], 5) COLLATE Latin1_General_CS_AS = 'path:'
+									AND LEN(I.[ProjectKey]) < 6	)
+								OR (	LEFT(I.[ProjectKey], 7) COLLATE Latin1_General_CS_AS = 'remote:'
+										AND LEN(I.[ProjectKey]) < 8	)	)
+			THROW 50000, 'mem.usp_UpsertRecords: a projectKey opens path: or remote: and names something after it.', 1
 
 		/* A Key Named Twice Keeps Its Last Entry; INTERSECT Treats Two NULL Segments as Equal. */
 		;DELETE I
@@ -617,6 +631,13 @@ BEGIN	-- PROCEDURE
 				/* A Row a Database Verb Wrote or Deleted is Never Written by a Publish. */
 				;SET @Action = 'held'
 			END
+			ELSE IF (	@FleetBodyHash = @InBodyHash
+						AND ( @FleetPublisherId IS NULL OR @FleetPublisherId <> @SandboxId )
+						AND @InModifiedDt < @FleetModifiedDt	)
+			BEGIN
+				/* Another's Fleet Row Holding the Same Body From a Newer File: the Older Copy Writes Nothing, Not Even a Stamp. */
+				;SET @Action = 'kept'
+			END
 			ELSE IF ( @FleetPublisherId = @SandboxId OR @FleetBodyHash = @InBodyHash )
 			BEGIN
 				/* The Caller's Own Fleet Row, or Another's Holding the Same Body: Updated or Left as Any Row Is. */
@@ -825,6 +846,7 @@ BEGIN	-- PROCEDURE
 										WHEN 'insert'	THEN 'add'
 										WHEN 'write'	THEN 'change'
 										WHEN 'stamp'	THEN 'unchanged'
+										WHEN 'kept'		THEN 'unchanged'
 										WHEN 'lost'		THEN 'older'
 										ELSE 'held'
 									  END

@@ -3547,7 +3547,7 @@ function summaryLine(summary) {
         + (summary.heldBack > 0 ? ', ' + summary.heldBack
             + ' removal(s) held back where the store read empty' : '')
         + (summary.held > 0 ? ', ' + summary.held
-            + ' record(s) left as the database holds them, written or retired through memq' : '')
+            + ' record(s) left as the database holds them, written through memq or already retired in the database' : '')
         + (summary.partial ? ', walk incomplete so nothing was marked removed' : '')
         + (summary.outOfBudget ? ', the run budget was spent so it stopped there' : '');
 }

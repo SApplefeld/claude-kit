@@ -3740,7 +3740,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         });
 
         await t.test('usp_UpsertRecords refuses a projectKey that opens neither path: nor remote:', () => {
-            for (const projectKey of ['foo', 'PATH:seg', 'Remote:example.test/x']) {
+            for (const projectKey of ['foo', 'PATH:seg', 'Remote:example.test/x', 'path:', 'remote:']) {
                 const refused = upsertAs('SCOTT-CLAUDE', [fileRow({ segment: 'seg-badkey-' + runId, projectKey, name: 'badkey-' + runId,
                     body: 'b', fileModified: '2026-09-01T00:00:00Z' })]);
                 assert.ok(refused.error && refused.error.number === 50000 && /path:.*remote:/.test(refused.error.message),
@@ -3748,6 +3748,44 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             }
             const named = Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Name] = N'badkey-" + runId + "';"), 'n'));
             assert.strictEqual(named, 0, 'a refused batch writes nothing');
+        });
+
+        // Two sandboxes holding the same body under different frontmatter:
+        // the fleet row keeps the newer copy's fields, whichever arrives last.
+        const fleetFields = (name) => json(sqlOk([
+            "SELECT 'kittest-row=' + (SELECT R.[Description], R.[FileModifiedDt], R.[LastPublishedDt], [Publisher] = P.[Name]",
+            '  FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
+            '  LEFT JOIN mem.Sandbox P ON P.[SandboxId] = R.[LastPublishedBySandboxId]',
+            '  WHERE R.[Name] = ' + lit(name) + ' AND S.[ProjectKey] IS NOT NULL AND R.[DeletedDt] IS NULL',
+            '  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);'
+        ].join('\n')), 'row');
+        const sameBody = (tag, first, second) => {
+            const segment = 'seg-same-' + tag + '-' + runId;
+            const name = 'same-' + tag + '-' + runId;
+            const row = (description, day) => fileRow({ segment, projectKey: 'path:' + segment, name, body: 'one prose',
+                description, fileModified: '2026-09-0' + day + 'T00:00:00Z' });
+            const a = upsertAs('SCOTT-CLAUDE', [row(first.description, first.day)]);
+            assert.ok(!a.error && a.value.added === 1, JSON.stringify(a));
+            const before = fleetFields(name);
+            const b = upsertAs('NEO-CLAUDE', [row(second.description, second.day)]);
+            assert.ok(!b.error, JSON.stringify(b.error));
+            return { before, b: b.value, after: fleetFields(name) };
+        };
+
+        await t.test('an older copy of the same body from another sandbox writes nothing to the fleet row, not even a stamp', () => {
+            const { before, b, after } = sameBody('older', { description: 'D2', day: 5 }, { description: 'D1', day: 1 });
+            assert.deepStrictEqual({ added: b.added, changed: b.changed, unchanged: b.unchanged, skippedOlder: b.skippedOlder, twins: b.twins },
+                { added: 0, changed: 0, unchanged: 1, skippedOlder: 0, twins: [] }, JSON.stringify(b));
+            assert.deepStrictEqual([after.Description, new Date(after.FileModifiedDt).toISOString(), after.Publisher],
+                ['D2', '2026-09-05T00:00:00.000Z', 'SCOTT-CLAUDE'], 'the fleet row keeps the newer copy: ' + JSON.stringify(after));
+            assert.deepStrictEqual(after, before, 'the older copy leaves the fleet row as it stood');
+        });
+
+        await t.test('a newer copy of the same body from another sandbox lands its fields on the fleet row', () => {
+            const { b, after } = sameBody('newer', { description: 'D1', day: 1 }, { description: 'D2', day: 5 });
+            assert.strictEqual(b.changed, 1, JSON.stringify(b));
+            assert.deepStrictEqual([after.Description, new Date(after.FileModifiedDt).toISOString(), after.Publisher],
+                ['D2', '2026-09-05T00:00:00.000Z', 'NEO-CLAUDE'], JSON.stringify(after));
         });
 
         // The upgrade the fleet host takes: a version 6 database built by the

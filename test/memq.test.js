@@ -12690,13 +12690,14 @@ function storeBytes(root) {
 const FORGET_STAYS = 'stays until a publish';
 const FORGET_UNLESS = 'retires at that publish';
 const FORGET_HELD = 'retires at the first publish';
+const FORGET_MIGRATED = 'stays in the database, since this machine has migrated';
 function assertForgetHostLine(text, name, tail) {
     const quoted = '\'' + name + '\'';
     const line = text.split('\n').find((l) => l.startsWith('memq:')
         && l.includes(quoted) && l.includes(tail));
     assert.ok(line !== undefined, 'a memq: line for ' + quoted + ' carrying "' + tail + '": '
         + JSON.stringify(text));
-    for (const other of [FORGET_STAYS, FORGET_UNLESS, FORGET_HELD]) {
+    for (const other of [FORGET_STAYS, FORGET_UNLESS, FORGET_HELD, FORGET_MIGRATED]) {
         if (other !== tail) {
             assert.ok(!text.includes(other), '"' + other + '" is absent: ' + JSON.stringify(text));
         }
@@ -12810,6 +12811,29 @@ test('forget spawns a detached db-sync on the default store and says when the ho
                 'the child runs at the store root, not the caller\'s directory');
             assert.strictEqual(s.nodeOptions, false, 'NODE_OPTIONS does not reach the child');
         }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('forget on a migrated machine spawns no sync and says the host row stays in the database', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // A config on the default store would spawn the sync; the marker alone
+        // stands it down.
+        writeFixtureDbConfig(store.root);
+        fs.writeFileSync(path.join(store.root, 'memory-migrated.json'), '{"migrated":"2026-10-03T00:00:00Z"}\n', 'utf8');
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'm-fact.md'), '# m-fact\n\nm\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'n-fact.md'), '# n-fact\n\nn\n', 'utf8');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const res = runHome(store, ['forget', 'm-fact', '--confirm'], recorder.extra);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assertForgetHostLine(res.stdout.split('\n')[1], 'm-fact', FORGET_MIGRATED);
+        assert.match(res.stdout, /db-sync no longer publishes removals/);
+        assert.deepStrictEqual(recorder.spawns(), [], 'the marker stands the sync down');
     } finally {
         rmHomeStore(store);
     }

@@ -19597,12 +19597,20 @@ function forgetHeldElsewhere(dir, name) {
 //
 // The shared memory database retires a project row when a publish from this
 // machine names it removed, and a publish holds every removal back where its
-// walk read the row's store empty. So the line says one of three things: no
-// sync was spawned and the row stays, the sync was spawned and this store's
-// last record just went so the row waits for a later publish, or the sync was
-// spawned and the row retires at it unless its summary reports it held back.
+// walk read the row's store empty. A machine holding the migration marker
+// publishes no removal at all, since its db-sync only drains the queue. So the
+// line says one of four things: the machine has migrated, so no sync is
+// spawned and the row stays in the database; no sync was spawned and the row
+// stays until a publish; the sync was spawned and this store's last record
+// just went so the row waits for a later publish; or the sync was spawned and
+// the row retires at it unless its summary reports it held back.
 function forgetHostLine(dir, name) {
     const shown = sanitize(name, NAME_CAP);
+    if (memoryDatabase.readMigrationMarker() !== null) {
+        process.stdout.write('memq: the host row for \'' + shown + '\' stays in the database, since this'
+            + ' machine has migrated and db-sync no longer publishes removals\n');
+        return;
+    }
     const stays = 'memq: the host row for \'' + shown + '\' stays until a publish runs from this'
         + ' machine\'s default store\n';
     if (!dbSyncWouldPublish()) {
@@ -20499,9 +20507,10 @@ function cmdDecayDone(argv) {
 // database, and it runs once. A complete run writes the migration marker. A
 // later run finding it prints it, sends no record, and drains the queue, so the
 // stamps a session queues keep landing; its exit code is the drain's. Given
-// --again, a run publishes the files once more, and a row the database has
-// already retired, by a verb, a twin merge or an adoption, stays retired: the
-// files are history from the first run on. Run from a checkout whose project
+// --again, a run publishes the files once more under each folder's key. A row
+// a database verb retired stays retired, but a copy an adoption retired out of
+// a folder's key comes back under that key, until the next adoption from a
+// checkout of the project retires it again. Run from a checkout whose project
 // key is a git remote, a publish then adopts that checkout's folder-name store
 // into the remote key, so the folder's records join the ones the same
 // repository keeps on every other machine. `options` carries a config and the
@@ -20566,8 +20575,9 @@ async function cmdDbSync(argv, options) {
             + (marker.text === null
                 ? 'its marker could not be read: ' + shownText(marker.reason, DB_SYNC_REASON_CAP)
                 : shownText(marker.text.replace(/\s+/g, ' ').trim(), MARKER_SHOWN_CAP))
-            + '); no record was sent. db-sync --again publishes the files again, and a row the database '
-            + 'has already retired stays retired\n');
+            + '); no record was sent. db-sync --again publishes the files again: a row a database verb '
+            + 'retired stays retired, and a copy an adoption retired returns under its folder key until '
+            + 'the next adoption retires it again\n');
         // The queue drains under the marker, through the probe and the drain's
         // own version gate, and the drain's end is the exit code.
         const drained = memoryDatabase.drainOnly({ config: opts.config, deps: opts.deps });
