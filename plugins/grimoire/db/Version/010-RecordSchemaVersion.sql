@@ -27,6 +27,6 @@ BEGIN
 		 [Version]
 		,[Notes]		)
 	SELECT	 [Version]	= $(KitSchemaVersion)
-			,[Notes]	= N'Shared index, journals, curation and the role model, with the search cut to one segment and one tag.'
+			,[Notes]	= N'The database holds the record: fleet-wide project stores keyed by project key, the record fields in columns, and the put, get, list-index and archive procedures.'
 END
 GO

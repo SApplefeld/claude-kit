@@ -126,7 +126,19 @@ $ErrorActionPreference = 'Stop'
 # list ranks it, and never widen it. A lower host has no such parameters and
 # refuses a call that names them. A search naming neither is served on any
 # version that carries the procedure.
-$script:SchemaVersion = 6
+#
+# Version 7 is where the database holds the record. mem.Store carries
+# [ProjectKey] and a project's fleet-wide store; mem.Record carries the
+# record fields in columns, [Origin] and the writing sandbox's stamp id;
+# mem.udf_VisibleRecords serves every undeleted row to every mapped
+# sandbox; mem.usp_Search takes @p_ProjectKey; mem.usp_PromoteRecord moves a
+# record into the operator store; and mem.usp_PutRecord, mem.usp_GetRecord,
+# mem.usp_ListIndex and mem.usp_ArchiveRecord exist. A version 6 host takes
+# it in place: the columns are added, the shape check and one index are
+# replaced, and every row stays. A version 6 client's calls keep their
+# shape. A client gates its record writes and reads on this number, read
+# back through mem.usp_Health, and sends none to a host below it.
+$script:SchemaVersion = 7
 
 # The five logins the Security scripts create, each with the role it joins
 # and the sandbox it publishes for. The logins file carries these three

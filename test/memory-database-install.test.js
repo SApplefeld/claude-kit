@@ -919,10 +919,13 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // (docs/plans/claude-kit_memory-database_spec_v1.md), plus
             // usp_JevCalibration, the judged fleet pointer counts per score
             // band that `memq jev-calibration` reads under this login
-            // (docs/plans/claude-kit_jev-recollection-judge_spec_v1.md).
-            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_Health',
-                'usp_JevCalibration', 'usp_ListRecords', 'usp_Nearest', 'usp_Search', 'usp_UpsertEmbeddings',
-                'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
+            // (docs/plans/claude-kit_jev-recollection-judge_spec_v1.md), plus
+            // the record door, usp_PutRecord, usp_GetRecord, usp_ListIndex and
+            // usp_ArchiveRecord, through which memq writes and reads a record
+            // (docs/plans/claude-kit_memory-in-sql_spec_v1.md).
+            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_ArchiveRecord',
+                'usp_GetRecord', 'usp_Health', 'usp_JevCalibration', 'usp_ListIndex', 'usp_ListRecords', 'usp_Nearest',
+                'usp_PutRecord', 'usp_Search', 'usp_UpsertEmbeddings', 'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
             const curatorProcs = ['usp_CurationOrphans', 'usp_CurationSupersededLive', 'usp_CurationUnapplied', 'usp_Health', 'usp_PromoteRecord'];
             assert.deepStrictEqual(res.tags.exec,
                 curatorProcs.map((p) => 'mem_curator:' + p).concat(publisherProcs.map((p) => 'mem_publisher:' + p)),
@@ -1029,54 +1032,59 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         const searchParams = "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10";
         const nearestParams = "@p_Vector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10";
 
-        await t.test('usp_Search as SCOTT never returns NEO\'s private row and always returns its shared row', () => {
-            // Vector list: the query vector is the shared row's own axis, and
-            // the two private rows sit at equal distance from it, so every
-            // visible row ranks and the withheld one can only be absent by
-            // the tenancy filter. The connection is SCOTT's publisher by data.
+        await t.test('usp_Search as SCOTT serves NEO\'s older-store project row, its shared row and SCOTT\'s own', () => {
+            // A project's records are the fleet's, so a private row of another
+            // sandbox's older store reaches every mapped sandbox. Vector list:
+            // the query vector is the shared row's own axis, and the two
+            // private rows sit at equal distance from it, so every visible row
+            // ranks. The connection is SCOTT's publisher by data.
             mapConnection('SCOTT-CLAUDE');
             const scott = call('usp_Search', searchParams, vectorPrelude(0));
             assert.ok(!scott.error, JSON.stringify(scott.error));
             const scottIds = idsOf(scott.value);
             assert.ok(scottIds.includes(ids.neoShared), 'the shared row is missing from SCOTT\'s result: ' + JSON.stringify(scott.value));
             assert.ok(scottIds.includes(ids.scottPrivate), 'SCOTT\'s own private row is missing: ' + JSON.stringify(scott.value));
-            assert.ok(!scottIds.includes(ids.neoPrivate), 'TENANCY LEAK: NEO\'s private row reached SCOTT: ' + JSON.stringify(scott.value));
-            assert.ok(!JSON.stringify(scott.value).includes(tokens.neoPrivate), 'TENANCY LEAK: NEO\'s private token reached SCOTT');
+            assert.ok(scottIds.includes(ids.neoPrivate), 'NEO\'s project row must reach SCOTT: ' + JSON.stringify(scott.value));
+            assert.ok(JSON.stringify(scott.value).includes(tokens.neoPrivate), 'NEO\'s project row\'s description must reach SCOTT');
             assert.strictEqual(scott.value.find((r) => r.recordId === ids.neoShared).sandbox, 'NEO-CLAUDE');
             assert.strictEqual(scott.value.find((r) => r.recordId === ids.neoShared).vectorLiveRank, 1);
             assert.strictEqual(scott.value.find((r) => r.recordId === ids.neoShared).visibility, 'shared');
 
-            // The control, withheld from the predicate above: the same
-            // connection re-pointed at NEO does get that row, so its absence
-            // for SCOTT is the filter and not a row no query can reach.
+            // The other direction: NEO is served SCOTT's project row the same way.
             mapConnection('NEO-CLAUDE');
             const neo = call('usp_Search', searchParams, vectorPrelude(0));
             assert.ok(!neo.error, JSON.stringify(neo.error));
             assert.ok(idsOf(neo.value).includes(ids.neoPrivate), 'NEO cannot see its own private row: ' + JSON.stringify(neo.value));
-            assert.ok(!idsOf(neo.value).includes(ids.scottPrivate), 'TENANCY LEAK: SCOTT\'s private row reached NEO');
-            assert.ok(!JSON.stringify(neo.value).includes(tokens.scottPrivate), 'TENANCY LEAK: SCOTT\'s private token reached NEO');
+            assert.ok(idsOf(neo.value).includes(ids.scottPrivate), 'SCOTT\'s project row must reach NEO: ' + JSON.stringify(neo.value));
+            assert.ok(JSON.stringify(neo.value).includes(tokens.scottPrivate), 'SCOTT\'s project row\'s description must reach NEO');
         });
 
-        await t.test('impersonating another sandbox\'s user does not move tenancy', () => {
-            // The guard ORIGINAL_LOGIN() exists for: with the connection
-            // mapped to SCOTT, a call that runs as NEO's database user still
-            // reads as SCOTT. NEO's private row stays absent and SCOTT's own
-            // private row is served, and the log row pairs the two logins.
-            mapConnection('SCOTT-CLAUDE');
+        await t.test('impersonating a mapped sandbox\'s user does not map an unmapped connection', () => {
+            // The guard ORIGINAL_LOGIN() exists for: with the connection mapped
+            // to no sandbox, a call that runs as NEO's database user still
+            // reads as the unmapped connection and is served nothing, and the
+            // log row pairs the two logins. Mapped, the same call is served.
+            mapConnection(null);
             const asNeo = callAs('kit_neo_claude', 'usp_Search', searchParams, vectorPrelude(0));
             assert.ok(!asNeo.error, JSON.stringify(asNeo.error));
-            assert.ok(!idsOf(asNeo.value).includes(ids.neoPrivate), 'TENANCY MOVED: impersonating NEO\'s user served NEO\'s private row: ' + JSON.stringify(asNeo.value));
-            assert.ok(idsOf(asNeo.value).includes(ids.scottPrivate), 'the connection\'s own sandbox must still be served: ' + JSON.stringify(asNeo.value));
+            assert.deepStrictEqual(asNeo.value, [], 'TENANCY MOVED: impersonating NEO\'s user served an unmapped connection: ' + JSON.stringify(asNeo.value));
             const logged = sqlOk("SELECT TOP (1) 'kittest-log=' + [Login] + '|' + [SessionLogin] + '|' + CAST(COALESCE([SandboxId], -1) AS VARCHAR(10)) FROM mem.QueryLog ORDER BY [QueryLogId] DESC;");
-            assert.strictEqual(one(logged, 'log'), me + '|kit_neo_claude|' + ids.scott, 'the log must name the resolved login and the impersonated context');
+            assert.strictEqual(one(logged, 'log'), me + '|kit_neo_claude|-1', 'the log must name the resolved login and the impersonated context');
+
+            // The control, withheld from the assertion above: the same call on
+            // the connection mapped to SCOTT is served, and logs SCOTT.
+            mapConnection('SCOTT-CLAUDE');
+            const mapped = callAs('kit_neo_claude', 'usp_Search', searchParams, vectorPrelude(0));
+            assert.ok(!mapped.error, JSON.stringify(mapped.error));
+            assert.ok(idsOf(mapped.value).includes(ids.scottPrivate), 'the connection\'s own sandbox must be served: ' + JSON.stringify(mapped.value));
+            const loggedMapped = sqlOk("SELECT TOP (1) 'kittest-log=' + [Login] + '|' + [SessionLogin] + '|' + CAST(COALESCE([SandboxId], -1) AS VARCHAR(10)) FROM mem.QueryLog ORDER BY [QueryLogId] DESC;");
+            assert.strictEqual(one(loggedMapped, 'log'), me + '|kit_neo_claude|' + ids.scott, 'the log must name the connection\'s sandbox, not the impersonated user\'s');
         });
 
         await t.test('usp_Search over the full-text lists holds the same line', () => {
             // Population is asynchronous under CHANGE_TRACKING AUTO, so the
-            // lexical query is retried until the mapped sandbox gets at
-            // least the two rows it may see, with a bound that fails loudly.
-            // A leak (a third row) also ends the wait and fails the exact
-            // sets below.
+            // lexical query is retried until the mapped sandbox gets the
+            // three seeded rows it may see, with a bound that fails loudly.
             const lexical = "@p_QueryText = N'" + common + "', @p_Limit = 10";
             const deadline = Date.now() + 90000;
             function lexicalAs(sandbox) {
@@ -1084,7 +1092,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 for (;;) {
                     const res = call('usp_Search', lexical);
                     assert.ok(!res.error, JSON.stringify(res.error));
-                    if (res.value.length >= 2) return res.value;
+                    if (res.value.length >= 3) return res.value;
                     if (Date.now() > deadline) {
                         const state = sqlOk("SELECT 'kittest-ft=' + CAST(FULLTEXTCATALOGPROPERTY('KitMemoryCatalog', 'PopulateStatus') AS VARCHAR(10)) + ':' + CAST(OBJECTPROPERTYEX(OBJECT_ID('mem.Record'), 'TableFullTextPendingChanges') AS VARCHAR(10));");
                         assert.fail('the full-text index did not serve the seeded rows to ' + sandbox + ' within 90 s (PopulateStatus:PendingChanges = ' + one(state, 'ft') + '): ' + JSON.stringify(res.value));
@@ -1092,15 +1100,16 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                     sleep(1000);
                 }
             }
+            const seeded = [ids.neoPrivate, ids.neoShared, ids.scottPrivate].sort();
             const neo = lexicalAs('NEO-CLAUDE');
-            assert.deepStrictEqual(idsOf(neo).sort(), [ids.neoPrivate, ids.neoShared].sort(),
-                'TENANCY LEAK or missing row on NEO\'s lexical path: ' + JSON.stringify(neo));
+            assert.deepStrictEqual(idsOf(neo).sort(), seeded,
+                'a row is missing or extra on NEO\'s lexical path: ' + JSON.stringify(neo));
             assert.ok(neo.every((r) => r.descriptionRank !== null), 'the description list must have voted: ' + JSON.stringify(neo));
-            assert.ok(!JSON.stringify(neo).includes(tokens.scottPrivate), 'TENANCY LEAK: SCOTT\'s private token reached NEO');
+            assert.ok(JSON.stringify(neo).includes(tokens.scottPrivate), 'SCOTT\'s project row\'s description must reach NEO');
             const scott = lexicalAs('SCOTT-CLAUDE');
-            assert.deepStrictEqual(idsOf(scott).sort(), [ids.neoShared, ids.scottPrivate].sort(),
-                'TENANCY LEAK or missing row on SCOTT\'s lexical path: ' + JSON.stringify(scott));
-            assert.ok(!JSON.stringify(scott).includes(tokens.neoPrivate), 'TENANCY LEAK: NEO\'s private token reached SCOTT');
+            assert.deepStrictEqual(idsOf(scott).sort(), seeded,
+                'a row is missing or extra on SCOTT\'s lexical path: ' + JSON.stringify(scott));
+            assert.ok(JSON.stringify(scott).includes(tokens.neoPrivate), 'NEO\'s project row\'s description must reach SCOTT');
 
             // Token hygiene: a query of ASCII punctuation alone has nothing
             // to search and returns no rows and no error, while punctuation
@@ -1110,7 +1119,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.deepStrictEqual(noise.value, []);
             const wrapped = call('usp_Search', "@p_QueryText = N'--- " + common + " ***'");
             assert.ok(!wrapped.error, JSON.stringify(wrapped.error));
-            assert.deepStrictEqual(idsOf(wrapped.value).sort(), [ids.neoShared, ids.scottPrivate].sort(), JSON.stringify(wrapped.value));
+            assert.deepStrictEqual(idsOf(wrapped.value).sort(), seeded, JSON.stringify(wrapped.value));
 
             // A query of stopwords alone reaches the engine as a predicate,
             // which answers with an empty set and a severity-10 informational
@@ -1125,22 +1134,22 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // and the real word beside it still matches.
             const quoted = call('usp_Search', "@p_QueryText = N'kit\"word " + common + "'");
             assert.ok(!quoted.error, 'a token carrying a double quote raised: ' + JSON.stringify(quoted.error));
-            assert.deepStrictEqual(idsOf(quoted.value).sort(), [ids.neoShared, ids.scottPrivate].sort(), JSON.stringify(quoted.value));
+            assert.deepStrictEqual(idsOf(quoted.value).sort(), seeded, JSON.stringify(quoted.value));
         });
 
-        await t.test('usp_Nearest filters both directions', () => {
+        await t.test('usp_Nearest serves every project\'s rows in both directions', () => {
             mapConnection('SCOTT-CLAUDE');
             const scott = call('usp_Nearest', nearestParams, vectorPrelude(2));
             assert.ok(!scott.error, JSON.stringify(scott.error));
             const scottIds = idsOf(scott.value);
-            assert.ok(!scottIds.includes(ids.neoPrivate), 'TENANCY LEAK: NEO\'s private row reached SCOTT on the nearest path, though it is the nearest of all: ' + JSON.stringify(scott.value));
+            assert.strictEqual(scott.value[0].recordId, ids.neoPrivate, 'NEO\'s project row is the nearest of all and must reach SCOTT first: ' + JSON.stringify(scott.value));
             assert.ok(scottIds.includes(ids.neoShared) && scottIds.includes(ids.scottPrivate), JSON.stringify(scott.value));
             mapConnection('NEO-CLAUDE');
             const neo = call('usp_Nearest', nearestParams, vectorPrelude(2));
             assert.ok(!neo.error, JSON.stringify(neo.error));
             assert.strictEqual(neo.value[0].recordId, ids.neoPrivate, 'NEO\'s own private row is the nearest and must come first: ' + JSON.stringify(neo.value));
             assert.ok(Math.abs(neo.value[0].distance) < 1e-6, 'a row on the query axis must be at cosine distance zero within float32: ' + neo.value[0].distance);
-            assert.ok(!idsOf(neo.value).includes(ids.scottPrivate), 'TENANCY LEAK: SCOTT\'s private row reached NEO');
+            assert.ok(idsOf(neo.value).includes(ids.scottPrivate), 'SCOTT\'s project row must reach NEO');
         });
 
         // A shared pair near axis 7 and nothing else near it: a retired record on
@@ -1365,7 +1374,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // lexical case above already waited for.
             const lexicalAsPublisher = callAs('kit_scott_claude', 'usp_Search', "@p_QueryText = N'" + common + "', @p_Limit = 10");
             assert.ok(!lexicalAsPublisher.error, 'the full-text list refused a publisher token, so the DENY reaches CONTAINSTABLE: ' + JSON.stringify(lexicalAsPublisher.error));
-            assert.deepStrictEqual(idsOf(lexicalAsPublisher.value).sort(), [ids.neoShared, ids.scottPrivate].sort(),
+            assert.deepStrictEqual(idsOf(lexicalAsPublisher.value).sort(), [ids.neoPrivate, ids.neoShared, ids.scottPrivate].sort(),
                 'the lexical result under a publisher token must match the connection\'s own: ' + JSON.stringify(lexicalAsPublisher.value));
             assert.ok(lexicalAsPublisher.value.every((r) => r.descriptionRank !== null), JSON.stringify(lexicalAsPublisher.value));
 
@@ -1464,8 +1473,17 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.ok(inner.error, 'the inner gate let a non-curator through: ' + JSON.stringify(inner.value));
             assert.strictEqual(inner.error.number, 50000, inner.error.message);
             assert.ok(inner.error.message.includes('mem_curator'), inner.error.message);
-            const still = sqlOk("SELECT 'kittest-vis=' + [Visibility] FROM mem.Record WHERE [RecordId] = " + ids.neoPrivate + ';');
-            assert.strictEqual(one(still, 'vis'), 'private', 'a refused promotion must change nothing');
+            // The predicate the refused calls are read with: the source row's
+            // visibility and archived flag, and the operator store's rows of
+            // that name, which the curator call below proves it can fill.
+            const promotedState = () => sqlOk([
+                "SELECT 'kittest-vis=' + [Visibility] + ':' + CAST([IsArchived] AS VARCHAR(1)) FROM mem.Record WHERE [RecordId] = " + ids.neoPrivate + ';',
+                "SELECT 'kittest-copies=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]",
+                "WHERE S.[Tier] = 'operator' AND R.[Name] = N'neo-private-" + runId + "';"
+            ].join('\n'));
+            const still = promotedState();
+            assert.strictEqual(one(still, 'vis'), 'private:0', 'a refused promotion must leave the project row live');
+            assert.strictEqual(one(still, 'copies'), '0', 'a refused promotion must write no operator row');
 
             // A user without a login is a context SUSER_SNAME() names by SID
             // text rather than by login (S-1-9-3-...), and the query log must
@@ -1489,14 +1507,33 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.ok(sharedTier.error && sharedTier.error.number === 50000 && sharedTier.error.message.includes('project'),
                 'a non-project tier must be refused by name: ' + JSON.stringify(sharedTier));
 
+            // The version 6 shape, by sandbox and segment, moves the row: the
+            // operator store takes a copy with its vector, and the project
+            // row is archived rather than deleted.
             const curator = callAs('kit_curator', 'usp_PromoteRecord', promote);
             assert.ok(!curator.error, JSON.stringify(curator.error));
-            assert.deepStrictEqual(curator.value, { recordId: ids.neoPrivate, name: 'neo-private-' + runId, visibility: 'shared' });
-            // A promoted row is now a shared row, and SCOTT sees it.
+            const moved = curator.value;
+            assert.deepStrictEqual({ name: moved.name, tier: moved.tier, visibility: moved.visibility, archivedRecordId: moved.archivedRecordId },
+                { name: 'neo-private-' + runId, tier: 'operator', visibility: 'shared', archivedRecordId: ids.neoPrivate });
+            assert.notStrictEqual(moved.recordId, ids.neoPrivate, 'the operator row is a new row, not the project row flipped');
+            const after = promotedState();
+            assert.strictEqual(one(after, 'vis'), 'private:1', 'the project row is archived and keeps its visibility');
+            assert.strictEqual(one(after, 'copies'), '1', 'the operator store holds the one copy');
+            const copied = sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding WHERE [RecordId] = " + moved.recordId + ';');
+            assert.strictEqual(one(copied, 'n'), '1', 'the operator row carries the project row\'s vector');
+            // The operator row now ranks first on the live list, and the
+            // project row only on the archived one.
             mapConnection('SCOTT-CLAUDE');
             const scott = call('usp_Search', searchParams, vectorPrelude(2));
             assert.ok(!scott.error, JSON.stringify(scott.error));
-            assert.ok(idsOf(scott.value).includes(ids.neoPrivate), 'the promoted row must reach SCOTT: ' + JSON.stringify(scott.value));
+            const liveFirst = scott.value.find((r) => r.vectorLiveRank === 1);
+            assert.ok(liveFirst && liveFirst.recordId === moved.recordId && liveFirst.tier === 'operator',
+                'the promoted row must reach SCOTT from the operator store: ' + JSON.stringify(scott.value));
+            assert.strictEqual(scott.value.find((r) => r.recordId === ids.neoPrivate).archived, true, JSON.stringify(scott.value));
+            // A second promotion of the name finds no live project row and is refused.
+            const again = callAs('kit_curator', 'usp_PromoteRecord', promote);
+            assert.ok(again.error && again.error.number === 50000 && again.error.message.includes('no live project record'),
+                'a second promotion must be refused by the live-row rule: ' + JSON.stringify(again));
             // And the curator cannot publish.
             const curatorWrite = callAs('kit_curator', 'usp_UpsertRecords', "@p_Records = N'[]'");
             assert.ok(curatorWrite.error && curatorWrite.error.number === 229, 'the curator executed a publish procedure: ' + JSON.stringify(curatorWrite));
@@ -1629,20 +1666,23 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             try {
                 mapConnection('SCOTT-CLAUDE');
 
-                // No parameter: every fixture row SCOTT may see, both segments,
-                // the promoted and the type rows, the NULL and empty Tags
-                // rows, and never NEO's private row. This answer is the control
-                // for every absence below: each row a scoped call drops is
-                // one this call proves reachable.
+                // No parameter: every fixture row, both segments, the promoted
+                // and the type rows, the NULL and empty Tags rows, and NEO's
+                // older-store row, since every project row reaches every
+                // mapped sandbox. This answer is the control for every
+                // absence below: each row a scoped call drops is one this
+                // call proves reachable.
                 const none = searchAs(null, null);
                 assert.deepStrictEqual(sorted(idsOf(none).filter((id) => fixtureIds.includes(id))),
                     named('aTagged', 'aNullTags', 'aEmptyTags', 'aObjectTags', 'aPromoted', 'bTagged', 'bNullTags',
-                        'bSuperseded', 'bSupersedes', 'typeNamedA'),
-                    'the unscoped search serves every fixture row SCOTT may see: ' + JSON.stringify(none));
-                assert.ok(!idsOf(none).includes(fx.neoNamedA), 'TENANCY LEAK: NEO\'s private row reached SCOTT unscoped');
+                        'bSuperseded', 'bSupersedes', 'typeNamedA', 'neoNamedA'),
+                    'the unscoped search serves every fixture row: ' + JSON.stringify(none));
+                assert.ok(idsOf(none).includes(fx.neoNamedA), 'NEO\'s project row must reach SCOTT unscoped');
 
-                // Segment A: A's four rows and nothing else. B's rows, the type
-                // store named A and NEO's store named A are all dropped.
+                // Segment A, the version 6 scope: the rows of SCOTT's own store
+                // named A and the shared row in it, and nothing else. B's rows,
+                // the type store named A and NEO's private store named A are
+                // all dropped, which is the answer version 6 gave this call.
                 const segmentA = searchAs(segA, null);
                 assert.deepStrictEqual(sorted(idsOf(segmentA)), named('aTagged', 'aNullTags', 'aEmptyTags', 'aObjectTags', 'aPromoted'),
                     'segment A must answer A\'s rows alone: ' + JSON.stringify(segmentA));
@@ -1657,11 +1697,11 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.ok(idsOf(segmentA).includes(fx.aObjectTags) && !idsOf(segmentATagged).includes(fx.aObjectTags),
                     'a Tags object holding the tag as a value is served untagged and dropped by the tag');
 
-                // The tag alone: tagged rows from both segments and the tagged
-                // shared type row, never the NULL or empty Tags rows and
-                // never NEO's private row though it carries the tag.
+                // The tag alone: tagged rows from both segments, the tagged
+                // shared type row and NEO's tagged row, never the NULL or
+                // empty Tags rows.
                 const tagOnly = searchAs(null, tag);
-                assert.deepStrictEqual(sorted(idsOf(tagOnly)), named('aTagged', 'aPromoted', 'bTagged', 'bSuperseded', 'typeNamedA'),
+                assert.deepStrictEqual(sorted(idsOf(tagOnly)), named('aTagged', 'aPromoted', 'bTagged', 'bSuperseded', 'typeNamedA', 'neoNamedA'),
                     'the tag alone must answer the tagged rows SCOTT may see: ' + JSON.stringify(tagOnly));
 
                 // Supersession is read over the whole visible set, so the tag that
@@ -2558,6 +2598,489 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 'the log row names the caller, the resolved sandbox, the row count and the model digest');
             mapConnection(null);
         });
+
+        // The record door: usp_PutRecord, usp_GetRecord, usp_ListIndex and
+        // usp_ArchiveRecord, and the fleet-wide project store they key on.
+        // Every project key below is this run's own, so each answer is read
+        // over rows these cases wrote.
+        const keyOne = 'remote:example.test/one-' + runId;
+        const keyTwo = 'remote:example.test/two-' + runId;
+        // A parameter value as the literal a call names it by: a number as
+        // itself, NULL for null, and text as an N'' literal.
+        const lit = (v) => (v === null ? 'NULL' : typeof v === 'number' ? String(v) : "N'" + String(v).replace(/'/g, "''") + "'");
+        const paramsOf = (fields) => Object.entries(fields).map(([k, v]) => '@p_' + k + ' = ' + lit(v)).join(', ');
+        const put = (fields) => call('usp_PutRecord', paramsOf(fields));
+        // A procedure answering zero or more rows of one [Json] column, read
+        // line by line, or the error that refused it.
+        function rowsAs(user, procedure, parameters) {
+            const statement = 'EXEC mem.' + procedure + ' ' + parameters;
+            const res = sqlOk([
+                'DECLARE @t TABLE ([Json] NVARCHAR(MAX));',
+                user ? "EXECUTE AS USER = N'" + user + "';" : '',
+                'BEGIN TRY',
+                "  INSERT INTO @t EXEC sp_executesql N'" + statement.replace(/'/g, "''") + "';",
+                "  SELECT 'kittest-json=' + COALESCE([Json], 'null') FROM @t;",
+                'END TRY',
+                'BEGIN CATCH',
+                "  SELECT 'kittest-errnum=' + CAST(ERROR_NUMBER() AS VARCHAR(10));",
+                "  SELECT 'kittest-errmsg=' + ERROR_MESSAGE();",
+                'END CATCH;',
+                user ? 'REVERT;' : ''
+            ].join('\n'));
+            if (res.tags.errnum) {
+                return { error: { number: Number(one(res, 'errnum')), message: one(res, 'errmsg') }, raw: res };
+            }
+            const lines = res.tags.json || [];
+            for (const text of lines) assert.ok(text.length < 7990, 'sqlcmd cut a row at its 8000-character ceiling');
+            return { rows: lines.map((text) => JSON.parse(text)), raw: res };
+        }
+        // One record's stored state, every column a write can move.
+        const recordState = (recordId) => json(sqlOk([
+            "SELECT 'kittest-row=' + (SELECT R.[Name], R.[Description], R.[Body], R.[BodyHash], R.[Tags], R.[Triggers], R.[Anchors],",
+            '  R.[Space], R.[IsPinned], R.[SupersedesName], R.[Author], R.[Origin], R.[Visibility], R.[WrittenBySandboxId], R.[StampId],',
+            '  R.[IsArchived], R.[DeletedDt], R.[UpdatedDt], [StoreTier] = S.[Tier], [StoreSandboxId] = S.[SandboxId], [StoreSegment] = S.[Segment], S.[ProjectKey]',
+            '  FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId] WHERE R.[RecordId] = ' + Number(recordId),
+            '  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);'
+        ].join('\n')), 'row');
+        const embeddingsOf = (recordId) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding WHERE [RecordId] = "
+            + Number(recordId) + ';'), 'n'));
+        const embedOnAxis = (recordId, axis) => sqlOk('INSERT INTO mem.Embedding ([RecordId], [ChunkIndex], [ModelIdentity], [ChunkOffset], [ChunkLength], [Vector], [Dimensions])'
+            + ' VALUES (' + Number(recordId) + ", 0, 'test-model', 0, 4, CAST(N'" + axisVector(axis) + "' AS VECTOR(" + DIMENSIONS + ')), ' + DIMENSIONS + ');');
+        const putName = 'put-' + runId;
+        const putIds = {};
+
+        await t.test('usp_PutRecord inserts, refuses an existing name unless told to replace, and keeps a field sent as NULL', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const base = { Tier: 'project', ProjectKey: keyOne, Name: putName };
+                const first = put({ ...base, Description: 'first description', Body: 'first body', Tags: '["t1"]',
+                    Triggers: '["trigger one"]', Anchors: '["a.js"]', Space: 'space-one', IsPinned: 0, Author: 'author-one' });
+                assert.ok(!first.error, JSON.stringify(first.error));
+                assert.strictEqual(first.value.status, 'stored', JSON.stringify(first.value));
+                putIds.main = first.value.recordId;
+                const inserted = recordState(putIds.main);
+                assert.deepStrictEqual({ origin: inserted.Origin, visibility: inserted.Visibility, writtenBy: inserted.WrittenBySandboxId,
+                    tier: inserted.StoreTier, storeSandbox: inserted.StoreSandboxId, segment: inserted.StoreSegment, key: inserted.ProjectKey },
+                { origin: 'memq', visibility: 'shared', writtenBy: ids.scott, tier: 'project', storeSandbox: null, segment: null, key: keyOne },
+                'an inserted record is a memq row in the project key\'s fleet store: ' + JSON.stringify(inserted));
+                assert.strictEqual(inserted.Body, 'first body');
+                assert.strictEqual(inserted.Anchors, '["a.js"]');
+
+                // Present, no replace: refused with the existing description,
+                // and the row is exactly as it was, its update time included.
+                const refused = put({ ...base, Description: 'second description', Body: 'second body' });
+                assert.ok(!refused.error, 'a refusal is an answer, never an error: ' + JSON.stringify(refused.error));
+                assert.deepStrictEqual(refused.value, { status: 'refused', recordId: putIds.main, name: putName, description: 'first description' });
+                assert.deepStrictEqual(recordState(putIds.main), inserted, 'a refused write must change nothing');
+                const named = Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Name] = N'" + putName + "';"), 'n'));
+                assert.strictEqual(named, 1, 'a refused write adds no second row of the name');
+
+                // Present, replace, anchors alone: the anchors change, every
+                // other field keeps its column, and the vectors stay. The same
+                // call shape as the refusal with the flag set is what writes,
+                // so the refusal above is the name-present rule.
+                embedOnAxis(putIds.main, 600);
+                const anchorsOnly = put({ ...base, Anchors: '["b.js"]', Replace: 1 });
+                assert.ok(!anchorsOnly.error, JSON.stringify(anchorsOnly.error));
+                assert.strictEqual(anchorsOnly.value.status, 'stored', JSON.stringify(anchorsOnly.value));
+                const anchored = recordState(putIds.main);
+                assert.strictEqual(anchored.Anchors, '["b.js"]', 'the anchors are the new value');
+                for (const field of ['Name', 'Description', 'Body', 'BodyHash', 'Tags', 'Triggers', 'Space', 'IsPinned', 'SupersedesName', 'Author', 'IsArchived']) {
+                    assert.deepStrictEqual(anchored[field], inserted[field], field + ' must keep its column when sent as NULL');
+                }
+                assert.strictEqual(embeddingsOf(putIds.main), 1, 'a write with no body keeps the record\'s vectors');
+
+                // Present, replace, every field: each column takes its new
+                // value, an empty array clearing a list, and a new body drops
+                // the vectors.
+                const full = put({ ...base, Description: 'third description', Body: 'third body', Tags: '[]', Triggers: '[]',
+                    Anchors: '[]', Space: 'space-two', IsPinned: 1, Supersedes: 'older-' + runId, Author: 'author-two', Replace: 1 });
+                assert.ok(!full.error, JSON.stringify(full.error));
+                assert.strictEqual(full.value.status, 'stored', JSON.stringify(full.value));
+                const replaced = recordState(putIds.main);
+                assert.deepStrictEqual({ d: replaced.Description, b: replaced.Body, tags: replaced.Tags, triggers: replaced.Triggers,
+                    anchors: replaced.Anchors, space: replaced.Space, pinned: replaced.IsPinned, supersedes: replaced.SupersedesName, author: replaced.Author },
+                { d: 'third description', b: 'third body', tags: '[]', triggers: '[]', anchors: '[]', space: 'space-two', pinned: true,
+                    supersedes: 'older-' + runId, author: 'author-two' }, JSON.stringify(replaced));
+                assert.notStrictEqual(replaced.BodyHash, inserted.BodyHash, 'a new body takes a new hash');
+                assert.strictEqual(embeddingsOf(putIds.main), 0, 'a new body leaves no vector made from the old one');
+
+                // A list that is not a JSON array is refused by name.
+                const malformed = put({ ...base, Tags: '{"a":1}', Replace: 1 });
+                assert.ok(malformed.error && malformed.error.number === 50000 && malformed.error.message.includes('JSON array'), JSON.stringify(malformed));
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('usp_PutRecord answers a stamp its sandbox already wrote as stored and writes nothing, whatever the other arguments', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const stamp = crypto.randomUUID();
+                const stampName = 'stamped-' + runId;
+                const otherName = 'stamp-other-' + runId;
+                const first = put({ Tier: 'project', ProjectKey: keyOne, Name: stampName, Description: 'stamped', Body: 'stamped body', StampId: stamp });
+                assert.ok(!first.error, JSON.stringify(first.error));
+                assert.strictEqual(first.value.status, 'stored');
+                putIds.stamped = first.value.recordId;
+                const before = recordState(putIds.stamped);
+                const rowsNamed = (name) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Name] = N'" + name + "';"), 'n'));
+                const storesFor = (key) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Store WHERE [ProjectKey] = N'" + key + "';"), 'n'));
+                assert.strictEqual(storesFor(keyTwo), 0, 'this case needs the second key\'s store unwritten');
+
+                // The same stamp with every other argument changed: another
+                // key, another name, the replace flag. Stored, nothing written.
+                const replay = put({ Tier: 'project', ProjectKey: keyTwo, Name: otherName, Description: 'other', Body: 'other body', Replace: 1, StampId: stamp });
+                assert.ok(!replay.error, JSON.stringify(replay.error));
+                assert.deepStrictEqual({ status: replay.value.status, recordId: replay.value.recordId }, { status: 'stored', recordId: putIds.stamped });
+                assert.strictEqual(rowsNamed(otherName), 0, 'a replayed stamp inserts no row');
+                assert.strictEqual(storesFor(keyTwo), 0, 'a replayed stamp creates no store');
+                assert.deepStrictEqual(recordState(putIds.stamped), before, 'a replayed stamp leaves the stamped row as it was');
+
+                // The stamp wins over the refusal the same name would draw.
+                const overRefusal = put({ Tier: 'project', ProjectKey: keyOne, Name: stampName, Description: 'again', StampId: stamp });
+                assert.ok(!overRefusal.error, JSON.stringify(overRefusal.error));
+                assert.strictEqual(overRefusal.value.status, 'stored', 'a replay is never refused: ' + JSON.stringify(overRefusal.value));
+                assert.deepStrictEqual(recordState(putIds.stamped), before);
+
+                // The control, withheld from the assertions above: the replay
+                // call with a fresh stamp does write, so the silence above is
+                // the stamp and not a call that could never land.
+                const fresh = put({ Tier: 'project', ProjectKey: keyTwo, Name: otherName, Description: 'other', Body: 'other body', Replace: 1, StampId: crypto.randomUUID() });
+                assert.ok(!fresh.error, JSON.stringify(fresh.error));
+                assert.strictEqual(fresh.value.status, 'stored');
+                assert.strictEqual(rowsNamed(otherName), 1, 'the fresh stamp inserts the row');
+                assert.strictEqual(storesFor(keyTwo), 1, 'and creates the second key\'s store');
+                putIds.other = fresh.value.recordId;
+
+                // A stamp is one sandbox's: NEO sending SCOTT's stamp writes.
+                mapConnection('NEO-CLAUDE');
+                const neoName = 'stamp-neo-' + runId;
+                const neo = put({ Tier: 'project', ProjectKey: keyOne, Name: neoName, Description: 'neo wrote this', Body: 'neo body', StampId: stamp });
+                assert.ok(!neo.error, JSON.stringify(neo.error));
+                assert.strictEqual(neo.value.status, 'stored');
+                assert.notStrictEqual(neo.value.recordId, putIds.stamped, 'another sandbox\'s stamp never suppresses this sandbox\'s write');
+                assert.strictEqual(recordState(neo.value.recordId).WrittenBySandboxId, ids.neo);
+                putIds.neo = neo.value.recordId;
+
+                // An unmapped login writes nothing, refused by the caller rule.
+                mapConnection(null);
+                const unmapped = put({ Tier: 'project', ProjectKey: keyOne, Name: 'unmapped-' + runId, Body: 'b' });
+                assert.ok(unmapped.error && unmapped.error.message.includes('maps to no sandbox'), JSON.stringify(unmapped));
+                assert.strictEqual(rowsNamed('unmapped-' + runId), 0);
+
+                // The index the skip reads, from the catalog.
+                const index = sqlOk("SELECT 'kittest-ix=' + CAST(I.[is_unique] AS VARCHAR(1)) + ':' + COALESCE(I.[filter_definition], '<none>') FROM sys.indexes I"
+                    + " WHERE I.[object_id] = OBJECT_ID('mem.Record') AND I.[name] = 'IX_Record_WrittenBySandboxId_StampId';");
+                assert.strictEqual(one(index, 'ix'), '1:([StampId] IS NOT NULL)');
+                assert.strictEqual(indexKeyOf('mem.Record', 'IX_Record_WrittenBySandboxId_StampId'), 'WrittenBySandboxId,StampId');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('usp_GetRecord answers one name under one key with its body and every field, and no row under another key', () => {
+            const getParams = (key) => paramsOf({ Tier: 'project', ProjectKey: key, Name: putName });
+            try {
+                mapConnection('NEO-CLAUDE');
+                const got = rowsAs(null, 'usp_GetRecord', getParams(keyOne));
+                assert.ok(!got.error, JSON.stringify(got.error));
+                assert.strictEqual(got.rows.length, 1, 'one row for the name under its key: ' + JSON.stringify(got.rows));
+                const row = got.rows[0];
+                assert.deepStrictEqual(Object.keys(row).sort(), ['anchors', 'archived', 'author', 'body', 'created', 'description', 'name',
+                    'origin', 'pinned', 'projectKey', 'recordId', 'space', 'supersedes', 'tags', 'tier', 'triggers', 'typeName', 'updated',
+                    'visibility', 'writtenBy'], JSON.stringify(row));
+                assert.deepStrictEqual({ recordId: row.recordId, body: row.body, description: row.description, projectKey: row.projectKey,
+                    tags: row.tags, anchors: row.anchors, pinned: row.pinned, space: row.space, origin: row.origin, writtenBy: row.writtenBy },
+                { recordId: putIds.main, body: 'third body', description: 'third description', projectKey: keyOne, tags: [], anchors: [],
+                    pinned: true, space: 'space-two', origin: 'memq', writtenBy: 'SCOTT-CLAUDE' },
+                'another sandbox reads the record SCOTT wrote, whole: ' + JSON.stringify(row));
+                assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(row.created), 'created is the date the record was written: ' + row.created);
+
+                // The same name under the other key: no row. The call above,
+                // on the same connection, is the control that the name is
+                // there to be read.
+                const otherKey = rowsAs(null, 'usp_GetRecord', getParams(keyTwo));
+                assert.ok(!otherKey.error, JSON.stringify(otherKey.error));
+                assert.deepStrictEqual(otherKey.rows, [], 'no row for the name under another project key');
+
+                mapConnection(null);
+                const unmapped = rowsAs(null, 'usp_GetRecord', getParams(keyOne));
+                assert.ok(!unmapped.error, JSON.stringify(unmapped.error));
+                assert.deepStrictEqual(unmapped.rows, [], 'an unmapped login reads no row');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('usp_ListIndex lists one project\'s rows and the shared tiers\' rows with their usage aggregates, and no other project\'s', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const typeName = 'ltype-' + runId;
+                const typed = put({ Tier: 'type', TypeName: typeName, Name: 'listed-type-' + runId, Description: 'a type record', Body: 'b' });
+                assert.ok(!typed.error && typed.value.status === 'stored', JSON.stringify(typed));
+                const operator = put({ Tier: 'operator', Name: 'listed-operator-' + runId, Description: 'an operator record', Body: 'b' });
+                assert.ok(!operator.error && operator.value.status === 'stored', JSON.stringify(operator));
+
+                // Usage on the main record: reads on two days, applied stamps
+                // on two distinct days, two of them on the first.
+                const stamps = [['read', '2026-09-01T00:00:00Z'], ['read', '2026-09-03T00:00:00Z'], ['applied', '2026-09-02T10:00:00Z'],
+                    ['applied', '2026-09-02T20:00:00Z'], ['applied', '2026-09-04T00:00:00Z']]
+                    .map(([kind, at]) => ({ recordId: putIds.main, kind, at, stampId: crypto.randomUUID() }));
+                const usage = call('usp_AppendUsage', "@p_Usage = N'" + JSON.stringify(stamps) + "'");
+                assert.ok(!usage.error, JSON.stringify(usage.error));
+                assert.strictEqual(usage.value.appended, 5, JSON.stringify(usage.value));
+
+                const list = (key) => {
+                    const res = rowsAs(null, 'usp_ListIndex', paramsOf({ ProjectKey: key }));
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    return res.rows;
+                };
+                const one1 = list(keyOne);
+                const byName = new Map(one1.map((r) => [r.name, r]));
+                assert.ok(byName.has(putName) && byName.has('stamped-' + runId) && byName.has('stamp-neo-' + runId),
+                    'the project\'s rows, each sandbox\'s writes included: ' + JSON.stringify(one1.map((r) => r.name)));
+                assert.ok(byName.has('listed-type-' + runId) && byName.has('listed-operator-' + runId), 'the shared tiers\' rows');
+                assert.strictEqual(byName.get('listed-type-' + runId).typeName, typeName);
+                assert.ok(!byName.has('stamp-other-' + runId), 'TENANCY: the other project\'s row reached this project\'s index');
+                assert.ok(one1.every((r) => r.tier !== 'project' || r.projectKey === keyOne),
+                    'every project row is the asked key\'s: ' + JSON.stringify(one1.filter((r) => r.tier === 'project')));
+                assert.ok(one1.every((r) => r.tier === 'project' || r.tier === 'type' || r.tier === 'operator'));
+                const main = byName.get(putName);
+                assert.deepStrictEqual(Object.keys(main).sort(), ['anchors', 'appliedDays', 'created', 'description', 'lastApplied', 'lastRead',
+                    'name', 'origin', 'pinned', 'projectKey', 'recordId', 'space', 'supersedes', 'tags', 'tier', 'triggers', 'typeName'], JSON.stringify(main));
+                assert.strictEqual(new Date(main.lastRead).getTime(), new Date('2026-09-03T00:00:00Z').getTime(), JSON.stringify(main));
+                assert.strictEqual(new Date(main.lastApplied).getTime(), new Date('2026-09-04T00:00:00Z').getTime(), JSON.stringify(main));
+                assert.strictEqual(main.appliedDays, 2, 'distinct applied days, not applied stamps: ' + JSON.stringify(main));
+                const unstamped = byName.get('stamped-' + runId);
+                assert.deepStrictEqual([unstamped.lastRead, unstamped.lastApplied, unstamped.appliedDays], [null, null, 0]);
+
+                // The control for the absence above: the other key's index
+                // lists that row, and not this key's.
+                const two = list(keyTwo);
+                assert.ok(two.some((r) => r.name === 'stamp-other-' + runId), JSON.stringify(two.map((r) => r.name)));
+                assert.ok(!two.some((r) => r.name === putName), 'this project\'s row reached the other project\'s index');
+
+                mapConnection(null);
+                assert.deepStrictEqual(list(keyOne), [], 'an unmapped login lists nothing');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('usp_ArchiveRecord archives by tier, key and name, deletes on asking, and never removes the row', () => {
+            const archiveParams = (extra) => paramsOf({ Tier: 'project', ProjectKey: keyOne, Name: 'stamped-' + runId, ...extra });
+            const getStamped = () => rowsAs(null, 'usp_GetRecord', paramsOf({ Tier: 'project', ProjectKey: keyOne, Name: 'stamped-' + runId })).rows;
+            const indexed = () => rowsAs(null, 'usp_ListIndex', paramsOf({ ProjectKey: keyOne })).rows.some((r) => r.name === 'stamped-' + runId);
+            mapConnection(null);
+            const unmapped = call('usp_ArchiveRecord', archiveParams({}));
+            assert.ok(unmapped.error && unmapped.error.message.includes('maps to no sandbox'), JSON.stringify(unmapped));
+            assert.strictEqual(recordState(putIds.stamped).IsArchived, false, 'a refused archive changes nothing');
+            mapConnection('NEO-CLAUDE');
+            try {
+                assert.ok(indexed(), 'the record is in the index before it is archived');
+                const archived = call('usp_ArchiveRecord', archiveParams({}));
+                assert.ok(!archived.error, JSON.stringify(archived.error));
+                assert.deepStrictEqual(archived.value, { status: 'archived', recordId: putIds.stamped });
+                const state = recordState(putIds.stamped);
+                assert.deepStrictEqual([state.IsArchived, state.DeletedDt], [true, null]);
+                assert.ok(!indexed(), 'an archived record leaves the index');
+                assert.strictEqual(getStamped()[0].archived, true, 'and is still read by name, marked archived');
+
+                const deleted = call('usp_ArchiveRecord', archiveParams({ Delete: 1 }));
+                assert.ok(!deleted.error, JSON.stringify(deleted.error));
+                assert.deepStrictEqual(deleted.value, { status: 'deleted', recordId: putIds.stamped });
+                assert.ok(recordState(putIds.stamped).DeletedDt !== null, 'the deleted mark is set on the row, which stays');
+                assert.deepStrictEqual(getStamped(), [], 'a deleted record is read by no one');
+
+                const again = call('usp_ArchiveRecord', archiveParams({ Delete: 1 }));
+                assert.ok(!again.error, 'a resent retirement is not a failure: ' + JSON.stringify(again.error));
+                assert.deepStrictEqual(again.value, { status: 'absent', recordId: null });
+                assert.strictEqual(Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [RecordId] = " + putIds.stamped + ';'), 'n')), 1,
+                    'no row is ever removed');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('udf_VisibleRecords serves another sandbox\'s older-store project row to a mapped sandbox and nothing to a NULL one', () => {
+            const planted = sqlOk([
+                "DECLARE @neo INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'NEO-CLAUDE');",
+                "DECLARE @store INT = (SELECT [StoreId] FROM mem.Store WHERE [SandboxId] = @neo AND [Tier] = 'project' AND [Segment] = N'" + segment + "');",
+                'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId])',
+                "VALUES (@store, N'neo-visible-" + runId + "', N'neo-visible.md', N'v', N'v', 'hv', 'private', @neo);",
+                "SELECT 'kittest-id=' + CAST(SCOPE_IDENTITY() AS VARCHAR(20));"
+            ].join('\n'));
+            const plantedId = Number(one(planted, 'id'));
+            const seen = (sandbox) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.udf_VisibleRecords(" + sandbox + ') V WHERE V.[RecordId] = ' + plantedId + ';'), 'n'));
+            assert.strictEqual(seen(ids.scott), 1, 'NEO\'s older-store private row reaches SCOTT');
+            assert.strictEqual(seen(ids.neo), 1, 'and NEO');
+            assert.strictEqual(seen('NULL'), 0, 'and nothing reaches a NULL sandbox');
+            const total = Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.udf_VisibleRecords(NULL);"), 'n'));
+            assert.strictEqual(total, 0, 'a NULL sandbox is served no row at all');
+        });
+
+        await t.test('usp_Search with @p_ProjectKey ranks only that project\'s rows and the shared tiers\', and the version 6 segment call still answers', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const axis = 700;
+                const seeded = {};
+                for (const [key, fields] of [['one', { Tier: 'project', ProjectKey: keyOne, Name: 'search-one-' + runId }],
+                    ['two', { Tier: 'project', ProjectKey: keyTwo, Name: 'search-two-' + runId }],
+                    ['type', { Tier: 'type', TypeName: 'stype-' + runId, Name: 'search-type-' + runId }]]) {
+                    const res = put({ ...fields, Description: 'a search fixture', Body: 'b' });
+                    assert.ok(!res.error && res.value.status === 'stored', JSON.stringify(res));
+                    seeded[key] = res.value.recordId;
+                    embedOnAxis(seeded[key], axis);
+                }
+                // Each fixture row sits at distance zero on an axis of its own,
+                // so the three rank first and a ten-row answer holds them all.
+                // Each fixture row sits at distance zero on an axis of its own,
+                // so the three rank first and a ten-row answer holds them all.
+                const fixture = Object.values(seeded);
+                const searchWith = (scope) => {
+                    const res = call('usp_Search', "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10" + scope, vectorPrelude(axis));
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    return idsOf(res.value).filter((id) => fixture.includes(id)).sort((a, b) => a - b);
+                };
+                const sorted = (...list) => list.sort((a, b) => a - b);
+                // Unscoped, the control: all three fixture rows rank.
+                assert.deepStrictEqual(searchWith(''), sorted(seeded.one, seeded.two, seeded.type));
+                assert.deepStrictEqual(searchWith(', @p_ProjectKey = ' + lit(keyOne)), sorted(seeded.one, seeded.type),
+                    'the first project\'s scope ranks its row and the shared row, never the second project\'s');
+                assert.deepStrictEqual(searchWith(', @p_ProjectKey = ' + lit(keyTwo)), sorted(seeded.two, seeded.type),
+                    'the second project\'s scope, the mirror');
+
+                // Both scopes named at once is refused by name.
+                const both = call('usp_Search', "@p_QueryText = N'x', @p_Segment = N'a', @p_ProjectKey = N'b'");
+                assert.ok(both.error && both.error.number === 50000 && both.error.message.includes('not both'), JSON.stringify(both));
+
+                // The version 6 shape: @p_Segment names an older store and
+                // answers its rows as version 6 did, the caller's own and the
+                // shared, and not another sandbox's private row in a store of
+                // the same segment.
+                const v6 = call('usp_Search', "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10, @p_Segment = " + lit(segment), vectorPrelude(1));
+                assert.ok(!v6.error, 'the version 6 call shape must still answer: ' + JSON.stringify(v6.error));
+                assert.ok(idsOf(v6.value).includes(ids.scottPrivate), JSON.stringify(v6.value));
+                assert.ok(v6.value.every((r) => r.tier === 'project' && r.segment === segment), JSON.stringify(v6.value));
+                assert.ok(!idsOf(v6.value).some((id) => fixture.includes(id)), 'a segment scope never reaches a fleet store');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('usp_PromoteRecord moves a fleet project row named by its key into the operator store, and refuses a publisher', () => {
+            const name = 'promote-key-' + runId;
+            mapConnection('SCOTT-CLAUDE');
+            const written = put({ Tier: 'project', ProjectKey: keyOne, Name: name, Description: 'to promote', Body: 'promote body', Anchors: '["p.js"]' });
+            mapConnection(null);
+            assert.ok(!written.error && written.value.status === 'stored', JSON.stringify(written));
+            const promote = paramsOf({ ProjectKey: keyOne, Name: name });
+            const publisher = callAs('kit_scott_claude', 'usp_PromoteRecord', promote);
+            assert.ok(publisher.error && publisher.error.number === 229, 'a publisher promoted a record: ' + JSON.stringify(publisher));
+            assert.strictEqual(recordState(written.value.recordId).IsArchived, false, 'a refused promotion leaves the row live');
+
+            const curator = callAs('kit_curator', 'usp_PromoteRecord', promote);
+            assert.ok(!curator.error, JSON.stringify(curator.error));
+            assert.strictEqual(curator.value.archivedRecordId, written.value.recordId);
+            const copy = recordState(curator.value.recordId);
+            assert.deepStrictEqual({ tier: copy.StoreTier, key: copy.ProjectKey, body: copy.Body, anchors: copy.Anchors, archived: copy.IsArchived, stamp: copy.StampId },
+                { tier: 'operator', key: null, body: 'promote body', anchors: '["p.js"]', archived: false, stamp: null }, JSON.stringify(copy));
+            const source = recordState(written.value.recordId);
+            assert.deepStrictEqual([source.IsArchived, source.DeletedDt], [true, null], 'the project row is archived, not deleted');
+        });
+
+        await t.test('the version 6 publish shape still lands in the sandbox\'s own older store as a file row', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const record = { tier: 'project', segment: 'seg-v6shape-' + runId, name: 'v6shape-' + runId, fileKey: 'v6shape.md',
+                    description: 'a version 6 publish', body: 'b', bodyHash: 'hv6', fileModified: '2026-09-17T12:00:00Z', archived: false };
+                const upsert = call('usp_UpsertRecords', "@p_Records = N'" + JSON.stringify([record]) + "'");
+                assert.ok(!upsert.error, JSON.stringify(upsert.error));
+                assert.deepStrictEqual(upsert.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0 });
+                const id = Number(one(sqlOk("SELECT 'kittest-id=' + CAST([RecordId] AS VARCHAR(20)) FROM mem.Record WHERE [Name] = N'" + record.name + "';"), 'id'));
+                const state = recordState(id);
+                assert.deepStrictEqual({ origin: state.Origin, visibility: state.Visibility, storeSandbox: state.StoreSandboxId, segment: state.StoreSegment, key: state.ProjectKey, pinned: state.IsPinned },
+                    { origin: 'file', visibility: 'private', storeSandbox: ids.scott, segment: record.segment, key: null, pinned: false }, JSON.stringify(state));
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        // The upgrade the fleet host takes: a version 6 database built by the
+        // installer as it stood at e4712827, read out of git into this run's
+        // temp directory, holding records, embeddings and usage, then
+        // upgraded in place by this tree's installer. The counts and a digest
+        // of every record row are read before and after.
+        const v6Database = dbName + '_v6';
+        const v6Commit = 'e4712827';
+        const haveV6 = spawnSync('git', ['-C', REPO, 'cat-file', '-e', v6Commit + '^{commit}'], { encoding: 'utf8' }).status === 0;
+        await t.test('a version 6 database upgrades in place to the carried version, keeping every row, and a second run changes nothing',
+            { skip: !haveV6 && 'commit ' + v6Commit + ' is not in this clone, so the version 6 installer cannot be read' }, () => {
+                const v6Root = path.join(root, 'v6');
+                const listed = spawnSync('git', ['-C', REPO, 'ls-tree', '-r', '--name-only', v6Commit, 'plugins/grimoire/db'], { encoding: 'utf8' });
+                assert.strictEqual(listed.status, 0, listed.stderr);
+                const files = listed.stdout.split(/\r?\n/).filter((f) => /\.(sql|ps1)$/.test(f));
+                assert.ok(files.length > 20, 'the version 6 tree holds its scripts: ' + files.length);
+                for (const file of files) {
+                    const shown = spawnSync('git', ['-C', REPO, 'show', v6Commit + ':' + file], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+                    assert.strictEqual(shown.status, 0, shown.stderr);
+                    fs.mkdirSync(path.join(v6Root, path.dirname(file)), { recursive: true });
+                    fs.writeFileSync(path.join(v6Root, file), shown.stdout, 'utf8');
+                }
+                const v6Installer = path.join(v6Root, 'plugins', 'grimoire', 'db', 'Install-MemoryDatabase.ps1');
+                const v6Args = ['-Server', SERVER, '-Database', v6Database, '-LoginsPath', loginsPath, '-TrustServerCertificate'];
+                const built = spawnSync('pwsh', ['-NoProfile', '-File', v6Installer].concat(v6Args), { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+                assert.strictEqual(built.status, 0, built.stdout + built.stderr);
+                assert.ok(outputLines(built).includes('Schema version: carried 6, installed none'), built.stdout);
+
+                sqlOk([
+                    "DECLARE @neo INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'NEO-CLAUDE');",
+                    "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (@neo, 'project', N'seg-up');",
+                    'DECLARE @project INT = SCOPE_IDENTITY();',
+                    "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (NULL, 'type', N'type-up');",
+                    'DECLARE @type INT = SCOPE_IDENTITY();',
+                    "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (NULL, 'operator', NULL);",
+                    'DECLARE @operator INT = SCOPE_IDENTITY();',
+                    'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId], [Tags])',
+                    "VALUES (@project, N'up-project', N'up-project.md', N'd1', N'---\nname: up-project\n---\nbody one', 'h1', 'private', @neo, N'[\"t\"]'),",
+                    "       (@type, N'up-type', N'up-type.md', N'd2', N'body two', 'h2', 'shared', @neo, NULL),",
+                    "       (@operator, N'up-operator', N'up-operator.md', N'd3', N'body three', 'h3', 'shared', @neo, N'[]');",
+                    'INSERT INTO mem.Embedding ([RecordId], [ChunkIndex], [ModelIdentity], [ChunkOffset], [ChunkLength], [Vector], [Dimensions])',
+                    "SELECT R.[RecordId], 0, 'test-model', 0, 4, CAST(N'" + axisVector(3) + "' AS VECTOR(" + DIMENSIONS + ')), ' + DIMENSIONS + " FROM mem.Record R WHERE R.[Name] IN (N'up-project', N'up-type');",
+                    "INSERT INTO mem.Usage ([RecordId], [Kind], [StampedDt], [SandboxId], [StampId]) SELECT R.[RecordId], 'read', SYSDATETIMEOFFSET(), @neo, N'up-stamp' FROM mem.Record R WHERE R.[Name] = N'up-project';"
+                ].join('\n'), v6Database);
+                const census = () => sqlOk([
+                    "SELECT 'kittest-records=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record;",
+                    "SELECT 'kittest-embeddings=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding;",
+                    "SELECT 'kittest-usage=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage;",
+                    "SELECT 'kittest-stores=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Store;",
+                    "SELECT 'kittest-digest=' + CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', (SELECT STRING_AGG(CAST(CONCAT(R.[RecordId], ':', R.[StoreId], ':', R.[Name], ':', R.[FileKey], ':',",
+                    "  R.[Description], ':', R.[Body], ':', R.[BodyHash], ':', R.[Tags], ':', R.[Visibility], ':', R.[IsArchived], ':', R.[DeletedDt]) AS NVARCHAR(MAX)), '|')",
+                    '  WITHIN GROUP ( ORDER BY R.[RecordId] ) FROM mem.Record R)), 2);',
+                    "SELECT 'kittest-version=' + CAST(MAX([Version]) AS VARCHAR(10)) FROM mem.SchemaVersion;"
+                ].join('\n'), v6Database).tags;
+                const before = census();
+                assert.deepStrictEqual([before.records[0], before.embeddings[0], before.usage[0], before.version[0]], ['3', '2', '1', '6'],
+                    'the version 6 database holds the seeded rows: ' + JSON.stringify(before));
+
+                const upgraded = runInstaller(v6Args);
+                assert.strictEqual(upgraded.status, 0, upgraded.stdout + upgraded.stderr);
+                assert.ok(outputLines(upgraded).includes('Schema version: carried ' + CARRIED_SCHEMA_VERSION + ', installed 6'), upgraded.stdout);
+                const after = census();
+                assert.deepStrictEqual(after, { ...before, version: [CARRIED_SCHEMA_VERSION] },
+                    'every row is kept, unchanged, and the version moves: ' + JSON.stringify({ before, after }));
+                const defaults = sqlOk("SELECT 'kittest-defaults=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Origin] = 'file' AND [IsPinned] = 0"
+                    + ' AND [Space] IS NULL AND [StampId] IS NULL;', v6Database);
+                assert.strictEqual(one(defaults, 'defaults'), '3', 'every kept row takes the new columns\' defaults');
+
+                const settled = runInstaller(v6Args);
+                assert.strictEqual(settled.status, 0, settled.stdout + settled.stderr);
+                assert.deepStrictEqual(summaryOf(outputLines(settled)), { applied: expectedScriptLabels().length, changed: 0 }, settled.stdout);
+                assert.deepStrictEqual(census(), after, 'the second run changes no row');
+                // The counts, for the section's record.
+                t.diagnostic('upgrade census before ' + JSON.stringify(before) + ' after ' + JSON.stringify(after));
+            });
     } finally {
         // Teardown: the run's database, then exactly the logins this run
         // created, then the temp directory. A failure here is loud, since it
@@ -2572,6 +3095,15 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             "SELECT 'kittest-dropped=' + CASE WHEN DB_ID(N'" + dbName + "') IS NULL THEN 'yes' ELSE 'no' END;"
         ].join('\n'), 'master');
         if (drop.status !== 0 || !(drop.tags.dropped || []).includes('yes')) problems.push('database ' + dbName + ' was not dropped: ' + drop.stdout + drop.stderr);
+        const dropV6 = sql([
+            "IF DB_ID(N'" + dbName + "_v6') IS NOT NULL",
+            'BEGIN',
+            '  ALTER DATABASE [' + dbName + '_v6] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;',
+            '  DROP DATABASE [' + dbName + '_v6];',
+            'END',
+            "SELECT 'kittest-dropped=' + CASE WHEN DB_ID(N'" + dbName + "_v6') IS NULL THEN 'yes' ELSE 'no' END;"
+        ].join('\n'), 'master');
+        if (dropV6.status !== 0 || !(dropV6.tags.dropped || []).includes('yes')) problems.push('database ' + dbName + '_v6 was not dropped: ' + dropV6.stdout + dropV6.stderr);
         const createdLogins = preExisting === null ? [] : serverLogins().filter((l) => !preExisting.includes(l));
         for (const login of createdLogins) {
             const res = sql("IF EXISTS (SELECT NULL FROM sys.server_principals WHERE [name] = N'" + login + "') DROP LOGIN [" + login + '];', 'master');

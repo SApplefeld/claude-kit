@@ -13,10 +13,11 @@ GO
 	/*********************************************************************************************
 	 PARAMETER NAME		DATATYPE		DEFAULT
 	*********************************************************************************************/
-	 @p_SandboxName		NVARCHAR(100)
-	,@p_Segment			NVARCHAR(400)
-	,@p_Name			NVARCHAR(200)
+	 @p_SandboxName		NVARCHAR(100)	= NULL
+	,@p_Segment			NVARCHAR(400)	= NULL
+	,@p_Name			NVARCHAR(200)	= NULL
 	,@p_Tier			VARCHAR(20)		= 'project'
+	,@p_ProjectKey		NVARCHAR(400)	= NULL
 )
 AS
 BEGIN	-- PROCEDURE
@@ -26,22 +27,33 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_PromoteRecord
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
-							Flips one private record to shared so every sandbox can read it.
-							The record is named by the sandbox that owns it, the tier and
-							segment of its store, and its name. Only a member of mem_curator,
-							db_owner or sysadmin may promote: the role grant is the outer
-							gate and this check inside the body is the inner one, so a
-							procedure granted to the wrong role by a later script still
-							refuses. A name that matches no private live row, or more than
-							one, is refused rather than guessed at, and so is a tier other
-							than project, since the type and operator tiers hold no private
-							row.
+		NOTES:		v1.1 - 10/03/2026 - SCOTT APPLEFELD
+							Moves one live project record into the fleet's operator store.
+							The record is named by its project key and its name, or, in the
+							version 6 shape, by the sandbox that owns its older store, that
+							store's segment and its name. The operator store takes a copy of
+							every field and every embedding, as a shared row with no stamp
+							id, and the project row is archived, never deleted. A name the
+							operator store already holds live is refused rather than
+							overwritten; a deleted operator row holding the same file key is
+							the row the copy is written into, since the file key is unique
+							in a store. The copy and the archive are one transaction, and the
+							operator store's lookups take key range locks, so a concurrent
+							promotion of the same name queues behind this one.
 
 							Returns one row, one column [Json], holding {recordId, name,
-							visibility}.
+							tier, visibility, archivedRecordId}: the operator row, and the
+							project row now archived.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
+							Only a member of mem_curator, db_owner or sysadmin may promote:
+							the role grant is the outer gate and this check inside the body
+							is the inner one, so a procedure granted to the wrong role by a
+							later script still refuses. A name that matches no live row, or
+							more than one, is refused rather than guessed at, and so is a
+							tier other than project.
 	*********************************************************************************************
 	********************************************************************************************/
 
@@ -54,13 +66,23 @@ BEGIN	-- PROCEDURE
 	/********************************************************************************************
 		DECLARE VARIABLES FOR PROCESSING.
 	********************************************************************************************/
-	;DECLARE @SandboxId			INT				= NULL
+	;DECLARE @True				BIT				= 1
+			,@False				BIT				= 0
+			,@EntryTranCount	INT				= @@TRANCOUNT
+			,@Now				DATETIMEOFFSET	= SYSDATETIMEOFFSET()
+			,@SandboxId			INT				= NULL
+			,@SourceStoreId		INT				= NULL
+			,@OperatorStoreId	INT				= NULL
 			,@RecordId			BIGINT			= NULL
+			,@TargetRecordId	BIGINT			= NULL
 			,@MatchCount		INT				= 0
+			,@FileKey			NVARCHAR(400)	= NULL
+			,@Name				NVARCHAR(200)	= NULLIF(LTRIM(RTRIM(@p_Name)), '')
+			,@ProjectKey		NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_ProjectKey)), '')
 			,@Tier				VARCHAR(20)		= LOWER(LTRIM(RTRIM(@p_Tier)))
 
 	/********************************************************************************************
-		GATE THE CALLER, RESOLVE THE ROW, AND FLIP IT.
+		GATE THE CALLER, RESOLVE THE ROW, AND MOVE IT.
 	********************************************************************************************/
 	;BEGIN TRY
 		/* The Inner Gate: Curator, Database Owner or Server Administrator. */
@@ -69,60 +91,243 @@ BEGIN	-- PROCEDURE
 				AND COALESCE(IS_SRVROLEMEMBER('sysadmin'), 0) <> 1	)
 			THROW 50000, 'mem.usp_PromoteRecord: the caller is not a member of mem_curator.', 1
 
-		/* Only a Project Store Holds Private Rows; the Shared Tiers are Shared by Construction. */
+		/* Only a Project Record Moves; the Shared Tiers are the Fleet's Already. */
 		;IF ( @Tier IS NULL OR @Tier <> 'project' )
-			THROW 50000, 'mem.usp_PromoteRecord: @p_Tier must be project; a type or operator tier record is already shared and has nothing to promote.', 1
+			THROW 50000, 'mem.usp_PromoteRecord: @p_Tier must be project; a type or operator tier record is already the fleet''s and has nothing to promote.', 1
 
-		;IF ( @p_Name IS NULL OR LTRIM(RTRIM(@p_Name)) = '' )
+		;IF ( @Name IS NULL )
 			THROW 50000, 'mem.usp_PromoteRecord: @p_Name is required.', 1
 
-		/* Resolve the Sandbox Named. */
-		;SELECT	@SandboxId = SB.[SandboxId]
-		FROM	mem.Sandbox SB
-		WHERE	SB.[Name] = @p_SandboxName
+		/* Resolve the Source Store: the Project Key's Fleet Store, or a Sandbox's Older Store by Segment. */
+		;IF ( @ProjectKey IS NOT NULL )
+		BEGIN
+			;SELECT	@SourceStoreId = S.[StoreId]
+			FROM	mem.Store S
+			WHERE	S.[Tier] = 'project'
+					AND S.[ProjectKey] = @ProjectKey
+		END ELSE BEGIN
+			;SELECT	@SandboxId = SB.[SandboxId]
+			FROM	mem.Sandbox SB
+			WHERE	SB.[Name] = @p_SandboxName
 
-		;IF ( @SandboxId IS NULL )
-			THROW 50000, 'mem.usp_PromoteRecord: @p_SandboxName names no sandbox.', 1
+			;IF ( @SandboxId IS NULL )
+				THROW 50000, 'mem.usp_PromoteRecord: name @p_ProjectKey, or @p_SandboxName naming a sandbox with @p_Segment.', 1
 
-		/* Find the One Private Live Row in the Sandbox's Store. */
+			;SELECT	@SourceStoreId = S.[StoreId]
+			FROM	mem.Store S
+			WHERE	S.[SandboxId] = @SandboxId
+					AND S.[Tier] = 'project'
+					AND S.[Segment] = NULLIF(LTRIM(RTRIM(@p_Segment)), '')
+		END
+
+		/* Find the One Live Row of That Name in the Store. */
 		;SELECT	 @MatchCount	= COUNT(*)
 				,@RecordId		= MIN(R.[RecordId])
 		FROM	mem.Record R
-				INNER JOIN mem.Store S
-					ON S.[StoreId] = R.[StoreId]
-		WHERE	S.[SandboxId] = @SandboxId
-				AND S.[Tier] = @Tier
-				AND EXISTS (	SELECT S.[Segment]
-								INTERSECT
-								SELECT NULLIF(LTRIM(RTRIM(@p_Segment)), '')	)
-				AND R.[Name] = LTRIM(RTRIM(@p_Name))
-				AND R.[Visibility] = 'private'
+		WHERE	R.[StoreId] = @SourceStoreId
+				AND R.[Name] = @Name
+				AND R.[IsArchived] = @False
 				AND R.[DeletedDt] IS NULL
 
 		;IF ( @MatchCount = 0 )
-			THROW 50000, 'mem.usp_PromoteRecord: no private live record matches the sandbox, tier, segment and name given.', 1
+			THROW 50000, 'mem.usp_PromoteRecord: no live project record matches the store and name given.', 1
 
 		;IF ( @MatchCount > 1 )
-			THROW 50000, 'mem.usp_PromoteRecord: more than one private live record matches; promote by a unique name.', 1
+			THROW 50000, 'mem.usp_PromoteRecord: more than one live project record matches; promote by a unique name.', 1
 
-		/* Flip the Row. */
-		;UPDATE R
-		SET		 [Visibility]	= 'shared'
-				,[UpdatedDt]	= SYSDATETIMEOFFSET()
+		;SELECT	@FileKey = R.[FileKey]
 		FROM	mem.Record R
 		WHERE	R.[RecordId] = @RecordId
 
+		/* Open a Transaction Unless the Caller Holds One. */
+		;IF ( @EntryTranCount = 0 )
+			BEGIN TRANSACTION
+
 		/****************************************************************************************
-			DATASET 1: THE PROMOTED ROW.
+			RESOLVE THE OPERATOR STORE AND THE ROW THE COPY IS WRITTEN INTO.
 		****************************************************************************************/
-		;SELECT	[Json] = (	SELECT	 [recordId]		= R.[RecordId]
-									,[name]			= R.[Name]
-									,[visibility]	= R.[Visibility]
+		;IF NOT EXISTS (	SELECT	NULL
+							FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
+							WHERE	S.[Tier] = 'operator'	)
+		BEGIN
+			;INSERT INTO mem.Store (
+				 [SandboxId]
+				,[Tier]
+				,[Segment]	)
+			SELECT	 [SandboxId]	= NULL
+					,[Tier]			= 'operator'
+					,[Segment]		= NULL
+		END
+
+		;SELECT	@OperatorStoreId = S.[StoreId]
+		FROM	mem.Store S
+		WHERE	S.[Tier] = 'operator'
+
+		/* A Live Operator Row of the Same Name or File Key is Refused; a Deleted One Holding the File Key is Reused. */
+		;IF EXISTS (	SELECT	NULL
+						FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
+						WHERE	R.[StoreId] = @OperatorStoreId
+								AND R.[DeletedDt] IS NULL
+								AND (	R.[Name] = @Name
+										OR R.[FileKey] = @FileKey	)	)
+			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that name or file key; retire or rename it first.', 1
+
+		;SELECT	@TargetRecordId = R.[RecordId]
+		FROM	mem.Record R
+		WHERE	R.[StoreId] = @OperatorStoreId
+				AND R.[FileKey] = @FileKey
+
+		/****************************************************************************************
+			COPY THE RECORD AND ITS EMBEDDINGS, THEN ARCHIVE THE PROJECT ROW.
+		****************************************************************************************/
+		;IF ( @TargetRecordId IS NULL )
+		BEGIN
+			;INSERT INTO mem.Record (
+				 [StoreId]
+				,[Name]
+				,[FileKey]
+				,[Description]
+				,[Body]
+				,[BodyHash]
+				,[FileModifiedDt]
+				,[Machine]
+				,[Tags]
+				,[SupersedesName]
+				,[Author]
+				,[IsArchived]
+				,[Space]
+				,[Triggers]
+				,[Anchors]
+				,[IsPinned]
+				,[CreatedOn]
+				,[Origin]
+				,[WrittenBySandboxId]
+				,[StampId]
+				,[Visibility]
+				,[LastPublishedBySandboxId]
+				,[LastPublishedDt]
+				,[CreatedDt]
+				,[UpdatedDt]				)
+			SELECT	 [StoreId]					= @OperatorStoreId
+					,[Name]						= R.[Name]
+					,[FileKey]					= R.[FileKey]
+					,[Description]				= R.[Description]
+					,[Body]						= R.[Body]
+					,[BodyHash]					= R.[BodyHash]
+					,[FileModifiedDt]			= R.[FileModifiedDt]
+					,[Machine]					= R.[Machine]
+					,[Tags]						= R.[Tags]
+					,[SupersedesName]			= R.[SupersedesName]
+					,[Author]					= R.[Author]
+					,[IsArchived]				= @False
+					,[Space]					= R.[Space]
+					,[Triggers]					= R.[Triggers]
+					,[Anchors]					= R.[Anchors]
+					,[IsPinned]					= R.[IsPinned]
+					,[CreatedOn]				= R.[CreatedOn]
+					,[Origin]					= R.[Origin]
+					,[WrittenBySandboxId]		= R.[WrittenBySandboxId]
+					,[StampId]					= NULL
+					,[Visibility]				= 'shared'
+					,[LastPublishedBySandboxId]	= R.[LastPublishedBySandboxId]
+					,[LastPublishedDt]			= R.[LastPublishedDt]
+					,[CreatedDt]				= @Now
+					,[UpdatedDt]				= @Now
+			FROM	mem.Record R
+			WHERE	R.[RecordId] = @RecordId
+
+			;SET @TargetRecordId = SCOPE_IDENTITY()
+		END ELSE BEGIN
+			/* The Deleted Row's Own Vectors Belong to the Text Being Replaced. */
+			;DELETE E
+			FROM	mem.Embedding E
+			WHERE	E.[RecordId] = @TargetRecordId
+
+			;UPDATE T
+			SET		 [Name]						= R.[Name]
+					,[Description]				= R.[Description]
+					,[Body]						= R.[Body]
+					,[BodyHash]					= R.[BodyHash]
+					,[FileModifiedDt]			= R.[FileModifiedDt]
+					,[Machine]					= R.[Machine]
+					,[Tags]						= R.[Tags]
+					,[SupersedesName]			= R.[SupersedesName]
+					,[Author]					= R.[Author]
+					,[IsArchived]				= @False
+					,[Space]					= R.[Space]
+					,[Triggers]					= R.[Triggers]
+					,[Anchors]					= R.[Anchors]
+					,[IsPinned]					= R.[IsPinned]
+					,[CreatedOn]				= R.[CreatedOn]
+					,[Origin]					= R.[Origin]
+					,[WrittenBySandboxId]		= R.[WrittenBySandboxId]
+					,[StampId]					= NULL
+					,[Visibility]				= 'shared'
+					,[LastPublishedBySandboxId]	= R.[LastPublishedBySandboxId]
+					,[LastPublishedDt]			= R.[LastPublishedDt]
+					,[DeletedDt]				= NULL
+					,[UpdatedDt]				= @Now
+			FROM	mem.Record T
+					INNER JOIN mem.Record R
+						ON R.[RecordId] = @RecordId
+			WHERE	T.[RecordId] = @TargetRecordId
+		END
+
+		/* Copy the Vectors, so the Operator Row Ranks on the Same Text at Once. */
+		;INSERT INTO mem.Embedding (
+			 [RecordId]
+			,[ChunkIndex]
+			,[ModelIdentity]
+			,[ChunkOffset]
+			,[ChunkLength]
+			,[Vector]
+			,[Dimensions]
+			,[EmbeddedDt]		)
+		SELECT	 [RecordId]			= @TargetRecordId
+				,[ChunkIndex]		= E.[ChunkIndex]
+				,[ModelIdentity]	= E.[ModelIdentity]
+				,[ChunkOffset]		= E.[ChunkOffset]
+				,[ChunkLength]		= E.[ChunkLength]
+				,[Vector]			= E.[Vector]
+				,[Dimensions]		= E.[Dimensions]
+				,[EmbeddedDt]		= E.[EmbeddedDt]
+		FROM	mem.Embedding E
+		WHERE	E.[RecordId] = @RecordId
+
+		/* Archive the Project Row. */
+		;UPDATE R
+		SET		 [IsArchived]	= @True
+				,[UpdatedDt]	= @Now
+		FROM	mem.Record R
+		WHERE	R.[RecordId] = @RecordId
+
+		/* Commit Only a Transaction This Procedure Opened. */
+		;IF ( @EntryTranCount = 0 )
+			COMMIT TRANSACTION
+
+		/****************************************************************************************
+			DATASET 1: THE OPERATOR ROW AND THE ARCHIVED PROJECT ROW.
+		****************************************************************************************/
+		;SELECT	[Json] = (	SELECT	 [recordId]			= R.[RecordId]
+									,[name]				= R.[Name]
+									,[tier]				= 'operator'
+									,[visibility]		= R.[Visibility]
+									,[archivedRecordId]	= @RecordId
 							FROM	mem.Record R
-							WHERE	R.[RecordId] = @RecordId
+							WHERE	R.[RecordId] = @TargetRecordId
 							FOR JSON PATH, WITHOUT_ARRAY_WRAPPER	)
 	END TRY
 	BEGIN CATCH
+		/* Unwind Only a Transaction This Procedure Opened; a Caller's is the Caller's to Unwind. */
+		/* A ROLLBACK Inside an INSERT-EXEC Raises Error 3915 in Place of the Server's Own Error Text. */
+		;IF ( XACT_STATE() <> 0 AND @EntryTranCount = 0 )
+			ROLLBACK TRANSACTION
+
+		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire; the Guard Above Unwinds Nothing a Caller Opened, so This Loop Stands as a Defensive No-Op. */
+		;WHILE ( @@TRANCOUNT < @EntryTranCount )
+			BEGIN TRANSACTION
+
+		/* Re-Raise so the Caller Never Reads Success From a Failed Write. */
 		;THROW
 	END CATCH
 END

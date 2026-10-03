@@ -23,6 +23,7 @@ GO
 	,@p_SupersededMultiplier	FLOAT			= 0.5
 	,@p_Segment					NVARCHAR(400)	= NULL
 	,@p_Tag						NVARCHAR(200)	= NULL
+	,@p_ProjectKey				NVARCHAR(400)	= NULL
 )
 AS
 BEGIN	-- PROCEDURE
@@ -32,9 +33,26 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Search
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.2
+		VERSION:	v1.3
 	*********************************************************************************************
-		NOTES:		v1.2 - 09/25/2026 - SCOTT APPLEFELD
+		NOTES:		v1.3 - 10/03/2026 - SCOTT APPLEFELD
+							@p_ProjectKey narrows the visible set to one project's rows,
+							those of the fleet store carrying that key, and the rows of the
+							type and operator tiers, so a search from a project scope never
+							ranks another project's records. @p_Segment stays the version 6
+							scope a client not yet updated still sends: it keeps a project
+							row whose store names that segment and which is the caller's
+							own or shared, which is the answer the same call drew from
+							version 6's visible set. A call naming both is refused, since
+							no row sits in both kinds of store. With neither named, the
+							search ranks every row mem.udf_VisibleRecords serves, which is
+							every undeleted row. The digest input takes the project key
+							after the tag, empty where NULL, so a call that names none
+							logs the digest a v1.2 call logs. A row a session wrote
+							through mem.usp_PutRecord names its writing sandbox as its
+							[sandbox].
+
+					v1.2 - 09/25/2026 - SCOTT APPLEFELD
 							@p_Segment and @p_Tag narrow the visible set before any
 							candidate list reads it, so a scoped call ranks its own
 							population rather than filtering a ranking chosen over every
@@ -156,6 +174,7 @@ BEGIN	-- PROCEDURE
 		,[Segment]					NVARCHAR(400)	NULL
 		,[StoreSandboxId]			INT				NULL
 		,[LastPublishedBySandboxId]	INT				NULL
+		,[WrittenBySandboxId]		INT				NULL
 		,[Name]						NVARCHAR(200)	NOT NULL
 		,[FileKey]					NVARCHAR(400)	NOT NULL
 		,[Description]				NVARCHAR(MAX)	NOT NULL
@@ -190,20 +209,24 @@ BEGIN	-- PROCEDURE
 		;IF ( @p_Limit IS NULL OR @p_Limit <= 0 )
 			THROW 50000, 'mem.usp_Search: @p_Limit must be greater than zero.', 1
 
+		;IF ( @p_Segment IS NOT NULL AND @p_ProjectKey IS NOT NULL )
+			THROW 50000, 'mem.usp_Search: name @p_ProjectKey or the version 6 @p_Segment, not both.', 1
+
 		/* Serve an Oversized Request at the Ceiling. */
 		;SELECT @Limit = CASE WHEN @p_Limit > @MaxLimit THEN @MaxLimit ELSE @p_Limit END
 
-		/* The Digest Covers the Text, or the Vector's Text for a Vector-Only Search, Then the Segment and the Tag With No Separator. */
+		/* The Digest Covers the Text, or the Vector's Text for a Vector-Only Search, Then the Segment, the Tag and the Project Key With No Separator. */
 		/* An Unscoped Call's Digest is the Text's Alone; a Scoped Call's Takes In Its Scope, but Does Not Tell Text From Scope. */
 		;SELECT @Digest = CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', COALESCE(@p_QueryText, CAST(@p_QueryVector AS NVARCHAR(MAX)), N'')
 															+ COALESCE(@p_Segment, N'')
-															+ COALESCE(@p_Tag, N'')), 2)
+															+ COALESCE(@p_Tag, N'')
+															+ COALESCE(@p_ProjectKey, N'')), 2)
 
 		/* Resolve the Caller Once; an Unmapped Login Fills Nothing Below. */
 		;SELECT	@SandboxId = CS.[SandboxId]
 		FROM	mem.CallerSandbox() CS
 
-		/* Fill the Visible Set, Narrowed to the Named Segment and Tag Inside It. */
+		/* Fill the Visible Set, Narrowed to the Named Project Key or Segment and to the Tag Inside It. */
 		/* The CASE Hands OPENJSON Only a [Tags] That ISJSON Read as an Array, Since a Bare AND Fixes No Evaluation Order. */
 		;INSERT INTO #Visible (
 			 [RecordId]
@@ -212,6 +235,7 @@ BEGIN	-- PROCEDURE
 			,[Segment]
 			,[StoreSandboxId]
 			,[LastPublishedBySandboxId]
+			,[WrittenBySandboxId]
 			,[Name]
 			,[FileKey]
 			,[Description]
@@ -224,6 +248,7 @@ BEGIN	-- PROCEDURE
 				,[Segment]					= V.[Segment]
 				,[StoreSandboxId]			= V.[StoreSandboxId]
 				,[LastPublishedBySandboxId]	= V.[LastPublishedBySandboxId]
+				,[WrittenBySandboxId]		= V.[WrittenBySandboxId]
 				,[Name]						= V.[Name]
 				,[FileKey]					= V.[FileKey]
 				,[Description]				= V.[Description]
@@ -233,7 +258,13 @@ BEGIN	-- PROCEDURE
 		FROM	mem.udf_VisibleRecords(@SandboxId) V
 		WHERE	(	@p_Segment IS NULL
 					OR (	V.[Tier] = 'project'
-							AND V.[Segment] = @p_Segment	)	)
+							AND V.[Segment] = @p_Segment
+							AND (	V.[StoreSandboxId] = @SandboxId
+									OR V.[Visibility] = 'shared'	)	)	)
+				AND (	@p_ProjectKey IS NULL
+						OR (	V.[Tier] = 'project'
+								AND V.[ProjectKey] = @p_ProjectKey	)
+						OR V.[Tier] IN ('type', 'operator')	)
 				AND (	@p_Tag IS NULL
 						OR EXISTS (	SELECT	NULL
 									FROM	mem.Record R
@@ -456,7 +487,7 @@ BEGIN	-- PROCEDURE
 					,[fileKey]				= V.[FileKey]
 					,[tier]					= V.[Tier]
 					,[segment]				= V.[Segment]
-					,[sandbox]				= COALESCE(SS.[Name], PS.[Name])
+					,[sandbox]				= COALESCE(SS.[Name], WS.[Name], PS.[Name])
 					,[visibility]			= V.[Visibility]
 					,[description]			= V.[Description]
 					,[archived]				= V.[IsArchived]
@@ -475,6 +506,8 @@ BEGIN	-- PROCEDURE
 						ON LE.[RecordId] = W.[RecordId]
 					LEFT JOIN mem.Sandbox SS
 						ON SS.[SandboxId] = V.[StoreSandboxId]
+					LEFT JOIN mem.Sandbox WS
+						ON WS.[SandboxId] = V.[WrittenBySandboxId]
 					LEFT JOIN mem.Sandbox PS
 						ON PS.[SandboxId] = V.[LastPublishedBySandboxId]
 			ORDER BY W.[RecordRank]

@@ -1,6 +1,6 @@
 # The memory database becomes the record and memq the one door, so a memory written anywhere is read everywhere and nothing syncs through git
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-10-02
 
