@@ -21,7 +21,7 @@
 //
 // THE POLICY LIVES HERE AND NOT IN THE CLIENT. The fetch limit, the two floors,
 // the budget edge and the retry delay are this module's constants. The shared
-// client holds no caller's policy, so a coverage check that waits twenty
+// client holds no caller's policy, so a promises check that waits thirty
 // seconds and this judge that must answer inside a session start share one
 // wire and two policies.
 //
