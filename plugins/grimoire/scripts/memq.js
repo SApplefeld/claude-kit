@@ -1892,9 +1892,10 @@ function configValue(text) {
 // printed line, so its grammar is closed: a host of letters, digits, dots and
 // hyphens, and path segments of letters, digits and `._~%+-`, none of them a
 // dot segment. A local path, a `file:` URL and a drive letter name no host and
-// answer null. The whole key, with its `remote:` prefix, fits the 200
-// characters a database call carries a scalar in.
-const REMOTE_KEY_CAP = 200 - 'remote:'.length;
+// answer null. The whole key, with its `remote:` prefix, fits the 400
+// characters a store's project key holds, the width the adoption call
+// carries it at.
+const REMOTE_KEY_CAP = 400 - 'remote:'.length;
 function remoteKeyFromUrl(url) {
     if (typeof url !== 'string') return null;
     const text = url.trim();

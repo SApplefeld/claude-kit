@@ -163,7 +163,7 @@ function parseCall(batch) {
     assert.ok(exec, 'the batch calls a procedure: ' + batch);
     const parameters = {};
     for (const m of exec[2].matchAll(/(@p_\w+) = (@v\d+)/g)) {
-        const scalar = new RegExp('^;DECLARE ' + m[2] + ' NVARCHAR\\(200\\) = N\'(.*)\'$', 'm').exec(batch);
+        const scalar = new RegExp('^;DECLARE ' + m[2] + ' NVARCHAR\\(\\d+\\) = N\'(.*)\'$', 'm').exec(batch);
         parameters[m[1]] = scalar ? scalar[1] : payloadOf(batch, m[2]);
     }
     return { procedure: exec[1], parameters };
@@ -5848,4 +5848,24 @@ test('db-sync under the marker against an unreachable host exits non-zero, names
         rmDefaultStore(store);
         try { fs.rmSync(folder, { recursive: true, force: true }); } catch { /* best effort */ }
     }
+});
+
+// A flattened working directory runs long, and its path: key rides the
+// adoption call whole, at the 400 characters a project key holds.
+test('an adoption carries a key of about 300 characters whole, and refuses one past 400 without a spawn', () => {
+    const host = fakeHost();
+    const fromKey = 'path:' + 'D--' + 'a-long-folder-'.repeat(21);
+    const toKey = 'remote:example.test/owner/repo';
+    assert.ok(fromKey.length > 290 && fromKey.length <= 400, String(fromKey.length));
+    const adopted = db.adoptProjectStore({ config: config(), deps: { runBatch: host.runBatch }, fromKey, toKey });
+    assert.strictEqual(adopted.ok, true, JSON.stringify(adopted));
+    const sent = host.calls.find((c) => c.procedure === 'usp_AdoptProjectStore');
+    assert.deepStrictEqual(sent.parameters, { '@p_FromKey': fromKey, '@p_ToKey': toKey });
+
+    // The control: past 400, nothing is spawned and the refusal names the call.
+    const quiet = fakeHost();
+    const refused = db.adoptProjectStore({ config: config(), deps: { runBatch: quiet.runBatch },
+        fromKey: 'path:' + 'x'.repeat(400), toKey });
+    assert.deepStrictEqual({ ok: refused.ok, standDown: refused.standDown }, { ok: false, standDown: 'refused' }, JSON.stringify(refused));
+    assert.deepStrictEqual(quiet.calls, []);
 });

@@ -13,8 +13,8 @@ GO
 	/*********************************************************************************************
 	 PARAMETER NAME		DATATYPE		DEFAULT
 	*********************************************************************************************/
-	 @p_FromKey			NVARCHAR(400)	= NULL
-	,@p_ToKey			NVARCHAR(400)	= NULL
+	 @p_FromKey			NVARCHAR(4000)	= NULL
+	,@p_ToKey			NVARCHAR(4000)	= NULL
 )
 AS
 BEGIN	-- PROCEDURE
@@ -31,7 +31,9 @@ BEGIN	-- PROCEDURE
 							folder name, @p_FromKey, which opens path:, into the fleet store
 							keyed by its git remote, @p_ToKey, which opens remote:, creating
 							that store where absent. Any other pair of keys is refused and
-							nothing is written. The caller's sandbox comes from
+							nothing is written, and so is a key longer than the 400
+							characters a store's key holds, which the parameters take whole
+							so that no longer key is cut to name another store. The caller's sandbox comes from
 							mem.CallerSandbox() and an unmapped login is refused.
 
 							A row moves by its [StoreId] alone, so its embeddings and its
@@ -70,8 +72,8 @@ BEGIN	-- PROCEDURE
 			,@Now				DATETIMEOFFSET	= SYSDATETIMEOFFSET()
 			,@SandboxId			INT				= NULL
 			,@LockResult		INT				= NULL
-			,@FromKey			NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_FromKey)), '')
-			,@ToKey				NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_ToKey)), '')
+			,@FromKey			NVARCHAR(4000)	= NULLIF(LTRIM(RTRIM(@p_FromKey)), '')
+			,@ToKey				NVARCHAR(4000)	= NULLIF(LTRIM(RTRIM(@p_ToKey)), '')
 			,@SourceStoreId		INT				= NULL
 			,@TargetStoreId		INT				= NULL
 			,@RecordId			BIGINT			= NULL
@@ -111,6 +113,10 @@ BEGIN	-- PROCEDURE
 				OR LEN(@FromKey) < 6
 				OR LEN(@ToKey) < 8	)
 			THROW 50000, 'mem.usp_AdoptProjectStore: @p_FromKey must open path: and @p_ToKey must open remote:.', 1
+
+		/* A Key Longer Than a Store Holds Names No Store; Cut to 400 It Would Name Another. */
+		;IF ( LEN(@FromKey) > 400 OR LEN(@ToKey) > 400 )
+			THROW 50000, 'mem.usp_AdoptProjectStore: a project key holds at most 400 characters.', 1
 
 		/* Open a Transaction Unless the Caller Holds One. */
 		;IF ( @EntryTranCount = 0 )

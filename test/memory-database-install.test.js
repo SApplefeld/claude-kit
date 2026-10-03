@@ -3349,6 +3349,34 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             }
         });
 
+        await t.test('a version 6 republish keeps the archive usp_PromoteRecord set on an older-store row', () => {
+            const record = { tier: 'project', segment: 'seg-v6promote-' + runId, name: 'v6promote-' + runId, fileKey: 'v6promote-' + runId + '.md',
+                description: 'a version 6 publish', body: 'b1', bodyHash: 'hp1', fileModified: '2026-09-17T12:00:00Z', archived: false };
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const first = call('usp_UpsertRecords', '@p_Records = ' + lit(JSON.stringify([record])));
+                assert.ok(!first.error && first.value.added === 1, JSON.stringify(first));
+            } finally {
+                mapConnection(null);
+            }
+            const promoted = callAs('kit_curator', 'usp_PromoteRecord',
+                paramsOf({ SandboxName: 'SCOTT-CLAUDE', Segment: record.segment, Name: record.name }));
+            assert.ok(!promoted.error, JSON.stringify(promoted.error));
+            const id = promoted.value.archivedRecordId;
+            assert.strictEqual(recordState(id).IsArchived, true, 'the promotion archived the older-store row');
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const again = call('usp_UpsertRecords', '@p_Records = ' + lit(JSON.stringify([{ ...record, body: 'b2', bodyHash: 'hp2',
+                    fileModified: '2026-09-18T12:00:00Z' }])));
+                assert.ok(!again.error, JSON.stringify(again.error));
+                assert.strictEqual(again.value.changed, 1, 'the republish wrote the row: ' + JSON.stringify(again.value));
+            } finally {
+                mapConnection(null);
+            }
+            const after = recordState(id);
+            assert.deepStrictEqual([after.Body, after.IsArchived], ['b2', true], 'the new body landed and the archive stood');
+        });
+
         // The migration by republish: a version 7 upsert carries each project
         // record's key and lands it in that key's fleet store, moving the
         // caller's older row. Every name and key below is this run's own.
@@ -3561,6 +3589,13 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                     const refused = call('usp_AdoptProjectStore', paramsOf({ FromKey: a, ToKey: b }));
                     assert.ok(refused.error && refused.error.number === 50000 && /path:.*remote:/.test(refused.error.message),
                         a + ' into ' + b + ': ' + JSON.stringify(refused));
+                }
+                // A key longer than a store holds is refused, never cut to 400
+                // characters and read as some other key.
+                for (const [a, b] of [[from + 'x'.repeat(401), to], [from, to + 'x'.repeat(401)]]) {
+                    const refused = call('usp_AdoptProjectStore', paramsOf({ FromKey: a, ToKey: b }));
+                    assert.ok(refused.error && refused.error.number === 50000 && /400/.test(refused.error.message),
+                        'an over-length key: ' + JSON.stringify(refused.error || refused.value));
                 }
             } finally {
                 mapConnection(null);

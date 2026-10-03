@@ -57,10 +57,12 @@ BEGIN	-- PROCEDURE
 
 							A publish never undoes a database verb. A row whose [Origin] is
 							memq is never written, and neither is a fleet row carrying the
-							deleted mark: both answer held. On a row in a store with no
-							sandbox, the archived flag is set by a publish and never
-							cleared, so an archive made by mem.usp_ArchiveRecord or by
-							mem.usp_PromoteRecord stands. A NULL field among the six new
+							deleted mark: both answer held. On a row in any store, the
+							archived flag is set by a publish and never cleared, so an
+							archive made by mem.usp_ArchiveRecord or by
+							mem.usp_PromoteRecord, on a fleet row or an older store's row,
+							stands, and a file moved out of its archive folder no longer
+							takes its row out of the archive. A NULL field among the six new
 							ones keeps its column, which is how a version 6 caller leaves
 							them alone.
 
@@ -368,7 +370,7 @@ BEGIN	-- PROCEDURE
 		/****************************************************************************************
 			RESOLVE EACH ROW'S EXISTING RECORD AND DECIDE WHAT THE BATCH DOES TO IT.
 		****************************************************************************************/
-		/* A Row in a Store With No Sandbox Keeps an Archive a Database Verb Set: a Publish Sets the Flag and Never Clears It. */
+		/* A Row Keeps an Archive a Database Verb Set, mem.usp_PromoteRecord's on an Older Store's Row Among Them: a Publish Sets the Flag and Never Clears It. */
 		;UPDATE I
 		SET		[IsArchived] = @True
 		FROM	@Incoming I
@@ -376,7 +378,6 @@ BEGIN	-- PROCEDURE
 					ON	R.[StoreId] = I.[StoreId]
 					AND R.[FileKey] = I.[FileKey]
 		WHERE	I.[IsFleetProject] = @False
-				AND I.[StoreSandboxId] IS NULL
 				AND R.[IsArchived] = @True
 
 		/* Held Means a Row a Database Verb Wrote or Deleted in a Store With No Sandbox, Which a Publish Never Writes. */

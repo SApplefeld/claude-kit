@@ -711,10 +711,16 @@ function payloadCallMs(wantMs) {
 // string is a literal like any other, N'', and it is what a curator verb sends
 // for a segment a tier does not have; the model identity is held non-empty at
 // the config read rather than here.
-function textLiteral(variable, value) {
-    if (typeof value !== 'string' || value.length > 200) return null;
+//
+// The width is 200 for every call but one: the adoption's two project keys,
+// which a store holds at 400, ride at that width, under the same screen.
+const TEXT_LITERAL_WIDTH = 200;
+const PROJECT_KEY_WIDTH = 400;
+function textLiteral(variable, value, width) {
+    const cap = width === undefined ? TEXT_LITERAL_WIDTH : width;
+    if (typeof value !== 'string' || value.length > cap) return null;
     if (!/^[\x20-\x7E]*$/.test(value) || value.includes("'")) return null;
-    return ';DECLARE ' + variable + ' NVARCHAR(200) = N\'' + value + '\'';
+    return ';DECLARE ' + variable + ' NVARCHAR(' + cap + ') = N\'' + value + '\'';
 }
 
 // The tag a result line carries. Every answer is found by its tag rather than
@@ -895,7 +901,7 @@ function callProcedure(config, procedure, parameters, options) {
         index += 1;
         const variable = '@v' + index;
         if (typeof value === 'string') {
-            const literal = textLiteral(variable, value);
+            const literal = textLiteral(variable, value, opts.textWidth);
             if (literal === null) {
                 // A refusal rather than an outage, and no spawn is made at all:
                 // the payload this client composed is one it will not write into
@@ -3318,7 +3324,7 @@ function adoptProjectStore(options) {
     if (!loaded.ok) return { ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path };
     const sent = callProcedure(loaded.config, 'usp_AdoptProjectStore',
         { '@p_FromKey': String(opts.fromKey), '@p_ToKey': String(opts.toKey) },
-        { deps: opts.deps, budgetMs: UPSERT_TIMEOUT_MS });
+        { deps: opts.deps, budgetMs: UPSERT_TIMEOUT_MS, textWidth: PROJECT_KEY_WIDTH });
     if (!sent.ok) {
         if (sent.cause !== 'refused') return { ok: false, standDown: 'unreachable', detail: sent.detail };
         return {
