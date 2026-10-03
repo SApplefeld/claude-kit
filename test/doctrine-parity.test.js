@@ -6395,3 +6395,25 @@ test('every passage-pinned ledger entry quotes its source verbatim', () => {
             rel + ': the verbatim comparison did not catch a perturbed passage, so its silence proves nothing');
     }
 });
+
+// The peer-sessions blocker and chain-handoff sentences follow the role skill's
+// delegation model. The blocker sentence lets a relay discharge a blocker only
+// on the acts that model covers inside the plan the seat names, sends every
+// other act the stop-for-a-yes test gates to a warranted channel, and bars a
+// relay from changing a plan's scope over the documents that guard it. The chain-handoff
+// sentence keeps the documents hold. A rewrite that widens the relay or drops
+// the hold leaves the role skill narrower than the rule a worker acts on.
+test('the peer-sessions blocker and chain-handoff sentences keep their delegation bounds', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+    for (const [phrase, what] of [
+        ["discharges a blocker on one of the three acts the role skill's delegation model covers inside the plan the seat names", 'the relay discharge bounded to the covered acts in the named plan'],
+        ["Every other act inside the doctrine's stop-for-a-yes test, or under the role skill's delegation exclusions, takes the operator's yes on a warranted channel, and the permission files take no one's", 'the warranted-channel route for every other gated act'],
+        ["A relay never changes a plan's scope over hooks, guards, permission or security documents, or its `## Dispatch Authorization` section", 'the relay scope bar'],
+        ["A chain-handed plan reaching hooks, guards, permission or security documents still holds for the operator's word", 'the chain-handoff documents hold'],
+    ]) {
+        assert.ok(body.includes(phrase),
+            'peer-sessions/SKILL.md no longer carries ' + what + ' ("' + phrase
+            + '"), so a relay can discharge or hand on more than the role skill covers');
+    }
+});

@@ -91,7 +91,7 @@
   "test/doctor-kit-exposure.test.js": 118,
   "test/doctor-payload.test.js": 638,
   "test/doctor-rename-migration.test.js": 544,
-  "test/doctrine-parity.test.js": 6397,
+  "test/doctrine-parity.test.js": 6419,
   "test/doctrine-refresh.test.js": 694,
   "test/embedder-install.test.js": 733,
   "test/git-guard-parity.test.js": 796,
