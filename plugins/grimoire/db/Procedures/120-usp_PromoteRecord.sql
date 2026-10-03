@@ -33,7 +33,11 @@ BEGIN	-- PROCEDURE
 							Moves one live project record into the fleet's operator store.
 							The record is named by its project key and its name, or, in the
 							version 6 shape, by the sandbox that owns its older store, that
-							store's segment and its name. The operator store takes a copy of
+							store's segment and its name. The name resolves to the newest
+							undeleted row of it in the store, as in every procedure that
+							resolves a record by name, so two rows of one name no longer
+							refuse; where that row is archived, nothing is live to move and
+							the call is refused. The operator store takes a copy of
 							every field and every embedding, as a shared row, and the
 							project row is archived, never deleted. A name the operator
 							store already holds live is refused rather than
@@ -75,7 +79,7 @@ BEGIN	-- PROCEDURE
 			,@OperatorStoreId	INT				= NULL
 			,@RecordId			BIGINT			= NULL
 			,@TargetRecordId	BIGINT			= NULL
-			,@MatchCount		INT				= 0
+			,@IsArchived		BIT				= NULL
 			,@FileKey			NVARCHAR(400)	= NULL
 			,@Name				NVARCHAR(200)	= NULLIF(LTRIM(RTRIM(@p_Name)), '')
 			,@ProjectKey		NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_ProjectKey)), '')
@@ -124,20 +128,18 @@ BEGIN	-- PROCEDURE
 		;IF ( @EntryTranCount = 0 )
 			BEGIN TRANSACTION
 
-		/* Find the One Live Row of That Name in the Store, Under a Range Lock so a Concurrent Move of it Queues. */
-		;SELECT	 @MatchCount	= COUNT(*)
-				,@RecordId		= MIN(R.[RecordId])
+		/* The Newest Undeleted Row of That Name, Archived or Not, Under a Range Lock so a Concurrent Move of it Queues. */
+		;SELECT	TOP ( 1 )
+				 @RecordId		= R.[RecordId]
+				,@IsArchived	= R.[IsArchived]
 		FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
 		WHERE	R.[StoreId] = @SourceStoreId
 				AND R.[Name] = @Name
-				AND R.[IsArchived] = @False
 				AND R.[DeletedDt] IS NULL
+		ORDER BY R.[RecordId] DESC
 
-		;IF ( @MatchCount = 0 )
+		;IF ( @RecordId IS NULL OR @IsArchived = @True )
 			THROW 50000, 'mem.usp_PromoteRecord: no live project record matches the store and name given.', 1
-
-		;IF ( @MatchCount > 1 )
-			THROW 50000, 'mem.usp_PromoteRecord: more than one live project record matches; promote by a unique name.', 1
 
 		;SELECT	@FileKey = R.[FileKey]
 		FROM	mem.Record R
@@ -146,7 +148,7 @@ BEGIN	-- PROCEDURE
 		/****************************************************************************************
 			RESOLVE THE OPERATOR STORE AND THE ROW THE COPY IS WRITTEN INTO.
 		****************************************************************************************/
-		/* The Operator Store Seeks its Unique Index by Equality. */
+		/* The Operator Store, Named by Equality on its Key. */
 		;SELECT	@OperatorStoreId = S.[StoreId]
 		FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
 		WHERE	S.[SandboxId] IS NULL
@@ -173,14 +175,14 @@ BEGIN	-- PROCEDURE
 						WHERE	R.[StoreId] = @OperatorStoreId
 								AND R.[Name] = @Name
 								AND R.[DeletedDt] IS NULL	)
-			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that name or file key; retire or rename it first.', 1
+			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that name; retire or rename it first.', 1
 
 		;IF EXISTS (	SELECT	NULL
 						FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
 						WHERE	R.[StoreId] = @OperatorStoreId
 								AND R.[FileKey] = @FileKey
 								AND R.[DeletedDt] IS NULL	)
-			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that name or file key; retire or rename it first.', 1
+			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that file key under another name; retire or rename it first.', 1
 
 		;SELECT	@TargetRecordId = R.[RecordId]
 		FROM	mem.Record R

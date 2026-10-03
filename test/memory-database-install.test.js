@@ -2889,7 +2889,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 const state = recordState(putIds.stamped);
                 assert.deepStrictEqual([state.IsArchived, state.DeletedDt], [true, null]);
                 assert.ok(!indexed(), 'an archived record leaves the index');
-                assert.strictEqual(getStamped()[0].archived, true, 'and is still read by name, marked archived');
+                assert.deepStrictEqual(getStamped(), [], 'a name whose newest row is archived is answered with no row');
 
                 const deleted = call('usp_ArchiveRecord', archiveParams({ Delete: 1 }));
                 assert.ok(!deleted.error, JSON.stringify(deleted.error));
@@ -3085,6 +3085,59 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             }
         });
 
+        await t.test('every procedure that resolves a name addresses the newest undeleted row of it, and a repeated archive changes nothing', () => {
+            const name = 'one-name-' + runId;
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const first = put({ Tier: 'project', ProjectKey: keyOne, Name: name, Description: 'older row', Body: 'older body' });
+                assert.ok(!first.error && first.value.status === 'stored', JSON.stringify(first));
+                const older = first.value.recordId;
+                // A second undeleted row of the name in the same store, newer,
+                // under its own file key since the file key is unique in a store.
+                const seeded = sqlOk([
+                    'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [Origin])',
+                    "SELECT R.[StoreId], R.[Name], N'one-name-copy.md', N'newer row', N'newer body', 'hn', 'shared', 'memq' FROM mem.Record R WHERE R.[RecordId] = " + older + ';',
+                    "SELECT 'kittest-id=' + CAST(SCOPE_IDENTITY() AS VARCHAR(20));"
+                ].join('\n'));
+                const newer = Number(one(seeded, 'id'));
+                assert.ok(newer > older);
+                const olderBefore = recordState(older);
+                const named = paramsOf({ Tier: 'project', ProjectKey: keyOne, Name: name });
+                const get = () => rowsAs(null, 'usp_GetRecord', named).rows;
+
+                assert.deepStrictEqual(get().map((r) => r.recordId), [newer], 'get answers the newest row');
+                const replaced = put({ Tier: 'project', ProjectKey: keyOne, Name: name, Body: 'replaced body', Replace: 1 });
+                assert.strictEqual(replaced.value.recordId, newer, 'put --replace writes the newest row: ' + JSON.stringify(replaced));
+                const anchored = put({ Tier: 'project', ProjectKey: keyOne, Name: name, Anchors: '["one.js"]', Replace: 1 });
+                assert.strictEqual(anchored.value.recordId, newer, 'an anchors-only replace writes the newest row');
+                assert.deepStrictEqual([recordState(newer).Body, recordState(newer).Anchors], ['replaced body', '["one.js"]']);
+                assert.deepStrictEqual(get()[0].body, 'replaced body', 'and get shows what the writes wrote');
+
+                const usageOf = (id) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage WHERE [RecordId] = " + id + ';'), 'n'));
+                const stamp = call('usp_AppendUsage', "@p_Usage = N'" + JSON.stringify([{ tier: 'project', projectKey: keyOne, name,
+                    kind: 'applied', at: '2026-10-02T00:00:00Z', stampId: crypto.randomUUID() }]) + "'");
+                assert.deepStrictEqual(stamp.value, { appended: 1, rejected: 0, skipped: 0 }, JSON.stringify(stamp));
+                assert.deepStrictEqual([usageOf(newer), usageOf(older)], [1, 0], 'a usage stamp lands on the newest row');
+
+                const archived = call('usp_ArchiveRecord', named);
+                assert.deepStrictEqual(archived.value, { status: 'archived', recordId: newer }, JSON.stringify(archived));
+                const newerArchived = recordState(newer);
+                assert.strictEqual(newerArchived.IsArchived, true);
+                assert.deepStrictEqual(get(), [], 'a name whose newest row is archived is answered with no row');
+                const again = call('usp_ArchiveRecord', named);
+                assert.deepStrictEqual(again.value, { status: 'archived', recordId: newer }, 'a resent archive answers archived: ' + JSON.stringify(again));
+                assert.deepStrictEqual(recordState(newer), newerArchived, 'and changes nothing on the newest row');
+                assert.deepStrictEqual(recordState(older), olderBefore, 'and never reaches the older row');
+
+                const promoted = callAs('kit_curator', 'usp_PromoteRecord', named);
+                assert.ok(promoted.error && promoted.error.message.includes('no live project record'),
+                    'promote resolves the same row and finds it archived: ' + JSON.stringify(promoted));
+                assert.deepStrictEqual(recordState(older), olderBefore, 'the older row is untouched throughout');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
         await t.test('a fleet project row is listed on asking, embedded, stamped by its project key, and labelled by its writer', () => {
             const name = 'fleet-sibling-' + runId;
             const axis = 800;
@@ -3153,6 +3206,17 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.ok(!fallback.error, JSON.stringify(fallback.error));
                 assert.deepStrictEqual(fallback.value, { appended: 1, rejected: 0, skipped: 0 }, 'the segment locator takes a keyed stamp no fleet row matches');
                 assert.strictEqual(olderRows(), olderBefore + 1, 'and the row lands on the older-store record');
+
+                // The same stamp once a fleet row of that name exists under the
+                // key: both locators match, and the fleet row takes the stamp.
+                const fleetTwin = put({ Tier: 'project', ProjectKey: keyOne, Name: 'scott-private-' + runId, Description: 'the fleet copy', Body: 'b' });
+                assert.ok(!fleetTwin.error && fleetTwin.value.status === 'stored', JSON.stringify(fleetTwin));
+                const twinRows = () => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage WHERE [RecordId] = " + fleetTwin.value.recordId + ';'), 'n'));
+                const both = call('usp_AppendUsage', "@p_Usage = N'" + JSON.stringify([{ tier: 'project', segment, name: 'scott-private-' + runId,
+                    projectKey: keyOne, kind: 'read', at: '2026-10-02T00:00:00Z', stampId: crypto.randomUUID() }]) + "'");
+                assert.ok(!both.error, JSON.stringify(both.error));
+                assert.deepStrictEqual(both.value, { appended: 1, rejected: 0, skipped: 0 });
+                assert.deepStrictEqual([twinRows(), olderRows()], [1, olderBefore + 1], 'the key match outranks the segment match');
                 mapConnection('NEO-CLAUDE');
 
                 // usp_Health counts the fleet store's rows, which no sandbox's

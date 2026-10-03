@@ -54,7 +54,9 @@ BEGIN	-- PROCEDURE
 							confirm never meets its own write as a refusal. Otherwise, where
 							a live row of that name is in the store and @p_Replace is 0,
 							nothing is written and the answer is refused, carrying the
-							existing description. An archived row counts as there. Where it
+							existing description. The row is the newest undeleted row of
+							the name, archived or not, as in every procedure that resolves a
+							record by name, and an archived row counts as there. Where it
 							is there and @p_Replace is 1, the row is overwritten field by
 							field, and a write carrying a body, the whole record, takes the
 							archived flag off, while a write of other fields alone leaves
@@ -159,7 +161,7 @@ BEGIN	-- PROCEDURE
 			/************************************************************************************
 				RESOLVE THE STORE, CREATING A PROJECT OR TYPE STORE WRITTEN FOR THE FIRST TIME.
 			************************************************************************************/
-			/* Each Tier Seeks its Own Unique Index by Equality, Under a Range Lock so a Concurrent First Write Queues. */
+			/* Each Tier's Store is Named by Equality on its Key, Under a Range Lock so a Concurrent First Write Queues. */
 			;IF ( @Tier = 'project' )
 			BEGIN
 				;SELECT	@StoreId = S.[StoreId]
@@ -167,8 +169,7 @@ BEGIN	-- PROCEDURE
 				WHERE	S.[Tier] = 'project'
 						AND S.[ProjectKey] = @ProjectKey
 						AND S.[ProjectKey] IS NOT NULL
-			END ELSE IF ( @Tier = 'type' )
-			BEGIN
+			END ELSE IF ( @Tier = 'type' ) BEGIN
 				;SELECT	@StoreId = S.[StoreId]
 				FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
 				WHERE	S.[SandboxId] IS NULL
@@ -199,7 +200,7 @@ BEGIN	-- PROCEDURE
 				;SET @StoreId = SCOPE_IDENTITY()
 			END
 
-			/* The Live Row of That Name, Read Under a Range Lock so a Concurrent Write of the Name Queues Behind This One. */
+			/* The Newest Undeleted Row of That Name, Archived or Not, Read Under a Range Lock so a Concurrent Write of the Name Queues Behind This One. */
 			;SELECT	TOP ( 1 )
 					 @RecordId		= R.[RecordId]
 					,@ExistingText	= R.[Description]
@@ -207,7 +208,7 @@ BEGIN	-- PROCEDURE
 			WHERE	R.[StoreId] = @StoreId
 					AND R.[Name] = @Name
 					AND R.[DeletedDt] IS NULL
-			ORDER BY R.[RecordId]
+			ORDER BY R.[RecordId] DESC
 
 			/************************************************************************************
 				PRESENT AND NOT TO BE REPLACED: REFUSE.

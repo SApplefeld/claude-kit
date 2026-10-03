@@ -36,11 +36,13 @@ BEGIN	-- PROCEDURE
 							row takes the archived flag, and with @p_Delete also the deleted
 							mark, which no read procedure serves. No row is ever removed. A
 							name the store holds no undeleted row of answers absent and
-							writes nothing, so a resent retirement is not a failure. Where a
-							store holds two undeleted rows of the name, the unarchived row is
-							the one retired, and the newest among equals. The
-							caller's sandbox comes from mem.CallerSandbox() and an unmapped
-							login is refused.
+							writes nothing, so a resent retirement is not a failure. A name
+							resolves to the newest undeleted row of it in the store, archived
+							or not, as it does in every procedure that resolves a record by
+							name. Where that row is already archived, an archive without
+							@p_Delete changes nothing and answers archived, so a resent
+							archive never reaches an older row. The caller's sandbox comes
+							from mem.CallerSandbox() and an unmapped login is refused.
 
 							Returns one row, one column [Json], holding {status, recordId},
 							status archived, deleted or absent.
@@ -61,6 +63,7 @@ BEGIN	-- PROCEDURE
 			,@Now				DATETIMEOFFSET	= SYSDATETIMEOFFSET()
 			,@SandboxId			INT				= NULL
 			,@RecordId			BIGINT			= NULL
+			,@IsArchived		BIT				= NULL
 			,@Status			VARCHAR(10)		= 'absent'
 			,@Tier				VARCHAR(20)		= LOWER(LTRIM(RTRIM(@p_Tier)))
 			,@Name				NVARCHAR(200)	= NULLIF(LTRIM(RTRIM(@p_Name)), '')
@@ -81,9 +84,10 @@ BEGIN	-- PROCEDURE
 		;IF ( @Name IS NULL OR @Tier IS NULL OR @Tier NOT IN ('project', 'type', 'operator') )
 			THROW 50000, 'mem.usp_ArchiveRecord: @p_Name and a @p_Tier of project, type or operator are required.', 1
 
-		/* The Undeleted Row of That Name in the Named Store, an Unarchived Row Before an Archived One and the Newest First. */
+		/* The Newest Undeleted Row of That Name in the Named Store, Archived or Not. */
 		;SELECT	TOP ( 1 )
-				@RecordId = R.[RecordId]
+				 @RecordId		= R.[RecordId]
+				,@IsArchived	= R.[IsArchived]
 		FROM	mem.Record R
 				INNER JOIN mem.Store S
 					ON S.[StoreId] = R.[StoreId]
@@ -94,9 +98,13 @@ BEGIN	-- PROCEDURE
 								SELECT @ProjectKey, @TypeName	)
 				AND R.[Name] = @Name
 				AND R.[DeletedDt] IS NULL
-		ORDER BY R.[IsArchived], R.[RecordId] DESC
+		ORDER BY R.[RecordId] DESC
 
-		;IF ( @RecordId IS NOT NULL )
+		/* An Archive of a Row Already Archived Writes Nothing. */
+		;IF ( @RecordId IS NOT NULL AND @IsArchived = @True AND COALESCE(@p_Delete, @False) = @False )
+		BEGIN
+			;SET @Status = 'archived'
+		END ELSE IF ( @RecordId IS NOT NULL )
 		BEGIN
 			;UPDATE R
 			SET		 [IsArchived]	= @True

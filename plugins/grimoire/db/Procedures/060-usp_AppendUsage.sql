@@ -174,6 +174,7 @@ BEGIN	-- PROCEDURE
 
 		/* Resolve Each Stamp to a Record the Caller May See, by Id First and by Identity Otherwise. */
 		/* A Project Key Match Ranks First; With None, the Segment Locator Finds the Caller's Older Store Row. */
+		/* Among Rows of One Name, the Newest Undeleted Row is the One Stamped, as in Every Procedure That Resolves a Name. */
 		;UPDATE I
 		SET		[RecordId] = X.[RecordId]
 		FROM	@Incoming I
@@ -197,7 +198,7 @@ BEGIN	-- PROCEDURE
 														OR (	I.[FileKey] IS NULL
 																AND I.[Name] IS NOT NULL
 																AND V.[Name] = I.[Name]	)	)	)
-								ORDER BY CASE WHEN V.[ProjectKey] = I.[ProjectKey] THEN 0 ELSE 1 END, V.[RecordId]	) X
+								ORDER BY CASE WHEN V.[ProjectKey] = I.[ProjectKey] THEN 0 ELSE 1 END, V.[RecordId] DESC	) X
 
 		/* Mark the Second and Later Copies of One Stamp Id Inside This Batch. */
 		;WITH Repeats AS (
