@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, dispatching plans across repos and tracking and redirecting the work in flight, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, dispatching or redirecting cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (c1.C123 below, amended in place, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (c2.C065 amended in place, and c2.C066 retired with no successor here, its rule being the peer-sessions ledger's Y001). Redrafted on 2026-09-26 by section 5 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `642c1008` with its fix round at `4f01b65b`, so every live entry's `passage:` line quotes the text at `4f01b65b` and the `flag:` lines record that pass's flags. Amended by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1 on 2026-10-02 (`B` entries below, with c1.C046, c2.C073, c2.C087, c3.C033, c4.C003 and c4.C015 retired by supersession, and c1.C004, c1.C092, c2.C012, c2.C075, c2.C077, c2.C086, c3.C087, c4.C061, c4.C063 and c4.C068 amended in place).
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (c1.C123 below, amended in place, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (c2.C065 amended in place, and c2.C066 retired with no successor here, its rule being the peer-sessions ledger's Y001). Redrafted on 2026-09-26 by section 5 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `642c1008` with its fix round at `4f01b65b`, so every live entry's `passage:` line quotes the text at `4f01b65b` and the `flag:` lines record that pass's flags. Amended by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1 on 2026-10-02 (`B` entries below, with c1.C046, c2.C073, c2.C087, c3.C033, c4.C003 and c4.C015 retired by supersession, and c1.C004, c1.C092, c2.C012, c2.C075, c2.C077, c2.C086, c3.C087, c4.C061, c4.C063 and c4.C068 amended in place). Amended by the same plan's section 2 on 2026-10-02 (B016 to B019 below).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -4383,3 +4383,39 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: The no-board rule's own reason (c4.C058) applied to the dispatch: a dispatched plan is a commitment whose only record would be loop context, gone at the next compaction. A seat holding a goal tree is not in this state, since the tree carries the plan.
 - passage: A seat with no board and no goal tree takes on no new dispatch, since it could not track one.
+
+### B016
+- key: Send a step only the operator can do as a numbered list, each item naming the exact command or act, what to report back, and what outcome reopens the work.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:149
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2.
+- verdict: keep
+- reason: The operator acts on the message away from the session, so each item carries what an outsider needs to run it, and the reopen outcome tells the seat when the work comes back. The shape is the brainstorming skill's `## Operator Verification` item, so the seat writes no second shape. A message adds the report-back because the seat, not the finishing pass, reads the result.
+- passage: A step only the operator can do goes up as a numbered list, each item naming the exact command or act, what to report back, and what outcome reopens the work. That is the brainstorming skill's `## Operator Verification` item shape for a plan doc, with the report-back added for a message.
+
+### B017
+- key: Read each open plan pull request's state from the host with `gh pr view`, in a repo the path screen has placed, as a pass source.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:59
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2.
+- verdict: keep
+- reason: Whether a pull request is open or merged lives on the host, and neither the plan doc nor the branch tip on origin records a merge until someone writes it down. The read runs in a directory, so it takes the same path screen the branch-tip read takes rather than a second one.
+- passage: Each open plan pull request's state is a source too, read from the host with `gh pr view` in a repo that path screen has placed.
+
+### B018
+- key: Read a persona worker's goal tree from the `.agentic-personas.json` store file in the working directory the persona plugin's `agentic_inbox` tool returns as `workdir`, as a pass source.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:59
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2; the store file and the `workdir` field as the plan's Approach reports them from the `agent_persona` repository, not checkable from this checkout.
+- verdict: keep
+- reason: A persona worker's queue and step state live on its own goal tree rather than in the kit's session registry, so a report of a persona worker's step as done or queued has no other source on this machine.
+- passage: So is a persona worker's goal tree, in the `.agentic-personas.json` store file in that worker's working directory. The persona plugin's `agentic_inbox` tool returns that directory to the coordinator persona as `workdir`.
+
+### B019
+- key: Read the source of a report naming a pull request or a worker step as open, merged, done or queued in the same pass, and report an unreachable source as cannot measure rather than carrying the last reading forward.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:24
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2.
+- verdict: keep
+- reason: A state carried from an earlier read is a summary that has outlived its source, and the operator acts on the report as current. The doctrine's "A summary outlives its source" and "cannot measure" bullets own the principle, and this sentence applies them at the seat's one voice toward the operator.
+- passage: A report naming a pull request or a worker step as open, merged, done or queued reads that state from its source below in the same pass. An unreachable source is reported as cannot measure, never as the last reading carried forward, per the doctrine's "A summary outlives its source" bullet.
