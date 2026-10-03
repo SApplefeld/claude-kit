@@ -264,9 +264,9 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.match(bullet, /a proceed-ahead only for the surface its owning skill names/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
-    assert.match(bullet, /The rail's delegation instance names the four covered acts inside a worker's approved plan, as the role skill states them/,
+    assert.match(bullet, /The rail's delegation instance names the four covered acts inside a plan whose dispatch the rail covers and the seat names, as the role skill states them/,
         'the delegation clause no longer names the four covered acts inside a '
-        + 'worker\'s approved plan as the surface the role skill states, so either '
+        + 'plan the rail covers and the seat names as the surface the role skill states, so either '
         + 'the instance is back to naming no surface while role/SKILL.md covers '
         + 'four, a lower surface contradicting this one, or the surface is stated '
         + 'here where nothing pins its bounds');
@@ -2913,7 +2913,10 @@ test('the role skill still carries the delegation exclusions and the three refus
     // own phrase here.
     for (const [phrase, what] of [
         ["a push to the plan's own remote beyond its recorded commit model and never a force push", 'the covered push with its force-push bound'],
+        ['a deploy', 'the covered deploy'],
+        ['a commit-model change', 'the covered commit-model change'],
         ['short of the permission files', 'the permission-file bound on the covered settings edit'],
+        ["each only where that plan's own scope holds it", 'the plan-scope bound on every covered act'],
         ['Inside a plan whose dispatch the rail covers and the seat names', 'the rail-coverage bound on the four covered acts'],
         ["recorded in the plan's header before the worker acts on it", 'the header record a commit-model change takes before the act'],
     ]) {

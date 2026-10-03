@@ -3212,13 +3212,13 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - ruled: amend 2026-09-26; amend 2026-09-30
 
 ### B001
-- key: Treat the delegation instance of the standing-grant rail as naming the four covered acts inside a worker's approved plan, as the role skill states them, so the doctrine assigns the instance's surface to the role skill rather than restating it.
+- key: Treat the delegation instance of the standing-grant rail as naming the four covered acts inside a plan whose dispatch the rail covers and the seat names, as the role skill states them, so the doctrine assigns the instance's surface to the role skill rather than restating it.
 - class: rule
 - source: plugins/grimoire/skills/operating-instructions/SKILL.md:146
 - provenance: the operator's ruling of 2026-10-02 on the architect's relay thread, on the deploy and settings contest, quoted in the plan's `## Intent` ("I prefer the plugin's wider reading. I do feel that more autonomous work and support in the kit is the direction we're taking it, so I don't want the historical narrower readings that forced more direct involvement from myself."), landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 3.
 - verdict: keep
-- reason: The role skill now names four acts this bullet's test gates as covered inside a worker's approved plan (the role ledger's B001), and a doctrine still saying the instance names no surface the test gates would be a higher surface contradicting it under Which Text Governs, so the one sentence moves. It moves as an assignment, ebd12d2's lesson standing that a clause bounding by describing another file breaks silently: the doctrine names the count and the plan bound and leaves the acts and their bounds to the role skill, where test/doctrine-parity.test.js pins them. The force-push and permission-file bounds in the same bullet stay verbatim, and the bullet's pin on this sentence moved with it. Supersedes c2.C147.
-- passage: The rail's delegation instance names the four covered acts inside a worker's approved plan, as the role skill states them.
+- reason: The role skill now names four acts this bullet's test gates as covered inside a worker's approved plan (the role ledger's B001), and a doctrine still saying the instance names no surface the test gates would be a higher surface contradicting it under Which Text Governs, so the one sentence moves. It moves as an assignment, ebd12d2's lesson standing that a clause bounding by describing another file breaks silently: the doctrine names the count and the plan bound and leaves the acts and their bounds to the role skill, where test/doctrine-parity.test.js pins them. The force-push and permission-file bounds in the same bullet stay verbatim, and the bullet's pin on this sentence moved with it. The bullet's sentence that no model reaches a deploy bounds what a commit model performs, while the covered deploy is a delegated seat's steer inside a covered plan, two different parties, so the two sentences do not conflict. Supersedes c2.C147.
+- passage: The rail's delegation instance names the four covered acts inside a plan whose dispatch the rail covers and the seat names, as the role skill states them.
 
 ## home/grimoire-doctrine.md
 
