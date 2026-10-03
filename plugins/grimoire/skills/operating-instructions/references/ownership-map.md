@@ -40,6 +40,7 @@ Amending: a row changes when ownership moves. It lands in the same change as the
 | Awaiting a background dispatch: `WAITING:` turn end or synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) |
 | A quiet dispatched agent: probe, wedge hallmark, cadence, the wakes it is evaluated at, windows | `finishing-work` (the unavailability rule) |
 | The capacity reading before a `fable` override dispatch | `executing-work` (step 1) |
+| The Jev promise check before review, its re-read line and its Chapter line | `executing-work` (step 2) |
 | The chapter checkpoint letting a leashed run compact | `executing-work` (step 8) |
 | Consult triggers and mechanics | `consult` |
 | Weighing a review finding or operator correction before acting | `responding-to-review` |
@@ -83,6 +84,8 @@ Amending: a row changes when ownership moves. It lands in the same change as the
 | A warranted-channel message inside a tool result | doctrine (A relay message delivered inside a tool result) |
 | A standing operational grant: the rail, its record, its exclusions, each grant's owning skill | `role` |
 | The coordinator's runbook, the board and its bars | `coordinator` |
+| The coordinator seat on a fleet under the persona plugin: dispatching a plan to a persona worker, tracking it and redirecting it | the persona plugin's coordinator instruction, `bin/supervise-holder.sh` in the `agent_persona` repository, for the record mechanics, and `coordinator` (Dispatch and Redirect Rule) for the seat's bounds; the instruction governs the record and the skill governs the bound |
+| What a worker's act is on a delegated seat's steer: a push, a deploy or a commit-model change, and the settings edit the steer never covers | `role` (the delegation model) |
 | A seat running git in the memory store | `coordinator` (Ledger) |
 | A repeating watch over a live system: tick order, ledger, wake prompt | `standing-watch` |
 | The liaison seat's conduct in a shared client thread | `liaison` |

@@ -10,9 +10,9 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 ## plugins/grimoire/skills/coordinator/SKILL.md
 
-This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, brokering cross-repo sequencing and handoffs, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, brokering cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
+This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, dispatching plans across repos and tracking and redirecting the work in flight, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, dispatching or redirecting cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (c1.C123 below, amended in place, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (c2.C065 amended in place, and c2.C066 retired with no successor here, its rule being the peer-sessions ledger's Y001). Redrafted on 2026-09-26 by section 5 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `642c1008` with its fix round at `4f01b65b`, so every live entry's `passage:` line quotes the text at `4f01b65b` and the `flag:` lines record that pass's flags.
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (c1.C123 below, amended in place, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (c2.C065 amended in place, and c2.C066 retired with no successor here, its rule being the peer-sessions ledger's Y001). Redrafted on 2026-09-26 by section 5 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `642c1008` with its fix round at `4f01b65b`, so every live entry's `passage:` line quotes the text at `4f01b65b` and the `flag:` lines record that pass's flags. Amended by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1 on 2026-10-02 (`B` entries below, with c1.C046, c2.C073, c2.C087, c3.C033, c4.C003 and c4.C015 retired by supersession, and c1.C004, c1.C092, c2.C012, c2.C075, c2.C077, c2.C086, c3.C087, c4.C061, c4.C063 and c4.C068 amended in place). Amended by the same plan's section 2 on 2026-10-02 (B016 to B019 below).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -52,8 +52,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:8
 - provenance: 33c0bed 2026-08-26, standing operator grants removed from the board after two rounds of caveats each opened a hole, so authority lives only on the artifact that carries it.
 - verdict: keep
-- reason: No finding; a pointer at the one authority control, and the reason the board holds coordination state and never authority.
-- passage: Its authority lives on the `## Dispatch Authorization` section whose format the kit-goal skill owns
+- reason: No finding; a pointer at the one authority control, and the reason the board holds coordination state and never authority. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the artifact stays the one authority control for a grant, and the seat's direction over workers stands on the role skill's delegation model instead (B005), so the sentence names both.
+- passage: Its artifact-borne authority lives on the `## Dispatch Authorization` section whose format the kit-goal skill owns, its direction over workers stands on the delegation model the role skill owns
 - flag: weak-reason
 
 ### c1.C005
@@ -202,9 +202,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:15
 - provenance: ebf5ee0 2026-08-28, step 2 of the tick order; 5b7dba3 2026-09-02 added the takeover pointer beside it.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: B020
 - landed: fe0f812 section 23
-- reason: The instruction stands as the lead of a compressed step 2 (A022); the sync-repository history and the state-file analysis around it move to c1.C021's and c1.C022's entries.
+- reason: The instruction stands as the lead of a compressed step 2 (A022); the sync-repository history and the state-file analysis around it move to c1.C021's and c1.C022's entries. Superseded on 2026-10-03 by B020 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` finishing pass, which names the goal tree as the one carrier beside the board; the verdict before it was rewrite).
 - proposed: Compress step 2 to C019, C020, C021 with its one-sentence bound, C023, C024 as a pointer (A029), C025 and C026 as the pointer and the board disposition, and C027; move the sync-repository history, the state-file analysis and the second-board failure modes (C022) to this ledger.
 - baseline-test: yes
 - passage: 2. **Read the board** at `coordinator/<machine>/board.md`, because everything the seat has promised or brokered lives there and nowhere else.
@@ -480,8 +481,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:23
 - provenance: 33c0bed 2026-08-26, the seat's second function.
-- verdict: keep
-- reason: No finding; one of the four pinned functions.
+- verdict: retire
+- superseded-by: B006
+- reason: No finding; one of the four pinned functions. Superseded on 2026-10-02 by B006 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, which names dispatch as a face of this function so the set stays closed at four; the verdict before it was keep).
 - passage: - **Cross-repo dependency and portfolio sequencing.** Merge gates that span plans, retrospective triggers, and handoff brokering between repos.
 
 ### c1.C047
@@ -944,8 +946,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:31
 - provenance: 33c0bed 2026-08-26.
 - verdict: keep
-- reason: An operator-decision gate where no expert is seated (A122, A123).
-- passage: It routes the matter to that repo's expert, or to the operator where the expert seat is empty.
+- reason: An operator-decision gate where no expert is seated (A122, A123). Passage respelled on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, which placed B007's sentence before it; the rule is unchanged.
+- passage: It routes a within-repo matter to that repo's expert, or to the operator where the expert seat is empty.
 
 ### c1.C093
 - key: Board a matter routed to an expert as a routed finding, and one routed to the operator for want of an expert as an open operator escalation.
@@ -1485,8 +1487,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:41
 - provenance: 33c0bed 2026-08-26, the reconciliation guard, installed when a successor taking the seat cold held no way to attribute a board line.
 - verdict: keep
-- reason: A blast-radius gate (A009, A014): the act held is an outward one, a handoff or escalation acted on, resting on a line any synced machine can write. c2.C055 and c3 c2.C049 are its named instances and point at it. Amended on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3: the store sync now refuses an upstream write into this machine's own directory, so the line is one any local session can write; the gate holds on that ground unchanged.
-- passage: One no watched system can re-derive, an open escalation or a brokered handoff, is confirmed with the operator before the seat acts on it and rides the board unconfirmed meanwhile.
+- reason: A blast-radius gate (A009, A014): the act held is an outward one, a handoff or escalation acted on, resting on a line any synced machine can write. c2.C055 and c3 c2.C049 are its named instances and point at it. Amended on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3: the store sync now refuses an upstream write into this machine's own directory, so the line is one any local session can write; the gate holds on that ground unchanged. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the brokered handoff is now a dispatched plan (B009), and the gate holds on it unchanged.
+- passage: One no watched system can re-derive, an open escalation or a dispatched plan, is confirmed with the operator before the seat acts on it and rides the board unconfirmed meanwhile.
 
 ### c2.C013
 - key: Write a fact that arrived by message and matters past this pass to the ledger or the plan doc that owns it before the pass ends.
@@ -2091,8 +2093,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:63
 - provenance: 33c0bed 2026-08-26, after every durable place the seat could write became a way to forge authority.
-- verdict: keep
-- reason: The owner of the never-tasks-directly rule; the board-write paragraph's copy is pinned as "no second rule beside it". Work waits on the dispatch-authority rail, which is blast-radius (A112).
+- verdict: retire
+- superseded-by: B001
+- reason: The owner of the never-tasks-directly rule; the board-write paragraph's copy is pinned as "no second rule beside it". Work waits on the dispatch-authority rail, which is blast-radius (A112). Superseded on 2026-10-02 by B001 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, on the operator's ruling that the role has evolved to dispatching plans and tracking and redirecting workers' work, wholesale; the artifact-and-ask shape survives only as B005's undelegated fallback; the verdict before it was keep).
 - passage: **The seat dispatches nothing.** When a pass finds work, the coordinator produces artifacts and asks.
 
 ### c2.C074
@@ -2111,8 +2114,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26.
 - verdict: rewrite
 - landed: f99fa14e finishing
-- reason: The ask survives and its channel narrows: only the operator's typed `/kit-goal` in the interactive session that will run the plan arms a leash, so a relay message or an artifact no longer can (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, found by its finishing docs curation). Arming is the dispatch-authority rail itself; the gate is blast-radius and stays (A113).
-- passage: It asks the operator to arm a plan only by typing `/kit-goal` in the interactive session that will run it, since a relay message or an artifact cannot arm a leash.
+- reason: The ask survives and its channel narrows: only the operator's typed `/kit-goal` in the interactive session that will run the plan arms a leash, so a relay message or an artifact no longer can (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, found by its finishing docs curation). Arming is the dispatch-authority rail itself; the gate is blast-radius and stays (A113). Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the ask is conditional on a plan that is to run under a leash, since a dispatch to a persona worker or an unleashed kit session arms nothing (B002).
+- proposed: Where a plan is to run under a leash, it asks the operator to arm it only by typing `/kit-goal` in the interactive session that will run it, since a relay message or an artifact cannot arm a leash.
+- passage: Where a plan is to run under a leash, it asks the operator to arm it only by typing `/kit-goal` in the interactive session that will run it, since a relay message or an artifact cannot arm a leash.
 
 ### c2.C076
 - key: Hand artifact-authorized plans per dispatch-authority, the kit-goal skill owning the authorization section and peer-sessions owning the receiver's trace, scope and reply states.
@@ -2129,8 +2133,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:63
 - provenance: 10518d6 2026-08-31, section 3 of the park-and-quiesce plan.
 - verdict: keep
-- reason: The one outbound class that stops peer work, riding entirely on the operator's declaration over two of the three channels; blast-radius (A114).
-- passage: Its update window's drain and closing lines, sent under the window rules above, are the one outbound class that stops peer work, and each relays the operator's declared intent and points at a skill rather than tasking.
+- reason: Riding entirely on the operator's declaration over two of the three channels; blast-radius (A114). Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the drain is no longer the one outbound class that stops peer work, since a redirect's pause is another (B003), so the sentence keeps the window rules and the relay form (c2.C078) and loses that claim.
+- passage: The seat's update window's drain and closing lines go out under the window rules above, and each relays the operator's declared intent and points at a skill rather than tasking.
 
 ### c2.C078
 - key: Relay the operator's own declared intent pointing at a skill rather than as a tasking.
@@ -2214,16 +2218,17 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:63
 - provenance: 33c0bed 2026-08-26.
 - verdict: keep
-- reason: A role claim confers nothing to spend; the kaizen bullet, the funnel's return leg and c2.C078 are this bar's points of use and each states a form it does not.
-- passage: The seat never instructs a session to act on its own say-so, because a role claim confers no authority to spend.
+- reason: A role claim confers nothing to spend; the kaizen bullet, the funnel's return leg and c2.C078 are this bar's points of use and each states a form it does not. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the bar survives as what a dispatch or redirect does not stand on, its standing being the delegation model (B005).
+- passage: A role claim confers no authority to spend, so the seat directs no worker on its own say-so.
 
 ### c2.C087
 - key: Treat scoped direction from this seat as the operator's own recorded arrangement only on a machine where the operator wrote the standing-delegation opt-in, and stay inside that model's scope.
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:63
 - provenance: fb0f194 2026-08-28, the delegation model shipped off until an operator writes a per-machine record; the rail was generalized by the standing-grants plan (ff59e19 2026-09-01).
-- verdict: keep
-- reason: The role skill owns the model's scope and chain; this is the sending seat's side, and where no record answers the never-tasks-directly rule holds whole.
+- verdict: retire
+- superseded-by: B005
+- reason: The role skill owns the model's scope and chain; this is the sending seat's side, and where no record answers the never-tasks-directly rule holds whole. Superseded on 2026-10-02 by B005 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, which keeps the opt-in record as the one switch, names a persona seat's operator-authored launch instruction as its standing, and keeps the artifact-and-ask shape as the undelegated fallback; the verdict before it was keep).
 - passage: Scoped direction from this seat stands only on a machine whose operator wrote the standing-delegation opt-in, and only inside the model the role skill states.
 
 ### c2.C088
@@ -2658,9 +2663,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:73
 - provenance: 77997ce 2026-08-26, the bullet had restated the closed reply-state set that line 28 assigns to peer-sessions; it now defers to that vocabulary.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: B010
 - landed: fe0f812 section 23
-- reason: The bullet is the category's owner in pointer form; line 87 adds the repos as the riding form. Flipped from keep to rewrite at section 23's close: c4.C015's rewrite names the merge, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: The bullet is the category's owner in pointer form; line 87 adds the repos as the riding form. Flipped from keep to rewrite at section 23's close: c4.C015's rewrite names the merge, so the sentence was respelled to stand as landed. Landed as the proposal below. Superseded on 2026-10-02 by B010 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, the pending-handoff category absorbed by the dispatched plan; the verdict before it was rewrite).
 - proposed: - Pending handoffs with their repos and their protocol state, named in the reply-state vocabulary the peer-sessions skill owns and this file already defers to above.
 - passage: Pending handoffs with their repos and their protocol state, named in the reply-state vocabulary the peer-sessions skill owns.
 
@@ -3200,10 +3206,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26 installed the source-of-truth override; 9909bf2 2026-08-28 records the commitment enumeration drifting between the board's two lists when a sixth category was added.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: The override, its reason and its enumeration stay, this being the one enumeration the file keeps (line 69's becomes a pointer); the parenthetical restating the routed-finding asymmetry becomes a pointer at line 77, which keeps the one copy. The parenthetical '(line 69's becomes a pointer)' describes no ordered change: line 69's commitment enumeration stays under c3.C009 keep, and line 83's enumeration is the copy this entry keeps beside it.
+- reason: The override, its reason and its enumeration stay, this being the one enumeration the file keeps (line 69's becomes a pointer); the parenthetical restating the routed-finding asymmetry becomes a pointer at line 77, which keeps the one copy. The parenthetical '(line 69's becomes a pointer)' describes no ordered change: line 69's commitment enumeration stays under c3.C009 keep, and line 83's enumeration is the copy this entry keeps beside it. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: on the persona plugin the goal tree carries two of the categories (B012), so the one-record sentence names it as the ledger's stand-in there.
 - proposed: Keep the enumeration and the reason; replace "and the routed finding qualified as the category list above qualifies it, no watched system carrying a mandated record of its routing or its disposition where the finding itself may well be re-derivable" with "and the routed finding as its own bullet above qualifies it".
 - baseline-test: yes
-- passage: The chassis's re-derivation from the watched system holds for everything the seat watches, but the seat's own commitments, the categories the ledger above names, have no watched system behind them, so the ledger is their one record.
+- passage: The chassis's re-derivation from the watched system holds for everything the seat watches, but the seat's own commitments, the categories the ledger above names, have no watched system behind them, so the ledger is their one record, the goal tree standing in for it on the persona plugin where the categories paragraph above says so.
 - flag: stale
 
 ### c3.C088
@@ -3266,8 +3272,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/grimoire/skills/coordinator/SKILL.md:85
 - provenance: ff59e19 2026-09-01, the operator ruled the seat's git prohibition an over-specific hardening of the workload principle, and one sentence of that principle replaced it in the paragraph where the prohibition stood.
-- verdict: keep
-- reason: A copy pinned verbatim by test/doctrine-parity.test.js:3073 inside the board-write paragraph, so that the principle cannot drift out of the paragraph the retired prohibition sat in; a change here moves the pin in the same edit. The board-write principle pin sits at test/doctrine-parity.test.js:3064 at the landing (cited :3073).
+- verdict: retire
+- superseded-by: B008
+- reason: A copy pinned verbatim by test/doctrine-parity.test.js:3073 inside the board-write paragraph, so that the principle cannot drift out of the paragraph the retired prohibition sat in; a change here moves the pin in the same edit. The board-write principle pin sits at test/doctrine-parity.test.js:3064 at the landing (cited :3073). Superseded on 2026-10-02 by B008 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, the pin moved in the same edit; the verdict before it was keep).
 - passage: What the seat does with the work a pass turns up is the never-tasks-directly rule's own shape and no second rule beside it: the seat dispatches nothing, it produces artifacts and asks.
 
 ### c4.C004
@@ -3385,9 +3392,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: mechanic
 - source: plugins/grimoire/skills/coordinator/SKILL.md:87
 - provenance: 3fb2f4b 2026-08-26, the pointer-form enumeration.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: B010
 - landed: fe0f812 section 23
-- reason: The ledger list's handoff bullet at line 73 owns the entry's contents; "its repos" merges into it and this clause of the enumeration goes. Its landing respelled c3.C033's keep sentence; c3.C033 records the flip.
+- reason: The ledger list's handoff bullet at line 73 owns the entry's contents; "its repos" merges into it and this clause of the enumeration goes. Its landing respelled c3.C033's keep sentence; c3.C033 records the flip. Superseded on 2026-10-02 by B010 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, the handoff entry's riding form replaced by the dispatched plan's; the verdict before it was rewrite).
 - proposed: (via A020) Add "its repos" to the pending-handoffs bullet at line 73 and drop the handoff clause from line 87's enumeration in favour of a pointer at the ledger list.
 - baseline-test: yes
 - passage: Pending handoffs with their repos and their protocol state, named in the reply-state vocabulary the peer-sessions skill owns.
@@ -3857,8 +3865,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:95
 - provenance: 3fb2f4b 2026-08-26, with c4.C058.
 - verdict: keep
-- reason: Declining to hold is not declining to serve; the boardless seat is still the operator's hands on the machine (9909bf2's ruling on the disarmed fallback).
-- passage: While either lasts the seat reads, re-derives and answers the operator as usual, but brokers no handoff, holds no escalation and no routed finding, and reports rather than prunes an entry the heartbeat leg would prune.
+- reason: Declining to hold is not declining to serve; the boardless seat is still the operator's hands on the machine (9909bf2's ruling on the disarmed fallback). Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the declines name the two categories B009 added in place of the brokered handoff.
+- passage: While either lasts the seat reads, re-derives and answers the operator as usual, but, with no goal tree to carry them, takes on no new dispatch and no operator request, holds no escalation and no routed finding, and reports rather than prunes an entry the heartbeat leg would prune.
 
 ### c4.C062
 - key: While boardless or frozen, broker no handoff, hold no escalation and no routed finding, release no claim, and prune no registry entry.
@@ -3876,8 +3884,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:95
 - provenance: cbf923c 2026-08-28, the Admin inbox given a shape and the boardless-coordinator branch stated because it was missing.
 - verdict: keep
-- reason: A pointer at the never-tasks-directly rule, which owns the branch with its reason, placed where the decline list would otherwise read as covering the append.
-- passage: Appending an operator's ask of the Admin seat to `admin-requests.md` is not among these declines, for the reason the never-tasks-directly rule above states.
+- reason: A pointer at the dispatch-and-redirect rule, which owns the branch with its reason, placed where the decline list would otherwise read as covering the append. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the pointer follows the rule's rename, the Admin inbox paragraph under it being unchanged.
+- passage: Appending an operator's ask of the Admin seat to `admin-requests.md` is not among these declines, for the reason the dispatch-and-redirect rule above states.
 
 ### c4.C064
 - key: Treat a boardless release and a boardless prune as the sharpest declines, since each destroys its own evidence.
@@ -3926,8 +3934,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/grimoire/skills/coordinator/SKILL.md:95
 - provenance: 9909bf2 2026-08-28, the prune shipped armed.
 - verdict: keep
-- reason: Ten words stating the replacement disposition the role skill's refusal at line 19 does not supply; the pointer-sized instance.
-- passage: While either lasts the seat reads, re-derives and answers the operator as usual, but brokers no handoff, holds no escalation and no routed finding, and reports rather than prunes an entry the heartbeat leg would prune.
+- reason: Ten words stating the replacement disposition the role skill's refusal at line 19 does not supply; the pointer-sized instance. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, the sentence respelled as c4.C061 records; the prune disposition is unchanged.
+- passage: While either lasts the seat reads, re-derives and answers the operator as usual, but, with no goal tree to carry them, takes on no new dispatch and no operator request, holds no escalation and no routed finding, and reports rather than prunes an entry the heartbeat leg would prune.
 
 ### c4.C069
 - key: While boardless, still route a finding to the seat that owns the fix, named untracked.
@@ -4241,3 +4249,183 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - landed: b911fc5f section 2
 - reason: shrink row 544 removed the passage, which was the join key's provenance argument and stated no act. c2.C016's landed sentence carries the act: "The key is the registry entry's `Name:` field against the roster row's name".
 - passage: The entry is written at takeover by the role skill's ritual, whose first step records the name the session carries, as the roster prints it.
+
+### B001
+- key: Dispatch a plan to a worker, track it, and redirect work in flight, writing no worker's code; a dispatch hands the plan as the artifact with the seat's direction to run it, a queue entry on a persona worker's goal tree over a coordinator record, or the plan in the owning repository for a kit session, which runs it only on a traced grant or a chain handoff its own machine's record arms and otherwise holds it.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:81
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona (records ARCHITECT-e07bad48-2f72-460e-99af-d9161193fcb9-1 and -2) and quoted in the plan's `## Intent` ("The Coordinator role in all cases has evolved to dispatching plans and tracking/redirecting the work being performed by workers, so that should be updated wholesale, not just a carve-out for Personas."), landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The seat already held scoped direction over dispatching plan sections under the role skill's delegation model, and the never-tasks rule was the one layer saying the seat does not use it. The dispatch names that authority and stands on it, so nothing new is granted: an undelegated seat still writes the plan and asks (B005). Supersedes c2.C073.
+- passage: **The seat dispatches a plan to a worker, tracks it, and redirects work in flight, and it writes no worker's code.** A dispatch hands the plan as the artifact with the seat's direction to run it. For a persona worker it is a queue entry on that worker's goal tree over a coordinator record, and the entry is the whole of the queue instruction. For a kit session it is the plan in the repository that owns the work, and the receiver runs it only on a traced `## Dispatch Authorization` grant or a chain handoff its own machine's delegation record arms, as executing-work's inbound-plan paragraph and the peer-sessions Leashed peers rule state; short of either it holds the plan.
+
+### B002
+- key: Arm no leash: only the operator's typed `/kit-goal` in an interactive session arms one, so a dispatched worker runs unleashed or under a leash the operator typed.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:81
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, standing on the operator's ruling of 2026-09-24 that only the operator's typed `/kit-goal` in an interactive session arms a leash (`docs/archive/claude-kit_kit-goal-interactive-only_spec_v1.md`).
+- verdict: keep
+- reason: A leash is the operator's own act under the ruling of 2026-09-24, which the dispatch does not touch: a persona's queue entry is the whole of its instruction and arms nothing, and a kit session either runs the plan unleashed or asks the operator to append it (c2.C075).
+- passage: A leash is still only the operator's typed `/kit-goal` in an interactive session, under the ruling of 2026-09-24, so the seat arms nothing, and a worker it dispatches runs unleashed or under a leash the operator typed.
+
+### B003
+- key: Redirect only as a steer to work in flight, pause, reorder the queue, drop, or resume on the operator's yes, inside the plan's stated Goal, and send to the operator a steer past the Goal, a decision the plan does not cover, a steer that would take more than two rounds to land, and a worker's reading that drifts from the Goal.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:83
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: A redirect is scoped direction over sequencing, which the delegation model's scope already covers, and the plan's stated Goal is the bound the operator approved. The four cases are the ones where a steer would become a decision the operator never made, and the two-round cap stops the seat steering by attrition.
+- passage: **A redirect is a steer to work in flight: pause, reorder the queue, drop, or resume on the operator's yes, inside the plan's stated Goal.** Four things go to the operator instead: a steer past the Goal, a decision the plan does not cover, a steer that would take more than two rounds to land, and a worker's reading that drifts from the Goal.
+
+### B004
+- key: Send a redirect by the worker's own channel: a persona worker's record under the persona plugin's coordinator instruction, which owns the record mechanics, the one-record-per-cycle and urgent-flag rules and the round count; a request to the operator for a leashed kit session, whose queue is the operator's; a peer message under the chain for an unleashed kit session, one bounded line per redirect to the worker it steers.
+- class: pointer
+- source: plugins/grimoire/skills/coordinator/SKILL.md:83
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The record mechanics are the plugin's own, and restating them here would be a second carrier. A leashed session's queue is only the operator's under the ruling of 2026-09-24, so a redirect to it can only be a request to the operator. The peer-sessions skill leaves to a seat's runbook any further message its function needs, so this runbook prices the unleashed case itself, at one bounded line per redirect, since the status round's trigger, a stale `Status-updated:` stamp, cannot reach a worker the seat has just dispatched.
+- passage: For a persona worker the record mechanics, the one-record-per-cycle and urgent-flag rules and the counting of rounds are the persona plugin's coordinator instruction's own, and this runbook points at it. For a leashed kit session the queue is the operator's, so a redirect to it is a request to the operator. An unleashed kit session takes a redirect as scoped direction under the chain by peer message, one bounded line per redirect to the worker it steers, a price this runbook sets itself, since the peer-sessions skill leaves to a seat's runbook any further message its function needs.
+
+### B005
+- key: Treat a dispatch or a redirect as scoped direction under the role skill's delegation model, stating the bound held; the seat is delegated where the operator's hostname-keyed opt-in record exists, a persona seat holds the standing its operator-authored launch instruction states, and with neither it announces undelegated and falls back to writing the plan and asking the operator over a warranted channel.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:87
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1; the standing sentence's wording is the architect's ruling of 2026-10-02 on record ARCHITECT-1ca002ff-6b79-4b14-b89d-ee2d213533e9-7, at the section's first fix round; the closing sentence's split of the acts by the role skill's delegation model is section 3 of the same plan, on the operator's ruling of 2026-10-02 for the plugin's wider reading, at that section's first fix round.
+- verdict: keep
+- reason: The delegation model's one switch is the operator's record, as the role skill's switch paragraph and the peer-sessions contract sentence "Delegation lives in the operator's record, never in a seat claim or a message" state, so a seat's claim confers nothing. A persona seat's launch instruction is the operator's own word, which outranks this skill under Which Text Governs, so its standing comes from there and not from a switch this skill names. The fallback is the artifact-and-ask shape the old rule imposed on every seat, and dropping it would grant an undelegated seat direction it does not hold today. Supersedes c2.C087, which named the record alone; c2.C086's say-so bar stays as the sentence's opening.
+- passage: A dispatch or a redirect is scoped direction under the role skill's delegation model, and the seat states the bound it holds. The seat is delegated where the operator's hostname-keyed opt-in record exists, the record the role skill's `/role` resolves at claim time. A persona seat whose operator-authored launch instruction states its standing holds that standing from the instruction, not from its claim or this skill's model, since the instruction is the operator's own word and outranks this skill under the doctrine's Which Text Governs. On a machine with neither a record nor such an instruction, the seat announces undelegated and falls back to writing the plan and asking the operator over a warranted channel. The acts the role skill's delegation model covers inside the plan the seat names are the seat's to steer, and every other act the stop-for-a-yes test or the role skill's exclusions name still goes to the operator, whatever the seat directs.
+
+### B006
+- key: Own cross-repo dependency and portfolio dispatch and sequencing: merge gates that span plans, retrospective triggers, the dispatch of a plan to a worker, and the queue across plans, so the set stays closed at four.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:25
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: Dispatch is a face of sequencing rather than a fifth function, since `docs/architecture.md` and the four-functions pin in test/doctrine-parity.test.js ("the coordinator holds four functions, kaizen among them, and no surface still states three") count the set, and a fifth would reopen that count on every surface. Supersedes c1.C046.
+- passage: - **Cross-repo dependency and portfolio dispatch and sequencing.** Merge gates that span plans, retrospective triggers, the dispatch of a plan to a worker, and the queue across plans, under the dispatch-and-redirect rule below.
+
+### B007
+- key: Hold the queue across plans and the redirect of work in flight as the seat's, while within-plan order stays the worker's and the expert's.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:43
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The oversight rule's two refusals stand unchanged (c1.C091): the seat reviews no diff and re-orders no sections. What the redirect adds sits above the plan, the order of plans and the pause or drop of one, which is the sequencing function's and not the expert's.
+- passage: The queue across plans and the redirect of work in flight are the seat's, under the dispatch-and-redirect rule below.
+
+### B008
+- key: State what the seat does with the work a pass turns up as the dispatch-and-redirect rule's own shape and no second rule beside it: the seat dispatches plans, tracks them and redirects work in flight, and it writes no worker's code.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:129
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: A copy pinned verbatim by test/doctrine-parity.test.js inside the board-write paragraph ("the coordinator skill's board-write rule no longer states the workload principle the retired git prohibition hardened around"), so that the principle cannot drift out of the paragraph the retired prohibition sat in; a change here moves the pin in the same edit. Supersedes c4.C003.
+- passage: What the seat does with the work a pass turns up is the dispatch-and-redirect rule's own shape and no second rule beside it: the seat dispatches plans, tracks them and redirects work in flight, and it writes no worker's code.
+
+### B009
+- key: Treat the commitment categories as a set closed at six with no watched system behind them: a dispatched plan with its worker, its state and what it waits on; an operator request outliving one reply with its subject, the owner, the next act and what it waits on; an open escalation; an open update window; a routed finding; and a pruned registry entry.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:97
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: A cross-repo handoff is now a dispatch, so the dispatched plan absorbs the pending-handoff category rather than standing beside it. An operator request that outlives one reply is a commitment no watched system reproduces, and its fields are what a successor needs to resume it; the operator's words ride as a pointer under the words bar. The set is closed so that a seventh category visibly reopens the count `docs/security-model.md` restates.
+- passage: The commitment categories have no watched system behind them, and the set is closed at six: a plan this seat dispatched and tracks, with its worker, its state and what it waits on; an operator request this seat has taken on that outlives one reply, with the request's subject, the owner, the next act and what it waits on, the operator's words riding as a pointer to the channel and time they arrived; an open escalation; an open update window; a finding this seat routed to another seat; and a registry entry this seat pruned.
+
+### B010
+- key: Where the seat holds no goal tree, carry a dispatched plan on the board as the worker it went to, its state, in the reply-state vocabulary the peer-sessions skill owns where the worker is a kit session, and what it waits on.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:108
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The riding form of B009's first category, replacing the pending-handoffs bullet. The reply-state vocabulary applies only to a kit session's reply, since a persona worker's state is read from its goal tree. Supersedes c3.C033 and c4.C015.
+- passage: - A plan this seat dispatched and tracks, where the seat holds no goal tree: the worker it went to, its state, named in the reply-state vocabulary the peer-sessions skill owns where the worker is a kit session, and what it waits on.
+
+### B011
+- key: Where the seat holds no goal tree, carry an operator request that outlives one reply on the board as its subject, the owner, the next act, and what it waits on, with the operator's words riding as a pointer to the channel and time they arrived.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:109
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The riding form of B009's second category. The pointer is the board's words bar applied at this bullet, so the request is resumable by a successor without the operator's words reaching the store.
+- passage: - An operator request this seat has taken on that outlives one reply, where the seat holds no goal tree: its subject, the owner, the next act, and what it waits on, the operator's words riding as a pointer to the channel and time they arrived under the words bar above.
+
+### B012
+- key: On the persona plugin, carry the dispatched plan and the operator request on the seat's own goal tree, one entry each through the plugin's goal tools, and write a board line for either only where the seat holds no goal tree.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:97
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1; the plugin's turn-record behaviour read by the plan's author in `hooks/index.ts` of the `agent_persona` repository at its trunk `da5cc98`.
+- verdict: keep
+- reason: The persona plugin opens a turn record on each operator message and promotes it to a goal entry only when the turn writes a plan, so a request that outlives the reply is the seat's own act to track, and the goal tree is the carrier the plugin already gives the seat. The source-of-truth override (c3.C087) names the stand-in.
+- passage: On the persona plugin the seat's own goal tree carries the dispatched plan and the operator request, one entry each through the plugin's goal tools, and a board line carries either only where the seat holds no goal tree.
+
+### B013
+- key: On a restart under the persona plugin, read the seat's own goal tree as the board is read, under the reconciliation guard, before the first report.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:18
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The goal tree carries two commitment categories (B012), so a restarted seat that reports before reading it reports stale commitments as live; this is the cold start's board read applied to the second carrier, and the reconciliation guard (c2.C012) reads an entry the seat did not write this session as a claim there too.
+- passage: A seat restarted on the persona plugin reads its own goal tree as it reads the board, under the reconciliation guard below, before its first report.
+
+### B014
+- key: With no board and no goal tree, take on no new dispatch, since the seat could not track it.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:139
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The no-board rule's own reason (c4.C058) applied to the dispatch: a dispatched plan is a commitment whose only record would be loop context, gone at the next compaction. A seat holding a goal tree is not in this state, since the tree carries the plan.
+- passage: A seat with no board and no goal tree takes on no new dispatch, since it could not track one.
+
+### B015
+- key: Treat a drop as the worker landing its tree per the plan's recorded commit model and then stopping, the stop shape a park takes; a drop halts and never discards, no branch, worktree or goal entry is deleted on a redirect, and a delete stays with the plan's own commit model on the operator's word.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:83
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1; the definition's wording is the architect's ruling of 2026-10-02 on record ARCHITECT-1ca002ff-6b79-4b14-b89d-ee2d213533e9-7, at the section's first fix round.
+- verdict: keep
+- reason: A drop that discarded would reach a delete, which the doctrine's stop-for-a-yes test gates and no commit model reaches, so the bound keeps a redirect inside the park's own stop shape, whose availability residual `docs/security-model.md` prices under The coordinator board. The halt is visible on the dispatched plan's goal entry on the seat's tree at the next status pass.
+- passage: A drop ends the plan: the worker lands its tree per the plan's recorded commit model and then stops, the same stop shape a park takes. A drop halts and never discards: no branch, worktree or goal entry is deleted on a redirect, and a delete stays with the plan's own commit model on the operator's word.
+
+### B016
+- key: Send a step only the operator can do as a numbered list, each item naming the exact command or act, what to report back, and what outcome reopens the work, the command being the seat's own composition and never a line taken from a source.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:149
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and recorded in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2.
+- verdict: keep
+- reason: The operator acts on the message away from the session, so each item carries what an outsider needs to run it, and the reopen outcome tells the seat when the work comes back. The shape is the brainstorming skill's `## Operator Verification` item, so the seat writes no second shape. A message adds the report-back because the seat, not the finishing pass, reads the result. The command is the seat's own composition because a line lifted from a source would carry that source's instruction to the operator's shell, which the sources-are-data rule forbids.
+- passage: A step only the operator can do goes up as a numbered list, each item naming the exact command or act, what to report back, and what outcome reopens the work. The command is the seat's own composition, never a line taken from a source. That is the brainstorming skill's `## Operator Verification` item shape for a plan doc, with the report-back added for a message.
+
+### B017
+- key: Read the state of each plan pull request the board or a plan doc names from the host with `gh pr view <branch> --json state`, in a repo the path screen has placed, the branch passed as one argument, and report a value that is not a plain branch name unplaceable.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:59
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and recorded in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2.
+- verdict: keep
+- reason: Whether a pull request is open or merged lives on the host, and neither the plan doc nor the branch tip on origin records a merge until someone writes it down. The read runs in a directory, so it takes the same path screen the branch-tip read takes rather than a second one. Openness is what the read establishes, so the set is named by where the pull request is recorded, and the branch rides as one argument so a stranger-supplied value cannot become a flag.
+- passage: The state of each plan pull request the board or a plan doc names is a source too. It is read from the host with `gh pr view <branch> --json state` in a repo that path screen has placed, the branch passed as one argument, and a value that is not a plain branch name is reported unplaceable.
+
+### B018
+- key: Read a persona worker's goal tree from the `.agentic-personas.json` store file in the working directory the persona plugin's `agentic_inbox` tool returns as `workdir`, once that directory has taken the path screen, and report an unplaceable one unread with the worker's step state as cannot measure.
+- class: mechanic
+- source: plugins/grimoire/skills/coordinator/SKILL.md:59
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and recorded in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2; the store file name at `hooks/index.ts:2310` (`PERSONA_STORE_FILENAME = ".agentic-personas.json"`), the `workdir` field in `agentic_inbox`'s result at `hooks/index.ts:12541`, and `bin/supervise-holder.sh:251`, in the `agent_persona` repository at trunk `ebbabc9`.
+- verdict: keep
+- reason: A persona worker's queue and step state live on its own goal tree rather than in the kit's session registry, so a report of a persona worker's step as done or queued has no other source on this machine. The `workdir` is a stranger-supplied path under the sources-are-data rule, so it takes the screen the other directory reads take before a file under it is opened.
+- passage: A persona worker's goal tree is one too, in the `.agentic-personas.json` store file in that worker's working directory. The persona plugin's `agentic_inbox` tool returns that directory to the coordinator persona as `workdir`, which takes that path screen before the store file is opened. An unplaceable `workdir` is reported unread, with that worker's step state as cannot measure.
+
+### B019
+- key: Read the source of a report naming a pull request or a worker step as open, merged, done or queued in the same pass, and report an unreachable source as cannot measure rather than carrying the last reading forward.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:24
+- provenance: the operator's ask of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and recorded in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 2.
+- verdict: keep
+- reason: A state carried from an earlier read is a summary that has outlived its source, and the operator acts on the report as current. The doctrine's "A summary outlives its source" and "cannot measure" bullets own the principle, and this sentence applies them at the seat's one voice toward the operator.
+- passage: A report naming a pull request or a worker step as open, merged, done or queued reads that state from its source below in the same pass. An unreachable source is reported as cannot measure, never as the last reading carried forward, per the doctrine's "A summary outlives its source" bullet.
+
+### B020
+- key: Read the board at `coordinator/<machine>/board.md` next, because everything the seat has promised or brokered lives there, save what the seat's own goal tree carries on the persona plugin.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:17
+- provenance: the docs-curator's drift item D1 in the finishing pass of `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md`, 2026-10-03, on section 1's goal-tree carrier (B012).
+- verdict: keep
+- reason: Section 1 moved the dispatched plan and the operator request onto the persona plugin's goal tree, so the board-read reason saying the board holds everything and nowhere else became false on that plugin, and a seat trusting it could skip a commitment held only on its goal tree. The goal-tree read itself sits in step 3 (B013), and this clause keeps step 2's reason true beside it.
+- passage: 2. **Read the board** at `coordinator/<machine>/board.md`, because everything the seat has promised or brokered lives there and nowhere else, save the dispatched plans and operator requests its own goal tree carries on the persona plugin.
