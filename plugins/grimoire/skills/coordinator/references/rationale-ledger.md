@@ -2227,7 +2227,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: fb0f194 2026-08-28, the delegation model shipped off until an operator writes a per-machine record; the rail was generalized by the standing-grants plan (ff59e19 2026-09-01).
 - verdict: retire
 - superseded-by: B005
-- reason: The role skill owns the model's scope and chain; this is the sending seat's side, and where no record answers the never-tasks-directly rule holds whole. Superseded on 2026-10-02 by B005 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, which names the live persona claim as the second switch beside the opt-in record and the artifact-and-ask shape as the undelegated fallback; the verdict before it was keep).
+- reason: The role skill owns the model's scope and chain; this is the sending seat's side, and where no record answers the never-tasks-directly rule holds whole. Superseded on 2026-10-02 by B005 (`docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1, which keeps the opt-in record as the one switch, names a persona seat's operator-authored launch instruction as its standing, and keeps the artifact-and-ask shape as the undelegated fallback; the verdict before it was keep).
 - passage: Scoped direction from this seat stands only on a machine whose operator wrote the standing-delegation opt-in, and only inside the model the role skill states.
 
 ### c2.C088
@@ -4366,15 +4366,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - reason: The goal tree carries two commitment categories (B012), so a restarted seat that reports before reading it reports stale commitments as live; this is the cold start's board read applied to the second carrier, and the reconciliation guard (c2.C012) reads an entry the seat did not write this session as a claim there too.
 - passage: A seat restarted on the persona plugin reads its own goal tree as it reads the board, under the reconciliation guard below, before its first report.
 
-### B015
-- key: Treat a drop as the worker landing its tree per the plan's recorded commit model and then stopping, the stop shape a park takes; a drop halts and never discards, no branch, worktree or goal entry is deleted on a redirect, and a delete stays with the plan's own commit model on the operator's word.
-- class: rule
-- source: plugins/grimoire/skills/coordinator/SKILL.md:83
-- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1; the definition's wording is the architect's ruling of 2026-10-02 on record ARCHITECT-1ca002ff-6b79-4b14-b89d-ee2d213533e9-7, at the section's first fix round.
-- verdict: keep
-- reason: A drop that discarded would reach a delete, which the doctrine's stop-for-a-yes test gates and no commit model reaches, so the bound keeps a redirect inside the park's own stop shape, whose availability residual `docs/security-model.md` prices under The coordinator board. The halt is visible on the dispatched plan's goal entry on the seat's tree at the next status pass.
-- passage: A drop ends the plan: the worker lands its tree per the plan's recorded commit model and then stops, the same stop shape a park takes. A drop halts and never discards: no branch, worktree or goal entry is deleted on a redirect, and a delete stays with the plan's own commit model on the operator's word.
-
 ### B014
 - key: With no board and no goal tree, take on no new dispatch, since the seat could not track it.
 - class: rule
@@ -4383,6 +4374,15 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - verdict: keep
 - reason: The no-board rule's own reason (c4.C058) applied to the dispatch: a dispatched plan is a commitment whose only record would be loop context, gone at the next compaction. A seat holding a goal tree is not in this state, since the tree carries the plan.
 - passage: A seat with no board and no goal tree takes on no new dispatch, since it could not track one.
+
+### B015
+- key: Treat a drop as the worker landing its tree per the plan's recorded commit model and then stopping, the stop shape a park takes; a drop halts and never discards, no branch, worktree or goal entry is deleted on a redirect, and a delete stays with the plan's own commit model on the operator's word.
+- class: rule
+- source: plugins/grimoire/skills/coordinator/SKILL.md:83
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1; the definition's wording is the architect's ruling of 2026-10-02 on record ARCHITECT-1ca002ff-6b79-4b14-b89d-ee2d213533e9-7, at the section's first fix round.
+- verdict: keep
+- reason: A drop that discarded would reach a delete, which the doctrine's stop-for-a-yes test gates and no commit model reaches, so the bound keeps a redirect inside the park's own stop shape, whose availability residual `docs/security-model.md` prices under The coordinator board. The halt is visible on the dispatched plan's goal entry on the seat's tree at the next status pass.
+- passage: A drop ends the plan: the worker lands its tree per the plan's recorded commit model and then stops, the same stop shape a park takes. A drop halts and never discards: no branch, worktree or goal entry is deleted on a redirect, and a delete stays with the plan's own commit model on the operator's word.
 
 ### B016
 - key: Send a step only the operator can do as a numbered list, each item naming the exact command or act, what to report back, and what outcome reopens the work, the command being the seat's own composition and never a line taken from a source.
