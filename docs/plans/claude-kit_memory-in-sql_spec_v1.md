@@ -275,3 +275,11 @@ corpus: 105549 words of cap 105550
   - Round 3 ran the full roster at fable after round 2's Critical. Round 4 ran one adversarial lens at opus and high effort through Workflow, since no correctness Critical survived round 3.
   - Adjudications for rounds 3 and 4 are in `.kit/scratch/memory-in-sql/s2/`.
 - Next: verify the round 4 fix round, commit it, then review round 5, one adversarial lens at opus, which is the operator's backstop round for this section. Then the Minor close pass, the close gate and Chapter 2.
+
+### Interim board 5 - 2026-10-03
+- Section 2, stage: stopped at the fifth-round review backstop, awaiting the operator. Commits since board 4, pushed: `a3c80f4b` (round 4 fixes: an older same-body copy from another sandbox writes nothing, `memq forget` truthful under the marker, the bare-prefix key refused). Targeted lane at `a3c80f4b`: 1168 tests, 1166 pass, 0 fail, 2 skipped, exit 0.
+- Round 5 (one adversarial lens at opus, high effort) left two Majors standing, both confirmed in code and both spec-traceable. Adjudication: `.kit/scratch/memory-in-sql/s2/round5-adjudication.md`.
+  - A third machine's newest copy is lost after another machine's adoption. The adoption leaves each loser as a deleted row in the `path:` store, and the upsert holds any deleted fleet row, so a third sandbox sharing the folder key lands nowhere on its first publish.
+  - A losing twin is dropped where the caller has no live older row, so its body is kept nowhere and named nowhere.
+- Asked: the operator, on the relay, whether to authorize one more fix round and a sixth review round (recommended). Also told the ARCHITECT, as the expert read, and the coordinator.
+- Next on a yes: fix both Majors and round 5's Minors (the `--again` sentence, a deleted older row reused by `--again`, the header's embeddings claim, sql-style in 220 and 040), then review round 6, then the Minor close pass, the close gate and Chapter 2.
