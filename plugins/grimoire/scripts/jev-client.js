@@ -10,6 +10,14 @@
 // here gathers content: a caller builds the state and the questions and owns
 // what they contain.
 //
+// THE SCREEN. Every body is matched against the closed list of credential
+// shapes in `CREDENTIAL_SHAPES` before the key is read, and a body carrying
+// any of them is refused as `screened`, with a detail naming the shape's class
+// and never the match or where it sat. The screen is the one thing this module
+// reads in a body. It lives here rather than in a caller because this client
+// is the channel every Jev caller shares, so a screen in one caller would be
+// missing from the next.
+//
 // THE KEY. `TYPESAFE_API_KEY` is read from the environment inside the call,
 // after the config read has succeeded, and lives in a local of that call. It
 // is held in no module-level variable, and it reaches no returned object,
@@ -28,12 +36,13 @@
 // one octet parse and one leading-zero refusal. It is applied to the host the
 // URL parser hands `fetch`, which is the host the request dials.
 //
-// EIGHT REASONS, NEVER A THROW. A call resolves to the answers or to one reason
+// NINE REASONS, NEVER A THROW. A call resolves to the answers or to one reason
 // from a closed set, so a caller reports a call that could not be made as not
 // checked rather than as clean:
 //
 //   not configured   no config file on this machine
 //   config unusable  the config file is there and cannot be used
+//   screened         the body carries a credential shape, so it was not sent
 //   no key           the config is usable and the environment holds no key
 //   timeout          the caller's deadline passed with a request in flight
 //   unreachable      the connection, the name lookup or TLS failed
@@ -53,8 +62,8 @@
 // THE LINE BETWEEN THIS MODULE AND ITS CALLERS. The time limit, the retry
 // policy and any meaning read into a score are the caller's. This module holds
 // no default time limit, no fetch limit and no score floor, so one client
-// serves a judge that needs an answer inside 1,500 milliseconds and a coverage
-// check that can wait twenty seconds.
+// serves a judge that needs an answer inside 1,500 milliseconds and a promises
+// check that can wait thirty seconds.
 
 'use strict';
 
@@ -161,6 +170,73 @@ function loadJevConfig() {
     return { ok: true, path: target, endpoint, model };
 }
 
+// ----------------------------------------------------------------- screen --
+
+// The credential shapes no body may carry, each with the label its refusal
+// names. The match runs over the serialized body, so a shape in the state, in
+// a question or in the model name is caught alike, and a double quote inside
+// the state reaches the pattern as `\"`, which the assignment shape allows
+// for. The list is closed: a shape not here is not screened, and a caller
+// that gathers content owns what else it keeps out. A label is this module's
+// own literal, never built from the match, since a detail that quoted the
+// match would print the secret the screen exists to keep.
+
+// The assignment of a quoted literal of eight or more units, as it follows a
+// credential name in the serialized body: an optional closing quote on the
+// name, `=` or `:`, and the literal, opened and closed by a double quote, a
+// single quote or a backtick. The literal runs to the quote that opened it,
+// so an apostrophe inside a double-quoted literal is a character of it, and
+// an escaped pair such as the serialized tab `\t` counts as one unit rather
+// than ending the literal. An escaped quote of the opening kind is the one
+// pair that ends it, so a literal carrying one inside its first eight units
+// ends early and is not screened. Both credential-assignment rows end in it.
+// The backslash before the backtick keeps it out of the template's own
+// syntax; the regex reads it as the plain character.
+const QUOTED_LITERAL = String.raw`\\?["']?\s*[:=]\s*\\?(["'\`])(?:(?!\\?\1)(?:[^\\]|\\.)){8,}\\?\1`;
+
+const CREDENTIAL_SHAPES = [
+    // The key's own variable assigned a value of eight or more characters,
+    // with `=` or `:` and optional quotes between. The bare name is not the
+    // shape, since the kit's own Jev scripts name the variable in their text,
+    // and a value starting with `=` is a comparison rather than an assignment.
+    ['the key variable assigned', /TYPESAFE_API_KEY\\?["']?\s*[:=]\s*\\?["']?(?!=)[^\s"'\\]{8,}/],
+    ['bearer token', /Bearer [A-Za-z0-9_.~+/=-]{16,}/],
+    // No letter or digit directly before `sk-`, so a longer word such as
+    // `risk-assessment-report-2026` is not the shape.
+    ['sk- prefixed key', /(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}/],
+    // A prefix and twenty or more token characters. The prefix alone is not
+    // the shape, since this module's own text spells the prefixes out.
+    ['GitHub token', /(?:ghp_|gho_|github_pat_)[A-Za-z0-9_]{20,}/],
+    ['Slack token', /xox[baprs]-/],
+    ['AWS access key id', /AKIA[A-Z0-9]{16}/],
+    ['private key block', /-----BEGIN[A-Z ]*PRIVATE KEY-----/],
+    // A credential name assigned a quoted literal of eight or more units: in
+    // source (`password = "..."`), in YAML (`token: '...'`) or as a JSON
+    // member (`"secret": "..."`). Two rows share the label. The first takes
+    // the name in any case with no letter or digit directly before it, so
+    // `db_password`, `db-password` and `"password"` are the shape. The second
+    // takes the name capitalized directly after a lower-case letter, as
+    // camelCase writes it, so `clientSecret`, `accessToken` and `dbPassword`
+    // are the shape too. A continuation of the name, such as `tokens` or
+    // `passwordHash`, is neither.
+    ['credential assignment', new RegExp(String.raw`(?<![A-Za-z0-9])(?:password|passwd|secret_key|secretkey|secret|api_key|apikey|token)` + QUOTED_LITERAL, 'i')],
+    ['credential assignment', new RegExp(String.raw`(?<=[a-z])(?:Password|Passwd|SecretKey|Secret|ApiKey|Token)` + QUOTED_LITERAL)],
+    // A connection string's password field: the name `Password`, then `=`,
+    // then a value of eight or more characters with no `;`, whitespace, quote
+    // or backslash, in any case and behind the same left boundary. Any other
+    // YAML or dotenv value assigned without quotes is not a shape here: a
+    // `.env` file is refused by name in the gatherer instead.
+    ['connection-string password', /(?<![A-Za-z0-9])password=[^;\s"'\\]{8,}/i]
+];
+
+// The label of the first shape the body carries, or null for a clean body.
+function screenedShape(body) {
+    for (const [label, shape] of CREDENTIAL_SHAPES) {
+        if (shape.test(body)) return label;
+    }
+    return null;
+}
+
 // -------------------------------------------------------------- transport --
 
 function refusal(reason, detail) {
@@ -187,7 +263,7 @@ function asksSomething(questions) {
 
 // The client's reason for a config read that failed: `absent` is
 // `not configured`, and the other three reasons are `config unusable`. The
-// coverage tool reads the config once for its header and names the same
+// promises check reads the config once for its header and names the same
 // refusal, so the mapping is exported rather than copied.
 function configRefusalReason(config) {
     return config.reason === 'absent' ? 'not configured' : 'config unusable';
@@ -302,12 +378,17 @@ async function run(state, questions, timeoutMs, retryDelaysMs) {
     // opens no socket and is never an empty success.
     if (!asksSomething(questions)) return refusal('unusable answer', 'no question was asked');
 
+    // The body is serialized and screened ahead of the key read, so a body
+    // carrying a credential shape opens no socket and never reads the key.
+    const body = JSON.stringify({ state, model: config.model, questions });
+    const shape = screenedShape(body);
+    if (shape !== null) return refusal('screened', shape);
+
     // The key is read here, after the config read, so a machine with neither
     // reads `not configured`. It lives in this local and nowhere else.
     const key = (typeof process.env.TYPESAFE_API_KEY === 'string') ? process.env.TYPESAFE_API_KEY.trim() : '';
     if (key === '') return refusal('no key');
 
-    const body = JSON.stringify({ state, model: config.model, questions });
     const delays = Array.isArray(retryDelaysMs) ? retryDelaysMs : [];
     const deadline = Date.now() + timeoutMs;
 
@@ -328,7 +409,7 @@ async function run(state, questions, timeoutMs, retryDelaysMs) {
 
 // Ask Jev the questions about the state. Resolves to
 // `{ ok: true, answers, inputTokens }` or `{ ok: false, reason, detail? }`
-// with `reason` one of the eight above. `timeoutMs` is the one deadline over the whole
+// with `reason` one of the nine above. `timeoutMs` is the one deadline over the whole
 // call, retries and their delays included. `retryDelaysMs` is a list of
 // delays whose length is the retry count; omitted or empty means no retry, and
 // only a 429 or 529 is retried.

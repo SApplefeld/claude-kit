@@ -40,6 +40,7 @@ Amending: a row changes when ownership moves. It lands in the same change as the
 | Awaiting a background dispatch: `WAITING:` turn end or synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) |
 | A quiet dispatched agent: probe, wedge hallmark, cadence, the wakes it is evaluated at, windows | `finishing-work` (the unavailability rule) |
 | The capacity reading before a `fable` override dispatch | `executing-work` (step 1) |
+| The Jev promise check before review, its re-read line and its Chapter line | `executing-work` (step 2) |
 | The chapter checkpoint letting a leashed run compact | `executing-work` (step 8) |
 | Consult triggers and mechanics | `consult` |
 | Weighing a review finding or operator correction before acting | `responding-to-review` |
