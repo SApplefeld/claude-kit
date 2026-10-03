@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-sidecar-capture.js (the judgment
+// Tests for plugins/grimoire/hooks/kit-sidecar-capture.js (the judgment
 // sidecar's PostToolUse capture hook).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
@@ -39,10 +39,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-sidecar-capture.js');
-const DISPATCH_TABLE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'dispatch-table.json');
-const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
-const agentLib = require('../plugins/claude-kit/hooks/kit-agent-identity-lib.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-sidecar-capture.js');
+const DISPATCH_TABLE = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'dispatch-table.json');
+const hook = require('../plugins/grimoire/hooks/kit-sidecar-capture.js');
+const agentLib = require('../plugins/grimoire/hooks/kit-agent-identity-lib.js');
 
 const SESSION = 'ses-11112222-aaaa-bbbb-cccc-333344445555';
 
@@ -2314,7 +2314,7 @@ test('the agent-identity key set has exactly one definition and every detector r
     // because the site that kept the old set simply keeps answering, so the
     // pin is that no second definition exists rather than that the copies
     // agree.
-    const hooksDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
+    const hooksDir = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks');
     const LIB = 'kit-agent-identity-lib.js';
     const SET_RE = /'agent_id'\s*,\s*'agent_type'/;
 
@@ -2389,8 +2389,8 @@ test('the agent-identity key set has exactly one definition and every detector r
     // chains: the trimmed string under the first AGENT_TYPE_KEYS spelling
     // present, with a blank or non-string earlier spelling falling through to
     // the next rather than standing the caller down.
-    assert.strictEqual(agentLib.agentTypeOf({ type: 'claude-kit:blind-reviewer' }),
-        'claude-kit:blind-reviewer', 'the fifth spelling, `type`, resolves');
+    assert.strictEqual(agentLib.agentTypeOf({ type: 'grimoire:blind-reviewer' }),
+        'grimoire:blind-reviewer', 'the fifth spelling, `type`, resolves');
     assert.strictEqual(agentLib.agentTypeOf({ subagent_type: 'x' }), 'x');
     assert.strictEqual(agentLib.agentTypeOf({ subagentType: 'x' }), 'x');
     assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'x' }), 'x');
@@ -2417,8 +2417,8 @@ test('the review-seat classifier has exactly one definition and both consumers r
     // classifier that gains a seat in one place and not the other leaks
     // silently, the copy that kept the old list simply continuing to answer, so
     // the pin is that no second definition exists.
-    const hooksDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
-    const agentsDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
+    const hooksDir = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks');
+    const agentsDir = path.join(__dirname, '..', 'plugins', 'grimoire', 'agents');
     const LIB = 'kit-agent-identity-lib.js';
 
     // The seats are read off the agent definitions rather than spelled here, so
@@ -2463,10 +2463,10 @@ test('the review-seat classifier has exactly one definition and both consumers r
 
     // The classification itself, matched by suffix so a plugin-namespaced id
     // resolves and anchored so a longer name that merely contains one does not.
-    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:blind-reviewer'), 'strict');
+    assert.strictEqual(agentLib.reviewAgentClass('grimoire:blind-reviewer'), 'strict');
     assert.strictEqual(agentLib.reviewAgentClass('consultant'), 'strict');
-    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:qa-verifier'), 'gate');
-    assert.strictEqual(agentLib.reviewAgentClass('claude-kit:implementer-opus'), null);
+    assert.strictEqual(agentLib.reviewAgentClass('grimoire:qa-verifier'), 'gate');
+    assert.strictEqual(agentLib.reviewAgentClass('grimoire:implementer-opus'), null);
     assert.strictEqual(agentLib.reviewAgentClass('blind-reviewer-helper'), null);
 });
 

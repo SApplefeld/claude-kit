@@ -13,11 +13,11 @@ options:
 shapes:
   - name: doctrine-only
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
   - name: doctrine-plus-output-style
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
 ---
 # The number's own source is down
 

@@ -1,8 +1,8 @@
 #Requires -Version 5.1
 <#
-    build.ps1 - Package the claude-kit plugin into an installable zip.
+    build.ps1 - Package the grimoire plugin into an installable zip.
 
-    Produces plugins/claude-kit.zip with the plugin folder (claude-kit/) at the
+    Produces plugins/grimoire.zip with the plugin folder (grimoire/) at the
     archive root - the layout the Cowork/Chat "upload a plugin zip" flow expects.
     The archive is built deterministically (sorted entries, fixed timestamps) so
     repeated builds of unchanged sources yield byte-identical output and clean diffs.
@@ -18,7 +18,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Configuration.
-$pluginName = 'claude-kit'
+$pluginName = 'grimoire'
 $sourceDir  = Join-Path $PSScriptRoot "plugins\$pluginName"
 $zipPath    = Join-Path $PSScriptRoot "plugins\$pluginName.zip"
 
@@ -80,8 +80,8 @@ $buildInfo = [ordered]@{ name = $pluginName; hash = $gitHash; dirty = $isDirty; 
 # appends this file to the worker's system prompt from the deployed payload instead.
 # home\ stays the single source; the copy is gitignored and regenerated every build,
 # before the file collection below so it is packaged.
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'home\claude-kit-doctrine.md') `
-          -Destination (Join-Path $sourceDir 'claude-kit-doctrine.md') -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'home\grimoire-doctrine.md') `
+          -Destination (Join-Path $sourceDir 'grimoire-doctrine.md') -Force
 
 # Load Compression Types.
 Add-Type -AssemblyName System.IO.Compression | Out-Null
@@ -108,7 +108,7 @@ try {
     $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create)
     try {
         foreach ($file in $files) {
-            # Entry path relative to the plugin folder, with claude-kit/ as the root.
+            # Entry path relative to the plugin folder, with grimoire/ as the root.
             $relative  = $file.FullName.Substring($sourceFull.Length).TrimStart('\', '/').Replace('\', '/')
             $entryName = "$pluginName/$relative"
 

@@ -8,7 +8,7 @@ Two measurements taken on 2026-09-09 from the repo's own plan docs and git histo
 
 Review rounds per section, by the week the plan was written. Read from every `review rounds N` Metrics line in every plan doc.
 
-| Plan week | claude-kit mean rounds | claude-kit sections at 5 or more | AI-OS mean rounds |
+| Plan week | grimoire mean rounds | grimoire sections at 5 or more | AI-OS mean rounds |
 |---|---|---|---|
 | Aug 15 | 2.9 of 16 | 5 | 1.6 of 13 |
 | Aug 22 | 2.1 of 82 | 9 | 0.9 of 9 |

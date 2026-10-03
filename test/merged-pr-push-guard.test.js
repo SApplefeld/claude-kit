@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/merged-pr-push-guard.js (the PreToolUse
+// Tests for plugins/grimoire/hooks/merged-pr-push-guard.js (the PreToolUse
 // push guard for branches whose PR already merged).
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
@@ -20,10 +20,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'merged-pr-push-guard.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'merged-pr-push-guard.js');
 // The same file as a module. It runs the guard only under require.main, so
 // requiring it here reads its rules and guards no push.
-const guard = require('../plugins/claude-kit/hooks/merged-pr-push-guard.js');
+const guard = require('../plugins/grimoire/hooks/merged-pr-push-guard.js');
 const NO_DEADLINE_VAR = 'KIT_MERGED_PR_GUARD_NO_DEADLINE';
 const NO_DEADLINE_SIGNAL = 'KIT_MERGED_PR_GUARD_NO_DEADLINE_ALLOW';
 

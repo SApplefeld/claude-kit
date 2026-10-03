@@ -1,4 +1,4 @@
-// Unit tests for plugins/claude-kit/scripts/kit-goal-statusline.js and the
+// Unit tests for plugins/grimoire/scripts/kit-goal-statusline.js and the
 // scripts/kit-statusline.js launcher.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Each case
@@ -17,10 +17,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
+const SCRIPTS = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts');
 const WIDGET = path.join(SCRIPTS, 'kit-goal-statusline.js');
 const LAUNCHER = path.join(SCRIPTS, 'kit-statusline.js');
-const HOOKS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks');
+const HOOKS = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks');
 const GOAL_LIB = path.join(HOOKS, 'kit-goal-lib.js');
 const SESSION_START_HOOK = path.join(HOOKS, 'session-start.js');
 const GOAL_CLI = path.join(HOOKS, 'kit-goal.js');
@@ -1019,7 +1019,7 @@ test('the launcher runs the widget from the payload memq-shim resolves, passing 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-statusline-plugins-'));
     const dir = makeRepo();
     try {
-        const entry = path.join(root, 'cache', 'applefeld', 'claude-kit', 'v1');
+        const entry = path.join(root, 'cache', 'applefeld', 'grimoire', 'v1');
         fs.mkdirSync(path.join(entry, 'scripts'), { recursive: true });
         fs.mkdirSync(path.join(entry, 'hooks'), { recursive: true });
         fs.writeFileSync(path.join(entry, 'scripts', 'memq.js'), '', 'utf8');
@@ -1030,7 +1030,7 @@ test('the launcher runs the widget from the payload memq-shim resolves, passing 
         fs.copyFileSync(GOAL_LIB, path.join(entry, 'hooks', 'kit-goal-lib.js'));
         fs.writeFileSync(path.join(root, 'installed_plugins.json'), JSON.stringify({
             version: 2,
-            plugins: { 'claude-kit@applefeld': [{ scope: 'user', installPath: entry, version: 'v1' }] }
+            plugins: { 'grimoire@applefeld': [{ scope: 'user', installPath: entry, version: 'v1' }] }
         }), 'utf8');
         arm(dir, { plan: PLAN_REL });
         plan(dir, []);

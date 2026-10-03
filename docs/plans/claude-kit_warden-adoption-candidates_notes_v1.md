@@ -137,7 +137,7 @@ The evaluation was a read of the repository at commit `2a3e85d` (2026-08-21) plu
 - Code intelligence: `src/index/parser.ts` (language table, C# at the `.cs` entry), `src/index/indexer.ts`, `src/index/graph.ts`.
 - Memory: `src/memory/index.ts` (hybrid search, reciprocal rank fusion, no similarity floor), `src/memory/embeddings.ts`, `src/store/sqlite.ts` (schema).
 - Its test suite: 562 of 568 passing with embeddings disabled; 21 of 22 in the semantic file once the model was installed, the remaining failure being its own test asserting that an unrelated query returns nothing, which fails because the vector channel has no floor.
-- Kit side: `docs/architecture.md`, `docs/security-model.md` (guard matchers and the agent access model), `plugins/claude-kit/hooks/hooks.json`, `plugins/claude-kit/skills/memory-system/SKILL.md` (decay thresholds, the delete-versus-archive line, CLI-only shared-tier authoring), `plugins/claude-kit/scripts/memq.js` (frontmatter walk), `docs/backlog.md` (the 2026-07-31 constants item).
+- Kit side: `docs/architecture.md`, `docs/security-model.md` (guard matchers and the agent access model), `plugins/grimoire/hooks/hooks.json`, `plugins/grimoire/skills/memory-system/SKILL.md` (decay thresholds, the delete-versus-archive line, CLI-only shared-tier authoring), `plugins/grimoire/scripts/memq.js` (frontmatter walk), `docs/backlog.md` (the 2026-07-31 constants item).
 
 ## Related
 

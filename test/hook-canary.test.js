@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/hook-canary.js (the session-start hook canary).
+// Tests for plugins/grimoire/hooks/hook-canary.js (the session-start hook canary).
 //
 // Node's built-in test runner, no framework (Node v24). The canary is spawned as
 // a real child process with CLAUDE_PLUGIN_ROOT pointed at a plugin cache, and is
@@ -19,8 +19,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const CANARY = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hook-canary.js');
-const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
+const CANARY = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'hook-canary.js');
+const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'grimoire');
 
 // The absolute-path test the stub grant hooks below screen with, as source
 // text they embed, derived from the host rather than fixed. The probe composes
@@ -85,7 +85,7 @@ function stampCache(cache, options) {
         }
         Object.assign(hooks, opts.extra || {});
     }
-    const stamp = { name: 'claude-kit', hash: 'testbld', dirty: false };
+    const stamp = { name: 'grimoire', hash: 'testbld', dirty: false };
     if (hooks) stamp.hooks = hooks;
     fs.mkdirSync(path.join(cache, '.claude-plugin'), { recursive: true });
     fs.writeFileSync(path.join(cache, '.claude-plugin', 'build-info.json'),
@@ -155,7 +155,7 @@ function assertSilent(res, message) {
     if (res.stdout) {
         const lines = failureLines(warning(res));
         assert.ok(!(lines.length && lines.every((l) => l.includes('integrity check'))),
-            'the build stamp under plugins/claude-kit/.claude-plugin/ is stale: hooks were edited after '
+            'the build stamp under plugins/grimoire/.claude-plugin/ is stale: hooks were edited after '
             + 'the last build, so run the builder for this host (./build.ps1 or ./build.sh) and '
             + 're-run this suite. Integrity lines:\n'
             + lines.join('\n'));

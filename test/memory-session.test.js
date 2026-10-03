@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/memory-session.js (the decay-nudge
+// Tests for plugins/grimoire/hooks/memory-session.js (the decay-nudge
 // SessionStart hook).
 //
 // Node's built-in test runner, no framework (Node v24). The hook is spawned as
@@ -29,7 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-session.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memory-session.js');
 
 const DAY_MS = 86400000;
 
@@ -45,7 +45,7 @@ function makeStore() {
 }
 
 // The hook refuses to name a store root longer than PATH_EMIT_CAP (260, in
-// plugins/claude-kit/hooks/memory-session.js). A fixed pad crosses that cap
+// plugins/grimoire/hooks/memory-session.js). A fixed pad crosses that cap
 // only on a box whose temp prefix is long enough, so the pad is sized from
 // the real prefix: the root this returns is one character past the cap on
 // every box, whatever its temp directory.
@@ -89,7 +89,7 @@ function writeStamp(store, ageDays) {
 // KIT_EMBEDDER_ROOT to point at their own absent or unusable fixture instead.
 // MODEL_ID and MODEL_FILES come from memory-index.js itself, so this fixture
 // cannot drift from the shape the real probe checks.
-const mi = require('../plugins/claude-kit/scripts/memory-index.js');
+const mi = require('../plugins/grimoire/scripts/memory-index.js');
 const READY_EMBEDDER_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-embedder-'));
 (function plantReadyEmbedder() {
     const pkgDir = path.join(READY_EMBEDDER_ROOT, 'node_modules', '@huggingface', 'transformers');
@@ -2029,7 +2029,7 @@ test('the hook\'s sync check runs no `git fetch`, proven while it has real diver
 // the doctor's own canonical repository, built by the real installer so the
 // spawned script's re-derived bar passes. The dirty file is an allowlisted
 // memory path, which is exactly what the silent sync exists to commit.
-const INSTALLER = path.join(__dirname, '..', 'plugins', 'claude-kit', 'doctor', 'install-memory-sync.ps1');
+const INSTALLER = path.join(__dirname, '..', 'plugins', 'grimoire', 'doctor', 'install-memory-sync.ps1');
 
 // A value quoted for embedding in a PowerShell command line: single quotes,
 // with embedded single quotes doubled, the one escape that form needs.
@@ -3484,7 +3484,7 @@ test('a pinned session gets no drift line, since no root resolves from its worki
 // not against a behavior a matcher change could still satisfy by accident.
 test('hooks.json wires memory-session.js on startup, resume, and compact', () => {
     const hooksJson = JSON.parse(fs.readFileSync(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'hooks.json'), 'utf8'));
     const entries = hooksJson.hooks.SessionStart.filter((e) =>
         e.hooks.some((h) => h.command.includes('memory-session.js')));
     assert.strictEqual(entries.length, 1,
@@ -3654,7 +3654,7 @@ test('the publish spawn holds the next run off for longer than a publish can run
     // floor again. So an interval set to the budget alone still starts a second
     // publish beside a live one, for as long as that last call takes. Editing
     // any of the three alone reds here.
-    const db = require(path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
+    const db = require(path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts', 'memory-database.js'));
     assert.ok(Number.isFinite(db.RUN_BUDGET_MS) && db.RUN_BUDGET_MS > 0,
         'the client states a run budget: ' + db.RUN_BUDGET_MS);
     assert.ok(Number.isFinite(db.SPAWN_MAX_OVERSHOOT_MS) && db.SPAWN_MAX_OVERSHOOT_MS > 0,
@@ -4123,7 +4123,7 @@ test('with a Jev config the session-start block is the judged one, keyed to the 
 // current time unless a case plants an old one, so a peer's entry is inside
 // the stale bound on whatever day the suite runs.
 
-const SESSION_END_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'jev-session-end.js');
+const SESSION_END_HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'jev-session-end.js');
 const END_SESSION_A = '0c0c0c0c-1111-4222-8333-444444444444';
 const END_SESSION_B = '0d0d0d0d-5555-4666-8777-888888888888';
 
@@ -4326,7 +4326,7 @@ test('the session-end hook leaves a file holding only young peer entries unwritt
 
 test('hooks.json wires the session-end hook on SessionEnd and leaves the Stop entries as they are', () => {
     const hooksJson = JSON.parse(fs.readFileSync(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));
+        path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'hooks.json'), 'utf8'));
     const commands = (event) => (hooksJson.hooks[event] || [])
         .flatMap((e) => e.hooks.map((h) => h.command));
     assert.deepStrictEqual(commands('SessionEnd').filter((c) => c.includes('jev-session-end.js')).length, 1,

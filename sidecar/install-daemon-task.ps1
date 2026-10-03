@@ -16,7 +16,7 @@
 # the task fleet-wide turns nothing on by itself; the ~/.claude/kit-endpoint.json
 # file remains the per-machine switch.
 #
-# The clone is resolved from the machine signpost ~/.claude/claude-kit.local.json
+# The clone is resolved from the machine signpost ~/.claude/grimoire.local.json
 # (kitRepoPath), falling back to this script's own location, so the same
 # command line works on every VM regardless of where the clone sits.
 #
@@ -25,11 +25,12 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Names host state written by earlier installs, kept so existing hosts still match.
 $taskName = 'claude-kit-sidecar-daemon'
 
 # Resolve the clone: signpost first, this script's parent as the fallback.
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$signpost = Join-Path $env:USERPROFILE '.claude\claude-kit.local.json'
+$signpost = Join-Path $env:USERPROFILE '.claude\grimoire.local.json'
 if (Test-Path $signpost) {
     try {
         $configured = (Get-Content $signpost -Raw | ConvertFrom-Json).kitRepoPath
@@ -66,7 +67,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
-    -Settings $settings -Principal $principal -Description 'claude-kit judge daemon: consumes the tool-call spool and judges it against the machine''s configured model endpoint. Managed by sidecar/install-daemon-task.ps1 in the kit clone.' `
+    -Settings $settings -Principal $principal -Description 'grimoire judge daemon: consumes the tool-call spool and judges it against the machine''s configured model endpoint. Managed by sidecar/install-daemon-task.ps1 in the kit clone.' `
     -Force | Out-Null
 
 Start-ScheduledTask -TaskName $taskName

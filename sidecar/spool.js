@@ -1,6 +1,6 @@
 // Reading the capture spool: day files, byte offsets, line parsing, retention.
 //
-// The writer is plugins/claude-kit/hooks/kit-sidecar-capture.js and the two
+// The writer is plugins/grimoire/hooks/kit-sidecar-capture.js and the two
 // never import each other. sidecar/CONTRACT.md is the whole of what they share,
 // and every rule this file implements is stated there:
 //

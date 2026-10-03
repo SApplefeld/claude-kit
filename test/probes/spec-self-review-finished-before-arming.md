@@ -13,11 +13,11 @@ options:
 shapes:
   - name: brainstorming
     files:
-      - plugins/claude-kit/skills/brainstorming/SKILL.md
+      - plugins/grimoire/skills/brainstorming/SKILL.md
   - name: brainstorming-plus-charter
     files:
-      - plugins/claude-kit/skills/brainstorming/SKILL.md
-      - plugins/claude-kit/agents/plan-reviewer.md
+      - plugins/grimoire/skills/brainstorming/SKILL.md
+      - plugins/grimoire/agents/plan-reviewer.md
 ---
 # The spec is written, the blind read is adjudicated, and the header is about to say Ready
 

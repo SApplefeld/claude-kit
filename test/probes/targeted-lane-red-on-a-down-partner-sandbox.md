@@ -13,13 +13,13 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/agents/implementer-sonnet.md
-      - plugins/claude-kit/skills/systematic-debugging/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/agents/implementer-sonnet.md
+      - plugins/grimoire/skills/systematic-debugging/SKILL.md
   - name: implementer-plus-systematic-debugging
     files:
-      - plugins/claude-kit/agents/implementer-sonnet.md
-      - plugins/claude-kit/skills/systematic-debugging/SKILL.md
+      - plugins/grimoire/agents/implementer-sonnet.md
+      - plugins/grimoire/skills/systematic-debugging/SKILL.md
 ---
 # The targeted lane goes red in a file your change never touched
 

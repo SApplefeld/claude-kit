@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-tool-payload-lib.js, the shared
+// Tests for plugins/grimoire/hooks/kit-tool-payload-lib.js, the shared
 // error-flag predicate over a PostToolUse payload.
 //
 // The predicate is pure and in-process, so there is no child here. What these
@@ -18,8 +18,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const lib = require('../plugins/claude-kit/hooks/kit-tool-payload-lib.js');
-const nudge = require('../plugins/claude-kit/hooks/memory-recognition-nudge.js');
+const lib = require('../plugins/grimoire/hooks/kit-tool-payload-lib.js');
+const nudge = require('../plugins/grimoire/hooks/memory-recognition-nudge.js');
 
 test('the payload-level error flag is a failure whatever the response is', () => {
     assert.strictEqual(lib.callFailed({ is_error: true, tool_response: 'boom' }), true);

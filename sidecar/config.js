@@ -13,7 +13,7 @@
 // so a reader can see that the endpoint changed without the address being
 // written down anywhere.
 //
-// The read itself lives in plugins/claude-kit/scripts/kit-endpoint-lib.js and
+// The read itself lives in plugins/grimoire/scripts/kit-endpoint-lib.js and
 // is re-exported here, because memq reads the same file for its own model-judged
 // channel and only the plugin tree ships. What stays here is the daemon's
 // policy over that read, which is one number: the default request timeout.
@@ -35,7 +35,7 @@
 const os = require('os');
 const path = require('path');
 
-const lib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
+const lib = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 
 // The request timeout when the config names none.
 //

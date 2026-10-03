@@ -14,7 +14,7 @@
 // gets wrong.
 //
 // The kit's hook holds the other implementation of this same property, in
-// plugins/claude-kit/hooks/kit-sidecar-capture.js, because the process boundary
+// plugins/grimoire/hooks/kit-sidecar-capture.js, because the process boundary
 // forbids a shared require: the contract between the two halves is a file on
 // disk. The two are pinned equal by a test rather than shared.
 

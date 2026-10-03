@@ -1,6 +1,6 @@
-// Tests for the memory store's sync repo: plugins/claude-kit/doctor/
+// Tests for the memory store's sync repo: plugins/grimoire/doctor/
 // install-memory-sync.ps1, the "Memory sync" section of doctor.ps1, and the
-// silent sync runner plugins/claude-kit/doctor/sync-store.ps1 (its cases sit
+// silent sync runner plugins/grimoire/doctor/sync-store.ps1 (its cases sit
 // at the end of this file).
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every
@@ -41,7 +41,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memory-sync.ps1');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const SANITIZE_LINE = path.join(PLUGIN_ROOT, 'doctor', 'sanitize-line.ps1');
@@ -189,7 +189,7 @@ function makeStore(options) {
         // A journal shaped like what a tool with no relationship to the store
         // writes under this tier, in the kit's own per-project scratch
         // directory: the compaction gate's log. No writer puts one here today,
-        // kitScratchDir in plugins/claude-kit/hooks/kit-compact-lib.js sending
+        // kitScratchDir in plugins/grimoire/hooks/kit-compact-lib.js sending
         // a store-backed project directory to a home-anchored path outside the
         // store, and the fixture is about the form the re-include must refuse
         // rather than about that writer. Nothing in the directory contract
@@ -738,7 +738,7 @@ test('the coordinator tier admits the .md forms its directory contract defines a
         // a directory the kit itself creates under a session's project path is
         // exactly where an unrelated tool's state lands. compact-gate.jsonl is
         // the shape that class takes, the compaction gate's own log. No writer
-        // reaches this path today, because kitScratchDir in plugins/claude-kit
+        // reaches this path today, because kitScratchDir in plugins/grimoire
         // /hooks/kit-compact-lib.js resolves a store-backed project directory
         // to a home-anchored path outside the store rather than to <cwd>/.kit.
         // The re-include refuses the form whether or not a writer is currently
@@ -1869,7 +1869,7 @@ test('the doctor reports the sync section in both states against a redirected st
     }
 });
 
-// Get-RedactedRemote (plugins/claude-kit/doctor/sanitize-line.ps1) drops the
+// Get-RedactedRemote (plugins/grimoire/doctor/sanitize-line.ps1) drops the
 // whole userinfo of any `scheme://` URL before the value ever reaches
 // Get-SanitizedLine, which strips characters and caps length but has no
 // notion of URL structure. One spawn drives every input shape rather than

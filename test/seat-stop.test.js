@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/seat-stop.js (the seat's Stop hook).
+// Tests for plugins/grimoire/hooks/seat-stop.js (the seat's Stop hook).
 //
 // The hook makes a goalless seat's compaction boundary structural: at a turn
 // end it stamps the session's registry heartbeat and, where that session has
@@ -19,8 +19,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'seat-stop.js');
-const GATE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-gate.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'seat-stop.js');
+const GATE = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-gate.js');
 
 const SESSION = 'ses-11112222-aaaa-bbbb-cccc-333344445555';
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -107,8 +107,8 @@ function writeEntry(f, overrides) {
     const lines = [
         'Name: KIT: Worker',
         'Role: Worker',
-        'Repo: claude-kit',
-        'Workdir: claude-kit',
+        'Repo: grimoire',
+        'Workdir: grimoire',
         'Session: ' + (o.session || SESSION),
         'Started: ' + iso(3 * 60 * 60 * 1000),
         'Status-updated: ' + (o.statusUpdated === undefined ? iso(60 * 1000) : o.statusUpdated),

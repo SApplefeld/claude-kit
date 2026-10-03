@@ -16,7 +16,7 @@
 // the line is what that shape allows.
 //
 // The scope is the payload rather than the whole tree: every markdown file
-// shipped under plugins/claude-kit/, walked the way
+// shipped under plugins/grimoire/, walked the way
 // test/doctrine-parity.test.js walks it for its own shipped-surface sweep.
 // The one exclusion carried over is that walker's own: the gitignored
 // doctrine copy at the plugin root is build output the doctrine-refresh
@@ -33,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const PLUGIN_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(__dirname, '..', 'plugins', 'grimoire');
 
 // A fence line's own backtick run length gates what closes it: CommonMark
 // closes a fence only on a line whose backtick run is at least as long as
@@ -88,7 +88,7 @@ function unbalancedMarkerLines(text) {
 
 // Every markdown file the payload ships, walked the way
 // test/doctrine-parity.test.js's shippedKitMarkdown walks it: recursively
-// under plugins/claude-kit/, past the one exclusion this file's header
+// under plugins/grimoire/, past the one exclusion this file's header
 // names. Restated here rather than imported because doctrine-parity.test.js
 // is a test file with no module.exports, not a shared library.
 function payloadMarkdown() {
@@ -97,7 +97,7 @@ function payloadMarkdown() {
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             const full = path.join(dir, entry.name);
             if (entry.isDirectory()) { walk(full); continue; }
-            if (entry.name === 'claude-kit-doctrine.md' && dir === PLUGIN_ROOT) continue;
+            if (entry.name === 'grimoire-doctrine.md' && dir === PLUGIN_ROOT) continue;
             if (entry.name.endsWith('.md')) files.push(full);
         }
     };

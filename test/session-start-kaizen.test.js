@@ -1,11 +1,11 @@
-// Tests for the pending-kaizen counter in plugins/claude-kit/hooks/session-start.js.
+// Tests for the pending-kaizen counter in plugins/grimoire/hooks/session-start.js.
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
 // child process, fed a SessionStart payload on stdin, and asserted on by its
 // stdout: a pending inbox emits the kaizen block inside
 // {"hookSpecificOutput":{additionalContext}}; an empty inbox emits nothing.
 // Each case builds a fresh temp dir carrying the kit-repo marker
-// (plugins/claude-kit/.claude-plugin/plugin.json) plus a kaizen/ inbox.
+// (plugins/grimoire/.claude-plugin/plugin.json) plus a kaizen/ inbox.
 
 'use strict';
 
@@ -16,12 +16,12 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
 
 function makeKitRepo() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kaizen-count-test-'));
-    fs.mkdirSync(path.join(dir, 'plugins', 'claude-kit', '.claude-plugin'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'plugins', 'claude-kit', '.claude-plugin', 'plugin.json'), '{}');
+    fs.mkdirSync(path.join(dir, 'plugins', 'grimoire', '.claude-plugin'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'plugins', 'grimoire', '.claude-plugin', 'plugin.json'), '{}');
     fs.mkdirSync(path.join(dir, 'kaizen', 'briefs'), { recursive: true });
     return dir;
 }

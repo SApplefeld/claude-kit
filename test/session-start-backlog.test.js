@@ -1,4 +1,4 @@
-// Tests for the backlog block in plugins/claude-kit/hooks/session-start.js.
+// Tests for the backlog block in plugins/grimoire/hooks/session-start.js.
 //
 // Node's built-in test runner, no framework. The hook is spawned as a real
 // child process, fed a SessionStart payload on stdin, and asserted on by its
@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const HOOK = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
 
 function makeProject() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-block-test-'));
@@ -83,7 +83,7 @@ test('no docs/backlog.md emits no backlog block', () => {
 test('the docs/backlog.md template itself emits no backlog block', () => {
     const dir = makeProject();
     try {
-        const templatesPath = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'curating-docs', 'references', 'templates.md');
+        const templatesPath = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills', 'curating-docs', 'references', 'templates.md');
         const templatesText = fs.readFileSync(templatesPath, 'utf8');
         const match = /## `docs\/backlog\.md`[\s\S]*?```markdown\r?\n([\s\S]*?)```/.exec(templatesText);
         assert.ok(match, 'the docs/backlog.md template block is found in templates.md');
@@ -339,7 +339,7 @@ test('the block fires outside the kit repo, with no kit-repo marker present', ()
     const dir = makeProject();
     try {
         assert.strictEqual(
-            fs.existsSync(path.join(dir, 'plugins', 'claude-kit', '.claude-plugin', 'plugin.json')),
+            fs.existsSync(path.join(dir, 'plugins', 'grimoire', '.claude-plugin', 'plugin.json')),
             false
         );
         writeBacklog(dir, [
@@ -563,8 +563,8 @@ test('no Active section at all emits no backlog block', () => {
 test('the kaizen block and the backlog block coexist in the kit repo', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-block-test-'));
     try {
-        fs.mkdirSync(path.join(dir, 'plugins', 'claude-kit', '.claude-plugin'), { recursive: true });
-        fs.writeFileSync(path.join(dir, 'plugins', 'claude-kit', '.claude-plugin', 'plugin.json'), '{}');
+        fs.mkdirSync(path.join(dir, 'plugins', 'grimoire', '.claude-plugin'), { recursive: true });
+        fs.writeFileSync(path.join(dir, 'plugins', 'grimoire', '.claude-plugin', 'plugin.json'), '{}');
         fs.mkdirSync(path.join(dir, 'kaizen', 'briefs'), { recursive: true });
         fs.writeFileSync(
             path.join(dir, 'kaizen', 'notes-M.md'),

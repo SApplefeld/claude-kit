@@ -13,16 +13,16 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
-      - plugins/claude-kit/skills/operating-instructions/references/ownership-map.md
-      - plugins/claude-kit/skills/branch-hygiene/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
-      - plugins/claude-kit/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/references/ownership-map.md
+      - plugins/grimoire/skills/branch-hygiene/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
   - name: doctrine-plus-branch-hygiene
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/branch-hygiene/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/branch-hygiene/SKILL.md
   # A designed red, per test/probes/README.md: this shape holds the doctrine
   # and the output style without branch-hygiene or finishing-work, and the
   # doctrine leaves a commit model's acts to the owning skill, so the expected
@@ -30,8 +30,8 @@ shapes:
   - name: doctrine-plus-output-style
     designed-mismatch: doctrine-leaves-a-models-acts-to-the-owning-skill
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/output-styles/kit.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/output-styles/kit.md
 ---
 # A merged branch and its worktree at the end of an armed run
 

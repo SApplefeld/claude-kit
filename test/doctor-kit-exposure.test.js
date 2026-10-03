@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const DOCTOR = path.join(__dirname, '..', 'plugins', 'claude-kit', 'doctor', 'doctor.ps1');
+const DOCTOR = path.join(__dirname, '..', 'plugins', 'grimoire', 'doctor', 'doctor.ps1');
 const isWin = process.platform === 'win32';
 
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";

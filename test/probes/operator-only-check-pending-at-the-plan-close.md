@@ -13,13 +13,13 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
-      - plugins/claude-kit/skills/curating-docs/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/curating-docs/SKILL.md
   - name: doctrine-plus-finishing-work
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/finishing-work/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/finishing-work/SKILL.md
 ---
 # One acceptance check waits on the operator at the close
 

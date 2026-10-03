@@ -13,13 +13,13 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/coordinator/SKILL.md
-      - plugins/claude-kit/skills/standing-watch/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/coordinator/SKILL.md
+      - plugins/grimoire/skills/standing-watch/SKILL.md
   - name: doctrine-plus-coordinator
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/coordinator/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/coordinator/SKILL.md
 ---
 # The coordinator seat is taken cold on a box with no board
 

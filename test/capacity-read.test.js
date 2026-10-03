@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/capacity-read.js, the pre-dispatch
+// Tests for plugins/grimoire/hooks/capacity-read.js, the pre-dispatch
 // capacity reading over claude-swap's cache.
 //
 // Node's built-in test runner, no framework. Every case plants a cache under a
@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const READER = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'capacity-read.js');
+const READER = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'capacity-read.js');
 
 const PLANTED_EMAIL = 'zq-planted-mailbox@capacity-fixture.example';
 const PLANTED_ORG = 'd7c0ffee-5eed-4bad-9a11-0rgplanted00';

@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-registry-stamp.js: the seat's own
+// Tests for plugins/grimoire/hooks/kit-registry-stamp.js: the seat's own
 // `Status-updated:` stamp and the audit that reads the coordinator directory's
 // time fields against the machine-written comparators beside them.
 //
@@ -23,13 +23,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-registry-stamp.js');
+const CLI = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-registry-stamp.js');
 const {
     roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse, auditDir,
     HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS
 } = require(CLI);
 
-const COMPACT_LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+const COMPACT_LIB = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js');
 const { stepOffWholeSecond, stampRegistryEntry, REGISTRY_ENTRY_MAX_BYTES } = require(COMPACT_LIB);
 
 const SESSION = 'ses-77778888-dddd-eeee-ffff-999900001111';
@@ -72,8 +72,8 @@ function entryText(o) {
     const lines = [
         'Name: KIT: Worker',
         'Role: Worker',
-        'Repo: claude-kit',
-        'Workdir: claude-kit',
+        'Repo: grimoire',
+        'Workdir: grimoire',
         'Session: ' + (o.session || SESSION),
         'Started: ' + (o.started === undefined ? measured(-3 * 60 * MINUTE) : o.started),
         'Status-updated: ' + (o.statusUpdated === undefined ? measured(-MINUTE) : o.statusUpdated),
@@ -978,7 +978,7 @@ test('registry audit: a board-location record of exactly the cap is read and fol
 test('registry audit: an operator tier that cannot be resolved is named, and the other legs still run', () => {
     // In process, so memq's tier resolution can be made to throw: the audit
     // loads the same module object and calls it through its export.
-    const memq = require('../plugins/claude-kit/scripts/memq.js');
+    const memq = require('../plugins/grimoire/scripts/memq.js');
     const real = memq.operatorDirPath;
     const f = fixture();
     try {
@@ -999,7 +999,7 @@ test('registry audit: an operator tier that cannot be resolved is named, and the
 test('registry audit: an operator tier that cannot be opened is named rather than read as holding no record', () => {
     // A regular file where the tier directory should be fails the open with
     // ENOTDIR, the shape an unlistable tier takes.
-    const memq = require('../plugins/claude-kit/scripts/memq.js');
+    const memq = require('../plugins/grimoire/scripts/memq.js');
     const real = memq.operatorDirPath;
     const f = fixture();
     try {

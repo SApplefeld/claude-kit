@@ -32,7 +32,7 @@ process.on('exit', () => {
     try { fs.rmSync(FIXTURE_HOME, { recursive: true, force: true }); } catch { /* best effort */ }
 });
 
-const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
+const SCRIPTS = path.join(__dirname, '..', 'plugins', 'grimoire', 'scripts');
 const judge = require(path.join(SCRIPTS, 'jev-judge.js'));
 const memq = require(path.join(SCRIPTS, 'memq.js'));
 const dbClient = require(path.join(SCRIPTS, 'memory-database.js'));

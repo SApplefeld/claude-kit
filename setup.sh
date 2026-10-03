@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Dev-clone setup for the claude-kit repo: record the kaizen signpost and wire git
+# Dev-clone setup for the grimoire repo: record the kaizen signpost and wire git
 # hooks. Run from the repo root: ./setup.sh
 #
 # POSIX only. On Windows these first-run duties live in doctor: doctor.cmd -Fix
@@ -8,7 +8,7 @@
 #
 # The operating doctrine ships via the plugin now (the operating-instructions
 # skill), so setup no longer installs a user-level CLAUDE.md. On Claude Code the
-# doctrine-refresh hook maintains ~/.claude/claude-kit-doctrine.md and your
+# doctrine-refresh hook maintains ~/.claude/grimoire-doctrine.md and your
 # ~/.claude/CLAUDE.md imports it with one line (see the Next hints).
 
 set -e
@@ -18,8 +18,8 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 TARGET_DIR="$HOME/.claude"
 
 # Validate this is the kit repo (so the signpost's kitRepoPath is meaningful).
-if [ ! -f "$SCRIPT_DIR/plugins/claude-kit/.claude-plugin/plugin.json" ]; then
-    echo "Not the claude-kit repo root (plugins/claude-kit/.claude-plugin/plugin.json missing). Run from the repo root." >&2
+if [ ! -f "$SCRIPT_DIR/plugins/grimoire/.claude-plugin/plugin.json" ]; then
+    echo "Not the grimoire repo root (plugins/grimoire/.claude-plugin/plugin.json missing). Run from the repo root." >&2
     exit 1
 fi
 
@@ -57,7 +57,7 @@ mkdir -p "$TARGET_DIR"
 # runs this script before installing the plugin), so its absence must not abort
 # the run: an absent signpost still gets the two-key template, and an existing
 # one is left alone rather than flattened by a wholesale write.
-SIGNPOST="$TARGET_DIR/claude-kit.local.json"
+SIGNPOST="$TARGET_DIR/grimoire.local.json"
 MACHINE=$(hostname 2>/dev/null || echo unknown)
 SIGNPOST_REFUSED=0
 if [ -L "$SIGNPOST" ]; then
@@ -96,7 +96,7 @@ else
 fi
 
 # Wire Git Hooks. Make the hook + build script executable and point this clone at
-# .githooks so the pre-commit hook rebuilds plugins/claude-kit.zip when plugin
+# .githooks so the pre-commit hook rebuilds plugins/grimoire.zip when plugin
 # sources change.
 if command -v git >/dev/null 2>&1; then
     chmod +x "$SCRIPT_DIR/.githooks/pre-commit" "$SCRIPT_DIR/build.sh" 2>/dev/null || true
@@ -107,8 +107,8 @@ else
 fi
 
 echo "Next:"
-echo "  1. Install the plugin:  /plugin marketplace add <your-github-username>/claude-kit ; /plugin install claude-kit@applefeld"
-echo "  2. (Claude Code, once per machine) add to ~/.claude/CLAUDE.md so the doctrine loads always-on:  @claude-kit-doctrine.md"
+echo "  1. Install the plugin:  /plugin marketplace add <your-github-username>/claude-kit ; /plugin install grimoire@applefeld"
+echo "  2. (Claude Code, once per machine) add to ~/.claude/CLAUDE.md so the doctrine loads always-on:  @grimoire-doctrine.md"
 echo "  3. (Cowork/Chat, once per account) add to your account preferences:  Before any non-trivial task, consult the operating-instructions skill."
 
 # The git-hooks wiring and the hints above still run after a refused signpost,

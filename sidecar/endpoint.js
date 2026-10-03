@@ -1,7 +1,7 @@
 // The daemon's door onto the model endpoint: one request, and the
 // classification of what came back.
 //
-// The transport itself lives in plugins/claude-kit/scripts/kit-endpoint-lib.js
+// The transport itself lives in plugins/grimoire/scripts/kit-endpoint-lib.js
 // and is re-exported here. Only the plugin tree ships, and memq posts to the
 // same endpoint for its own model-judged channel, so the bounded body read, the
 // deterministic sampling and the four-way outcome classification are held once
@@ -42,7 +42,7 @@
 
 'use strict';
 
-const lib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
+const lib = require('../plugins/grimoire/scripts/kit-endpoint-lib.js');
 
 module.exports = {
     MAX_BODY_BYTES: lib.MAX_BODY_BYTES,

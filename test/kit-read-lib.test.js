@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/kit-read-lib.js, the shared bounded reader
+// Tests for plugins/grimoire/hooks/kit-read-lib.js, the shared bounded reader
 // every kit hook read of a repository-supplied file runs through.
 //
 // Node's built-in test runner, no framework. The subject is the contract a
@@ -25,7 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-read-lib.js');
+const LIB = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'kit-read-lib.js');
 const { readFully, readFileBounded, containedRealPath, listBoundedNames } = require(LIB);
 
 function makeDir() {

@@ -1,8 +1,8 @@
 // The behavior/claim class definition that gates the review loop's exit lives
-// in plugins/claude-kit/skills/executing-work/SKILL.md, inside a numbered
+// in plugins/grimoire/skills/executing-work/SKILL.md, inside a numbered
 // list item's continuation, between the KIT-CLAIM-CLASS markers. The two
-// reviewer charters, plugins/claude-kit/agents/adversarial-reviewer.md and
-// plugins/claude-kit/agents/blind-reviewer.md, each carry the same wording as
+// reviewer charters, plugins/grimoire/agents/adversarial-reviewer.md and
+// plugins/grimoire/agents/blind-reviewer.md, each carry the same wording as
 // a copy at column one, so a reviewer sees the class definition without
 // reading the executing-work skill. A copy drifts, so it is pinned here
 // against the owner.
@@ -34,16 +34,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SKILL_FILE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+const SKILL_FILE = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
     'executing-work', 'SKILL.md');
-const ADVERSARIAL_FILE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents',
+const ADVERSARIAL_FILE = path.join(__dirname, '..', 'plugins', 'grimoire', 'agents',
     'adversarial-reviewer.md');
-const BLIND_FILE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents',
+const BLIND_FILE = path.join(__dirname, '..', 'plugins', 'grimoire', 'agents',
     'blind-reviewer.md');
 
-const SKILL_LABEL = 'plugins/claude-kit/skills/executing-work/SKILL.md';
-const ADVERSARIAL_LABEL = 'plugins/claude-kit/agents/adversarial-reviewer.md';
-const BLIND_LABEL = 'plugins/claude-kit/agents/blind-reviewer.md';
+const SKILL_LABEL = 'plugins/grimoire/skills/executing-work/SKILL.md';
+const ADVERSARIAL_LABEL = 'plugins/grimoire/agents/adversarial-reviewer.md';
+const BLIND_LABEL = 'plugins/grimoire/agents/blind-reviewer.md';
 
 const BEGIN = 'KIT-CLAIM-CLASS:BEGIN';
 const END = 'KIT-CLAIM-CLASS:END';

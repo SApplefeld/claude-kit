@@ -178,7 +178,7 @@ test('over the corpus every heading meets the pin, rewritten or exempted by name
     // nothing in the corpus reddens below, so a retired pin or a later rewrite
     // clears its own exemption rather than leaving a silent hole.
     const EXEMPT = [
-        ['plugins/claude-kit/agents/scope-adjudicator.md', "The relevance shape's buckets",
+        ['plugins/grimoire/agents/scope-adjudicator.md', "The relevance shape's buckets",
             "pinned byte for byte as RELEVANCE_HEADING in test/review-loop-provenance.test.js"]
     ];
     const exemptHits = new Map(EXEMPT.map(([f, body]) => [f + '|' + body, 0]));

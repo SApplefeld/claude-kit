@@ -38,4 +38,4 @@ Every loop that touches the main thread advises it. None redirects it. The main 
 
 - `docs/archive/claude-kit_judgment-sidecar_spec_v1.md`: the first organ, and the spec that named this substrate as the separate future effort.
 - `docs/archive/claude-kit_operating-model_spec_v1.md`: the SDK billing note under question 4.
-- `plugins/claude-kit/skills/role/SKILL.md`: the standing-grant rail that question 1 would extend.
+- `plugins/grimoire/skills/role/SKILL.md`: the standing-grant rail that question 1 would extend.

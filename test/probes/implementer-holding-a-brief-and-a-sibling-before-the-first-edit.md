@@ -14,14 +14,14 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/agents/implementer-fable.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/agents/implementer-fable.md
   - name: implementer-opus
     files:
-      - plugins/claude-kit/agents/implementer-opus.md
+      - plugins/grimoire/agents/implementer-opus.md
   - name: implementer-sonnet
     files:
-      - plugins/claude-kit/agents/implementer-sonnet.md
+      - plugins/grimoire/agents/implementer-sonnet.md
 ---
 # The brief and a sibling are open before the first edit
 

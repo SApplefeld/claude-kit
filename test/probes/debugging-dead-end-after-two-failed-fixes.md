@@ -13,13 +13,13 @@ options:
 shapes:
   - name: full
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/systematic-debugging/SKILL.md
-      - plugins/claude-kit/skills/consult/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/systematic-debugging/SKILL.md
+      - plugins/grimoire/skills/consult/SKILL.md
   - name: doctrine-plus-systematic-debugging
     files:
-      - plugins/claude-kit/skills/operating-instructions/SKILL.md
-      - plugins/claude-kit/skills/systematic-debugging/SKILL.md
+      - plugins/grimoire/skills/operating-instructions/SKILL.md
+      - plugins/grimoire/skills/systematic-debugging/SKILL.md
 ---
 # A second fix fails and the test is still red
 

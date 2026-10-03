@@ -185,7 +185,7 @@ naming a file an older tree did not carry is exactly what a before-and-after
 pair measures, and a probe whose narrow shape reaches a file this checkout has
 not written yet still has a reading to give.
 
-A shape file path sits under `plugins/claude-kit/` or names one markdown file
+A shape file path sits under `plugins/grimoire/` or names one markdown file
 directly under the home directory as `home/<name>.md`, written with forward
 slashes and no segment that navigates. Those are the two roots `probe-file.mjs`
 allows a probe file to name, and the runner imports them from there and applies
@@ -211,7 +211,7 @@ tree is a blob whose bytes are its target path: `git cat-file -t` calls it a blo
 like any other, and without the mode read the reader would receive a path on
 somebody's machine as the document. A mode that is neither `100644` nor `100755`
 is refused by name. The containment judgment on what remains is
-`containedRealPath` from `plugins/claude-kit/hooks/kit-read-lib.js`, the same rule
+`containedRealPath` from `plugins/grimoire/hooks/kit-read-lib.js`, the same rule
 the kit's hooks read repository files under, and it is asked after a lexical
 judgment that needs no filesystem, so a path that escapes is refused whether or
 not its target exists. A shape file is corpus text; a shape that could name any

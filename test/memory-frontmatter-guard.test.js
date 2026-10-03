@@ -1,4 +1,4 @@
-// Tests for plugins/claude-kit/hooks/memory-frontmatter-guard.js (the memory
+// Tests for plugins/grimoire/hooks/memory-frontmatter-guard.js (the memory
 // frontmatter write guard).
 //
 // Node's built-in test runner, no framework (Node v24). The guard is spawned as
@@ -32,9 +32,9 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const GUARD = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-frontmatter-guard.js');
+const GUARD = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'memory-frontmatter-guard.js');
 
-const MEMQ_MODULE = require('../plugins/claude-kit/scripts/memq.js');
+const MEMQ_MODULE = require('../plugins/grimoire/scripts/memq.js');
 
 const SHA = 'ce013625030ba8dba906f756967f9e9ca394464a';
 const WIN32_ONLY = { skip: process.platform === 'win32' ? false : 'a win32 path spelling' };
@@ -317,8 +317,8 @@ function preloadEnv(store, name, lines) {
 
 // The two libraries this guard loads, each by the path the guard resolves.
 const TRAP_LIBRARY = {
-    compact: ['plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js'],
-    memq: ['plugins', 'claude-kit', 'scripts', 'memq.js']
+    compact: ['plugins', 'grimoire', 'hooks', 'kit-compact-lib.js'],
+    memq: ['plugins', 'grimoire', 'scripts', 'memq.js']
 };
 
 // A preload that loads one of those libraries and patches it before the guard
@@ -1061,7 +1061,7 @@ test('both shared tiers refuse every write tool, main session included', () => {
             { file: path.join(store.operator, 'an-operator-record.md'), fix: /memq add-operator/ }
         ];
         for (const tier of tiers) {
-            for (const agent of [null, 'claude-kit:implementer-opus', 'claude']) {
+            for (const agent of [null, 'grimoire:implementer-opus', 'claude']) {
                 const res = runGuard(store, writeTo(store, tier.file, CLEAN, agent));
                 assertDeny(res, tier.fix, 'expected a deny for agent ' + agent);
                 assert.match(res.stderr, /never by the Write, Edit or MultiEdit tools/);
@@ -1082,7 +1082,7 @@ test('both shared tiers refuse every write tool, main session included', () => {
             }
             assertDeny(runGuard(store, {
                 tool_name: 'Edit',
-                agent_type: 'claude-kit:docs-curator',
+                agent_type: 'grimoire:docs-curator',
                 cwd: store.repo,
                 tool_input: { file_path: tier.file, old_string: 'a', new_string: 'b' }
             }), tier.fix, 'an Edit on a shared tier is refused too');

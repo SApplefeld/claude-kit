@@ -14,12 +14,12 @@ options:
 shapes:
   - name: executing-work
     files:
-      - plugins/claude-kit/skills/executing-work/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
   - name: executing-work-plus-charter
     files:
-      - plugins/claude-kit/skills/executing-work/SKILL.md
-      - plugins/claude-kit/agents/adversarial-reviewer.md
-      - plugins/claude-kit/skills/responding-to-review/SKILL.md
+      - plugins/grimoire/skills/executing-work/SKILL.md
+      - plugins/grimoire/agents/adversarial-reviewer.md
+      - plugins/grimoire/skills/responding-to-review/SKILL.md
 ---
 # A fifth review round returns five Majors, every one about a sentence
 

@@ -1,6 +1,6 @@
 // The operating doctrine ships as two repo copies: the source,
-// plugins/claude-kit/skills/operating-instructions/SKILL.md, and the mirror,
-// home/claude-kit-doctrine.md. Every doctrine edit must land in both, and a
+// plugins/grimoire/skills/operating-instructions/SKILL.md, and the mirror,
+// home/grimoire-doctrine.md. Every doctrine edit must land in both, and a
 // review pass is how the copies have historically drifted, so parity is
 // enforced here mechanically.
 //
@@ -48,10 +48,10 @@ const path = require('path');
 // listing at another repository; and it bounds the call with a timeout and an
 // output ceiling. The reader bounds what one file may pull into the process, and
 // containedRealPath refuses a path that resolves outside this checkout.
-const { gitRun } = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
+const { gitRun } = require(path.join(__dirname, '..', 'plugins', 'grimoire',
     'hooks', 'kit-git-lib.js'));
 const { readFileBounded, containedRealPath } = require(path.join(__dirname, '..',
-    'plugins', 'claude-kit', 'hooks', 'kit-read-lib.js'));
+    'plugins', 'grimoire', 'hooks', 'kit-read-lib.js'));
 
 // The bound every git call in this file passes explicitly, wider than the shared
 // runner's 4 s default for the reason the repository's size reader states at its
@@ -66,9 +66,9 @@ const { readFileBounded, containedRealPath } = require(path.join(__dirname, '..'
 // which is the one failure no call here can report usefully.
 const SWEEP_GIT_TIMEOUT_MS = 20000;
 
-const SKILL = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+const SKILL = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
     'operating-instructions', 'SKILL.md');
-const MIRROR = path.join(__dirname, '..', 'home', 'claude-kit-doctrine.md');
+const MIRROR = path.join(__dirname, '..', 'home', 'grimoire-doctrine.md');
 
 function stripFrontmatter(text) {
     const lines = text.split('\n');
@@ -137,7 +137,7 @@ const backtickedFieldSet = (text) => [...new Set(
 
 test('the two doctrine copies are byte-identical (skill body vs mirror)', () => {
     assert.strictEqual(mirrorBody(), skillBody(),
-        'home/claude-kit-doctrine.md has drifted from the operating-instructions '
+        'home/grimoire-doctrine.md has drifted from the operating-instructions '
         + 'skill body; the skill is the source, so sync the mirror to it');
 });
 
@@ -436,7 +436,7 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
     assert.match(bullet, /Step 7 of `finishing-work`, Apply the commit model, owns/,
         'the freeze bullet no longer points at finishing-work step 7, which '
         + 'carries the reads this bullet once stated');
-    const step7 = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const step7 = readRepoFile('plugins/grimoire/skills/finishing-work/SKILL.md');
     assert.match(step7, /Before every push to a branch with a pull request, read its state/,
         'the freeze bullet no longer names the state read before a push to a '
         + 'branch with a pull request, so a session pushes after the merge and '
@@ -461,7 +461,7 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
 // grammatical while licensing the one delete in the kit that can destroy
 // commits held nowhere else.
 test('branch-hygiene licenses the recovery-step delete on both of its conditions and no other outside the merged set', () => {
-    const rule = readRepoFile('plugins/claude-kit/skills/branch-hygiene/SKILL.md').split(/\r?\n/)
+    const rule = readRepoFile('plugins/grimoire/skills/branch-hygiene/SKILL.md').split(/\r?\n/)
         .filter((l) => /^- The only auto-delete trigger/.test(l) && l.includes('`git branch --merged <integration-ref>`'));
     assert.strictEqual(rule.length, 1, 'expected exactly one Hard rule 1 in branch-hygiene');
     // Stable tokens, per the plan's standing amendment: the exception's
@@ -550,7 +550,7 @@ test('the gate bullet admits every lane a section close runs, in each copy', () 
 // word gate elsewhere in the skill cannot stand in for the template slot.
 test('the Chapter template carries the gate field the doctrine requires', () => {
     const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
     const field = executingWork.split(/\r?\n/).find((l) => l.startsWith('Gate: <'));
     assert.ok(field, 'the Chapter template in executing-work no longer carries '
         + 'a Gate field, so a Chapter written from it records no lane and the '
@@ -586,7 +586,7 @@ test('the Chapter template carries the gate field the doctrine requires', () => 
 // no gate left that could satisfy it.
 test('executing-work runs the section close gate after the review fixes', () => {
     const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
     assert.ok(executingWork.includes('**This step runs the section\'s close '
         + 'gate, once the fixes, the folds and the Minor pass are in.**'),
         'executing-work step 4 no longer names itself as the step that runs '
@@ -652,7 +652,7 @@ test('the outline bullet routes to the style skills in each copy', () => {
 
 test('the style skills the outline bullet routes to still carry a recipe', () => {
     for (const skill of ['csharp-style', 'sql-style']) {
-        const p = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+        const p = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
             skill, 'SKILL.md');
         assert.ok(fs.existsSync(p), skill + ' is routed to by the doctrine\'s '
             + 'outline bullet and must exist');
@@ -809,7 +809,7 @@ test('the box-check bullet states the class in each copy and in the skill', () =
     // owned by another session and one owned by a running engine, which is the
     // half a restatement drops first, since an engine holding the box is not a
     // session anyone thinks to look for.
-    const skillPath = path.join(__dirname, '..', 'plugins', 'claude-kit',
+    const skillPath = path.join(__dirname, '..', 'plugins', 'grimoire',
         'skills', 'testing-discipline', 'SKILL.md');
     const boxLead = '- **Check the box before any suite.**';
     const inTesting = fs.readFileSync(skillPath, 'utf8').split(/\r?\n/)
@@ -887,7 +887,7 @@ test('the box-check bullet states the class in each copy and in the skill', () =
 // redden or satisfy a pin about what the brief says.
 test('the box-budget brief clause names the poll, names no claim, and points at the doctrine bullet', () => {
     const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
     const start = executingWork.indexOf(
         '[any section whose work may spawn a suite, build, or embedding pass]');
     assert.ok(start !== -1, 'executing-work\'s Dispatch Brief template no '
@@ -957,7 +957,7 @@ test('the test-earning bullet routes its retire classes to the testing-disciplin
 });
 
 test('the testing-discipline skill still carries what the doctrine routes to it', () => {
-    const parts = ['plugins', 'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'];
+    const parts = ['plugins', 'grimoire', 'skills', 'testing-discipline', 'SKILL.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
         'the doctrine\'s gate, test-authoring and test-earning bullets all route '
@@ -1016,7 +1016,7 @@ test('the document-length bullet routes its sentence-shape bars to writing-skill
         + 'naming the skill by path while dropping the sentence-shape bars routes '
         + 'a reader to a section they have no reason to open');
 
-    const parts = ['plugins', 'claude-kit', 'skills', 'writing-skills', 'SKILL.md'];
+    const parts = ['plugins', 'grimoire', 'skills', 'writing-skills', 'SKILL.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
         'the document-length bullet routes to a skill that is not on disk: '
@@ -1057,12 +1057,12 @@ test('the document-length bullet routes its sentence-shape bars to writing-skill
 // survive the parser the script actually runs, which refuses an unknown flag
 // outright instead of falling back to a default.
 test('the Chapter template\'s Delta field still points at a size reader that exists', () => {
-    const skillRel = 'plugins/claude-kit/skills/executing-work/SKILL.md';
+    const skillRel = 'plugins/grimoire/skills/executing-work/SKILL.md';
     const skill = readRepoFile(skillRel);
     const field = skill.split(/\r?\n/).filter((l) => l.startsWith('Delta:'));
     assert.strictEqual(field.length, 1,
         'expected exactly one Delta: field in the Chapter template');
-    const scriptRel = 'plugins/claude-kit/scripts/kit-size.js';
+    const scriptRel = 'plugins/grimoire/scripts/kit-size.js';
     assert.ok(field[0].includes('scripts/kit-size.js'),
         'the Delta: field must name the size reader by path, since a session '
         + 'reading the template has no other way to find the verb it is told '
@@ -1231,7 +1231,7 @@ test('the Chapter template\'s Delta field still points at a size reader that exi
 //     path is a counted skip that catches this file reached under a link the
 //     listing does not carry, which is a link alias rather than an exemption and
 //     so is reported as its own skip cause.
-const RETIRE_OWNER = 'plugins/claude-kit/skills/testing-discipline/SKILL.md';
+const RETIRE_OWNER = 'plugins/grimoire/skills/testing-discipline/SKILL.md';
 
 // The owner's own directory segment, which is the token a carrier names it by.
 // Derived from the path above rather than spelled a second time, so this
@@ -1274,7 +1274,7 @@ const CARRIER_FLOOR = 3;
 // no exempt root and no journal root, and is already a path this file names
 // outright, so it is derived from the tree rather than being a second figure to
 // keep in step with it.
-const SWEEP_JUDGED_WITNESS = 'home/claude-kit-doctrine.md';
+const SWEEP_JUDGED_WITNESS = 'home/grimoire-doctrine.md';
 
 // A judged path says the loop read a file and says nothing about what the
 // judgment did with it: a path is recorded as judged before any carrier is
@@ -1287,7 +1287,7 @@ const SWEEP_JUDGED_WITNESS = 'home/claude-kit-doctrine.md';
 // selects nothing there is one in which either the charter has stopped
 // enumerating the classes or the predicate has stopped selecting an
 // enumeration, and both are this pin's own subject.
-const SWEEP_CARRIER_WITNESS = 'plugins/claude-kit/agents/adversarial-reviewer.md';
+const SWEEP_CARRIER_WITNESS = 'plugins/grimoire/agents/adversarial-reviewer.md';
 
 // A crude stem, so an inflection is not a disagreement: the trailing plural,
 // past or participle ending comes off any word long enough to still be a word
@@ -1947,7 +1947,7 @@ test('the peer-sessions bullet is present once in each copy', () => {
     // routed-to skills.
     assert.ok(inSkill[0].includes('`peer-sessions` skill'),
         'the peer-sessions bullet no longer names the skill it defers to');
-    const parts = ['plugins', 'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'];
+    const parts = ['plugins', 'grimoire', 'skills', 'peer-sessions', 'SKILL.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
         'the peer-sessions bullet defers to a skill that is not on disk: '
@@ -1994,7 +1994,7 @@ test('README and peer-sessions still point at the coordinator skill', () => {
     }
 
     const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
     assert.match(peerSessions, /the coordinator skill names the file/,
         'peer-sessions\' Roles section no longer names the coordinator skill as '
         + 'the ledger\'s owner; that clause is the near end of the pointer the '
@@ -2005,7 +2005,7 @@ test('README and peer-sessions still point at the coordinator skill', () => {
 // The far end of the pointer pinned above: the coordinator skill on disk,
 // tracked, and carrying what README and peer-sessions each promise it does.
 test('the coordinator skill is tracked and carries what it is pointed at for', () => {
-    const parts = ['plugins', 'claude-kit', 'skills', 'coordinator', 'SKILL.md'];
+    const parts = ['plugins', 'grimoire', 'skills', 'coordinator', 'SKILL.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
         'the README payload map and the peer-sessions Roles section both '
@@ -2086,14 +2086,14 @@ test('the coordinator skill is tracked and carries what it is pointed at for', (
 // constant, which is what reddens when the constant moves.
 test('the coordinator\'s stated cadence is the role-boundary marker\'s own age bound', () => {
     const { ROLE_BOUNDARY_MAX_AGE_MS } = require(path.join(__dirname, '..',
-        'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js'));
+        'plugins', 'grimoire', 'hooks', 'kit-compact-lib.js'));
     const hours = ROLE_BOUNDARY_MAX_AGE_MS / (60 * 60 * 1000);
     assert.ok(Number.isInteger(hours) && hours > 0,
         'the role-boundary marker\'s age bound is no longer a whole number of '
         + 'hours, so the coordinator skill cannot state it as one: give the '
         + 'skill\'s cadence a spelling that matches and pin that spelling here');
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     assert.match(body,
         new RegExp('reconciliation timer[^\\n]{0,60}every ' + hours + ' hours', 'i'),
         'the coordinator skill\'s banked-pass paragraph argues that a marker '
@@ -2118,7 +2118,7 @@ test('the coordinator\'s stated cadence is the role-boundary marker\'s own age b
 // word "three", which the warranted-channels list carries legitimately.
 test('the coordinator holds four functions, kaizen among them, and no surface still states three', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     assert.ok(body.includes('## Four Functions'),
         'the coordinator skill\'s enumeration heading no longer states the set '
         + 'at four; the heading and the closed-set sentence are two surfaces '
@@ -2144,7 +2144,7 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
             + retired + '" while the set is closed at four');
     }
     const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
     assert.ok(!/coordinator's three/.test(peerSessions),
         'peer-sessions still restates the coordinator\'s function count as '
         + 'three; the count is single-sourced in the coordinator skill, and a '
@@ -2240,7 +2240,7 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // green.
 test('standing-watch carries its admission default, its prune keep for prohibitions and traps, and its kind fork, and the retired inward sentence is absent', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
     const founding = 'A line you cannot confidently place is situational';
     assert.ok(!body.includes(founding),
         'standing-watch still carries the retired inward default sentence "'
@@ -2319,7 +2319,7 @@ test('standing-watch carries its admission default, its prune keep for prohibiti
 // line already boarded.
 test('the coordinator board default faces outward at both forks', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     // The acceptance's "no text in either skill sends an unplaceable line
     // inward" is swept here as it is for the chassis, as a named list
     // rather than a class: the coordinator spells an unplaceable line as
@@ -2418,7 +2418,7 @@ test('the coordinator board default faces outward at both forks', () => {
 //   restates the claim again is a restating surface with no pin, and earns one.
 test('the coordinator skill\'s four counted routing, cut, readability and source claims are each pinned', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
 
     // A digit-led figure in one of eight named size units, over the whole file.
     // Returned rather than asserted so the predicate can be run against a
@@ -2558,7 +2558,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
     }
 
     const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
     assert.match(peerSessions, /the role skill owns the coordinator-directory contract/,
         'peer-sessions\' Roles section no longer names the role skill as the '
         + 'coordinator-directory contract\'s owner; the role skill is that '
@@ -2570,7 +2570,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
         + 'the delegation model is gone and a seat reading this file cannot '
         + 'reach it');
 
-    const parts = ['plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'];
+    const parts = ['plugins', 'grimoire', 'skills', 'role', 'SKILL.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
         'README\'s payload map and the peer-sessions Roles section both '
@@ -2629,7 +2629,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
         'the role skill no longer separates the delegation model from the '
         + 'grant; the skill body ships to every machine, so carrying the '
         + 'grant would turn an install into an authorization');
-    assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
+    assertTrackedInIndex('plugins/grimoire/skills/role/SKILL.md');
 });
 
 // A site's first mention of `Status-updated:` is where that site declares
@@ -2723,7 +2723,7 @@ const HAND_WRITTEN_STAMP = new RegExp([
 // either end stays green while a reinstated hand-write does not, whatever
 // words it is reinstated in.
 test('the push-moments paragraph still owns the stamp and its five dependents still point at it', () => {
-    const role = readRepoFile('plugins/claude-kit/skills/role/SKILL.md');
+    const role = readRepoFile('plugins/grimoire/skills/role/SKILL.md');
     const paragraph = sliceBetween(role,
         'The push moments, closed with their class', '\n',
         'the role skill\'s push-moments paragraph');
@@ -2799,7 +2799,7 @@ test('the push-moments paragraph still owns the stamp and its five dependents st
         + '`Status-updated:` itself, which reinstates at the declaration the '
         + 'invitation every prose site has had removed');
 
-    const peerSessions = readRepoFile('plugins/claude-kit/skills/peer-sessions/SKILL.md');
+    const peerSessions = readRepoFile('plugins/grimoire/skills/peer-sessions/SKILL.md');
     const banking = sliceBetween(peerSessions,
         '**Each seat banks at its own moments', '\n',
         'the peer-sessions banking paragraph');
@@ -2815,7 +2815,7 @@ test('the push-moments paragraph still owns the stamp and its five dependents st
     // three were repaired together: a pin covering one of them leaves a
     // regression at either of the others green, which is the miss this
     // plan has already recorded twice.
-    const coordinator = readRepoFile('plugins/claude-kit/skills/coordinator/SKILL.md');
+    const coordinator = readRepoFile('plugins/grimoire/skills/coordinator/SKILL.md');
     const coordinatorSites = [
         ['- **Operator interface.** One voice toward the operator',
             'the coordinator skill\'s operator-interface bullet'],
@@ -2862,7 +2862,7 @@ test('the push-moments paragraph still owns the stamp and its five dependents st
         + 'lines are not the declaration has left the sentence');
 
     for (const skill of ['coordinator', 'peer-sessions', 'role']) {
-        assertTrackedInIndex('plugins/claude-kit/skills/' + skill + '/SKILL.md');
+        assertTrackedInIndex('plugins/grimoire/skills/' + skill + '/SKILL.md');
     }
 });
 
@@ -2877,7 +2877,7 @@ test('the push-moments paragraph still owns the stamp and its five dependents st
 // a heading, since a heading survives while the list under it is emptied.
 test('the role skill still carries the delegation exclusions and the three refusal rules', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'role', 'SKILL.md'), 'utf8');
     // The exclusions: the mutating verbs the model bars, plus the three
     // reach classes that are not mutating verbs at all - a directed read, a
     // directed dispatch, and a write outside a plan's scope - which are the
@@ -2926,7 +2926,7 @@ test('the role skill still carries the delegation exclusions and the three refus
 // since a heading survives while the list under it is emptied.
 test('the role skill still carries the standing-grant rail\'s exclusions and the record-is-a-switch clause', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'role', 'SKILL.md'), 'utf8');
     // The rail's exclusion list, closed by design: the reaches no
     // grant record can have whatever its owning skill says, pinned each on
     // its own phrase because the list declares itself closed, so an item
@@ -3116,7 +3116,7 @@ const SEAT_GIT_BAR = new RegExp([
 ].join('|'), 'i');
 
 test('the coordinator skill states no git prohibition and carries the workload principle in its place', () => {
-    const body = readRepoFile('plugins/claude-kit/skills/coordinator/SKILL.md');
+    const body = readRepoFile('plugins/grimoire/skills/coordinator/SKILL.md');
     // Nine literal controls, one per enumerated form, each spelling a phrasing
     // the predicate was handed. Each proves the instrument still executes over
     // the form it names; none of them establishes reach, per the accounting
@@ -3175,7 +3175,7 @@ test('the coordinator skill states no git prohibition and carries the workload p
     const barred = [];
     for (const full of shippedKitMarkdown()) {
         const shipped = path.relative(path.join(__dirname, '..', 'plugins',
-            'claude-kit'), full).split(path.sep).join('/');
+            'grimoire'), full).split(path.sep).join('/');
         fs.readFileSync(full, 'utf8').split(/\r?\n/).forEach((line, i) => {
             if (SEAT_GIT_BAR.test(line)) {
                 barred.push(shipped + ':' + (i + 1) + ' ' + line.trim().slice(0, 160));
@@ -3230,7 +3230,7 @@ test('the coordinator skill states no git prohibition and carries the workload p
     assert.ok(surfaces.length >= 40, 'the shipped-kit-markdown walker enumerated '
         + 'only ' + surfaces.length + ' files, which is fewer than this kit '
         + 'ships, so the sweeps that read its silence swept next to nothing');
-    const skillsDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills');
+    const skillsDir = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills');
     const missedSkillDirs = fs.readdirSync(skillsDir, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
@@ -3243,7 +3243,7 @@ test('the coordinator skill states no git prohibition and carries the workload p
     const carryingException = [];
     for (const full of surfaces) {
         const shipped = path.relative(path.join(__dirname, '..', 'plugins',
-            'claude-kit'), full).split(path.sep).join('/');
+            'grimoire'), full).split(path.sep).join('/');
         for (const phrase of carriesException(fs.readFileSync(full, 'utf8'))) {
             carryingException.push(shipped + ' ("' + phrase + '")');
         }
@@ -3365,7 +3365,7 @@ test('the coordinator skill states no git prohibition and carries the workload p
     // since an instance left standing under a rewritten lead-in is an
     // instance of nothing; the loop above is what asserts that no dead second
     // one was left behind.
-    const role = readRepoFile('plugins/claude-kit/skills/role/SKILL.md');
+    const role = readRepoFile('plugins/grimoire/skills/role/SKILL.md');
     for (const [phrase, what] of [
         ['The delegation model is the rail\'s first instance rather than a one-off',
             'delegation read as the rail\'s first instance'],
@@ -3378,8 +3378,8 @@ test('the coordinator skill states no git prohibition and carries the workload p
             + 'of nothing or has lost the one instance it still owns');
     }
 
-    for (const rel of ['plugins/claude-kit/skills/coordinator/SKILL.md',
-        'plugins/claude-kit/skills/role/SKILL.md']) {
+    for (const rel of ['plugins/grimoire/skills/coordinator/SKILL.md',
+        'plugins/grimoire/skills/role/SKILL.md']) {
         assertTrackedInIndex(rel);
     }
 });
@@ -3410,7 +3410,7 @@ test('the coordinator skill states no git prohibition and carries the workload p
 // deliberate, a false green needing a future edit that introduces one of four
 // narrow tokens while a false red needs only a prose pass, which is scheduled.
 test('the memory-system skill states the store sync as needing no go-ahead and keeps its gates', () => {
-    const body = readRepoFile('plugins/claude-kit/skills/memory-system/SKILL.md');
+    const body = readRepoFile('plugins/grimoire/skills/memory-system/SKILL.md');
     const handPath = sliceBetween(body, '## Session Recap',
         '## Action Keys', 'the memory-system skill\'s hand-path paragraph');
     for (const [token, rule] of [
@@ -3428,7 +3428,7 @@ test('the memory-system skill states the store sync as needing no go-ahead and k
             + 'never-gated list already answers, syncs the store by some route '
             + 'other than the rebase leg, or loses the kit doctor\'s own gate');
     }
-    assertTrackedInIndex('plugins/claude-kit/skills/memory-system/SKILL.md');
+    assertTrackedInIndex('plugins/grimoire/skills/memory-system/SKILL.md');
 });
 
 // The hostile-boundary reuse step in executing-work's Dispatch Brief template
@@ -3449,7 +3449,7 @@ test('the memory-system skill states the store sync as needing no go-ahead and k
 // executing-work cannot satisfy a pin about what the brief actually says.
 test('the hostile-boundary brief clause agrees with the guard-siting rule and carries its scope fallback', () => {
     const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
     const start = executingWork.indexOf('The standing hostile-boundary reuse step');
     assert.ok(start !== -1, 'executing-work\'s Dispatch Brief template no '
         + 'longer carries the hostile-boundary reuse step, so the guard-siting '
@@ -3533,9 +3533,9 @@ test('the hostile-boundary brief clause agrees with the guard-siting rule and ca
 // slice is a field the contract routes no reader of through any screen.
 test('the coordinator\'s BLOCKED funnel dispositions every field the goal event ships', () => {
     const stopSrc = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'hooks', 'kit-goal-stop.js'), 'utf8');
+        'grimoire', 'hooks', 'kit-goal-stop.js'), 'utf8');
     const libSrc = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'hooks', 'kit-goal-lib.js'), 'utf8');
+        'grimoire', 'hooks', 'kit-goal-lib.js'), 'utf8');
 
     // Surface one: the keys the call sites pass. The object literals are
     // flat today; a nested brace would end the lazy match early and drop
@@ -3606,7 +3606,7 @@ test('the coordinator\'s BLOCKED funnel dispositions every field the goal event 
     // paragraph, sliced by its own landmarks so a mention elsewhere in the
     // coordinator skill cannot satisfy a pin about what the funnel says.
     const coordinator = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     const funnelStart = coordinator.indexOf('**The BLOCKED funnel.**');
     const funnelEnd = coordinator.indexOf('**A blocker\'s answer goes to the worker direct');
     assert.ok(funnelStart !== -1 && funnelEnd > funnelStart,
@@ -3654,9 +3654,9 @@ test('the coordinator\'s BLOCKED funnel dispositions every field the goal event 
 // goes on saying the old thing is the drift class this file exists to catch.
 test('every seat carries the kaizen capture duty as a direct append, with its reason, on both surfaces', () => {
     for (const skill of ['role', 'peer-sessions']) {
-        const label = 'plugins/claude-kit/skills/' + skill + '/SKILL.md';
+        const label = 'plugins/grimoire/skills/' + skill + '/SKILL.md';
         const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-            'claude-kit', 'skills', skill, 'SKILL.md'), 'utf8');
+            'grimoire', 'skills', skill, 'SKILL.md'), 'utf8');
         assert.match(body, /kit friction[^.]{0,200}kaizen inbox/i,
             label + ' no longer states that captured kit friction goes to the '
             + 'kaizen inbox, so the duty has lost its destination on this '
@@ -3680,7 +3680,7 @@ test('every seat carries the kaizen capture duty as a direct append, with its re
             + 'the rule\'s boundary and rides with it');
     }
     const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
     for (const lead of ['- **Expert.**', '- **Worker.**', '- **Admin.**']) {
         const lines = peerSessions.split(/\r?\n/).filter((l) => l.startsWith(lead));
         assert.strictEqual(lines.length, 1,
@@ -3718,13 +3718,13 @@ test('every seat carries the kaizen capture duty as a direct append, with its re
 test('no copy spells the first-turn condition as a bare absence of turns', () => {
     const withdrawn = /no (?:[\w-]+ ){0,3}turns? at all/i;
     const describing = [
-        ['home/claude-kit-doctrine.md', MIRROR],
-        ['plugins/claude-kit/skills/operating-instructions/SKILL.md', SKILL],
-        ['plugins/claude-kit/skills/finishing-work/SKILL.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+        ['home/grimoire-doctrine.md', MIRROR],
+        ['plugins/grimoire/skills/operating-instructions/SKILL.md', SKILL],
+        ['plugins/grimoire/skills/finishing-work/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
                 'finishing-work', 'SKILL.md')],
-        ['plugins/claude-kit/skills/executing-work/SKILL.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+        ['plugins/grimoire/skills/executing-work/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
                 'executing-work', 'SKILL.md')],
     ];
     for (const [label, p] of describing) {
@@ -3752,8 +3752,8 @@ test('no copy spells the first-turn condition as a bare absence of turns', () =>
 // to the class's probe window reads as correct and points at the wrong figure.
 test('the probe bullet defers its first-turn probe window to the dispatch shape in each copy', () => {
     const copies = [
-        ['plugins/claude-kit/skills/operating-instructions/SKILL.md', skillBody()],
-        ['home/claude-kit-doctrine.md', mirrorBody()],
+        ['plugins/grimoire/skills/operating-instructions/SKILL.md', skillBody()],
+        ['home/grimoire-doctrine.md', mirrorBody()],
     ];
     const lead = '- **Probe a dispatched agent with a message';
     for (const [label, body] of copies) {
@@ -3802,8 +3802,8 @@ test('the hand-off copies route on the gate-level conclusion, not on a model bei
             /the compensated re-dispatch that rule defines/, conclusion],
     ];
     for (const [parts, locator, expected] of sites) {
-        const label = 'plugins/claude-kit/' + parts.join('/');
-        const p = path.join(__dirname, '..', 'plugins', 'claude-kit', ...parts);
+        const label = 'plugins/grimoire/' + parts.join('/');
+        const p = path.join(__dirname, '..', 'plugins', 'grimoire', ...parts);
         const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
         const hits = lines
             .map((line, i) => [line, i + 1])
@@ -3832,7 +3832,7 @@ test('the surfaces that defer to the outline bullet still say so', () => {
         [['skills', 'executing-work', 'SKILL.md'], /rule on hunting in a large file/],
     ];
     for (const [parts, phrase] of deferring) {
-        const p = path.join(__dirname, '..', 'plugins', 'claude-kit', ...parts);
+        const p = path.join(__dirname, '..', 'plugins', 'grimoire', ...parts);
         const body = fs.readFileSync(p, 'utf8');
         assert.match(body, phrase, parts.join('/') + ' must still carry its '
             + 'outline clause. Matched on the clause\'s own phrase rather than '
@@ -3863,9 +3863,9 @@ function collapseWhitespace(text) {
 
 test('the five pointers to testing-discipline outside the doctrine copies are still present', () => {
     const executingWork = collapseWhitespace(fs.readFileSync(path.join(__dirname,
-        '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
+        '..', 'plugins', 'grimoire', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
     const brainstormingBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
-        '..', 'plugins', 'claude-kit', 'skills', 'brainstorming', 'SKILL.md'), 'utf8'));
+        '..', 'plugins', 'grimoire', 'skills', 'brainstorming', 'SKILL.md'), 'utf8'));
 
     assert.ok(executingWork.includes('Settle the test question per '
         + '`skills/testing-discipline/SKILL.md` under the kit plugin root, '
@@ -3923,7 +3923,7 @@ test('the five pointers to testing-discipline outside the doctrine copies are st
 // the reader takes the nearest list.
 test('the adversarial reviewer judges test-worthiness by the testing-discipline litmus, not a local list', () => {
     const charter = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
-        'plugins', 'claude-kit', 'agents', 'adversarial-reviewer.md'), 'utf8'));
+        'plugins', 'grimoire', 'agents', 'adversarial-reviewer.md'), 'utf8'));
     assert.ok(charter.includes('testing-discipline skill\'s litmus'),
         'the adversarial reviewer\'s Tests bullet no longer routes '
         + 'test-worthiness to the testing-discipline skill\'s litmus, so the '
@@ -3965,7 +3965,7 @@ test('readRepoFile returns a CRLF copy of a pinned file with LF endings', () => 
     fs.mkdirSync(scratchRoot, { recursive: true });
     const dir = fs.mkdtempSync(path.join(scratchRoot, 'crlf-pin-'));
     try {
-        const lf = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'branch-hygiene', 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
+        const lf = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'grimoire', 'skills', 'branch-hygiene', 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
         fs.writeFileSync(path.join(dir, 'SKILL.md'), lf.replace(/\n/g, '\r\n'));
         const read = readRepoFile(`.kit/${path.basename(dir)}/SKILL.md`);
         assert.ok(!read.includes('\r'), 'readRepoFile left a carriage return in a CRLF file');
@@ -3981,16 +3981,16 @@ test('readRepoFile returns a CRLF copy of a pinned file with LF endings', () => 
 // carries is immaterial to a substring check.
 const INSTALL_SURFACE_CARRIERS = [
     ['the skill-body doctrine copy',
-        'plugins/claude-kit/skills/operating-instructions/SKILL.md'],
-    ['the doctrine mirror', 'home/claude-kit-doctrine.md'],
+        'plugins/grimoire/skills/operating-instructions/SKILL.md'],
+    ['the doctrine mirror', 'home/grimoire-doctrine.md'],
     ['the testing-discipline skill',
-        'plugins/claude-kit/skills/testing-discipline/SKILL.md'],
+        'plugins/grimoire/skills/testing-discipline/SKILL.md'],
     ['executing-work\'s Commit-and-Push bullet',
-        'plugins/claude-kit/skills/executing-work/SKILL.md'],
+        'plugins/grimoire/skills/executing-work/SKILL.md'],
     ['finishing-work\'s Commit-and-Push bullet',
-        'plugins/claude-kit/skills/finishing-work/SKILL.md'],
+        'plugins/grimoire/skills/finishing-work/SKILL.md'],
     ['kaizen\'s applied-brief push and its capture exemption',
-        'plugins/claude-kit/skills/kaizen/SKILL.md'],
+        'plugins/grimoire/skills/kaizen/SKILL.md'],
     ['docs/architecture.md\'s cadence paragraph', 'docs/architecture.md'],
 ];
 
@@ -4005,10 +4005,10 @@ const INSTALL_SURFACE_CARRIERS = [
 const INSTALL_SURFACE_SHAPE = /trunk consumers install from|no CI gating/i;
 
 function installSurfaceCandidates() {
-    const files = shippedKitMarkdown().map((f) => 'plugins/claude-kit/'
-        + path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'), f)
+    const files = shippedKitMarkdown().map((f) => 'plugins/grimoire/'
+        + path.relative(path.join(__dirname, '..', 'plugins', 'grimoire'), f)
             .replace(/\\/g, '/'));
-    return files.concat(['home/claude-kit-doctrine.md', 'README.md',
+    return files.concat(['home/grimoire-doctrine.md', 'README.md',
         'docs/README.md', 'docs/architecture.md']);
 }
 
@@ -4045,7 +4045,7 @@ test('every surface stating the install-surface condition words it alike', () =>
 
 test('the lane text agrees between the doctrine gate bullet and the testing-discipline skill', () => {
     const testingSkill = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'testing-discipline', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'testing-discipline', 'SKILL.md'), 'utf8');
     const copies = [
         ['the skill-body doctrine copy', skillBody()],
         ['the doctrine mirror', mirrorBody()],
@@ -4094,7 +4094,7 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
 // agreeing with another.
 test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier table, and the role and coordinator skills resolve against it rather than copy it', () => {
     const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
     const adminRow = peerSessions.split(/\r?\n/).find((l) => l.startsWith('| Admin |'));
     assert.ok(adminRow, 'the peer-sessions Roles table no longer carries an '
         + 'Admin row; this pin reads that row as the cadence\'s one source');
@@ -4110,7 +4110,7 @@ test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier tabl
     // The role skill's admin-requests.md bullet: the far end that must point
     // at the table rather than restate the figure.
     const roleBody = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'role', 'SKILL.md'), 'utf8');
     const roleLine = roleBody.split(/\r?\n/)
         .find((l) => l.includes('admin-requests.md`: the Admin seat\'s artifact inbox'));
     assert.ok(roleLine, 'the role skill no longer carries the admin-requests.md '
@@ -4130,7 +4130,7 @@ test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier tabl
     // its own paragraph rather than the whole file, so a stray hardcoded
     // figure elsewhere in the skill cannot hide behind this pin passing.
     const coordinator = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     const staleStart = coordinator.indexOf(
         'An off-roster entry is not by itself a dead session');
     const staleEnd = coordinator.indexOf('The chassis owns the loop mechanics');
@@ -4292,7 +4292,7 @@ function isRationaleLedger(dir, name) {
 // the control with it.
 test('the rationale-ledger exclusion drops every tracked ledger from both walkers and keeps their sibling references', () => {
     const root = path.join(__dirname, '..');
-    const res = gitRun(root, ['ls-files', '--', 'plugins/claude-kit/skills/*/references/*.md'],
+    const res = gitRun(root, ['ls-files', '--', 'plugins/grimoire/skills/*/references/*.md'],
         { timeoutMs: SWEEP_GIT_TIMEOUT_MS });
     assert.ok(res && res.status === 0, 'git could not list the references, so this control cannot speak');
     const tracked = res.stdout.split(/\r?\n/).filter(Boolean);
@@ -4339,13 +4339,13 @@ function shippedBoundaryFiles() {
     for (const f of fs.readdirSync(path.join(root, 'docs'))) {
         if (/\.md$/.test(f)) files.push(path.join(root, 'docs', f));
     }
-    walk(path.join(root, 'plugins', 'claude-kit'), 6);
+    walk(path.join(root, 'plugins', 'grimoire'), 6);
     return files;
 }
 
 test('every shipped sentence stating the sync allowlist narrowly names every root the allowlist admits', () => {
     const installer = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'doctor', 'install-memory-sync.ps1'), 'utf8');
+        'grimoire', 'doctor', 'install-memory-sync.ps1'), 'utf8');
 
     const generated = admittedSyncRoots(installer).map(rootName);
     const predicate = predicateSyncRoots(installer).map(rootName);
@@ -4384,10 +4384,10 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
     const known = [
         ['docs', 'security-model.md'],
         ['docs', 'architecture.md'],
-        ['plugins', 'claude-kit', 'skills', 'kit-doctor', 'SKILL.md'],
-        ['plugins', 'claude-kit', 'doctor', 'doctor.ps1'],
-        ['plugins', 'claude-kit', 'doctor', 'install-memory-sync.ps1'],
-        ['plugins', 'claude-kit', 'scripts', 'memory-index.js'],
+        ['plugins', 'grimoire', 'skills', 'kit-doctor', 'SKILL.md'],
+        ['plugins', 'grimoire', 'doctor', 'doctor.ps1'],
+        ['plugins', 'grimoire', 'doctor', 'install-memory-sync.ps1'],
+        ['plugins', 'grimoire', 'scripts', 'memory-index.js'],
     ];
     for (const parts of known) {
         const want = path.join(...parts);
@@ -4908,7 +4908,7 @@ function assertFootingSourcesCarryIt(where) {
         + 'that no longer answers the question it sends a reader there with');
 
     const coordinator = fs.readFileSync(path.join(root, 'plugins',
-        'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     assert.match(coordinator, /the board is written as a public surface/,
         'the coordinator skill no longer states what a seat does while the '
         + 'readership precondition is unestablished, and ' + where + ' names '
@@ -4919,7 +4919,7 @@ function assertFootingSourcesCarryIt(where) {
         + 'precondition, which is the default state the three cap sites send '
         + 'a reader there to find');
     assertTrackedInIndex('docs/security-model.md');
-    assertTrackedInIndex('plugins/claude-kit/skills/coordinator/SKILL.md');
+    assertTrackedInIndex('plugins/grimoire/skills/coordinator/SKILL.md');
 }
 
 function sliceBetween(body, startMark, endMark, where) {
@@ -4952,12 +4952,12 @@ function sentenceStartingWith(body, opening, where) {
 }
 
 function executingWorkBody() {
-    return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
+    return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'grimoire',
         'skills', 'executing-work', 'SKILL.md'), 'utf8');
 }
 
 function peerSessionsBody() {
-    return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
+    return fs.readFileSync(path.join(__dirname, '..', 'plugins', 'grimoire',
         'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
 }
 
@@ -5025,9 +5025,9 @@ test('the absence-check clause states the same two classes on all three surfaces
             + 'merely unnamed',
     ];
     for (const parts of surfaces) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
-            'plugins', 'claude-kit', ...parts), 'utf8'));
+            'plugins', 'grimoire', ...parts), 'utf8'));
         for (const sentence of classSentences) {
             const hits = body.split(sentence).length - 1;
             assert.strictEqual(hits, 1, `${rel} carries the class sentence '`
@@ -5064,16 +5064,16 @@ test('the fixture-evidence clause states the same class across its surfaces', ()
     ];
     const allThree = charters.concat([['skills', 'responding-to-review', 'SKILL.md']]);
     const bodyOf = (parts) => collapseWhitespace(fs.readFileSync(path.join(
-        __dirname, '..', 'plugins', 'claude-kit', ...parts), 'utf8'));
+        __dirname, '..', 'plugins', 'grimoire', ...parts), 'utf8'));
     for (const parts of charters) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const hits = bodyOf(parts).split(diagnosis).length - 1;
         assert.strictEqual(hits, 1, rel + ' states the fixture diagnosis sentence '
             + hits + ' times, not once; both sighted charters carry it verbatim, '
             + 'so either they agree or one reviewer half has drifted');
     }
     for (const parts of allThree) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const hits = bodyOf(parts).split(classSentence).length - 1;
         assert.strictEqual(hits, 1, rel + ' states the fixture class sentence '
             + hits + ' times, not once; the class boundary is single-sourced '
@@ -5100,10 +5100,10 @@ test('the index-window bullet keeps both of its legs in each doctrine copy', () 
             + 'from one side'],
     ];
     const copies = [
-        ['home/claude-kit-doctrine.md',
-            path.join(__dirname, '..', 'home', 'claude-kit-doctrine.md')],
-        ['plugins/claude-kit/skills/operating-instructions/SKILL.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+        ['home/grimoire-doctrine.md',
+            path.join(__dirname, '..', 'home', 'grimoire-doctrine.md')],
+        ['plugins/grimoire/skills/operating-instructions/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
                 'operating-instructions', 'SKILL.md')],
     ];
     for (const [rel, abs] of copies) {
@@ -5136,9 +5136,9 @@ test('the owning-surface class sentence is one sentence on all three surfaces', 
         ['skills', 'responding-to-review', 'SKILL.md'],
     ];
     for (const parts of surfaces) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
-            'plugins', 'claude-kit', ...parts), 'utf8'));
+            'plugins', 'grimoire', ...parts), 'utf8'));
         const hits = body.split(classSentence).length - 1;
         assert.strictEqual(hits, 1, rel + ' states the owning-surface class '
             + 'sentence ' + hits + ' times, not once; the list of owning surfaces '
@@ -5180,13 +5180,13 @@ test('the coverage-answer clause reaches every surface carrying the absence-chec
         'neither enumerated nor shaped',
     ];
     const paths = [
-        ['plugins/claude-kit/skills/executing-work/SKILL.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+        ['plugins/grimoire/skills/executing-work/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
                 'executing-work', 'SKILL.md')],
-        ['home/claude-kit-doctrine.md',
-            path.join(__dirname, '..', 'home', 'claude-kit-doctrine.md')],
-        ['plugins/claude-kit/skills/operating-instructions/SKILL.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills',
+        ['home/grimoire-doctrine.md',
+            path.join(__dirname, '..', 'home', 'grimoire-doctrine.md')],
+        ['plugins/grimoire/skills/operating-instructions/SKILL.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'skills',
                 'operating-instructions', 'SKILL.md')],
     ];
     for (const [rel, p] of paths) {
@@ -5206,7 +5206,7 @@ test('the coverage-answer clause reaches every surface carrying the absence-chec
     ];
     for (const charter of ['adversarial-reviewer.md', 'prose-reviewer.md']) {
         const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
-            'plugins', 'claude-kit', 'agents', charter), 'utf8'));
+            'plugins', 'grimoire', 'agents', charter), 'utf8'));
         for (const phrase of charterDuty) {
             const hits = body.split(phrase).length - 1;
             assert.strictEqual(hits, 1, charter + ' carries the reviewer-register '
@@ -5218,11 +5218,11 @@ test('the coverage-answer clause reaches every surface carrying the absence-chec
 
     const discriminator = ['a string the pattern was handed'];
     const charterPaths = [
-        ['plugins/claude-kit/agents/adversarial-reviewer.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents',
+        ['plugins/grimoire/agents/adversarial-reviewer.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'agents',
                 'adversarial-reviewer.md')],
-        ['plugins/claude-kit/agents/prose-reviewer.md',
-            path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents',
+        ['plugins/grimoire/agents/prose-reviewer.md',
+            path.join(__dirname, '..', 'plugins', 'grimoire', 'agents',
                 'prose-reviewer.md')],
     ];
     for (const [rel, p] of paths.concat(charterPaths)) {
@@ -5269,7 +5269,7 @@ test('the coverage-answer clause reaches every surface carrying the absence-chec
 // payload, and no existing assertion could see it.
 test('the paragraph-edit-unit rule keeps its owner and its pointer, and the pointer resolves', () => {
     const writingSkills = collapseWhitespace(fs.readFileSync(path.join(__dirname,
-        '..', 'plugins', 'claude-kit', 'skills', 'writing-skills', 'SKILL.md'), 'utf8'));
+        '..', 'plugins', 'grimoire', 'skills', 'writing-skills', 'SKILL.md'), 'utf8'));
     const owner = 'When an amendment corrects a claim a curated document states, '
         + 'the edit unit is the paragraph, never the sentence.';
     assert.strictEqual(writingSkills.split(owner).length - 1, 1,
@@ -5278,7 +5278,7 @@ test('the paragraph-edit-unit rule keeps its owner and its pointer, and the poin
         + 'leave the residue in executing-work pointing at nothing');
 
     const executingWork = collapseWhitespace(fs.readFileSync(path.join(__dirname,
-        '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
+        '..', 'plugins', 'grimoire', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
     assert.ok(executingWork.includes('takes the paragraph as its edit unit rather '
         + 'than the sentence, and carries the claim\'s other carriers with it, per '
         + 'the writing-skills skill (`skills/writing-skills/SKILL.md` under the kit '
@@ -5288,7 +5288,7 @@ test('the paragraph-edit-unit rule keeps its owner and its pointer, and the poin
         + 'an orchestrator correcting curated prose between review rounds gets the '
         + 'rule from nowhere');
 
-    assert.ok(!executingWork.includes('plugins/claude-kit/skills/writing-skills/'),
+    assert.ok(!executingWork.includes('plugins/grimoire/skills/writing-skills/'),
         'executing-work names the writing-skills skill by a repo-root-relative '
         + 'path, which resolves only inside this checkout: under a marketplace '
         + 'install or an external engine\'s --plugin-dir payload the plugin root '
@@ -5317,7 +5317,7 @@ const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'sev
     'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
 
 test('session-start.js\'s block count is stated the same by the code, its header, and docs/architecture.md', () => {
-    const hookPath = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+    const hookPath = path.join(__dirname, '..', 'plugins', 'grimoire', 'hooks', 'session-start.js');
     const hook = fs.readFileSync(hookPath, 'utf8');
 
     const emitters = (hook.match(/\bblocks\.push\(/g) || []).length;
@@ -5416,8 +5416,8 @@ function commitModelBullets(relPath) {
 
 test('every commit-model bullet that pushes names the lane that push takes', () => {
     for (const relPath of [
-        'plugins/claude-kit/skills/executing-work/SKILL.md',
-        'plugins/claude-kit/skills/finishing-work/SKILL.md',
+        'plugins/grimoire/skills/executing-work/SKILL.md',
+        'plugins/grimoire/skills/finishing-work/SKILL.md',
     ]) {
         const bullets = commitModelBullets(relPath);
         assert.ok(bullets, relPath + ' yields no commit-model bullets: either the '
@@ -5465,7 +5465,7 @@ test('every commit-model bullet that pushes names the lane that push takes', () 
 // handing off with the machine-shared tests unrun.
 test('the finishing pass names the contention lane at the gates it runs', () => {
     const finishing = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'finishing-work', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'finishing-work', 'SKILL.md'), 'utf8');
     assert.match(finishing, /contention lane runs beside each of them, and beside every other whole gate this pass runs/,
         'finishing-work no longer states that the contention lane runs beside '
         + 'the handoff gate and every other whole gate the pass runs, so the '
@@ -5475,7 +5475,7 @@ test('the finishing pass names the contention lane at the gates it runs', () => 
     // deleting it from a bullet holds the total and the guard goes quiet for
     // the wrong reason. The subject is the bullets, so the assertion is over
     // the bullets, the way the sibling pin above already reads them.
-    const bullets = commitModelBullets('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const bullets = commitModelBullets('plugins/grimoire/skills/finishing-work/SKILL.md');
     assert.ok(bullets, 'finishing-work yields no commit-model bullets, so this '
         + 'pin is asserting over nothing rather than over the gates its commit '
         + 'models run');
@@ -5488,7 +5488,7 @@ test('the finishing pass names the contention lane at the gates it runs', () => 
             + 'bullet hands off with the machine-shared tests unrun');
     }
     const verifier = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'agents', 'qa-verifier.md'), 'utf8');
+        'grimoire', 'agents', 'qa-verifier.md'), 'utf8');
     assert.match(verifier, /^CONTENTION LANE:/m,
         'the qa-verifier\'s report format no longer carries a contention-lane '
         + 'line, so the agent that runs the handoff gate has nowhere to report '
@@ -5499,7 +5499,7 @@ test('the finishing pass names the contention lane at the gates it runs', () => 
 // closed on a lane scoped to its own files. Its counts therefore have exactly
 // one carrier, and the final Chapter is it.
 test('the final Chapter records the handoff gate the way a section Chapter records its own', () => {
-    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const finishing = readRepoFile('plugins/grimoire/skills/finishing-work/SKILL.md');
     const step = sliceBetween(finishing, '6. **Close and archive the plan doc.**',
         '7. **Apply the commit model.**', 'finishing-work\'s step 6');
     assert.match(step, /carries a `Gate:` line/,
@@ -5567,7 +5567,7 @@ test('the Chapter template still states the Gate shape both Chapters are written
 // lane cannot discover it (the lane's commands are per-repo facts in a memory
 // tier no subagent is given), and the dispatch that knows it has to say so.
 test('the contention lane reaches the qa-verifier from the dispatch, and the charter says how to run it', () => {
-    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const finishing = readRepoFile('plugins/grimoire/skills/finishing-work/SKILL.md');
     const step = sliceBetween(finishing, '1. **QA verification.**',
         '2. **Advisory reviews.**', 'finishing-work\'s step 1');
     assert.match(step, /brief carries the contention lane's own command, or states that this repo defines none/,
@@ -5576,7 +5576,7 @@ test('the contention lane reaches the qa-verifier from the dispatch, and the cha
         + 'discover the lane, so an omitted one comes back as NONE DEFINED and '
         + 'reads exactly like a repo that defines no such lane');
 
-    const verifier = readRepoFile('plugins/claude-kit/agents/qa-verifier.md');
+    const verifier = readRepoFile('plugins/grimoire/agents/qa-verifier.md');
     assert.match(verifier, /^CONTENTION LANE:/m,
         'the qa-verifier\'s report format no longer carries a contention-lane '
         + 'line, so the agent that runs the handoff gate has nowhere to report '
@@ -5606,7 +5606,7 @@ test('the contention lane reaches the qa-verifier from the dispatch, and the cha
 // waiver is the one route that skips the pass entirely, on two predicates a
 // reader must be able to check rather than judge.
 test('finishing-work step 2 dispatches both advisory lenses and skips only on the waiver\'s two predicates', () => {
-    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    const finishing = readRepoFile('plugins/grimoire/skills/finishing-work/SKILL.md');
     assert.ok(finishing.includes('2. **Advisory reviews.**'),
         'finishing-work\'s step 2 no longer carries the heading `2. '
         + '**Advisory reviews.**`, which the contention-lane pin above uses as '
@@ -5715,16 +5715,16 @@ const INTEGRATION_EXEMPT = [
 ];
 
 function shippedKitMarkdown() {
-    const root = path.join(__dirname, '..', 'plugins', 'claude-kit');
+    const root = path.join(__dirname, '..', 'plugins', 'grimoire');
     const files = [];
     const walk = (dir) => {
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             const full = path.join(dir, entry.name);
             if (entry.isDirectory()) { walk(full); continue; }
-            // claude-kit-doctrine.md at the plugin root is gitignored build
+            // grimoire-doctrine.md at the plugin root is gitignored build
             // output regenerated by the doctrine-refresh hook, not a shipped
             // surface anyone edits.
-            if (entry.name === 'claude-kit-doctrine.md' && dir === root) continue;
+            if (entry.name === 'grimoire-doctrine.md' && dir === root) continue;
             if (isRationaleLedger(dir, entry.name)) continue;
             if (entry.name.endsWith('.md')) files.push(full);
         }
@@ -5778,9 +5778,9 @@ test('every kit procedure performing a git integration names that action\'s lane
     const exemptHits = new Map(INTEGRATION_EXEMPT.map(([f, anchor]) => [f + '|' + anchor, 0]));
     const unnamed = [];
     for (const file of shippedKitMarkdown()) {
-        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'), file)
+        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'grimoire'), file)
             .replace(/\\/g, '/');
-        readRepoFile('plugins/claude-kit/' + rel).split(/\r?\n/).forEach((line, i) => {
+        readRepoFile('plugins/grimoire/' + rel).split(/\r?\n/).forEach((line, i) => {
             if (!INTEGRATION_ACTION.test(line)) return;
             const exempt = INTEGRATION_EXEMPT.find(([f, anchor]) => f === rel && line.includes(anchor));
             if (exempt) { exemptHits.set(rel + '|' + exempt[1], exemptHits.get(rel + '|' + exempt[1]) + 1); return; }
@@ -5811,7 +5811,7 @@ test('every kit procedure performing a git integration names that action\'s lane
 // Two halves, covering different failures. The restatement half is a structural
 // sweep for the pin form's own tail phrase, so a new surface that copies the
 // convention reddens here without anyone adding it to a list. Two limits on its
-// reach. It sweeps the shipped markdown under plugins/claude-kit and nothing
+// reach. It sweeps the shipped markdown under plugins/grimoire and nothing
 // else, so a copy in a memory record, under docs/, or anywhere outside that
 // root is unswept and this check is silent about it. And its reach is the copy
 // class rather than the paraphrase class: a surface restating the convention in
@@ -5844,7 +5844,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
     // The pointers name a moment-pin bullet, so the owner has to carry that
     // term or every pointer aims at a name its target does not answer to.
     assert.match(fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', ...MOMENT_PIN_OWNER.split('/')), 'utf8'), /moment-pin/,
+        'grimoire', ...MOMENT_PIN_OWNER.split('/')), 'utf8'), /moment-pin/,
         MOMENT_PIN_OWNER + ' does not use the term its pointers name it by, so '
         + 'a reader following one arrives at a file that answers to no such '
         + 'bullet');
@@ -5854,7 +5854,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
     // record and the rule that reads a figure against it both have to still be
     // there, or three pointers aim at nothing and stay green doing it.
     const expiryOwner = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', ...MOMENT_PIN_EXPIRY_OWNER.split('/')), 'utf8');
+        'grimoire', ...MOMENT_PIN_EXPIRY_OWNER.split('/')), 'utf8');
     for (const [pattern, what] of [
         [/machine configuration epoch/i, 'the machine configuration epoch record'],
         [/read against that date before it is leaned on/i, 'the rule that reads a '
@@ -5868,7 +5868,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
 
     const carriers = [];
     for (const full of shippedKitMarkdown()) {
-        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'claude-kit'),
+        const rel = path.relative(path.join(__dirname, '..', 'plugins', 'grimoire'),
             full).split(path.sep).join('/');
         const hits = momentPinPhraseHits(fs.readFileSync(full, 'utf8'));
         if (hits > 0) carriers.push(rel + ' (' + hits + ')');
@@ -5879,7 +5879,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
         + 'moment-pin bullet of the testing-discipline skill is a pointer at it '
         + 'and never a restatement, because two copies of one convention are '
         + 'never read together and so drift without anyone seeing it. This sweep '
-        + 'reads the shipped markdown under plugins/claude-kit only, so its '
+        + 'reads the shipped markdown under plugins/grimoire only, so its '
         + 'silence means no restatement under that root rather than none '
         + 'anywhere. Carriers found: ' + carriers.join(', '));
 
@@ -5895,9 +5895,9 @@ test('the moment-pin convention has one owning site and its other surfaces point
         [['agents', 'prose-reviewer.md'], 1, 'the document reviewer checks this '
             + 'convention and reads its form from the owner'],
     ]) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
-            'plugins', 'claude-kit', ...parts), 'utf8'));
+            'plugins', 'grimoire', ...parts), 'utf8'));
         const pointers = body.split(MOMENT_PIN_POINTER).length - 1;
         assert.strictEqual(pointers, sites, rel + ' names the moment-pin bullet '
             + 'of the testing-discipline skill ' + pointers + ' times where '
@@ -5915,9 +5915,9 @@ test('the moment-pin convention has one owning site and its other surfaces point
     // drops it leaves the duty stated in one skill and enforced nowhere.
     for (const parts of [['agents', 'adversarial-reviewer.md'],
         ['agents', 'prose-reviewer.md']]) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const body = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
-            'plugins', 'claude-kit', ...parts), 'utf8'));
+            'plugins', 'grimoire', ...parts), 'utf8'));
         assert.match(body, /append-only history is exempt/i, rel + ' states the '
             + 'journey-ban direction without the exemption the doctrine states, so a '
             + 'Chapter, an archive and a changelog, which are the journey by '
@@ -5974,9 +5974,9 @@ test('the moment-pin convention has one owning site and its other surfaces point
 // nothing here claims otherwise.
 test("docs/architecture.md's registry-entry description holds to the role skill's contract", () => {
     assertTrackedInIndex('docs/architecture.md');
-    assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
+    assertTrackedInIndex('plugins/grimoire/skills/role/SKILL.md');
     const role = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8');
+        'grimoire', 'skills', 'role', 'SKILL.md'), 'utf8');
     const architecture = fs.readFileSync(path.join(__dirname, '..', 'docs',
         'architecture.md'), 'utf8');
     const namesOf = (body) => backtickedFieldSet(body)
@@ -6170,7 +6170,7 @@ test('the which-text-governs section is present once in each copy and points at 
 });
 
 test('the ownership map is tracked and names every shipped skill as an owner', () => {
-    const parts = ['plugins', 'claude-kit', 'skills', 'operating-instructions',
+    const parts = ['plugins', 'grimoire', 'skills', 'operating-instructions',
         'references', 'ownership-map.md'];
     const target = path.join(__dirname, '..', ...parts);
     assert.ok(fs.existsSync(target),
@@ -6180,7 +6180,7 @@ test('the ownership map is tracked and names every shipped skill as an owner', (
     assert.ok(map.includes('\n## Unowned or contested\n'),
         'the ownership map has lost its "Unowned or contested" section, which is '
         + 'where the doctrine sends a session that meets a moment with no owner');
-    const skillsDir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills');
+    const skillsDir = path.join(__dirname, '..', 'plugins', 'grimoire', 'skills');
     const skills = fs.readdirSync(skillsDir, { withFileTypes: true })
         .filter((d) => d.isDirectory()).map((d) => d.name);
     const ownerColumn = map.split('\n')
@@ -6211,9 +6211,9 @@ test('the bounded-artifact class sentence reads the same on both gating surfaces
         ['agents', 'blind-reader.md'],
     ];
     for (const parts of surfaces) {
-        const rel = ['plugins', 'claude-kit', ...parts].join('/');
+        const rel = ['plugins', 'grimoire', ...parts].join('/');
         const body = collapseWhitespace(fs.readFileSync(path.join(
-            __dirname, '..', 'plugins', 'claude-kit', ...parts), 'utf8'));
+            __dirname, '..', 'plugins', 'grimoire', ...parts), 'utf8'));
         const hits = body.split(classSentence).length - 1;
         assert.strictEqual(hits, 1, rel + ' states the bounded-artifact class '
             + 'sentence ' + hits + ' times, not once; both surfaces carry it '
@@ -6232,7 +6232,7 @@ test('the probe hook-ins quote the literals the runner actually emits and the fl
     const known = flags[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
     assert.ok(runner.includes("'probe-corpus: '"), 'run.mjs emits the summary line prefix as a literal');
     assert.ok(runner.includes("'- WARNING: '"), 'run.mjs emits the report warning prefix as a literal');
-    const skill = (name) => fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', name, 'SKILL.md'), 'utf8');
+    const skill = (name) => fs.readFileSync(path.join(__dirname, '..', 'plugins', 'grimoire', 'skills', name, 'SKILL.md'), 'utf8');
     const floor = { 'writing-skills': ['--only', '--before'], 'finishing-work': ['--only', '--before', '--shape'] };
     for (const [name, expected] of Object.entries(floor)) {
         const body = skill(name);
@@ -6291,9 +6291,9 @@ function testsDutyRegion(text, label) {
 }
 
 test('the implementer charters carry one byte-identical Tests duty between their markers', () => {
-    const dir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
+    const dir = path.join(__dirname, '..', 'plugins', 'grimoire', 'agents');
     const charters = fs.readdirSync(dir).filter((n) => /^implementer-[^.]+\.md$/.test(n)).sort()
-        .map((n) => ({ label: 'plugins/claude-kit/agents/' + n, region: testsDutyRegion(fs.readFileSync(path.join(dir, n), 'utf8'), n) }));
+        .map((n) => ({ label: 'plugins/grimoire/agents/' + n, region: testsDutyRegion(fs.readFileSync(path.join(dir, n), 'utf8'), n) }));
     assert.ok(charters.length >= 2, 'the agents directory holds ' + charters.length + ' implementer charters, so this pin compares nothing and its green means nothing');
     for (const other of charters.slice(1)) {
         assert.strictEqual(other.region, charters[0].region, other.label + ' carries a Tests duty that differs from the one in ' + charters[0].label + ', and the markers state the copies are one text');
@@ -6312,7 +6312,7 @@ test('the implementer charters carry one byte-identical Tests duty between their
 // What this pin cannot do: a `- key:` line is a paraphrase of its claim by design,
 // so no verbatim reader covers key drift. That half of the class is swept by hand.
 const PASSAGE_PINNED_LEDGERS = [
-    'plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md',
+    'plugins/grimoire/skills/finishing-work/references/rationale-ledger.md',
 ];
 
 // Reads entries off the file's shape rather than off any literal this pin was

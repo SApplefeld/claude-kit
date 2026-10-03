@@ -35,7 +35,7 @@ const path = require('path');
 const os = require('os');
 
 const REPO = path.join(__dirname, '..');
-const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
+const PLUGIN_ROOT = path.join(REPO, 'plugins', 'grimoire');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const SANITIZER = path.join(PLUGIN_ROOT, 'doctor', 'sanitize-line.ps1');
 const CLIENT = path.join(PLUGIN_ROOT, 'scripts', 'memory-database.js');
