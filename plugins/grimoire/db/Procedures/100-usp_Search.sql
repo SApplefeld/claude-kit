@@ -44,8 +44,11 @@ BEGIN	-- PROCEDURE
 							row whose store names that segment and which is the caller's
 							own or shared, which is the answer the same call drew from
 							version 6's visible set. A call naming both keeps the rows both
-							predicates keep. With neither named, the
-							search ranks every row mem.udf_VisibleRecords serves, which is
+							predicates keep, and that is always none, since
+							CK_Store_TierShape gives a store a segment or a project key and
+							never both: a client on this version sends @p_ProjectKey alone.
+							With neither named, the search ranks every row
+							mem.udf_VisibleRecords serves, which is
 							every undeleted row. The digest input takes the project key
 							after the tag, empty where NULL, so a call that names none
 							logs the digest a v1.2 call logs. A row a session wrote

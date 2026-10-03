@@ -120,10 +120,14 @@ BEGIN	-- PROCEDURE
 					AND S.[Segment] = NULLIF(LTRIM(RTRIM(@p_Segment)), '')
 		END
 
-		/* Find the One Live Row of That Name in the Store. */
+		/* Open a Transaction Unless the Caller Holds One. */
+		;IF ( @EntryTranCount = 0 )
+			BEGIN TRANSACTION
+
+		/* Find the One Live Row of That Name in the Store, Under a Range Lock so a Concurrent Move of it Queues. */
 		;SELECT	 @MatchCount	= COUNT(*)
 				,@RecordId		= MIN(R.[RecordId])
-		FROM	mem.Record R
+		FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
 		WHERE	R.[StoreId] = @SourceStoreId
 				AND R.[Name] = @Name
 				AND R.[IsArchived] = @False
@@ -139,16 +143,18 @@ BEGIN	-- PROCEDURE
 		FROM	mem.Record R
 		WHERE	R.[RecordId] = @RecordId
 
-		/* Open a Transaction Unless the Caller Holds One. */
-		;IF ( @EntryTranCount = 0 )
-			BEGIN TRANSACTION
-
 		/****************************************************************************************
 			RESOLVE THE OPERATOR STORE AND THE ROW THE COPY IS WRITTEN INTO.
 		****************************************************************************************/
-		;IF NOT EXISTS (	SELECT	NULL
-							FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
-							WHERE	S.[Tier] = 'operator'	)
+		/* The Operator Store Seeks its Unique Index by Equality. */
+		;SELECT	@OperatorStoreId = S.[StoreId]
+		FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
+		WHERE	S.[SandboxId] IS NULL
+				AND S.[Tier] = 'operator'
+				AND S.[Segment] IS NULL
+				AND S.[ProjectKey] IS NULL
+
+		;IF ( @OperatorStoreId IS NULL )
 		BEGIN
 			;INSERT INTO mem.Store (
 				 [SandboxId]
@@ -157,19 +163,23 @@ BEGIN	-- PROCEDURE
 			SELECT	 [SandboxId]	= NULL
 					,[Tier]			= 'operator'
 					,[Segment]		= NULL
+
+			;SET @OperatorStoreId = SCOPE_IDENTITY()
 		END
 
-		;SELECT	@OperatorStoreId = S.[StoreId]
-		FROM	mem.Store S
-		WHERE	S.[Tier] = 'operator'
-
-		/* A Live Operator Row of the Same Name or File Key is Refused; a Deleted One Holding the File Key is Reused. */
+		/* A Live Operator Row of the Same Name, or of the Same File Key, is Refused; a Deleted One Holding the File Key is Reused. */
 		;IF EXISTS (	SELECT	NULL
 						FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
 						WHERE	R.[StoreId] = @OperatorStoreId
-								AND R.[DeletedDt] IS NULL
-								AND (	R.[Name] = @Name
-										OR R.[FileKey] = @FileKey	)	)
+								AND R.[Name] = @Name
+								AND R.[DeletedDt] IS NULL	)
+			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that name or file key; retire or rename it first.', 1
+
+		;IF EXISTS (	SELECT	NULL
+						FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
+						WHERE	R.[StoreId] = @OperatorStoreId
+								AND R.[FileKey] = @FileKey
+								AND R.[DeletedDt] IS NULL	)
 			THROW 50000, 'mem.usp_PromoteRecord: the operator store already holds a live record of that name or file key; retire or rename it first.', 1
 
 		;SELECT	@TargetRecordId = R.[RecordId]
@@ -319,10 +329,6 @@ BEGIN	-- PROCEDURE
 		/* A ROLLBACK Inside an INSERT-EXEC Raises Error 3915 in Place of the Server's Own Error Text. */
 		;IF ( XACT_STATE() <> 0 AND @EntryTranCount = 0 )
 			ROLLBACK TRANSACTION
-
-		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire; the Guard Above Unwinds Nothing a Caller Opened, so This Loop Stands as a Defensive No-Op. */
-		;WHILE ( @@TRANCOUNT < @EntryTranCount )
-			BEGIN TRANSACTION
 
 		/* Re-Raise so the Caller Never Reads Success From a Failed Write. */
 		;THROW

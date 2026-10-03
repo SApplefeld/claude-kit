@@ -23,9 +23,20 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Health
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.1
+		VERSION:	v1.2
 	*********************************************************************************************
-		NOTES:		v1.1 - 09/21/2026 - SCOTT APPLEFELD
+		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
+							The report adds fleetRecords and fleetEmbeddings: the live
+							records of every project's fleet store, which belongs to no
+							sandbox and so is counted in no sandbox's line, and their
+							embeddings, for the model @p_ModelIdentity names when given.
+
+							Returns one row, one column [Json], a JSON object
+							{schemaVersion, sharedRecords, sharedEmbeddings, fleetRecords,
+							fleetEmbeddings, sandboxes: [{sandbox, records, embeddings,
+							lastPublish, oldestUnembedded}]}.
+
+					v1.1 - 09/21/2026 - SCOTT APPLEFELD
 							lastPublish is the start of the sandbox's last publish run that
 							carried no error text, so a run that reached the host and ended
 							on a refusal no longer reads as a publish. A sandbox with failed
@@ -63,6 +74,8 @@ BEGIN	-- PROCEDURE
 			,@SchemaVersion		INT				= NULL
 			,@SharedRecords		INT				= 0
 			,@SharedEmbeddings	INT				= 0
+			,@FleetRecords		INT				= 0
+			,@FleetEmbeddings	INT				= 0
 			,@Sandboxes			NVARCHAR(MAX)	= NULL
 
 	/********************************************************************************************
@@ -92,6 +105,27 @@ BEGIN	-- PROCEDURE
 					ON R.[RecordId] = E.[RecordId]
 		WHERE	R.[DeletedDt] IS NULL
 				AND R.[Visibility] = 'shared'
+				AND (	@p_ModelIdentity IS NULL
+						OR E.[ModelIdentity] = @p_ModelIdentity	)
+
+		/* The Fleet Project Stores' Counts, Which No Sandbox's Line Carries. */
+		;SELECT	@FleetRecords = COUNT(*)
+		FROM	mem.Record R
+				INNER JOIN mem.Store S
+					ON S.[StoreId] = R.[StoreId]
+		WHERE	S.[Tier] = 'project'
+				AND S.[SandboxId] IS NULL
+				AND R.[DeletedDt] IS NULL
+
+		;SELECT	@FleetEmbeddings = COUNT(*)
+		FROM	mem.Embedding E
+				INNER JOIN mem.Record R
+					ON R.[RecordId] = E.[RecordId]
+				INNER JOIN mem.Store S
+					ON S.[StoreId] = R.[StoreId]
+		WHERE	S.[Tier] = 'project'
+				AND S.[SandboxId] IS NULL
+				AND R.[DeletedDt] IS NULL
 				AND (	@p_ModelIdentity IS NULL
 						OR E.[ModelIdentity] = @p_ModelIdentity	)
 
@@ -141,6 +175,8 @@ BEGIN	-- PROCEDURE
 		;SELECT	[Json] = (	SELECT	 [schemaVersion]	= @SchemaVersion
 									,[sharedRecords]	= @SharedRecords
 									,[sharedEmbeddings]	= @SharedEmbeddings
+									,[fleetRecords]		= @FleetRecords
+									,[fleetEmbeddings]	= @FleetEmbeddings
 									,[sandboxes]		= JSON_QUERY(@Sandboxes)
 							FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES	)
 	END TRY

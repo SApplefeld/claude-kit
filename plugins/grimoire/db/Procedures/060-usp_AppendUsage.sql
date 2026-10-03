@@ -28,9 +28,12 @@ BEGIN	-- PROCEDURE
 		NOTES:		v1.3 - 10/03/2026 - SCOTT APPLEFELD
 							An element may carry {projectKey}, which names a project's fleet
 							store: a project tier stamp carrying one resolves by that key and
-							the file key or name, in place of a segment, against a store that
-							belongs to no sandbox. A stamp naming its record by recordId
-							reaches a fleet row as it reaches any row the caller may see.
+							the file key or name against a store that belongs to no sandbox,
+							and where no fleet row matches, by its segment against the
+							caller's own older store, so a stamp written before the record
+							moved still lands. A projectKey on another tier's stamp is
+							ignored. A stamp naming its record by recordId reaches a fleet
+							row as it reaches any row the caller may see.
 
 					v1.2 - 09/18/2026 - SCOTT APPLEFELD
 							A failure unwinds only a transaction this procedure opened and
@@ -139,7 +142,10 @@ BEGIN	-- PROCEDURE
 										THEN NULL
 										ELSE NULLIF(LTRIM(RTRIM(J.[Segment])), '')
 								  END
-				,[ProjectKey]	= NULLIF(LTRIM(RTRIM(J.[ProjectKey])), '')
+				,[ProjectKey]	= CASE	WHEN LOWER(LTRIM(RTRIM(J.[Tier]))) = 'project'
+										THEN NULLIF(LTRIM(RTRIM(J.[ProjectKey])), '')
+										ELSE NULL
+								  END
 				,[Name]			= NULLIF(LTRIM(RTRIM(J.[Name])), '')
 				,[FileKey]		= NULLIF(LTRIM(RTRIM(J.[FileKey])), '')
 				,[Kind]			= LOWER(LTRIM(RTRIM(J.[Kind])))
@@ -167,6 +173,7 @@ BEGIN	-- PROCEDURE
 			THROW 50000, 'mem.usp_AppendUsage: every stamp needs a kind of read or applied and an at timestamp.', 1
 
 		/* Resolve Each Stamp to a Record the Caller May See, by Id First and by Identity Otherwise. */
+		/* A Project Key Match Ranks First; With None, the Segment Locator Finds the Caller's Older Store Row. */
 		;UPDATE I
 		SET		[RecordId] = X.[RecordId]
 		FROM	@Incoming I
@@ -180,10 +187,9 @@ BEGIN	-- PROCEDURE
 												AND (	(	I.[ProjectKey] IS NOT NULL
 															AND V.[Tier] = 'project'
 															AND V.[ProjectKey] = I.[ProjectKey]	)
-														OR (	I.[ProjectKey] IS NULL
-																AND EXISTS (	SELECT V.[Segment]
-																				INTERSECT
-																				SELECT I.[Segment]	)
+														OR (	EXISTS (	SELECT V.[Segment]
+																			INTERSECT
+																			SELECT I.[Segment]	)
 																AND (	V.[Tier] <> 'project'
 																		OR V.[StoreSandboxId] = @SandboxId	)	)	)
 												AND (	(	I.[FileKey] IS NOT NULL
@@ -191,7 +197,7 @@ BEGIN	-- PROCEDURE
 														OR (	I.[FileKey] IS NULL
 																AND I.[Name] IS NOT NULL
 																AND V.[Name] = I.[Name]	)	)	)
-								ORDER BY V.[RecordId]	) X
+								ORDER BY CASE WHEN V.[ProjectKey] = I.[ProjectKey] THEN 0 ELSE 1 END, V.[RecordId]	) X
 
 		/* Mark the Second and Later Copies of One Stamp Id Inside This Batch. */
 		;WITH Repeats AS (

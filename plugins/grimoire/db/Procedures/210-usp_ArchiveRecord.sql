@@ -36,7 +36,9 @@ BEGIN	-- PROCEDURE
 							row takes the archived flag, and with @p_Delete also the deleted
 							mark, which no read procedure serves. No row is ever removed. A
 							name the store holds no undeleted row of answers absent and
-							writes nothing, so a resent retirement is not a failure. The
+							writes nothing, so a resent retirement is not a failure. Where a
+							store holds two undeleted rows of the name, the unarchived row is
+							the one retired, and the newest among equals. The
 							caller's sandbox comes from mem.CallerSandbox() and an unmapped
 							login is refused.
 
@@ -79,7 +81,7 @@ BEGIN	-- PROCEDURE
 		;IF ( @Name IS NULL OR @Tier IS NULL OR @Tier NOT IN ('project', 'type', 'operator') )
 			THROW 50000, 'mem.usp_ArchiveRecord: @p_Name and a @p_Tier of project, type or operator are required.', 1
 
-		/* The Undeleted Row of That Name in the Named Store. */
+		/* The Undeleted Row of That Name in the Named Store, an Unarchived Row Before an Archived One and the Newest First. */
 		;SELECT	TOP ( 1 )
 				@RecordId = R.[RecordId]
 		FROM	mem.Record R
@@ -92,7 +94,7 @@ BEGIN	-- PROCEDURE
 								SELECT @ProjectKey, @TypeName	)
 				AND R.[Name] = @Name
 				AND R.[DeletedDt] IS NULL
-		ORDER BY R.[RecordId]
+		ORDER BY R.[IsArchived], R.[RecordId] DESC
 
 		;IF ( @RecordId IS NOT NULL )
 		BEGIN

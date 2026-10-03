@@ -56,7 +56,9 @@ BEGIN	-- PROCEDURE
 							nothing is written and the answer is refused, carrying the
 							existing description. An archived row counts as there. Where it
 							is there and @p_Replace is 1, the row is overwritten field by
-							field and takes the archived flag off: a NULL parameter keeps the
+							field, and a write carrying a body, the whole record, takes the
+							archived flag off, while a write of other fields alone leaves
+							it: a NULL parameter keeps the
 							column and a non-NULL one, an empty JSON array included, is the
 							new value, and the row's embeddings are deleted only where
 							@p_Body is non-NULL. Where no live row has the name, the record
@@ -114,6 +116,9 @@ BEGIN	-- PROCEDURE
 		;IF ( @Name IS NULL )
 			THROW 50000, 'mem.usp_PutRecord: @p_Name is required.', 1
 
+		;IF ( @Tier IS NULL OR @Tier NOT IN ('project', 'type', 'operator') )
+			THROW 50000, 'mem.usp_PutRecord: @p_Tier must be project, type or operator.', 1
+
 		/* Refuse a Store Key the Tier Does Not Take. */
 		;IF NOT (	(	@Tier = 'project'
 						AND @ProjectKey IS NOT NULL
@@ -154,13 +159,32 @@ BEGIN	-- PROCEDURE
 			/************************************************************************************
 				RESOLVE THE STORE, CREATING A PROJECT OR TYPE STORE WRITTEN FOR THE FIRST TIME.
 			************************************************************************************/
-			;IF NOT EXISTS (	SELECT	NULL
-								FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
-								WHERE	S.[Tier] = @Tier
-										AND S.[SandboxId] IS NULL
-										AND EXISTS (	SELECT S.[ProjectKey], S.[Segment]
-														INTERSECT
-														SELECT @ProjectKey, @TypeName	)	)
+			/* Each Tier Seeks its Own Unique Index by Equality, Under a Range Lock so a Concurrent First Write Queues. */
+			;IF ( @Tier = 'project' )
+			BEGIN
+				;SELECT	@StoreId = S.[StoreId]
+				FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
+				WHERE	S.[Tier] = 'project'
+						AND S.[ProjectKey] = @ProjectKey
+						AND S.[ProjectKey] IS NOT NULL
+			END ELSE IF ( @Tier = 'type' )
+			BEGIN
+				;SELECT	@StoreId = S.[StoreId]
+				FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
+				WHERE	S.[SandboxId] IS NULL
+						AND S.[Tier] = 'type'
+						AND S.[Segment] = @TypeName
+						AND S.[ProjectKey] IS NULL
+			END ELSE BEGIN
+				;SELECT	@StoreId = S.[StoreId]
+				FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
+				WHERE	S.[SandboxId] IS NULL
+						AND S.[Tier] = 'operator'
+						AND S.[Segment] IS NULL
+						AND S.[ProjectKey] IS NULL
+			END
+
+			;IF ( @StoreId IS NULL )
 			BEGIN
 				;INSERT INTO mem.Store (
 					 [SandboxId]
@@ -171,22 +195,16 @@ BEGIN	-- PROCEDURE
 						,[Tier]			= @Tier
 						,[Segment]		= @TypeName
 						,[ProjectKey]	= @ProjectKey
-			END
 
-			;SELECT	@StoreId = S.[StoreId]
-			FROM	mem.Store S WITH ( UPDLOCK, HOLDLOCK )
-			WHERE	S.[Tier] = @Tier
-					AND S.[SandboxId] IS NULL
-					AND EXISTS (	SELECT S.[ProjectKey], S.[Segment]
-									INTERSECT
-									SELECT @ProjectKey, @TypeName	)
+				;SET @StoreId = SCOPE_IDENTITY()
+			END
 
 			/* The Live Row of That Name, Read Under a Range Lock so a Concurrent Write of the Name Queues Behind This One. */
 			;SELECT	TOP ( 1 )
 					 @RecordId		= R.[RecordId]
 					,@ExistingText	= R.[Description]
 			FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
-WHERE	R.[StoreId] = @StoreId
+			WHERE	R.[StoreId] = @StoreId
 					AND R.[Name] = @Name
 					AND R.[DeletedDt] IS NULL
 			ORDER BY R.[RecordId]
@@ -226,7 +244,7 @@ BEGIN	-- PROCEDURE
 						,[Triggers]				= COALESCE(@p_Triggers, R.[Triggers])
 						,[Anchors]				= COALESCE(@p_Anchors, R.[Anchors])
 						,[IsPinned]				= COALESCE(@p_IsPinned, R.[IsPinned])
-						,[IsArchived]			= @False
+						,[IsArchived]			= CASE WHEN @p_Body IS NULL THEN R.[IsArchived] ELSE @False END
 						,[Origin]				= 'memq'
 						,[Visibility]			= 'shared'
 						,[WrittenBySandboxId]	= @SandboxId
@@ -246,14 +264,14 @@ BEGIN	-- PROCEDURE
 			BEGIN
 				;IF EXISTS (	SELECT	NULL
 								FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
-WHERE	R.[StoreId] = @StoreId
+								WHERE	R.[StoreId] = @StoreId
 										AND R.[FileKey] = @FileKey
 										AND R.[DeletedDt] IS NULL	)
 					THROW 50000, 'mem.usp_PutRecord: a live record of another name holds this name''s file key in the store.', 1
 
 				;SELECT	@ReuseRecordId = R.[RecordId]
 				FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
-WHERE	R.[StoreId] = @StoreId
+				WHERE	R.[StoreId] = @StoreId
 						AND R.[FileKey] = @FileKey
 
 				;IF ( @ReuseRecordId IS NOT NULL )
@@ -367,10 +385,6 @@ BEGIN	-- PROCEDURE
 		/* A ROLLBACK Inside an INSERT-EXEC Raises Error 3915 in Place of the Server's Own Error Text. */
 		;IF ( XACT_STATE() <> 0 AND @EntryTranCount = 0 )
 			ROLLBACK TRANSACTION
-
-		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire; the Guard Above Unwinds Nothing a Caller Opened, so This Loop Stands as a Defensive No-Op. */
-		;WHILE ( @@TRANCOUNT < @EntryTranCount )
-			BEGIN TRANSACTION
 
 		/* Re-Raise so the Caller Never Reads Success From a Failed Write. */
 		;THROW

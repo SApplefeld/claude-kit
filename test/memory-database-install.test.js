@@ -2939,8 +2939,6 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 }
                 // Each fixture row sits at distance zero on an axis of its own,
                 // so the three rank first and a ten-row answer holds them all.
-                // Each fixture row sits at distance zero on an axis of its own,
-                // so the three rank first and a ten-row answer holds them all.
                 const fixture = Object.values(seeded);
                 const searchWith = (scope) => {
                     const res = call('usp_Search', "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10" + scope, vectorPrelude(axis));
@@ -3061,6 +3059,15 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.ok(!archived.error && archived.value.status === 'archived', JSON.stringify(archived));
                 assert.ok(!listed(), 'an archived record does not list');
 
+                // A replace of one field, the shape `memq anchor` sends, changes
+                // that field and leaves the record archived.
+                const anchored = put({ ...base, Anchors: '["kept-archived.js"]', Replace: 1 });
+                assert.ok(!anchored.error && anchored.value.status === 'stored', JSON.stringify(anchored));
+                const anchoredState = recordState(written.value.recordId);
+                assert.deepStrictEqual([anchoredState.Anchors, anchoredState.IsArchived, anchoredState.Body], ['["kept-archived.js"]', true, 'archived body'],
+                    'an anchors-only replace changes the anchors alone and leaves the record archived');
+                assert.ok(!listed(), 'and the record still does not list');
+
                 const refused = put({ ...base, Description: 'no flag', Body: 'refused body' });
                 assert.ok(!refused.error, JSON.stringify(refused.error));
                 assert.deepStrictEqual({ status: refused.value.status, description: refused.value.description },
@@ -3125,6 +3132,36 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 const otherKey = stamp({ projectKey: keyTwo });
                 assert.deepStrictEqual(otherKey.value, { appended: 0, rejected: 1, skipped: 0 }, 'another project\'s key does not locate it');
 
+                // A projectKey on an operator stamp is ignored: the stamp
+                // resolves by tier and name as it did before keys existed.
+                const operatorName = 'usage-operator-' + runId;
+                const operatorWritten = put({ Tier: 'operator', Name: operatorName, Description: 'an operator row for a stamp', Body: 'b' });
+                assert.ok(!operatorWritten.error && operatorWritten.value.status === 'stored', JSON.stringify(operatorWritten));
+                const operatorStamp = call('usp_AppendUsage', "@p_Usage = N'" + JSON.stringify([{ tier: 'operator', name: operatorName, projectKey: keyOne,
+                    kind: 'read', at: '2026-10-01T00:00:00Z', stampId: crypto.randomUUID() }]) + "'");
+                assert.ok(!operatorStamp.error, JSON.stringify(operatorStamp.error));
+                assert.deepStrictEqual(operatorStamp.value, { appended: 1, rejected: 0, skipped: 0 }, 'an operator stamp carrying a project key still appends');
+
+                // A project stamp carrying a key whose record is only in the
+                // caller's older store, as a stamp queued before the migration
+                // moves its record is, falls back to the segment and lands there.
+                mapConnection('SCOTT-CLAUDE');
+                const olderRows = () => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage WHERE [RecordId] = " + ids.scottPrivate + ';'), 'n'));
+                const olderBefore = olderRows();
+                const fallback = call('usp_AppendUsage', "@p_Usage = N'" + JSON.stringify([{ tier: 'project', segment, name: 'scott-private-' + runId,
+                    projectKey: keyOne, kind: 'read', at: '2026-10-01T00:00:00Z', stampId: crypto.randomUUID() }]) + "'");
+                assert.ok(!fallback.error, JSON.stringify(fallback.error));
+                assert.deepStrictEqual(fallback.value, { appended: 1, rejected: 0, skipped: 0 }, 'the segment locator takes a keyed stamp no fleet row matches');
+                assert.strictEqual(olderRows(), olderBefore + 1, 'and the row lands on the older-store record');
+                mapConnection('NEO-CLAUDE');
+
+                // usp_Health counts the fleet store's rows, which no sandbox's
+                // line carries.
+                const health = call('usp_Health', "@p_ModelIdentity = 'test-model'");
+                assert.ok(!health.error, JSON.stringify(health.error));
+                assert.ok(health.value.fleetRecords >= 1 && health.value.fleetEmbeddings >= 1,
+                    'the fleet row and its vector are counted: ' + JSON.stringify(health.value));
+
                 // usp_Nearest and usp_Search label the row by the sandbox that
                 // wrote it, read here by NEO.
                 const nearest = call('usp_Nearest', nearestParams, vectorPrelude(axis));
@@ -3168,16 +3205,15 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         await t.test('a version 6 database upgrades in place to the carried version, keeping every row, and a second run changes nothing',
             { skip: !haveV6 && 'commit ' + v6Commit + ' is not in this clone, so the version 6 installer cannot be read' }, () => {
                 const v6Root = path.join(root, 'v6');
-                const listed = spawnSync('git', ['-C', REPO, 'ls-tree', '-r', '--name-only', v6Commit, 'plugins/grimoire/db'], { encoding: 'utf8' });
-                assert.strictEqual(listed.status, 0, listed.stderr);
-                const files = listed.stdout.split(/\r?\n/).filter((f) => /\.(sql|ps1)$/.test(f));
-                assert.ok(files.length > 20, 'the version 6 tree holds its scripts: ' + files.length);
-                for (const file of files) {
-                    const shown = spawnSync('git', ['-C', REPO, 'show', v6Commit + ':' + file], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-                    assert.strictEqual(shown.status, 0, shown.stderr);
-                    fs.mkdirSync(path.join(v6Root, path.dirname(file)), { recursive: true });
-                    fs.writeFileSync(path.join(v6Root, file), shown.stdout, 'utf8');
-                }
+                // The version 6 tree as one archive, unpacked from standard input
+                // into the temp root, so no path rides a tar argument.
+                fs.mkdirSync(v6Root, { recursive: true });
+                const archive = spawnSync('git', ['-C', REPO, 'archive', '--format=tar', v6Commit, 'plugins/grimoire/db'], { maxBuffer: 64 * 1024 * 1024 });
+                assert.strictEqual(archive.status, 0, String(archive.stderr));
+                const unpacked = spawnSync('tar', ['-x', '-f', '-'], { cwd: v6Root, input: archive.stdout, encoding: 'utf8' });
+                assert.strictEqual(unpacked.status, 0, unpacked.stderr);
+                const scripts = fs.readdirSync(path.join(v6Root, 'plugins', 'grimoire', 'db', 'Procedures')).filter((f) => f.endsWith('.sql'));
+                assert.ok(scripts.length > 10, 'the version 6 tree holds its scripts: ' + scripts.length);
                 const v6Installer = path.join(v6Root, 'plugins', 'grimoire', 'db', 'Install-MemoryDatabase.ps1');
                 const v6Args = ['-Server', SERVER, '-Database', v6Database, '-LoginsPath', loginsPath, '-TrustServerCertificate'];
                 const built = spawnSync('pwsh', ['-NoProfile', '-File', v6Installer].concat(v6Args), { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
