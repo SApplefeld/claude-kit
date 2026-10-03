@@ -3,9 +3,14 @@
 	SCRIPT:		Security/010-Roles.sql
 	AUTHOR:		Scott Applefeld
 	DATE:		September 17th, 2026
-	VERSION:	v1.2
+	VERSION:	v1.3
 *************************************************************************************************
-	NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
+	NOTES:		v1.3 - 10/03/2026 - SCOTT APPLEFELD
+						mem_publisher gains EXECUTE on mem.usp_AdoptProjectStore, which moves
+						a project's records from its folder-name store into its remote store,
+						and mem_curator is denied it, since the curator never publishes.
+
+				v1.2 - 10/03/2026 - SCOTT APPLEFELD
 						mem_publisher gains EXECUTE on the record door: mem.usp_PutRecord,
 						mem.usp_GetRecord, mem.usp_ListIndex and mem.usp_ArchiveRecord. Each
 						resolves the caller's sandbox and refuses or answers nothing for an
@@ -77,6 +82,7 @@ GO
 ;GRANT EXECUTE ON OBJECT::mem.usp_GetRecord		TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_ListIndex		TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_ArchiveRecord	TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_AdoptProjectStore	TO mem_publisher
 GO
 
 ;DENY SELECT ON SCHEMA::mem TO mem_publisher
@@ -121,6 +127,7 @@ GO
 ;DENY EXECUTE ON OBJECT::mem.usp_GetRecord		TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_ListIndex		TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_ArchiveRecord	TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_AdoptProjectStore	TO mem_curator
 GO
 
 /************************************************************************************************

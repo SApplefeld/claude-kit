@@ -23,9 +23,16 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_AppendPublishRun
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.1 - 10/03/2026 - SCOTT APPLEFELD
+							@p_Run also takes twins, a JSON array naming each record two
+							sandboxes held under one project key that the run resolved, as
+							mem.usp_UpsertRecords returned them, stored in [TwinMerges]. A
+							run with none stores NULL there, and a twins value that is not
+							an array is refused.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							Records one publisher run for the calling sandbox. @p_Run is one
 							JSON object {started, finished, added, changed, removed,
 							embedded, spoolDrained, error}. The publisher login is
@@ -55,6 +62,7 @@ BEGIN	-- PROCEDURE
 			,@EmbeddedCount		INT				= 0
 			,@SpoolDrainedCount	INT				= 0
 			,@ErrorText			NVARCHAR(MAX)	= NULL
+			,@TwinMerges		NVARCHAR(MAX)	= NULL
 
 	/********************************************************************************************
 		VALIDATE THE CALLER AND THE RUN, THEN INSERT THE ROW.
@@ -79,6 +87,7 @@ BEGIN	-- PROCEDURE
 				,@EmbeddedCount		= COALESCE(J.[EmbeddedCount], 0)
 				,@SpoolDrainedCount	= COALESCE(J.[SpoolDrainedCount], 0)
 				,@ErrorText			= NULLIF(LTRIM(RTRIM(J.[ErrorText])), '')
+				,@TwinMerges		= J.[TwinMerges]
 		FROM	OPENJSON(@p_Run)
 				WITH (	 [StartedDt]		DATETIMEOFFSET	'$.started'
 						,[FinishedDt]		DATETIMEOFFSET	'$.finished'
@@ -87,10 +96,18 @@ BEGIN	-- PROCEDURE
 						,[RemovedCount]		INT				'$.removed'
 						,[EmbeddedCount]	INT				'$.embedded'
 						,[SpoolDrainedCount]	INT			'$.spoolDrained'
-						,[ErrorText]		NVARCHAR(MAX)	'$.error'	) J
+						,[ErrorText]		NVARCHAR(MAX)	'$.error'
+						,[TwinMerges]		NVARCHAR(MAX)	'$.twins' AS JSON	) J
 
 		;IF ( @StartedDt IS NULL )
 			THROW 50000, 'mem.usp_AppendPublishRun: the run needs a started timestamp.', 1
+
+		;IF ( @TwinMerges IS NOT NULL AND ISJSON(@TwinMerges, ARRAY) <> 1 )
+			THROW 50000, 'mem.usp_AppendPublishRun: twins must be a JSON array when given.', 1
+
+		/* A Run That Resolved No Twin Records None. */
+		;IF ( @TwinMerges IS NOT NULL AND NOT EXISTS ( SELECT NULL FROM OPENJSON(@TwinMerges) ) )
+			SET @TwinMerges = NULL
 
 		/* Insert the Run. */
 		;INSERT INTO mem.PublishRun (
@@ -102,7 +119,8 @@ BEGIN	-- PROCEDURE
 			,[RemovedCount]
 			,[EmbeddedCount]
 			,[SpoolDrainedCount]
-			,[ErrorText]		)
+			,[ErrorText]
+			,[TwinMerges]		)
 		SELECT	 [SandboxId]		= @SandboxId
 				,[StartedDt]		= @StartedDt
 				,[FinishedDt]		= @FinishedDt
@@ -112,6 +130,7 @@ BEGIN	-- PROCEDURE
 				,[EmbeddedCount]	= @EmbeddedCount
 				,[SpoolDrainedCount]	= @SpoolDrainedCount
 				,[ErrorText]		= @ErrorText
+				,[TwinMerges]		= @TwinMerges
 
 		;SELECT @PublishRunId = SCOPE_IDENTITY()
 

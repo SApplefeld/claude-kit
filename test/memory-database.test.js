@@ -259,8 +259,10 @@ function fakeHost(options) {
             return {
                 ok: true,
                 rows: [{
+                    // The record floor by default, the version a publish
+                    // needs, which every case but a gate's own wants met.
                     schemaVersion: opts.schemaVersion === undefined
-                        ? db.REQUIRED_SCHEMA_VERSION : opts.schemaVersion,
+                        ? db.RECORD_SCHEMA_VERSION : opts.schemaVersion,
                     sharedRecords: host.records.size,
                     sandboxes: []
                 }]
@@ -304,7 +306,19 @@ function fakeHost(options) {
                 const at = key({ tier: 'project', segment: removal.segment, fileKey: removal.fileKey });
                 if (host.records.delete(at)) counts.removed += 1;
             }
+            // The twins the real procedure names, answered once, on the first
+            // batch, where a case hands some in.
+            if (opts.twins && !host.twinsAnswered) {
+                host.twinsAnswered = true;
+                counts.twins = opts.twins;
+            }
             return { ok: true, rows: [counts] };
+        }
+        if (call.procedure === 'usp_AdoptProjectStore') {
+            return {
+                ok: true,
+                rows: [opts.adopted || { moved: 0, merged: 0, skipped: 0, mergedNames: [], skippedNames: [] }]
+            };
         }
         if (call.procedure === 'usp_ListRecords') {
             const model = call.parameters['@p_ModelIdentity'];
@@ -938,26 +952,24 @@ test('a host below the schema version this client requires is refused, and not o
 
 // The version the gate reads is the host's own, taken from the health probe the
 // run already spends rather than from a second reader or a remembered number.
-test('the publish hands the drain the version its health probe read, and an old host stops the drain alone', async () => {
+// A host below the record floor is sent nothing at all, the queue's rows
+// included, and the stand-down names the installer.
+test('the publish reads the version its health probe carries, and a host below the record floor is sent nothing', async () => {
     const store = makeStore();
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
         db.queueInsert([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
 
-        const host = fakeHost({ schemaVersion: db.REQUIRED_SCHEMA_VERSION - 1 });
+        const host = fakeHost({ schemaVersion: db.RECORD_SCHEMA_VERSION - 1 });
         const result = await publishWith(store, host);
-        assert.strictEqual(result.ok, true, JSON.stringify(result));
-        assert.strictEqual(result.summary.drained, 0, JSON.stringify(result.summary));
-        assert.deepStrictEqual(host.usage, [], 'no queue row reached the host');
-        assert.ok(result.summary.failed.some((f) => f.startsWith('the queue (schema): ')),
-            'the cause rides out in front of the words, since the remedy is the installer: '
-            + JSON.stringify(result.summary.failed));
+        assert.deepStrictEqual({ ok: result.ok, standDown: result.standDown }, { ok: false, standDown: 'schema' },
+            JSON.stringify(result));
+        assert.ok(/Install-MemoryDatabase\.ps1/.test(db.standDownText(result)), db.standDownText(result));
+        assert.deepStrictEqual(host.calls.map((c) => c.procedure), ['usp_Health'],
+            'the probe is the only call: no record, no queue row and no run row reached the host');
         assert.strictEqual(queueCount(), 1, 'and the row is still on the queue');
-        assert.ok(result.summary.added > 0,
-            'the run itself carries on, since the walk neither reads the queue nor writes to it: '
-            + JSON.stringify(result.summary));
 
-        // The control: the same publish against a host at the required version
+        // The control: the same publish against a host at the record floor
         // drains the same row, so the refusal above is the version alone.
         const current = fakeHost();
         const ran = await publishWith(store, current);
@@ -1593,19 +1605,6 @@ test('a drain that never read the queue reports its depth as unknown rather than
             deps: { runBatch: fakeHost({ schemaVersion: behind }).runBatch }, schemaVersion: behind
         });
         assert.strictEqual(gated.remaining, null, JSON.stringify(gated));
-
-        // On the publish surface: the count is carried as unknown and the clause
-        // that would state it is omitted, while the cause's own sentence is what
-        // tells the reader nothing was sent.
-        const gatedRun = await db.publish({
-            config: config(),
-            deps: { runBatch: fakeHost({ schemaVersion: behind }).runBatch, embedBatch: fakeEmbedder() }
-        });
-        assert.strictEqual(gatedRun.summary.queueRemaining, null, JSON.stringify(gatedRun.summary));
-        const line = db.summaryLine(gatedRun.summary);
-        assert.ok(!/still on the queue/.test(line),
-            'no count is printed for a depth nobody read: ' + line);
-        assert.ok(gatedRun.summary.failed.some((f) => f.startsWith('the queue (schema): ')), line);
         assert.strictEqual(queueCount(), 1, 'and the row really is still on the queue');
 
         // The file no connection can open, which is the other one. A queue that
@@ -1620,6 +1619,16 @@ test('a drain that never read the queue reports its depth as unknown rather than
         assert.strictEqual(unread.remaining, null, JSON.stringify(unread));
         assert.strictEqual(db.queueDepth(), null,
             'and the depth reading answers the same way rather than zero');
+
+        // On the publish surface: the count is carried as unknown and the clause
+        // that would state it is omitted, while the cause's own sentence is what
+        // tells the reader nothing was sent.
+        const unreadRun = await publishWith(store, fakeHost());
+        assert.strictEqual(unreadRun.summary.queueRemaining, null, JSON.stringify(unreadRun.summary));
+        const line = db.summaryLine(unreadRun.summary);
+        assert.ok(!/still on the queue/.test(line),
+            'no count is printed for a depth nobody read: ' + line);
+        assert.ok(unreadRun.summary.failed.some((f) => f.startsWith('the queue (unreadable): ')), line);
 
         // The control, withheld from the assertions above: a drain that did read
         // the queue and left a row on it does print the count, so the silence
@@ -2876,6 +2885,10 @@ test('every lock-taking call\'s query clock outlasts the lock the server waits o
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
         const host = fakeHost();
         await publishWith(store, host);
+        // The adoption db-sync sends after the publish takes the same lock, so
+        // it is called here on the same host.
+        db.adoptProjectStore({ config: config(), deps: { runBatch: host.runBatch },
+            fromKey: 'path:' + store.segment, toKey: 'remote:example.test/owner/repo' });
         // The procedures that take the fleet publish lock, read off the SQL that
         // takes it, and every call this run made to one of them, whichever leg
         // of the run made it.
@@ -3967,7 +3980,9 @@ test('memq db-sync prints every sentence a run left and exits non-zero only for 
                 KITDB_SUMMARY: JSON.stringify(summary) };
             delete env.KIT_MEMORY_ROOT;
             delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
-            return spawnSync(process.execPath, ['--require', preload, MEMQ, 'db-sync'],
+            // --again, since each run here is a publish of its own and the
+            // first one's migration marker would otherwise answer the rest.
+            return spawnSync(process.execPath, ['--require', preload, MEMQ, 'db-sync', '--again'],
                 { cwd: home.proj, encoding: 'utf8', env });
         };
 
@@ -4099,7 +4114,9 @@ test('a drain refusal reaches the screen with the server\'s words and the queue 
                 KITDB_SUMMARY: JSON.stringify(summary) };
             delete env.KIT_MEMORY_ROOT;
             delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
-            return spawnSync(process.execPath, ['--require', preload, MEMQ, 'db-sync'],
+            // --again, since each run here is a publish of its own and the
+            // first one's migration marker would otherwise answer the rest.
+            return spawnSync(process.execPath, ['--require', preload, MEMQ, 'db-sync', '--again'],
                 { cwd: home.proj, encoding: 'utf8', env });
         };
 
@@ -4214,12 +4231,12 @@ test('memq db-sync refuses a redirected store root before it reads a config or a
     }
 });
 
-test('memq db-sync takes no arguments', () => {
+test('memq db-sync takes no argument but --again', () => {
     const store = makeStore();
     try {
         const res = runMemq(store, ['db-sync', 'now']);
         assert.strictEqual(res.status, 1, res.stdout + res.stderr);
-        assert.ok(res.stderr.includes('db-sync takes no arguments'), res.stderr);
+        assert.ok(res.stderr.includes('db-sync takes one option, --again'), res.stderr);
     } finally {
         rmStore(store);
     }
@@ -5600,3 +5617,173 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             try { fs.rmSync(root, { recursive: true, force: true }); } catch { /* a temp directory left behind never fails a case */ }
         }
     });
+
+// ------------------------------------------------------ the migration publish --
+//
+// `memq db-sync` is the publish that copies a machine's files into the database
+// once. These cases run the verb in process against the fake host, under a temp
+// home that is the machine's own store, from a working directory each case
+// chooses: the project key db-sync adopts from is the working directory's, so
+// the directory is the variable a case moves.
+
+// A record whose frontmatter carries every field the publish lifts into a
+// column, and the prose that follows it.
+const FIELDED_ANCHOR = 'src/feature.js@' + 'a'.repeat(40);
+const FIELDED_RECORD = '---\nname: fielded\ndescription: a fielded record\ntags: alpha, beta\n'
+    + 'triggers: cmd:npm run build, agent:implementer-opus\nanchors: ' + FIELDED_ANCHOR + '\n'
+    + 'pinned: 2026-09-01\ncreated: 2026-08-30\nauthor: session-one\n---\n# fielded\n\nthe prose itself\n';
+
+// Run db-sync in process from `cwd`, the client's boundaries replaced by
+// `host`, and answer what it printed, its exit code and the calls it made.
+async function dbSyncFrom(cwd, host, args) {
+    const memq = require(MEMQ);
+    const here = process.cwd();
+    process.exitCode = 0;
+    process.chdir(cwd);
+    try {
+        const run = await capturedStreams(() => memq.cmdDbSync(args || [],
+            { config: config(), deps: { runBatch: host.runBatch, embedBatch: fakeEmbedder() } }));
+        return { ...run, exitCode: process.exitCode || 0 };
+    } finally {
+        process.chdir(here);
+        process.exitCode = 0;
+    }
+}
+
+// A plain folder, and a folder that is a checkout with an origin remote, each
+// a fresh temp directory.
+function plainFolder() {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-plain-'));
+}
+function checkoutWithOrigin(url) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-checkout-'));
+    fs.mkdirSync(path.join(dir, '.git'));
+    fs.writeFileSync(path.join(dir, '.git', 'config'), '[core]\n\tbare = false\n[remote "origin"]\n\turl = ' + url
+        + '\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n', 'utf8');
+    return dir;
+}
+
+test('db-sync sends the folder key and the frontmatter fields with the prose alone, prints the twins, and writes the marker once', async () => {
+    const store = makeDefaultStore();
+    const folder = plainFolder();
+    try {
+        writeRecord(store.memDir, 'fielded', FIELDED_RECORD, 'a fielded record');
+        const twins = [{ name: 'fielded', winner: 'NEO-CLAUDE', loser: 'SCOTT-CLAUDE' }];
+        const host = fakeHost({ twins });
+        const first = await dbSyncFrom(folder, host);
+        assert.strictEqual(first.exitCode, 0, first.out + first.err);
+
+        // What the upsert carried for the record: the walk's folder key, and
+        // every field equal to the file's own frontmatter.
+        const upsert = host.calls.find((c) => c.procedure === 'usp_UpsertRecords');
+        const sent = upsert.parameters['@p_Records'].find((r) => r.name === 'fielded');
+        const memq = require(MEMQ);
+        assert.strictEqual(sent.projectKey, 'path:' + store.segment, 'a project folder keys by its folder name');
+        assert.deepStrictEqual({ triggers: sent.triggers, anchors: sent.anchors, pinned: sent.pinned,
+            created: sent.created, author: sent.author, tags: sent.tags },
+        { triggers: ['cmd:npm run build', 'agent:implementer-opus'], anchors: [FIELDED_ANCHOR], pinned: true,
+            created: '2026-08-30', author: 'session-one', tags: ['alpha', 'beta'] }, JSON.stringify(sent));
+        // The body opens at the first line after the closing fence, which the
+        // test finds in the file's own text rather than through the reader.
+        const closing = FIELDED_RECORD.indexOf('\n---\n') + '\n---\n'.length;
+        assert.strictEqual(sent.body, FIELDED_RECORD.slice(closing));
+        assert.ok(sent.body.startsWith('# fielded\n'), JSON.stringify(sent.body));
+        assert.strictEqual(sent.bodyHash, mi.hashOf(sent.body), 'the hash is of the text sent');
+        // A shared tier record carries no key.
+        assert.strictEqual(memq.projectKey(folder), 'path:' + memq.projectSegment(folder));
+
+        // The twins the procedure named, printed with their count, and carried
+        // to the publish run row.
+        assert.match(first.out, /db-sync: 1 twin record\(s\) resolved, the newer copy kept: fielded \(kept NEO-CLAUDE, retired SCOTT-CLAUDE\)/,
+            first.out);
+        const run = host.calls.find((c) => c.procedure === 'usp_AppendPublishRun');
+        assert.deepStrictEqual(run.parameters['@p_Run'].twins, twins);
+
+        // The marker, under the fixture home, with the time and the counts.
+        const marker = JSON.parse(fs.readFileSync(path.join(store.home, '.claude', 'memory-migrated.json'), 'utf8'));
+        assert.deepStrictEqual({ twinCount: marker.twinCount, twins: marker.twins, added: marker.added },
+            { twinCount: 1, twins, added: 1 }, JSON.stringify(marker));
+        assert.ok(Number.isFinite(Date.parse(marker.migratedAt)), marker.migratedAt);
+
+        // A second run finds the marker: it prints it and sends nothing.
+        const quiet = fakeHost();
+        const second = await dbSyncFrom(folder, quiet);
+        assert.strictEqual(second.exitCode, 0, second.out + second.err);
+        assert.deepStrictEqual(quiet.calls, [], 'a run under the marker makes no call at all');
+        assert.match(second.out, /^db-sync: the migration publish has run on this machine \(.*twinCount: 1, twins: \[ \{ name: fielded, winner: NEO-CLAUDE, loser: SCOTT-CLAUDE \} \].*\); nothing was sent/,
+            second.out);
+
+        // The control: --again publishes in the same state.
+        const again = fakeHost();
+        const third = await dbSyncFrom(folder, again, ['--again']);
+        assert.strictEqual(third.exitCode, 0, third.out + third.err);
+        assert.ok(again.calls.some((c) => c.procedure === 'usp_UpsertRecords'), JSON.stringify(again.calls.map((c) => c.procedure)));
+    } finally {
+        rmDefaultStore(store);
+        try { fs.rmSync(folder, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('db-sync against a host below the record floor sends nothing, names the installer, and writes no marker', async () => {
+    const store = makeDefaultStore();
+    const folder = plainFolder();
+    try {
+        writeRecord(store.memDir, 'fielded', FIELDED_RECORD, 'a fielded record');
+        const old = fakeHost({ schemaVersion: 6 });
+        const run = await dbSyncFrom(folder, old);
+        assert.strictEqual(run.exitCode, 1, run.out + run.err);
+        assert.deepStrictEqual(old.calls.map((c) => c.procedure), ['usp_Health'], 'the probe alone');
+        assert.match(run.err, /schema version 6 where a publish needs version 7.*Install-MemoryDatabase\.ps1/, run.err);
+        assert.ok(!fs.existsSync(path.join(store.home, '.claude', 'memory-migrated.json')), 'no marker');
+    } finally {
+        rmDefaultStore(store);
+        try { fs.rmSync(folder, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('db-sync from a checkout with a remote adopts its folder store into that key after the publish, and from a plain folder adopts nothing', async () => {
+    const memq = require(MEMQ);
+    const store = makeDefaultStore();
+    const plain = plainFolder();
+    const checkout = checkoutWithOrigin('https://user:secret@Example.TEST/Owner/Repo.git');
+    try {
+        writeRecord(store.memDir, 'fielded', FIELDED_RECORD, 'a fielded record');
+        const host = fakeHost({ adopted: { moved: 2, merged: 1, skipped: 1, mergedNames: ['fielded'], skippedNames: ['clash'] } });
+        const run = await dbSyncFrom(checkout, host);
+        assert.strictEqual(run.exitCode, 0, run.out + run.err);
+        const procedures = host.calls.map((c) => c.procedure);
+        const adoptions = host.calls.filter((c) => c.procedure === 'usp_AdoptProjectStore');
+        assert.strictEqual(adoptions.length, 1, procedures.join(', '));
+        assert.ok(procedures.indexOf('usp_AdoptProjectStore') > procedures.indexOf('usp_AppendPublishRun'),
+            'the adoption follows the publish: ' + procedures.join(', '));
+        // The keys, read off this process's own resolution of the checkout,
+        // and the remote's credential absent from the call.
+        process.chdir(checkout);
+        let segment;
+        try {
+            segment = memq.projectSegment(process.cwd());
+        } finally {
+            process.chdir(path.join(__dirname, '..'));
+        }
+        assert.deepStrictEqual(adoptions[0].parameters,
+            { '@p_FromKey': 'path:' + segment, '@p_ToKey': 'remote:example.test/owner/repo' });
+        assert.ok(!JSON.stringify(host.calls).includes('secret'), 'no credential reaches the host');
+        assert.match(run.out, /db-sync: adopted path:.* into remote:example\.test\/owner\/repo \(moved 2, merged 1, left in place 1\); left in place because another record holds the name: clash/,
+            run.out);
+        const marker = JSON.parse(fs.readFileSync(path.join(store.home, '.claude', 'memory-migrated.json'), 'utf8'));
+        assert.strictEqual(marker.adoption.to, 'remote:example.test/owner/repo');
+
+        // The control: from a plain folder the same publish sends no adoption.
+        const plainHost = fakeHost();
+        const fromPlain = await dbSyncFrom(plain, plainHost, ['--again']);
+        assert.strictEqual(fromPlain.exitCode, 0, fromPlain.out + fromPlain.err);
+        assert.ok(plainHost.calls.some((c) => c.procedure === 'usp_UpsertRecords'), 'the publish ran');
+        assert.ok(!plainHost.calls.some((c) => c.procedure === 'usp_AdoptProjectStore'),
+            plainHost.calls.map((c) => c.procedure).join(', '));
+    } finally {
+        rmDefaultStore(store);
+        for (const dir of [plain, checkout]) {
+            try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+        }
+    }
+});

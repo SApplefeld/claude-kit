@@ -16959,6 +16959,85 @@ function probeTwice(store, cwd, extra) {
     });
 }
 
+// The project key: the origin remote's host and path where the project's root is
+// a checkout with one, and the folder's own segment otherwise. A wrong key
+// splits one project's records in two, so each remote spelling a machine may
+// hold for one repository is read to the one key.
+const KIT_REMOTE_KEY = 'remote:github.com/sapplefeld/claude-kit';
+function writeOriginConfig(root, url) {
+    fs.mkdirSync(path.join(root, '.git'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.git', 'config'), '[core]\n\tbare = false\n[remote "upstream"]\n'
+        + '\turl = https://example.test/someone-else/fork.git\n[remote "origin"]\n\turl = ' + url
+        + '\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n', 'utf8');
+}
+
+test('the project key reads one remote from each spelling of it, through a worktree\'s main checkout', () => {
+    const dir = fs.mkdtempSync(path.join(WORKTREE_TMP, 'memq-key-'));
+    try {
+        for (const url of [
+            'https://github.com/SApplefeld/claude-kit.git',
+            'git@github.com:SApplefeld/claude-kit',
+            'https://GITHUB.COM/SApplefeld/claude-kit/',
+            'https://someone:ghp_notatoken@github.com/SApplefeld/claude-kit.git',
+            'ssh://git@github.com:22/SApplefeld/claude-kit.git'
+        ]) {
+            writeOriginConfig(dir, url);
+            const key = memq.projectKey(dir);
+            assert.strictEqual(key, KIT_REMOTE_KEY, url);
+            assert.ok(!/someone|ghp_/.test(key), 'no credential reaches the key: ' + key);
+        }
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+
+    // A linked worktree carries no config of its own; the key is its main
+    // checkout's, while a worktree whose handshake fails keys by its own folder.
+    const w = makeWorktree();
+    try {
+        writeOriginConfig(w.main, 'git@github.com:SApplefeld/claude-kit.git');
+        assert.strictEqual(memq.projectKey(w.tree), KIT_REMOTE_KEY);
+        assert.strictEqual(memq.projectKey(w.main), KIT_REMOTE_KEY);
+    } finally {
+        rmWorktree(w);
+    }
+});
+
+test('the project key is the folder\'s segment for a checkout with no origin, a plain folder, and a pinned store', () => {
+    const noOrigin = fs.mkdtempSync(path.join(WORKTREE_TMP, 'memq-key-noorigin-'));
+    const plain = fs.mkdtempSync(path.join(WORKTREE_TMP, 'memq-key-plain-'));
+    const before = { root: process.env.KIT_MEMORY_ROOT, allow: process.env.KIT_MEMORY_ROOT_ALLOW_DATA,
+        pin: process.env.KIT_MEMORY_PROJECT };
+    try {
+        fs.mkdirSync(path.join(noOrigin, '.git'));
+        fs.writeFileSync(path.join(noOrigin, '.git', 'config'),
+            '[core]\n\tbare = false\n[remote "upstream"]\n\turl = https://github.com/SApplefeld/claude-kit.git\n', 'utf8');
+        assert.strictEqual(memq.projectKey(noOrigin), 'path:' + noOrigin.replace(/[^A-Za-z0-9]/g, '-'),
+            'a remote that is not origin keys nothing');
+        assert.strictEqual(memq.projectKey(plain), 'path:' + plain.replace(/[^A-Za-z0-9]/g, '-'));
+        // A local path, a file URL and a drive letter name no host.
+        for (const url of ['C:/repos/claude-kit', '../claude-kit', 'file:///srv/claude-kit.git']) {
+            writeOriginConfig(noOrigin, url);
+            assert.strictEqual(memq.projectKey(noOrigin), 'path:' + noOrigin.replace(/[^A-Za-z0-9]/g, '-'), url);
+        }
+
+        // The control for the pin: the same checkout keys by its remote with no
+        // pin set, and by the pinned segment with one.
+        writeOriginConfig(noOrigin, 'https://github.com/SApplefeld/claude-kit.git');
+        assert.strictEqual(memq.projectKey(noOrigin), KIT_REMOTE_KEY);
+        process.env.KIT_MEMORY_ROOT = plain;
+        process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+        process.env.KIT_MEMORY_PROJECT = 'engine-instance';
+        assert.strictEqual(memq.projectKey(noOrigin), 'path:engine-instance');
+    } finally {
+        for (const [name, value] of [['KIT_MEMORY_ROOT', before.root], ['KIT_MEMORY_ROOT_ALLOW_DATA', before.allow],
+            ['KIT_MEMORY_PROJECT', before.pin]]) {
+            if (value === undefined) delete process.env[name];
+            else process.env[name] = value;
+        }
+        for (const dir of [noOrigin, plain]) fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test('a worktree whose back-pointer handshake holds resolves the main checkout\'s store', () => {
     const store = makeStore();
     const w = makeWorktree();

@@ -339,6 +339,32 @@ function queuePath() {
     return path.join(memqLib().memoryRoot(), QUEUE_FILE);
 }
 
+// The migration marker: the record a complete `memq db-sync` publish leaves, so
+// the publish that copies this machine's files into the database runs once. It
+// sits beside the config under the home directory, which is the store the
+// publish speaks for, and the store sync admits nothing at that root.
+const MIGRATION_MARKER_FILE = 'memory-migrated.json';
+function migrationMarkerPath() {
+    return path.join(os.homedir(), '.claude', MIGRATION_MARKER_FILE);
+}
+
+// The marker's text, or null where there is no marker. A marker that is there
+// and cannot be read is still a marker: the answer carries the reason in place
+// of the text, so the verb sends nothing and says why.
+function readMigrationMarker() {
+    try {
+        return { text: fs.readFileSync(migrationMarkerPath(), 'utf8') };
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return null;
+        return { text: null, reason: errText(err) };
+    }
+}
+
+// Write the marker, replacing one a `--again` run found.
+function writeMigrationMarker(marker) {
+    fs.writeFileSync(migrationMarkerPath(), JSON.stringify(marker, null, 2) + '\n', 'utf8');
+}
+
 // Whether the store this process would walk and queue into is the machine's
 // own, which is the only store this client speaks for.
 //
@@ -1042,6 +1068,14 @@ const NEAREST_ARCHIVED_SCHEMA_VERSION = 4;
 // what the cut exists to prevent. A search asking for neither names neither
 // parameter and is served on any host at SEARCH_SCHEMA_VERSION or later.
 const SCOPED_SEARCH_SCHEMA_VERSION = 6;
+
+// The schema version where the database holds the record, and the floor a
+// publish stands down below. A version 7 host lands each project record in its
+// key's fleet store and answers with the twins it resolved; a lower host reads
+// no key and would file every record in the older per-sandbox stores, so it is
+// sent nothing and the sentence names the installer. The queue drain keeps its
+// own floor, REQUIRED_SCHEMA_VERSION.
+const RECORD_SCHEMA_VERSION = 7;
 
 // The widths mem.usp_Search declares @p_Segment and @p_Tag at. The batch
 // declares its variables at the same widths, and a longer value would be cut
@@ -2619,9 +2653,16 @@ function collectRecords() {
         }
         const fileKey = memqLib().memoryFileKey(entry.name + '.md');
         const descriptions = describeDirectory(path.dirname(file));
+        const fields = memqLib().publishedFields(body);
         records.push({
             tier,
             segment,
+            // A project folder's key is its folder name. The folder a store
+            // segment was flattened from cannot be read back from the segment,
+            // and a synced folder may name no directory on this machine at all,
+            // so the walk keys every folder alike; `db-sync` adopts the folder's
+            // records into the remote key of the checkout it runs from.
+            ...(tier === 'project' ? { projectKey: 'path:' + segment } : {}),
             name: entry.name,
             fileKey,
             // The index line wins where it holds text; an empty index line
@@ -2631,12 +2672,20 @@ function collectRecords() {
             // rule for the field even though this walk reads the whole file
             // and listMemories reads a bounded head.
             description: descriptions.get(entry.name + '.md') || memqLib().frontmatterDescription(body) || '',
-            body,
-            bodyHash: indexLib().hashOf(body),
+            // The record's prose alone, the fields riding in their own columns.
+            // The hash is of what is sent, so the embedding leg, which embeds
+            // this same text, and the host agree about which text a vector is of.
+            body: fields.body,
+            bodyHash: indexLib().hashOf(fields.body),
             fileModified: fileModifiedAt(mtime),
             machine: memqLib().machineIdentityOrNull(memqLib().frontmatterValue(body, 'machine')),
             tags: memqLib().frontmatterTags(memqLib().frontmatterValue(body, 'tags')),
             supersedes: memqLib().supersedesName(memqLib().frontmatterValue(body, 'supersedes')),
+            triggers: fields.triggers,
+            anchors: fields.anchors,
+            pinned: fields.pinned,
+            created: fields.created,
+            author: fields.author,
             archived
         });
     }
@@ -2795,6 +2844,7 @@ async function publish(options) {
     const started = new Date().toISOString();
     const summary = {
         added: 0, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, heldBack: 0,
+        held: 0, twins: [],
         embedded: 0, embedRejected: 0, drained: 0, queueRemaining: 0, rejected: 0,
         orphans: 0, failed: [], workFailed: false, partial: false,
         outOfBudget: false
@@ -2901,6 +2951,7 @@ async function publish(options) {
                 // side alone would send a key the procedure does not name, which
                 // it would read as null and record as zero on every run.
                 spoolDrained: summary.drained,
+                twins: summary.twins,
                 error: sentences.length > 0
                     ? sentences.slice(0, 5).map(columnText).join('; ') : null
             }
@@ -2915,6 +2966,22 @@ async function publish(options) {
     const probe = callProcedure(config, 'usp_Health', {},
         { deps, budgetMs: PROBE_TIMEOUT_MS, killMs: PROBE_TIMEOUT_MS + SQLCMD_FLOOR_MS });
     if (!probe.ok) return { ok: false, standDown: 'unreachable', detail: probe.detail };
+
+    // The record gate, on the version the probe already carries. It stands
+    // ahead of the walk, the drain and every write, so a host below it is sent
+    // nothing at all.
+    const hostSchema = Number(counted(probe.rows).schemaVersion);
+    if (!(Number.isFinite(hostSchema) && hostSchema >= RECORD_SCHEMA_VERSION)) {
+        const found = Number.isFinite(hostSchema) ? 'schema version ' + hostSchema : 'no schema version at all';
+        return {
+            ok: false,
+            standDown: 'schema',
+            detail: 'the memory database reports ' + found + ' where a publish needs version '
+                + RECORD_SCHEMA_VERSION + ', which files each project record under its project key, '
+                + 'so nothing was sent. Re-run plugins/grimoire/db/Install-MemoryDatabase.ps1 against '
+                + 'the host to apply the newer scripts'
+        };
+    }
 
     const walk = collectRecords();
     // `partial` is the walk's own completeness and nothing else, because every
@@ -2983,6 +3050,17 @@ async function publish(options) {
         summary.unchanged += Number(counts.unchanged) || 0;
         const older = Number(counts.skippedOlder) || 0;
         summary.skippedOlder += older;
+        summary.held += Number(counts.held) || 0;
+        // The twins the host resolved, as it named them. Each rides out to the
+        // publish run row and to the verb's own line, so the names reach a
+        // person and the host both.
+        if (Array.isArray(counts.twins)) {
+            for (const twin of counts.twins) {
+                if (twin !== null && typeof twin === 'object') {
+                    summary.twins.push({ name: twin.name, winner: twin.winner, loser: twin.loser });
+                }
+            }
+        }
         if (older > 0) {
             for (const record of batch) {
                 if (record.tier === 'project') continue;
@@ -3197,6 +3275,46 @@ async function publish(options) {
     return { ok: true, summary };
 }
 
+// Move the records a project folder's key holds into the remote key of the
+// checkout `db-sync` runs from, through mem.usp_AdoptProjectStore, as
+// {ok, adopted} with the procedure's own counts and names, or a stand-down.
+//
+// The publish keys every project folder by its folder name, since the walk
+// cannot tell which directory a flattened folder name came from. The working
+// directory is the one folder whose checkout this machine can read, so its
+// records are the ones carried into the key the same repository takes on
+// every machine. The procedure refuses any pair but path: into remote:, and a
+// second call changes nothing, so a resend is safe.
+function adoptProjectStore(options) {
+    const opts = options || {};
+    const loaded = opts.config ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath);
+    if (!loaded.ok) return { ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path };
+    const sent = callProcedure(loaded.config, 'usp_AdoptProjectStore',
+        { '@p_FromKey': String(opts.fromKey), '@p_ToKey': String(opts.toKey) },
+        { deps: opts.deps, budgetMs: UPSERT_TIMEOUT_MS });
+    if (!sent.ok) {
+        if (sent.cause !== 'refused') return { ok: false, standDown: 'unreachable', detail: sent.detail };
+        return {
+            ok: false,
+            standDown: 'refused',
+            detail: refusedText('the adoption of ' + opts.fromKey + ' into ' + opts.toKey, 'usp_AdoptProjectStore',
+                sent.detail, 'nothing was moved, so the folder\'s records stay under its folder-name key')
+        };
+    }
+    const adopted = counted(sent.rows);
+    return {
+        ok: true,
+        adopted: {
+            moved: Number(adopted.moved) || 0,
+            merged: Number(adopted.merged) || 0,
+            skipped: Number(adopted.skipped) || 0,
+            mergedNames: Array.isArray(adopted.mergedNames) ? adopted.mergedNames : [],
+            skippedNames: Array.isArray(adopted.skippedNames) ? adopted.skippedNames : []
+        }
+    };
+}
+
 // Embed and store the records the host reported unembedded.
 //
 // A RECORD'S CHUNKS NEVER SPLIT ACROSS TWO DATABASE CALLS. The host answers
@@ -3394,6 +3512,8 @@ function summaryLine(summary) {
             + ' vector row(s) the host would not store, so the records they belong to are not searchable' : '')
         + (summary.heldBack > 0 ? ', ' + summary.heldBack
             + ' removal(s) held back where the store read empty' : '')
+        + (summary.held > 0 ? ', ' + summary.held
+            + ' record(s) left as the database holds them, written or retired through memq' : '')
         + (summary.partial ? ', walk incomplete so nothing was marked removed' : '')
         + (summary.outOfBudget ? ', the run budget was spent so it stopped there' : '');
 }
@@ -3449,6 +3569,7 @@ module.exports = {
     SEARCH_SCHEMA_VERSION,
     NEAREST_ARCHIVED_SCHEMA_VERSION,
     SCOPED_SEARCH_SCHEMA_VERSION,
+    RECORD_SCHEMA_VERSION,
     SEARCH_SEGMENT_CAP,
     SEARCH_TAG_CAP,
     PAYLOAD_PIECE_CHARS,
@@ -3466,6 +3587,10 @@ module.exports = {
     failureCause,
     configPath,
     queuePath,
+    MIGRATION_MARKER_FILE,
+    migrationMarkerPath,
+    readMigrationMarker,
+    writeMigrationMarker,
     isDefaultStoreRoot,
     loadConfig,
     modelIdentity,
@@ -3507,6 +3632,7 @@ module.exports = {
     collectRecords,
     collectOrphans,
     publish,
+    adoptProjectStore,
     summaryLine,
     standDownText
 };

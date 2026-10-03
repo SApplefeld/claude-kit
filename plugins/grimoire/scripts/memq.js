@@ -1798,6 +1798,134 @@ function projectTreeRoot(cwd) {
     return filed === null ? cwd : filed.root;
 }
 
+// The project key the memory database files this working directory's project
+// records under: `remote:` and the origin remote's host and path where the
+// project's root is a git checkout with one, and `path:` and the store segment
+// otherwise. The same repository then keys alike on every machine, whatever
+// folder holds it there, while a folder that is no checkout, or a checkout
+// with no origin, keeps its own records under its own name.
+//
+// The root is projectTreeRoot's, the one the segment is derived from, so the
+// key and the segment always answer for the same directory: a linked worktree
+// reads its main checkout's remote through the handshake worktreeMainRoot
+// closes, and a subdirectory no session filing lifts to its checkout keys by
+// its own folder, as its segment does. A pin keys by the pin, since a pin
+// names the store an engine's spawn shapes share rather than a working tree.
+function projectKey(cwd) {
+    const segment = projectSegment(cwd);
+    if (pinnedProjectSegment() !== null) return 'path:' + segment;
+    const remote = originRemoteKey(projectTreeRoot(cwd));
+    return remote === null ? 'path:' + segment : 'remote:' + remote;
+}
+
+// The normalized origin remote of the checkout at `root`, or null where there
+// is none this can read. The URL comes from the checkout's own .git/config
+// text, read with no git spawn: the .git entry must be a real directory, not a
+// file or a link, and the config is read through readHead, so a planted fifo
+// or an oversized file costs nothing. Every failure is null, which keys the
+// project by its folder.
+const GIT_CONFIG_READ_CAP = 65536;
+function originRemoteKey(root) {
+    let text;
+    try {
+        const dotGit = path.join(root, '.git');
+        if (!fs.lstatSync(dotGit).isDirectory()) return null;
+        text = readHead(path.join(dotGit, 'config'), GIT_CONFIG_READ_CAP);
+    } catch {
+        return null;
+    }
+    if (typeof text !== 'string') return null;
+    const url = originUrlFromConfig(text);
+    return url === null ? null : remoteKeyFromUrl(url);
+}
+
+// The first `url` of the `[remote "origin"]` section in a git config's text, or
+// null. Section names compare case-insensitively and the subsection name
+// exactly, git's own rule. A value may be quoted and may carry a trailing
+// comment, which configValue strips.
+function originUrlFromConfig(text) {
+    let inOrigin = false;
+    for (const raw of String(text).split(/\r?\n/)) {
+        const line = raw.trim();
+        if (line === '' || line[0] === '#' || line[0] === ';') continue;
+        const section = /^\[\s*([A-Za-z0-9.-]+)(?:\s+"((?:[^"\\]|\\.)*)")?\s*\]/.exec(line);
+        if (section !== null) {
+            inOrigin = section[1].toLowerCase() === 'remote' && section[2] === 'origin';
+            continue;
+        }
+        if (!inOrigin) continue;
+        const entry = /^url\s*=(.*)$/i.exec(line);
+        if (entry !== null) return configValue(entry[1]);
+    }
+    return null;
+}
+
+// A git config value with its quotes and escapes resolved and any comment
+// outside quotes dropped.
+function configValue(text) {
+    let out = '';
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '\\' && i + 1 < text.length) {
+            out += text[++i];
+        } else if (ch === '"') {
+            quoted = !quoted;
+        } else if (!quoted && (ch === '#' || ch === ';')) {
+            break;
+        } else {
+            out += ch;
+        }
+    }
+    return out.trim();
+}
+
+// A remote URL as the host and path the project key carries, or null for a URL
+// that names no network host or holds a character outside the key's grammar.
+//
+// The scheme, the user and password before an `@`, a port, any query or
+// fragment, a trailing slash and a trailing `.git` are dropped, and what is
+// left is lower-cased, so `https://github.com/SApplefeld/claude-kit.git` and
+// `git@github.com:SApplefeld/claude-kit` both read
+// `github.com/sapplefeld/claude-kit`. A credential in the URL therefore never
+// reaches the key, and the key reaches a SQL parameter, a directory name and a
+// printed line, so its grammar is closed: a host of letters, digits, dots and
+// hyphens, and path segments of letters, digits and `._~%+-`, none of them a
+// dot segment. A local path, a `file:` URL and a drive letter name no host and
+// answer null. The whole key, with its `remote:` prefix, fits the 200
+// characters a database call carries a scalar in.
+const REMOTE_KEY_CAP = 200 - 'remote:'.length;
+function remoteKeyFromUrl(url) {
+    if (typeof url !== 'string') return null;
+    const text = url.trim();
+    if (text === '' || text.length > GIT_POINTER_PATH_CAP) return null;
+    let host;
+    let rest;
+    const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):\/\/(.*)$/.exec(text);
+    if (scheme !== null) {
+        if (scheme[1].toLowerCase() === 'file') return null;
+        const parts = /^([^/?#]*)([^?#]*)/.exec(scheme[2]);
+        host = parts[1];
+        rest = parts[2];
+    } else {
+        // Git's scp form, [user@]host:path, which it takes only where no slash
+        // comes before the first colon.
+        const scp = /^([^/:]+):([^?#]*)/.exec(text);
+        if (scp === null) return null;
+        host = scp[1];
+        rest = scp[2];
+    }
+    host = host.slice(host.lastIndexOf('@') + 1).replace(/:\d*$/, '').toLowerCase();
+    // A single letter is a Windows drive, not a host.
+    if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(host) || host.length < 2) return null;
+    const pathPart = rest.toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '')
+        .replace(/\.git$/, '').replace(/\/+$/, '');
+    if (!/^[a-z0-9._~%+-]+(\/[a-z0-9._~%+-]+)*$/.test(pathPart)) return null;
+    if (pathPart.split('/').some((s) => s === '.' || s === '..')) return null;
+    const key = host + '/' + pathPart;
+    return key.length <= REMOTE_KEY_CAP ? key : null;
+}
+
 // The parent of every project's state directory under the current store root.
 // The project tier, the cross-project scans, and the semantic index all hang
 // off this one path, so "where do project stores live" has a single answer.
@@ -3557,6 +3685,42 @@ function recordHeading(raw) {
         return /^#{1,6}[ \t]/.test(block.lines[i]) ? block.lines[i] : null;
     }
     return null;
+}
+
+// A record's text past its frontmatter block: the record's prose, opening at the
+// first line after the closing fence, with that text's own line endings. A
+// record with no block, or one whose block never closes inside the reader's
+// bound, is returned whole, byte order mark aside, since no line of it can be
+// called a field.
+function frontmatterBody(raw) {
+    const block = frontmatterBlock(raw);
+    const text = raw.slice(block.bom.length);
+    if (!block.opened || block.closer === -1) return text;
+    const breaks = /\r?\n/g;
+    for (let line = 0; line <= block.closer; line++) {
+        if (breaks.exec(text) === null) return '';
+    }
+    return text.slice(breaks.lastIndex);
+}
+
+// The fields a publish carries for a record beside its description, tags,
+// machine and supersedes pointer, read from its text by the store's own field
+// readers: triggers and anchors as arrays of the entries that parse, pinned as
+// whether a `pinned:` line pins, created as a YYYY-MM-DD date or null, author
+// as authorOrNull admits it, and body as frontmatterBody's prose.
+function publishedFields(raw) {
+    const triggers = frontmatterTriggers(raw);
+    const anchors = frontmatterAnchors(raw);
+    const created = frontmatterValue(raw, 'created');
+    const createdMs = typeof created === 'string' ? Date.parse(created.trim()) : NaN;
+    return {
+        triggers: triggers === null ? [] : triggers.entries.map((entry) => entry.text),
+        anchors: anchors === null ? [] : anchors.entries.map((entry) => entry.text),
+        pinned: typeof frontmatterValue(raw, 'pinned') === 'string',
+        created: Number.isFinite(createdMs) ? new Date(createdMs).toISOString().slice(0, 10) : null,
+        author: authorOrNull(frontmatterValue(raw, 'author')),
+        body: frontmatterBody(raw)
+    };
 }
 
 // The one construction of a frontmatter key's matcher, the inline form's
@@ -5857,7 +6021,7 @@ function usage(problem) {
         + '                        [--archive-type <name>]... [--archive-operator <name>]...\n'
         + '                        [--confirm-shared]\n'
         + '       memq decay-done\n'
-        + '       memq db-sync\n'
+        + '       memq db-sync [--again]\n'
         + '       memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]\n'
         + '                       [--segment <segment>]\n'
         + '       memq db-curate [--unapplied <days>] [--superseded] [--orphans]\n'
@@ -20327,8 +20491,24 @@ function cmdDecayDone(argv) {
 // A stand-down is loud. A machine with no client config is an ordinary machine
 // and this verb still says so and exits nonzero, because a session that asked
 // for a publish and read silence would take the absence for success.
-async function cmdDbSync(argv) {
-    if (argv.length > 0) return usage('db-sync takes no arguments');
+//
+// The publish is the migration that copies this machine's files into the
+// database, and it runs once. A complete run writes the migration marker, and
+// a later run finding it prints it and sends nothing unless given --again, so
+// a second publish cannot put a file body back over a record a session has
+// since corrected. Run from a checkout whose project key is a git remote, the
+// verb then adopts that checkout's folder-name store into the remote key, so
+// the folder's records join the ones the same repository keeps on every other
+// machine. `options` carries a config and the client's boundary seams for an
+// in-process caller.
+const MARKER_SHOWN_CAP = 2000;
+async function cmdDbSync(argv, options) {
+    const opts = options || {};
+    let again = false;
+    for (const a of argv) {
+        if (a === '--again') again = true;
+        else return usage('db-sync takes one option, --again');
+    }
     // The stand-down every store verb spells. This verb resolves no path from
     // the working directory: the store root comes from the environment and the
     // home directory, and the walk enumerates the store's own tiers. It is
@@ -20365,7 +20545,19 @@ async function cmdDbSync(argv) {
         process.exitCode = 1;
         return;
     }
-    const result = await memoryDatabase.publish();
+    const marker = memoryDatabase.readMigrationMarker();
+    if (marker !== null && !again) {
+        // The marker's text is a file in the home directory, so it takes the
+        // channel's render on one line, as every path and value this verb
+        // prints does.
+        process.stdout.write('db-sync: the migration publish has run on this machine ('
+            + (marker.text === null
+                ? 'its marker could not be read: ' + shownText(marker.reason, DB_SYNC_REASON_CAP)
+                : shownText(marker.text.replace(/\s+/g, ' ').trim(), MARKER_SHOWN_CAP))
+            + '); nothing was sent, and db-sync --again publishes again\n');
+        return;
+    }
+    const result = await memoryDatabase.publish({ config: opts.config, deps: opts.deps });
     if (!result.ok) {
         // The same render the failure lines below take, at the same cap. A
         // stand-down sentence is composed around the same values they are, the
@@ -20404,7 +20596,67 @@ async function cmdDbSync(argv) {
     for (const reason of result.summary.failed) {
         process.stderr.write('memq: ' + shownText(reason, DB_SYNC_REASON_CAP) + '\n');
     }
-    if (result.summary.workFailed) process.exitCode = 1;
+    // The twins the host resolved, each name and sandbox off the wire and so
+    // taken through the store's display caps and charset reduction.
+    const twins = result.summary.twins;
+    if (twins.length > 0) {
+        process.stdout.write('db-sync: ' + twins.length + ' twin record(s) resolved, the newer copy kept: '
+            + twins.map((t) => sanitize(String(t.name), NAME_CAP) + ' (kept ' + sanitize(String(t.winner), MACHINE_CAP)
+                + ', retired ' + sanitize(String(t.loser), MACHINE_CAP) + ')').join(', ') + '\n');
+    }
+    // The working directory's folder store into its remote key. A key this
+    // process cannot resolve, or one that is a folder name, adopts nothing.
+    let adoption = null;
+    let adoptionFailed = false;
+    let key = null;
+    let segment = null;
+    try {
+        key = projectKey(process.cwd());
+        segment = projectSegment(process.cwd());
+    } catch {
+        key = null;
+    }
+    if (key !== null && key.startsWith('remote:')) {
+        const adopted = memoryDatabase.adoptProjectStore({
+            config: opts.config, deps: opts.deps, fromKey: 'path:' + segment, toKey: key
+        });
+        if (!adopted.ok) {
+            adoptionFailed = true;
+            process.stderr.write('memq: '
+                + shownText(memoryDatabase.standDownText(adopted), DB_SYNC_REASON_CAP) + '\n');
+        } else {
+            adoption = { from: 'path:' + segment, to: key, ...adopted.adopted };
+            process.stdout.write('db-sync: adopted ' + sanitize('path:' + segment, PATH_DISPLAY_CAP) + ' into '
+                + sanitize(key, PATH_DISPLAY_CAP) + ' (moved ' + adoption.moved + ', merged ' + adoption.merged
+                + ', left in place ' + adoption.skipped + ')'
+                + (adoption.skippedNames.length > 0 ? '; left in place because another record holds the name: '
+                    + adoption.skippedNames.map((n) => sanitize(String(n), NAME_CAP)).join(', ') : '')
+                + '\n');
+        }
+    }
+    // A complete run, with its adoption where it owed one, is the migration,
+    // and the marker records it.
+    if (!result.summary.workFailed && !adoptionFailed) {
+        const s = result.summary;
+        try {
+            memoryDatabase.writeMigrationMarker({
+                migratedAt: new Date().toISOString(),
+                added: s.added,
+                changed: s.changed,
+                unchanged: s.unchanged,
+                older: s.skippedOlder,
+                held: s.held,
+                twinCount: twins.length,
+                twins,
+                adoption
+            });
+        } catch (err) {
+            process.stderr.write('memq: the migration marker was not written (' + failureText(err)
+                + '), so the next db-sync publishes again\n');
+            process.exitCode = 1;
+        }
+    }
+    if (result.summary.workFailed || adoptionFailed) process.exitCode = 1;
 }
 
 // The two curator verbs below run under the config's curator pair and touch no
@@ -20960,6 +21212,7 @@ module.exports = {
     semanticFenceClause,
     cmdFind,
     cmdDbPromote,
+    cmdDbSync,
     cmdDbCurate,
     cmdJevCalibration,
     JEV_POINTER_KEY,
@@ -20988,6 +21241,12 @@ module.exports = {
     sessionTranscriptDir,
     harnessProjectsRoot,
     projectTreeRoot,
+    projectSegment,
+    projectKey,
+    originUrlFromConfig,
+    remoteKeyFromUrl,
+    frontmatterBody,
+    publishedFields,
     projectsRootPath,
     projectMemoryDirFor,
     projectMemoryDir,

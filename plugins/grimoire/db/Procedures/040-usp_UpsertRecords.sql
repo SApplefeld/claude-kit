@@ -24,9 +24,50 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_UpsertRecords
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.1
+		VERSION:	v1.2
 	*********************************************************************************************
-		NOTES:		v1.1 - 09/18/2026 - SCOTT APPLEFELD
+		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
+							A record may carry projectKey, triggers, anchors, pinned,
+							created and author beside the fields below. A project record
+							carrying a projectKey lands in that key's fleet store, created
+							where absent, as a shared file row; one carrying none lands in
+							the caller's own older store as before. The segment stays
+							required on a project record, since it names the caller's older
+							store for that project.
+
+							A fleet project record resolves against the fleet store's row
+							of its file key and the caller's older store's row of it, both
+							compared under the database's collation, so two names differing
+							only in case are one record. Where the fleet store holds no row,
+							the caller's older row moves into it, keeping its usage and its
+							embeddings, or a new row is inserted. Where the fleet row is the
+							caller's own, or holds the same body, it is updated or left
+							unchanged as any row is. Where it is another sandbox's copy with
+							a different body, the copies are twins: the newer file
+							modification time wins, and a tie or a missing time keeps the
+							fleet row. A winning copy takes the fleet slot, the fleet row
+							moving in the same UPDATE into the caller's older store, created
+							where absent, with the deleted mark. A losing copy's older row
+							takes the deleted mark where it stands; where the caller holds
+							no live older row nothing is written. Every twin is named in the
+							answer with the sandbox whose copy won and the one whose copy
+							lost. After any of these, the caller's older row of the file key
+							carries no live record.
+
+							A publish never undoes a database verb. A row whose [Origin] is
+							memq is never written, and neither is a fleet row carrying the
+							deleted mark: both answer held. On a row in a store with no
+							sandbox, the archived flag is set by a publish and never
+							cleared, so an archive made by mem.usp_ArchiveRecord or by
+							mem.usp_PromoteRecord stands. A NULL field among the six new
+							ones keeps its column, which is how a version 6 caller leaves
+							them alone.
+
+							Returns {added, changed, unchanged, skippedOlder, removed, held,
+							twins}, twins an array of {name, winner, loser} sandbox names.
+							A losing twin counts as skippedOlder.
+
+					v1.1 - 09/18/2026 - SCOTT APPLEFELD
 							A failure unwinds only a transaction this procedure opened and
 							re-raises, so a caller's transaction stays the caller's to
 							unwind. Under an INSERT-EXEC, which holds a transaction of its
@@ -76,12 +117,38 @@ BEGIN	-- PROCEDURE
 			,@SandboxId			INT				= NULL
 			,@LockResult		INT				= NULL
 
+	/* One Fleet Project Row's Readings. */
+	;DECLARE @Ordinal			INT				= NULL
+			,@ProjectKey		NVARCHAR(400)	= NULL
+			,@Segment			NVARCHAR(400)	= NULL
+			,@FileKey			NVARCHAR(400)	= NULL
+			,@InName			NVARCHAR(200)	= NULL
+			,@InBodyHash		VARCHAR(128)	= NULL
+			,@InModifiedDt		DATETIMEOFFSET	= NULL
+			,@InIsArchived		BIT				= NULL
+			,@FleetStoreId		INT				= NULL
+			,@OldStoreId		INT				= NULL
+			,@FleetRecordId		BIGINT			= NULL
+			,@FleetOrigin		VARCHAR(10)		= NULL
+			,@FleetDeletedDt	DATETIMEOFFSET	= NULL
+			,@FleetIsArchived	BIT				= NULL
+			,@FleetBodyHash		VARCHAR(128)	= NULL
+			,@FleetModifiedDt	DATETIMEOFFSET	= NULL
+			,@FleetPublisherId	INT				= NULL
+			,@OldRecordId		BIGINT			= NULL
+			,@OldDeletedDt		DATETIMEOFFSET	= NULL
+			,@OldIsArchived		BIT				= NULL
+			,@WriteRecordId		BIGINT			= NULL
+			,@WriteIsArchived	BIT				= NULL
+			,@Action			VARCHAR(10)		= NULL
+
 	/* Result Counts. */
 	;DECLARE @Added				INT				= 0
 			,@Changed			INT				= 0
 			,@Unchanged			INT				= 0
 			,@SkippedOlder		INT				= 0
 			,@Removed			INT				= 0
+			,@Held				INT				= 0
 
 	/* The Batch, With the Store and Record Each Row Resolves To and What the Batch Does to It. */
 	;DECLARE @Incoming TABLE (
@@ -98,10 +165,25 @@ BEGIN	-- PROCEDURE
 		,[Tags]				NVARCHAR(MAX)	NULL
 		,[SupersedesName]	NVARCHAR(200)	NULL
 		,[IsArchived]		BIT				NULL
+		,[ProjectKey]		NVARCHAR(MAX)	NULL
+		,[Triggers]			NVARCHAR(MAX)	NULL
+		,[Anchors]			NVARCHAR(MAX)	NULL
+		,[IsPinned]			BIT				NULL
+		,[CreatedOn]		DATE			NULL
+		,[Author]			NVARCHAR(200)	NULL
+		,[IsFleetProject]	BIT				NOT NULL	DEFAULT(0)
 		,[StoreSandboxId]	INT				NULL
 		,[StoreId]			INT				NULL
 		,[RecordId]			BIGINT			NULL
 		,[Disposition]		VARCHAR(20)		NULL
+	)
+
+	/* The Twins the Batch Resolved, by the Sandbox Whose Copy Won and the One Whose Copy Lost. */
+	;DECLARE @Twins TABLE (
+		 [Ordinal]			INT				NOT NULL	IDENTITY(1,1)
+		,[Name]				NVARCHAR(200)	NOT NULL
+		,[WinnerSandboxId]	INT				NULL
+		,[LoserSandboxId]	INT				NULL
 	)
 
 	/* The File Keys the Batch Names as Removed. */
@@ -140,7 +222,13 @@ BEGIN	-- PROCEDURE
 			,[Machine]
 			,[Tags]
 			,[SupersedesName]
-			,[IsArchived]		)
+			,[IsArchived]
+			,[ProjectKey]
+			,[Triggers]
+			,[Anchors]
+			,[IsPinned]
+			,[CreatedOn]
+			,[Author]			)
 		SELECT	 [Tier]				= LOWER(LTRIM(RTRIM(J.[Tier])))
 				,[Segment]			= CASE	WHEN LOWER(LTRIM(RTRIM(J.[Tier]))) = 'operator'
 											THEN NULL
@@ -156,6 +244,12 @@ BEGIN	-- PROCEDURE
 				,[Tags]				= J.[Tags]
 				,[SupersedesName]	= NULLIF(LTRIM(RTRIM(J.[SupersedesName])), '')
 				,[IsArchived]		= COALESCE(J.[IsArchived], @False)
+				,[ProjectKey]		= NULLIF(LTRIM(RTRIM(J.[ProjectKey])), '')
+				,[Triggers]			= J.[Triggers]
+				,[Anchors]			= J.[Anchors]
+				,[IsPinned]			= J.[IsPinned]
+				,[CreatedOn]		= J.[CreatedOn]
+				,[Author]			= NULLIF(LTRIM(RTRIM(J.[Author])), '')
 		FROM	OPENJSON(@p_Records)
 				WITH (	 [Tier]				VARCHAR(20)		'$.tier'
 						,[Segment]			NVARCHAR(400)	'$.segment'
@@ -168,7 +262,13 @@ BEGIN	-- PROCEDURE
 						,[Machine]			NVARCHAR(100)	'$.machine'
 						,[Tags]				NVARCHAR(MAX)	'$.tags' AS JSON
 						,[SupersedesName]	NVARCHAR(200)	'$.supersedes'
-						,[IsArchived]		BIT				'$.archived'	) J
+						,[IsArchived]		BIT				'$.archived'
+						,[ProjectKey]		NVARCHAR(MAX)	'$.projectKey'
+						,[Triggers]			NVARCHAR(MAX)	'$.triggers' AS JSON
+						,[Anchors]			NVARCHAR(MAX)	'$.anchors' AS JSON
+						,[IsPinned]			BIT				'$.pinned'
+						,[CreatedOn]		DATE			'$.created'
+						,[Author]			NVARCHAR(200)	'$.author'		) J
 
 		/* Refuse a Row Whose Shape No Store Can Hold. */
 		;IF EXISTS (	SELECT	NULL
@@ -180,6 +280,16 @@ BEGIN	-- PROCEDURE
 								OR (	I.[Tier] IN ('project', 'type')
 										AND I.[Segment] IS NULL	)	)
 			THROW 50000, 'mem.usp_UpsertRecords: every record needs a tier of project, type or operator, a name, a file key, and a segment for the project and type tiers.', 1
+
+		/* Refuse a Project Key Off the Project Tier or Longer Than a Store Holds, and a List That is Not an Array. */
+		;IF EXISTS (	SELECT	NULL
+						FROM	@Incoming I
+						WHERE	(	I.[ProjectKey] IS NOT NULL
+									AND (	I.[Tier] <> 'project'
+											OR LEN(I.[ProjectKey]) > 400	)	)
+								OR ( I.[Triggers] IS NOT NULL AND ISJSON(I.[Triggers], ARRAY) <> 1 )
+								OR ( I.[Anchors] IS NOT NULL AND ISJSON(I.[Anchors], ARRAY) <> 1 )	)
+			THROW 50000, 'mem.usp_UpsertRecords: a projectKey rides on a project record only and holds at most 400 characters, and triggers and anchors are each a JSON array when given.', 1
 
 		/* A Key Named Twice Keeps Its Last Entry; INTERSECT Treats Two NULL Segments as Equal. */
 		;DELETE I
@@ -193,9 +303,11 @@ BEGIN	-- PROCEDURE
 													INTERSECT
 													SELECT I.[Segment]	)	)
 
-		/* A Project Row Belongs to the Caller's Sandbox; a Shared Tier Row Belongs to the Fleet. */
+		/* An Older-Shape Project Row Belongs to the Caller's Sandbox; a Shared Tier Row Belongs to the Fleet. */
+		/* A Project Row Carrying a Project Key is Landed Row by Row Below, so Every Set Statement Passes It By. */
 		;UPDATE I
-		SET		[StoreSandboxId] = CASE WHEN I.[Tier] = 'project' THEN @SandboxId ELSE NULL END
+		SET		 [StoreSandboxId]	= CASE WHEN I.[Tier] = 'project' THEN @SandboxId ELSE NULL END
+				,[IsFleetProject]	= CASE WHEN I.[Tier] = 'project' AND I.[ProjectKey] IS NOT NULL THEN @True ELSE @False END
 		FROM	@Incoming I
 
 		/* Parse the Removed Keys, Dropping Any Entry Missing Either Half. */
@@ -233,7 +345,8 @@ BEGIN	-- PROCEDURE
 				,[Tier]			= I.[Tier]
 				,[Segment]		= I.[Segment]
 		FROM	@Incoming I
-		WHERE	NOT EXISTS (	SELECT	NULL
+		WHERE	I.[IsFleetProject] = @False
+				AND NOT EXISTS (	SELECT	NULL
 								FROM	mem.Store S
 								WHERE	S.[Tier] = I.[Tier]
 										AND EXISTS (	SELECT S.[SandboxId], S.[Segment]
@@ -245,25 +358,47 @@ BEGIN	-- PROCEDURE
 		FROM	@Incoming I
 				INNER JOIN mem.Store S
 					ON	S.[Tier] = I.[Tier]
+					AND S.[ProjectKey] IS NULL
 					AND EXISTS (	SELECT S.[SandboxId], S.[Segment]
 									INTERSECT
 									SELECT I.[StoreSandboxId], I.[Segment]	)
+		WHERE	I.[IsFleetProject] = @False
 
 		/****************************************************************************************
 			RESOLVE EACH ROW'S EXISTING RECORD AND DECIDE WHAT THE BATCH DOES TO IT.
 		****************************************************************************************/
-		/* Unchanged Means Every Published Field Matches and the Row Carries no Deleted Mark. */
+		/* A Row in a Store With No Sandbox Keeps an Archive a Database Verb Set: a Publish Sets the Flag and Never Clears It. */
+		;UPDATE I
+		SET		[IsArchived] = @True
+		FROM	@Incoming I
+				INNER JOIN mem.Record R
+					ON	R.[StoreId] = I.[StoreId]
+					AND R.[FileKey] = I.[FileKey]
+		WHERE	I.[IsFleetProject] = @False
+				AND I.[StoreSandboxId] IS NULL
+				AND R.[IsArchived] = @True
+
+		/* Held Means a Row a Database Verb Wrote or Deleted in a Store With No Sandbox, Which a Publish Never Writes. */
+		/* Unchanged Means Every Published Field Matches and the Row Carries no Deleted Mark; a NULL New Field Keeps Its Column. */
 		/* Older Means a Shared Row Already Holds a Newer File Than the One This Sandbox Has. */
 		;UPDATE I
 		SET		 [RecordId]		= R.[RecordId]
 				,[Disposition]	= CASE
 									WHEN R.[RecordId] IS NULL
 									THEN 'add'
+									WHEN I.[StoreSandboxId] IS NULL
+										AND (	R.[Origin] = 'memq'
+												OR R.[DeletedDt] IS NOT NULL	)
+									THEN 'held'
 									WHEN EXISTS (	SELECT	 R.[Name], R.[Description], R.[Body], R.[BodyHash], R.[FileModifiedDt]
 															,R.[Machine], R.[Tags], R.[SupersedesName], R.[IsArchived], R.[DeletedDt]
+															,R.[Triggers], R.[Anchors], R.[IsPinned], R.[CreatedOn], R.[Author]
 													INTERSECT
 													SELECT	 I.[Name], I.[Description], I.[Body], I.[BodyHash], I.[FileModifiedDt]
-															,I.[Machine], I.[Tags], I.[SupersedesName], I.[IsArchived], CAST(NULL AS DATETIMEOFFSET)	)
+															,I.[Machine], I.[Tags], I.[SupersedesName], I.[IsArchived], CAST(NULL AS DATETIMEOFFSET)
+															,COALESCE(I.[Triggers], R.[Triggers]), COALESCE(I.[Anchors], R.[Anchors])
+															,COALESCE(I.[IsPinned], R.[IsPinned]), COALESCE(I.[CreatedOn], R.[CreatedOn])
+															,COALESCE(I.[Author], R.[Author])	)
 									THEN 'unchanged'
 									WHEN I.[StoreSandboxId] IS NULL
 										AND I.[FileModifiedDt] IS NOT NULL
@@ -276,6 +411,7 @@ BEGIN	-- PROCEDURE
 				LEFT JOIN mem.Record R
 					ON	R.[StoreId] = I.[StoreId]
 					AND R.[FileKey] = I.[FileKey]
+		WHERE	I.[IsFleetProject] = @False
 
 		/****************************************************************************************
 			APPLY THE BATCH.
@@ -302,6 +438,11 @@ BEGIN	-- PROCEDURE
 				,[Tags]						= I.[Tags]
 				,[SupersedesName]			= I.[SupersedesName]
 				,[IsArchived]				= I.[IsArchived]
+				,[Triggers]					= COALESCE(I.[Triggers], R.[Triggers])
+				,[Anchors]					= COALESCE(I.[Anchors], R.[Anchors])
+				,[IsPinned]					= COALESCE(I.[IsPinned], R.[IsPinned])
+				,[CreatedOn]				= COALESCE(I.[CreatedOn], R.[CreatedOn])
+				,[Author]					= COALESCE(I.[Author], R.[Author])
 				,[LastPublishedBySandboxId]	= @SandboxId
 				,[LastPublishedDt]			= @Now
 				,[DeletedDt]				= NULL
@@ -333,6 +474,11 @@ BEGIN	-- PROCEDURE
 			,[Tags]
 			,[SupersedesName]
 			,[IsArchived]
+			,[Triggers]
+			,[Anchors]
+			,[IsPinned]
+			,[CreatedOn]
+			,[Author]
 			,[Visibility]
 			,[LastPublishedBySandboxId]
 			,[LastPublishedDt]			)
@@ -347,11 +493,334 @@ BEGIN	-- PROCEDURE
 				,[Tags]						= I.[Tags]
 				,[SupersedesName]			= I.[SupersedesName]
 				,[IsArchived]				= I.[IsArchived]
+				,[Triggers]					= I.[Triggers]
+				,[Anchors]					= I.[Anchors]
+				,[IsPinned]					= COALESCE(I.[IsPinned], @False)
+				,[CreatedOn]				= I.[CreatedOn]
+				,[Author]					= I.[Author]
 				,[Visibility]				= CASE WHEN I.[Tier] = 'project' THEN 'private' ELSE 'shared' END
 				,[LastPublishedBySandboxId]	= @SandboxId
 				,[LastPublishedDt]			= @Now
 		FROM	@Incoming I
 		WHERE	I.[Disposition] = 'add'
+
+		/****************************************************************************************
+			LAND EACH FLEET PROJECT ROW: MOVE IT, MERGE ITS TWIN, OR HOLD IT.
+		****************************************************************************************/
+		;SELECT	@Ordinal = MIN(I.[Ordinal])
+		FROM	@Incoming I
+		WHERE	I.[IsFleetProject] = @True
+
+		;WHILE ( @Ordinal IS NOT NULL )
+		BEGIN
+			/* The Row's Own Fields. */
+			;SELECT	 @ProjectKey		= I.[ProjectKey]
+					,@Segment			= I.[Segment]
+					,@FileKey			= I.[FileKey]
+					,@InName			= I.[Name]
+					,@InBodyHash		= I.[BodyHash]
+					,@InModifiedDt		= I.[FileModifiedDt]
+					,@InIsArchived		= I.[IsArchived]
+					,@FleetStoreId		= NULL
+					,@OldStoreId		= NULL
+					,@FleetRecordId		= NULL
+					,@FleetOrigin		= NULL
+					,@FleetDeletedDt	= NULL
+					,@FleetIsArchived	= NULL
+					,@FleetBodyHash		= NULL
+					,@FleetModifiedDt	= NULL
+					,@FleetPublisherId	= NULL
+					,@OldRecordId		= NULL
+					,@OldDeletedDt		= NULL
+					,@OldIsArchived		= NULL
+					,@WriteRecordId		= NULL
+					,@WriteIsArchived	= NULL
+					,@Action			= NULL
+			FROM	@Incoming I
+			WHERE	I.[Ordinal] = @Ordinal
+
+			/* The Key's Fleet Store, Created Where Absent. */
+			;SELECT	@FleetStoreId = S.[StoreId]
+			FROM	mem.Store S
+			WHERE	S.[Tier] = 'project'
+					AND S.[ProjectKey] = @ProjectKey
+
+			;IF ( @FleetStoreId IS NULL )
+			BEGIN
+				;INSERT INTO mem.Store (
+					 [SandboxId]
+					,[Tier]
+					,[Segment]
+					,[ProjectKey]	)
+				SELECT	 [SandboxId]	= NULL
+						,[Tier]			= 'project'
+						,[Segment]		= NULL
+						,[ProjectKey]	= @ProjectKey
+
+				;SET @FleetStoreId = SCOPE_IDENTITY()
+			END
+
+			/* The Caller's Older Store for the Segment, Where It Has One. */
+			;SELECT	@OldStoreId = S.[StoreId]
+			FROM	mem.Store S
+			WHERE	S.[SandboxId] = @SandboxId
+					AND S.[Tier] = 'project'
+					AND S.[Segment] = @Segment
+					AND S.[ProjectKey] IS NULL
+
+			/* The Fleet Row and the Older Row of the File Key, Equal Under the Database's Collation. */
+			;SELECT	 @FleetRecordId		= R.[RecordId]
+					,@FleetOrigin		= R.[Origin]
+					,@FleetDeletedDt	= R.[DeletedDt]
+					,@FleetIsArchived	= R.[IsArchived]
+					,@FleetBodyHash		= R.[BodyHash]
+					,@FleetModifiedDt	= R.[FileModifiedDt]
+					,@FleetPublisherId	= R.[LastPublishedBySandboxId]
+			FROM	mem.Record R
+			WHERE	R.[StoreId] = @FleetStoreId
+					AND R.[FileKey] = @FileKey
+
+			;SELECT	 @OldRecordId	= R.[RecordId]
+					,@OldDeletedDt	= R.[DeletedDt]
+					,@OldIsArchived	= R.[IsArchived]
+			FROM	mem.Record R
+			WHERE	R.[StoreId] = @OldStoreId
+					AND R.[FileKey] = @FileKey
+
+			/************************************************************************************
+				DECIDE WHAT THE ROW DOES.
+			************************************************************************************/
+			;IF ( @FleetRecordId IS NULL )
+			BEGIN
+				/* No Fleet Row: the Older Row Moves In, Keeping Its Archive, or a New Row is Inserted. */
+				;IF ( @OldRecordId IS NOT NULL )
+					SELECT	 @Action			= 'write'
+							,@WriteRecordId		= @OldRecordId
+							,@WriteIsArchived	= CASE WHEN @OldIsArchived = @True THEN @True ELSE @InIsArchived END
+				ELSE
+					SELECT	 @Action			= 'insert'
+							,@WriteIsArchived	= @InIsArchived
+			END
+			ELSE IF ( @FleetOrigin = 'memq' OR @FleetDeletedDt IS NOT NULL )
+			BEGIN
+				/* A Row a Database Verb Wrote or Deleted is Never Written by a Publish. */
+				;SET @Action = 'held'
+			END
+			ELSE IF ( @FleetPublisherId = @SandboxId OR @FleetBodyHash = @InBodyHash )
+			BEGIN
+				/* The Caller's Own Fleet Row, or Another's Holding the Same Body: Updated or Left as Any Row Is. */
+				;SET @WriteIsArchived = CASE WHEN @FleetIsArchived = @True THEN @True ELSE @InIsArchived END
+
+				;IF EXISTS (	SELECT	 R.[Name], R.[Description], R.[Body], R.[BodyHash], R.[FileModifiedDt]
+										,R.[Machine], R.[Tags], R.[SupersedesName], R.[IsArchived]
+										,R.[Triggers], R.[Anchors], R.[IsPinned], R.[CreatedOn], R.[Author]
+								FROM	mem.Record R
+								WHERE	R.[RecordId] = @FleetRecordId
+								INTERSECT
+								SELECT	 I.[Name], I.[Description], I.[Body], I.[BodyHash], I.[FileModifiedDt]
+										,I.[Machine], I.[Tags], I.[SupersedesName], @WriteIsArchived
+										,COALESCE(I.[Triggers], R.[Triggers]), COALESCE(I.[Anchors], R.[Anchors])
+										,COALESCE(I.[IsPinned], R.[IsPinned]), COALESCE(I.[CreatedOn], R.[CreatedOn])
+										,COALESCE(I.[Author], R.[Author])
+								FROM	@Incoming I
+										INNER JOIN mem.Record R
+											ON R.[RecordId] = @FleetRecordId
+								WHERE	I.[Ordinal] = @Ordinal	)
+					SET @Action = 'stamp'
+				ELSE
+					SELECT	 @Action		= 'write'
+							,@WriteRecordId	= @FleetRecordId
+			END
+			ELSE IF (	@InModifiedDt IS NOT NULL
+						AND @FleetModifiedDt IS NOT NULL
+						AND @InModifiedDt > @FleetModifiedDt	)
+			BEGIN
+				/* A Twin This Copy Wins: the Caller's Older Store Takes the Losing Row, Created Where Absent. */
+				;IF ( @OldStoreId IS NULL )
+				BEGIN
+					;INSERT INTO mem.Store (
+						 [SandboxId]
+						,[Tier]
+						,[Segment]	)
+					SELECT	 [SandboxId]	= @SandboxId
+							,[Tier]			= 'project'
+							,[Segment]		= @Segment
+
+					;SET @OldStoreId = SCOPE_IDENTITY()
+				END
+
+				/* The Winner Takes the Fleet Slot and the Loser the Older Store's, in One UPDATE, Each Keeping Its Embeddings and Usage. */
+				;IF ( @OldRecordId IS NOT NULL )
+				BEGIN
+					;UPDATE R
+					SET		 [StoreId]		= CASE WHEN R.[RecordId] = @OldRecordId THEN @FleetStoreId ELSE @OldStoreId END
+							,[DeletedDt]	= CASE WHEN R.[RecordId] = @OldRecordId THEN NULL ELSE @Now END
+							,[UpdatedDt]	= @Now
+					FROM	mem.Record R
+					WHERE	R.[RecordId] IN ( @OldRecordId, @FleetRecordId )
+
+					;SELECT	 @Action			= 'write'
+							,@WriteRecordId		= @OldRecordId
+				END ELSE BEGIN
+					;UPDATE R
+					SET		 [StoreId]		= @OldStoreId
+							,[DeletedDt]	= @Now
+							,[UpdatedDt]	= @Now
+					FROM	mem.Record R
+					WHERE	R.[RecordId] = @FleetRecordId
+
+					;SET @Action = 'insert'
+				END
+
+				/* The Record's Archive Stands Through the Merge. */
+				;SET @WriteIsArchived = CASE WHEN @FleetIsArchived = @True OR @OldIsArchived = @True THEN @True ELSE @InIsArchived END
+
+				;INSERT INTO @Twins (
+					 [Name]
+					,[WinnerSandboxId]
+					,[LoserSandboxId]	)
+				SELECT	 [Name]				= @InName
+						,[WinnerSandboxId]	= @SandboxId
+						,[LoserSandboxId]	= @FleetPublisherId
+			END
+			ELSE
+			BEGIN
+				/* A Twin This Copy Loses: Its Live Older Row Takes the Deleted Mark Below, and Nothing Else is Written. */
+				;SET @Action = 'lost'
+
+				;INSERT INTO @Twins (
+					 [Name]
+					,[WinnerSandboxId]
+					,[LoserSandboxId]	)
+				SELECT	 [Name]				= @InName
+						,[WinnerSandboxId]	= @FleetPublisherId
+						,[LoserSandboxId]	= @SandboxId
+			END
+
+			/************************************************************************************
+				APPLY WHAT WAS DECIDED.
+			************************************************************************************/
+			;IF ( @Action = 'write' )
+			BEGIN
+				/* A Changed Body or Name Drops the Vectors Made From the Old Text. */
+				;DELETE E
+				FROM	mem.Embedding E
+						INNER JOIN mem.Record R
+							ON R.[RecordId] = E.[RecordId]
+				WHERE	E.[RecordId] = @WriteRecordId
+						AND (	R.[BodyHash] <> @InBodyHash
+								OR R.[Name] <> @InName	)
+
+				;UPDATE R
+				SET		 [StoreId]					= @FleetStoreId
+						,[Name]						= I.[Name]
+						,[Description]				= I.[Description]
+						,[Body]						= I.[Body]
+						,[BodyHash]					= I.[BodyHash]
+						,[FileModifiedDt]			= I.[FileModifiedDt]
+						,[Machine]					= I.[Machine]
+						,[Tags]						= I.[Tags]
+						,[SupersedesName]			= I.[SupersedesName]
+						,[IsArchived]				= @WriteIsArchived
+						,[Triggers]					= COALESCE(I.[Triggers], R.[Triggers])
+						,[Anchors]					= COALESCE(I.[Anchors], R.[Anchors])
+						,[IsPinned]					= COALESCE(I.[IsPinned], R.[IsPinned])
+						,[CreatedOn]				= COALESCE(I.[CreatedOn], R.[CreatedOn])
+						,[Author]					= COALESCE(I.[Author], R.[Author])
+						,[Visibility]				= 'shared'
+						,[LastPublishedBySandboxId]	= @SandboxId
+						,[LastPublishedDt]			= @Now
+						,[DeletedDt]				= NULL
+						,[UpdatedDt]				= @Now
+				FROM	mem.Record R
+						INNER JOIN @Incoming I
+							ON I.[Ordinal] = @Ordinal
+				WHERE	R.[RecordId] = @WriteRecordId
+			END
+			ELSE IF ( @Action = 'insert' )
+			BEGIN
+				;INSERT INTO mem.Record (
+					 [StoreId]
+					,[Name]
+					,[FileKey]
+					,[Description]
+					,[Body]
+					,[BodyHash]
+					,[FileModifiedDt]
+					,[Machine]
+					,[Tags]
+					,[SupersedesName]
+					,[IsArchived]
+					,[Triggers]
+					,[Anchors]
+					,[IsPinned]
+					,[CreatedOn]
+					,[Author]
+					,[Visibility]
+					,[LastPublishedBySandboxId]
+					,[LastPublishedDt]			)
+				SELECT	 [StoreId]					= @FleetStoreId
+						,[Name]						= I.[Name]
+						,[FileKey]					= I.[FileKey]
+						,[Description]				= I.[Description]
+						,[Body]						= I.[Body]
+						,[BodyHash]					= I.[BodyHash]
+						,[FileModifiedDt]			= I.[FileModifiedDt]
+						,[Machine]					= I.[Machine]
+						,[Tags]						= I.[Tags]
+						,[SupersedesName]			= I.[SupersedesName]
+						,[IsArchived]				= @WriteIsArchived
+						,[Triggers]					= I.[Triggers]
+						,[Anchors]					= I.[Anchors]
+						,[IsPinned]					= COALESCE(I.[IsPinned], @False)
+						,[CreatedOn]				= I.[CreatedOn]
+						,[Author]					= I.[Author]
+						,[Visibility]				= 'shared'
+						,[LastPublishedBySandboxId]	= @SandboxId
+						,[LastPublishedDt]			= @Now
+				FROM	@Incoming I
+				WHERE	I.[Ordinal] = @Ordinal
+
+				;SET @WriteRecordId = SCOPE_IDENTITY()
+			END
+			ELSE IF ( @Action = 'stamp' )
+			BEGIN
+				;UPDATE R
+				SET		 [LastPublishedBySandboxId]	= @SandboxId
+						,[LastPublishedDt]			= @Now
+				FROM	mem.Record R
+				WHERE	R.[RecordId] = @FleetRecordId
+			END
+
+			/* The Caller's Older Row of the File Key Carries No Live Record Once the Row is Landed. */
+			;IF ( @OldRecordId IS NOT NULL AND @OldRecordId <> COALESCE(@WriteRecordId, -1) AND @OldDeletedDt IS NULL )
+			BEGIN
+				;UPDATE R
+				SET		 [DeletedDt]	= @Now
+						,[UpdatedDt]	= @Now
+				FROM	mem.Record R
+				WHERE	R.[RecordId] = @OldRecordId
+						AND R.[StoreId] = @OldStoreId
+			END
+
+			;UPDATE I
+			SET		 [RecordId]		= COALESCE(@WriteRecordId, @FleetRecordId)
+					,[StoreId]		= @FleetStoreId
+					,[Disposition]	= CASE @Action
+										WHEN 'insert'	THEN 'add'
+										WHEN 'write'	THEN 'change'
+										WHEN 'stamp'	THEN 'unchanged'
+										WHEN 'lost'		THEN 'older'
+										ELSE 'held'
+									  END
+			FROM	@Incoming I
+			WHERE	I.[Ordinal] = @Ordinal
+
+			;SELECT	@Ordinal = MIN(I.[Ordinal])
+			FROM	@Incoming I
+			WHERE	I.[IsFleetProject] = @True
+					AND I.[Ordinal] > @Ordinal
+		END
 
 		/* Mark Removed the Caller's Own Private Project Rows the Batch Named. */
 		;UPDATE R
@@ -381,6 +850,7 @@ BEGIN	-- PROCEDURE
 				,@Changed		= SUM(CASE WHEN I.[Disposition] = 'change' THEN 1 ELSE 0 END)
 				,@Unchanged		= SUM(CASE WHEN I.[Disposition] = 'unchanged' THEN 1 ELSE 0 END)
 				,@SkippedOlder	= SUM(CASE WHEN I.[Disposition] = 'older' THEN 1 ELSE 0 END)
+				,@Held			= SUM(CASE WHEN I.[Disposition] = 'held' THEN 1 ELSE 0 END)
 		FROM	@Incoming I
 
 		;SELECT	[Json] = (	SELECT	 [added]		= COALESCE(@Added, 0)
@@ -388,6 +858,17 @@ BEGIN	-- PROCEDURE
 									,[unchanged]	= COALESCE(@Unchanged, 0)
 									,[skippedOlder]	= COALESCE(@SkippedOlder, 0)
 									,[removed]		= @Removed
+									,[held]			= COALESCE(@Held, 0)
+									,[twins]		= JSON_QUERY(COALESCE((	SELECT	 [name]		= T.[Name]
+																					,[winner]	= W.[Name]
+																					,[loser]	= L.[Name]
+																			FROM	@Twins T
+																					LEFT JOIN mem.Sandbox W
+																						ON W.[SandboxId] = T.[WinnerSandboxId]
+																					LEFT JOIN mem.Sandbox L
+																						ON L.[SandboxId] = T.[LoserSandboxId]
+																			ORDER BY T.[Ordinal]
+																			FOR JSON PATH	), N'[]'))
 							FOR JSON PATH, WITHOUT_ARRAY_WRAPPER	)
 	END TRY
 	BEGIN CATCH

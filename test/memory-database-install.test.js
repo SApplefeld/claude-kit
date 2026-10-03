@@ -921,9 +921,11 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // band that `memq jev-calibration` reads under this login
             // (docs/plans/claude-kit_jev-recollection-judge_spec_v1.md), plus
             // the record door, usp_PutRecord, usp_GetRecord, usp_ListIndex and
-            // usp_ArchiveRecord, through which memq writes and reads a record
+            // usp_ArchiveRecord, through which memq writes and reads a record,
+            // plus usp_AdoptProjectStore, through which db-sync moves a folder's
+            // records into its remote key
             // (docs/plans/claude-kit_memory-in-sql_spec_v1.md).
-            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_ArchiveRecord',
+            const publisherProcs = ['usp_AdoptProjectStore', 'usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_ArchiveRecord',
                 'usp_GetRecord', 'usp_Health', 'usp_JevCalibration', 'usp_ListIndex', 'usp_ListRecords', 'usp_Nearest',
                 'usp_PutRecord', 'usp_Search', 'usp_UpsertEmbeddings', 'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
             const curatorProcs = ['usp_CurationOrphans', 'usp_CurationSupersededLive', 'usp_CurationUnapplied', 'usp_Health', 'usp_PromoteRecord'];
@@ -1386,7 +1388,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             ];
             const dup = callAs('kit_scott_claude', 'usp_UpsertRecords', "@p_Records = N'" + JSON.stringify(twice) + "'");
             assert.ok(!dup.error, 'a batch naming one key twice must not throw: ' + JSON.stringify(dup.error));
-            assert.deepStrictEqual(dup.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0 });
+            assert.deepStrictEqual(dup.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, held: 0, twins: [] });
             const dupRow = sqlOk("SELECT 'kittest-dup=' + [Description] + ':' + [BodyHash] FROM mem.Record WHERE [Name] = N'dup-" + runId + "';");
             assert.strictEqual(one(dupRow, 'dup'), 'last:h6', 'the last entry for a key must win');
 
@@ -1397,7 +1399,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             };
             const upsert = callAs('kit_scott_claude', 'usp_UpsertRecords', "@p_Records = N'" + JSON.stringify([record]) + "'");
             assert.ok(!upsert.error, JSON.stringify(upsert.error));
-            assert.deepStrictEqual(upsert.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0 });
+            assert.deepStrictEqual(upsert.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, held: 0, twins: [] });
             const row = sqlOk([
                 "SELECT 'kittest-row=' + CAST(R.[RecordId] AS VARCHAR(20)) + ':' + R.[Visibility] + ':' + COALESCE(R.[Author], '<null>') + ':' + CAST(S.[SandboxId] AS VARCHAR(10))",
                 "FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId] WHERE R.[Name] = N'" + record.name + "';"
@@ -1454,7 +1456,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(held.status, 0, held.stdout + held.stderr);
             assert.ok(/kittest-held=[01](\r?\n|$)/.test(held.stdout), 'the holder never took the lock: ' + held.stdout + held.stderr);
             assert.ok(!published.error, JSON.stringify(published.error));
-            assert.deepStrictEqual(published.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0 });
+            assert.deepStrictEqual(published.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, held: 0, twins: [] });
             assert.ok(waited >= 2000, 'the publish returned in ' + waited + ' ms while the publish lock was held, so it took no lock');
         });
 
@@ -2212,7 +2214,10 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(result.ok, true, JSON.stringify(result));
             assert.deepStrictEqual(result.summary.failed, [], 'nothing may fail on the real transport');
             assert.strictEqual(result.summary.added, 3, JSON.stringify(result.summary));
-            assert.strictEqual(result.summary.embedded, 3, JSON.stringify(result.summary));
+            // The records land in the folder key's fleet store, which the
+            // publish's own inventory read, held to the sandbox's own rows, does
+            // not list, so its embedding leg sends them no vector.
+            assert.strictEqual(result.summary.embedded, 0, JSON.stringify(result.summary));
 
             // The bodies on the server are the bodies on disk, byte for byte,
             // which is what the ASCII escaping and the doubled quotes exist
@@ -2221,7 +2226,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             for (const [name, body] of Object.entries(bodies)) {
                 const stored = sqlOk([
                     "DECLARE @b NVARCHAR(MAX) = (SELECT R.[Body] FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]",
-                    "    WHERE S.[Segment] = N'" + segment + "' AND R.[FileKey] = N'" + name + ".md');",
+                    "    WHERE S.[ProjectKey] = N'path:" + segment + "' AND R.[FileKey] = N'" + name + ".md');",
                     "SELECT 'kittest-len=' + CAST(LEN(@b) AS VARCHAR(20));",
                     "SELECT 'kittest-hash=' + CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', @b), 2);"
                 ].join('\n'));
@@ -2232,21 +2237,11 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.strictEqual(Number(one(stored, 'len')), body.length, name + ' lost or gained characters');
             }
 
-            // The embeddings landed through the real procedure at the real
-            // width, one row per chunk, and the long record is the one that
-            // proves several chunks ride one call.
-            const counts = sqlOk([
-                "SELECT 'kittest-rows=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding E",
-                'INNER JOIN mem.Record R ON R.[RecordId] = E.[RecordId]',
-                'INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
-                "WHERE S.[Segment] = N'" + segment + "' AND E.[ModelIdentity] = 'test-model';",
-                "SELECT 'kittest-dims=' + CAST(MIN(E.[Dimensions]) AS VARCHAR(10)) + ':' + CAST(MAX(E.[Dimensions]) AS VARCHAR(10)) FROM mem.Embedding E",
-                'INNER JOIN mem.Record R ON R.[RecordId] = E.[RecordId]',
-                'INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
-                "WHERE S.[Segment] = N'" + segment + "';"
-            ].join('\n'));
-            assert.ok(Number(one(counts, 'rows')) >= 3, 'every published record carries at least one embedding: ' + one(counts, 'rows'));
-            assert.strictEqual(one(counts, 'dims'), DIMENSIONS + ':' + DIMENSIONS);
+            // The three rows are the folder key's, in a fleet store, as file rows.
+            const landed = sqlOk("SELECT 'kittest-landed=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record R INNER JOIN mem.Store S"
+                + " ON S.[StoreId] = R.[StoreId] WHERE S.[ProjectKey] = N'path:" + segment + "' AND S.[SandboxId] IS NULL"
+                + " AND R.[Origin] = 'file' AND R.[DeletedDt] IS NULL;");
+            assert.strictEqual(one(landed, 'landed'), '3');
 
             // The second run is the reader's own answer coming back through
             // the transport: every record sent again, every one unchanged,
@@ -3309,7 +3304,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                     description: 'a version 6 publish', body: 'b', bodyHash: 'hv6', fileModified: '2026-09-17T12:00:00Z', archived: false };
                 const upsert = call('usp_UpsertRecords', "@p_Records = N'" + JSON.stringify([record]) + "'");
                 assert.ok(!upsert.error, JSON.stringify(upsert.error));
-                assert.deepStrictEqual(upsert.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0 });
+                assert.deepStrictEqual(upsert.value, { added: 1, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, held: 0, twins: [] });
                 const id = Number(one(sqlOk("SELECT 'kittest-id=' + CAST([RecordId] AS VARCHAR(20)) FROM mem.Record WHERE [Name] = N'" + record.name + "';"), 'id'));
                 const state = recordState(id);
                 assert.deepStrictEqual({ origin: state.Origin, visibility: state.Visibility, storeSandbox: state.StoreSandboxId, segment: state.StoreSegment, key: state.ProjectKey, pinned: state.IsPinned },
@@ -3317,6 +3312,267 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             } finally {
                 mapConnection(null);
             }
+        });
+
+        // The migration by republish: a version 7 upsert carries each project
+        // record's key and lands it in that key's fleet store, moving the
+        // caller's older row. Every name and key below is this run's own.
+        const upsertAs = (sandbox, records) => {
+            mapConnection(sandbox);
+            try {
+                return call('usp_UpsertRecords', '@p_Records = ' + lit(JSON.stringify(records)));
+            } finally {
+                mapConnection(null);
+            }
+        };
+        const fileRow = (fields) => ({ tier: 'project', description: 'd', archived: false, ...fields,
+            fileKey: fields.fileKey || fields.name + '.md', bodyHash: fields.bodyHash || 'h-' + fields.body });
+        // Every row of the named names, with the store each sits in, read back
+        // in one statement so two readings compare as wholes.
+        const rowsNamed = (names) => {
+            const res = sqlOk([
+                "SELECT 'kittest-row=' + (SELECT R.[RecordId], R.[Name], R.[Body], R.[IsArchived], R.[DeletedDt], R.[UpdatedDt], R.[Origin],",
+                '  S.[ProjectKey], S.[SandboxId], S.[Segment] FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
+                '  WHERE R.[RecordId] = X.[RecordId] FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES)',
+                'FROM mem.Record X WHERE X.[Name] IN (' + names.map(lit).join(', ') + ') ORDER BY X.[RecordId];'
+            ].join('\n'));
+            return (res.tags.row || []).map((text) => JSON.parse(text));
+        };
+
+        await t.test('a version 7 upsert from two sandboxes merges each twin both ways, a case-differing pair as one, and a second upsert changes nothing', () => {
+            const segment = 'seg-twin-' + runId;
+            const key = 'path:' + segment;
+            const names = { neoWins: 'twin-a-' + runId, scottWins: 'twin-b-' + runId,
+                caseScott: 'Twin-Case-' + runId, caseNeo: 'twin-case-' + runId };
+            const at = (day) => '2026-09-0' + day + 'T00:00:00Z';
+            // Each sandbox's own files, the same three names, with the times that
+            // decide each twin: NEO newer on the first and on the case pair,
+            // SCOTT newer on the second.
+            const scott = [fileRow({ segment, name: names.neoWins, body: 'scott a', fileModified: at(1) }),
+                fileRow({ segment, name: names.scottWins, body: 'scott b', fileModified: at(3) }),
+                fileRow({ segment, name: names.caseScott, body: 'scott case', fileModified: at(1) })];
+            const neo = [fileRow({ segment, name: names.neoWins, body: 'neo a', fileModified: at(2) }),
+                fileRow({ segment, name: names.scottWins, body: 'neo b', fileModified: at(2) }),
+                fileRow({ segment, name: names.caseNeo, body: 'neo case', fileModified: at(2) })];
+            // The older stores the version 6 publishes left.
+            for (const [sandbox, rows] of [['SCOTT-CLAUDE', scott], ['NEO-CLAUDE', neo]]) {
+                const v6 = upsertAs(sandbox, rows);
+                assert.ok(!v6.error && v6.value.added === 3, JSON.stringify(v6));
+            }
+            const v7 = (rows) => rows.map((r) => ({ ...r, projectKey: key }));
+            const all = Object.values(names);
+
+            const fromScott = upsertAs('SCOTT-CLAUDE', v7(scott));
+            assert.ok(!fromScott.error, JSON.stringify(fromScott.error));
+            assert.deepStrictEqual({ changed: fromScott.value.changed, twins: fromScott.value.twins }, { changed: 3, twins: [] },
+                'the first sandbox moves its three older rows in and meets no twin: ' + JSON.stringify(fromScott.value));
+            const fromNeo = upsertAs('NEO-CLAUDE', v7(neo));
+            assert.ok(!fromNeo.error, JSON.stringify(fromNeo.error));
+            assert.deepStrictEqual(fromNeo.value.twins, [
+                { name: names.neoWins, winner: 'NEO-CLAUDE', loser: 'SCOTT-CLAUDE' },
+                { name: names.scottWins, winner: 'SCOTT-CLAUDE', loser: 'NEO-CLAUDE' },
+                { name: names.caseNeo, winner: 'NEO-CLAUDE', loser: 'SCOTT-CLAUDE' }
+            ], 'every twin is named with the sandbox whose copy won and the one whose copy lost: ' + JSON.stringify(fromNeo.value));
+            assert.strictEqual(fromNeo.value.skippedOlder, 1, 'a losing copy counts as older');
+
+            const rows = rowsNamed(all);
+            const live = rows.filter((r) => r.DeletedDt === null);
+            const deleted = rows.filter((r) => r.DeletedDt !== null);
+            // One live row per record, in the fleet store, with the newer body;
+            // the case-differing pair is one record.
+            assert.deepStrictEqual(live.map((r) => [r.Name, r.Body, r.ProjectKey, r.SandboxId]).sort(), [
+                [names.neoWins, 'neo a', key, null], [names.scottWins, 'scott b', key, null], [names.caseNeo, 'neo case', key, null]
+            ].sort(), JSON.stringify(rows));
+            // One deleted row per twin, holding the losing body, in an older store.
+            assert.deepStrictEqual(deleted.map((r) => [r.Name, r.Body, r.ProjectKey === null]).sort(), [
+                [names.neoWins, 'scott a', true], [names.scottWins, 'neo b', true], [names.caseScott, 'scott case', true]
+            ].sort(), JSON.stringify(rows));
+
+            // The publish run row names each twin and the losing sandbox.
+            mapConnection('NEO-CLAUDE');
+            try {
+                const run = call('usp_AppendPublishRun', '@p_Run = ' + lit(JSON.stringify({ started: '2026-10-03T00:00:00Z',
+                    twins: fromNeo.value.twins })));
+                assert.ok(!run.error, JSON.stringify(run.error));
+                const stored = JSON.parse(one(sqlOk("SELECT 'kittest-twins=' + [TwinMerges] FROM mem.PublishRun WHERE [PublishRunId] = "
+                    + Number(run.value.publishRunId) + ';'), 'twins'));
+                assert.deepStrictEqual(stored.find((tw) => tw.name === names.scottWins).loser, 'NEO-CLAUDE', JSON.stringify(stored));
+            } finally {
+                mapConnection(null);
+            }
+
+            // A second upsert from either sandbox changes no row.
+            for (const [sandbox, rowsOf] of [['SCOTT-CLAUDE', scott], ['NEO-CLAUDE', neo]]) {
+                const again = upsertAs(sandbox, v7(rowsOf));
+                assert.ok(!again.error, JSON.stringify(again.error));
+                assert.strictEqual(again.value.changed + again.value.added, 0, sandbox + ': ' + JSON.stringify(again.value));
+                assert.deepStrictEqual(rowsNamed(all), rows, sandbox + '\'s second upsert must change nothing');
+            }
+        });
+
+        await t.test('a republish never writes a memq row, and never clears an archive, a delete or a promotion made through the database', () => {
+            const segment = 'seg-guard-' + runId;
+            const key = 'path:' + segment;
+            const names = { memq: 'guard-memq-' + runId, archived: 'guard-arch-' + runId, deleted: 'guard-del-' + runId,
+                promoted: 'guard-promo-' + runId, operator: 'guard-op-' + runId };
+            const v7 = (name, body, extra) => fileRow({ segment, projectKey: key, name, body, fileModified: '2026-09-01T00:00:00Z', ...extra });
+
+            // A record a session corrected in the database: a memq row.
+            mapConnection('SCOTT-CLAUDE');
+            const corrected = put({ Tier: 'project', ProjectKey: key, Name: names.memq, Description: 'corrected', Body: 'the correction' });
+            mapConnection(null);
+            assert.ok(!corrected.error && corrected.value.status === 'stored', JSON.stringify(corrected));
+            const memqBefore = recordState(corrected.value.recordId);
+
+            // Three file rows, then a verb's archive, a verb's delete, and a promotion.
+            const first = upsertAs('SCOTT-CLAUDE', [v7(names.archived, 'a1'), v7(names.deleted, 'd1'), v7(names.promoted, 'p1')]);
+            assert.ok(!first.error && first.value.added === 3, JSON.stringify(first));
+            const operatorFirst = upsertAs('SCOTT-CLAUDE', [{ tier: 'operator', name: names.operator, fileKey: names.operator + '.md',
+                description: 'd', body: 'o1', bodyHash: 'h-o1', fileModified: '2026-09-01T00:00:00Z', archived: false }]);
+            assert.ok(!operatorFirst.error && operatorFirst.value.added === 1, JSON.stringify(operatorFirst));
+            mapConnection('NEO-CLAUDE');
+            try {
+                for (const [name, extra] of [[names.archived, {}], [names.deleted, { Delete: 1 }]]) {
+                    const retired = call('usp_ArchiveRecord', paramsOf({ Tier: 'project', ProjectKey: key, Name: name, ...extra }));
+                    assert.ok(!retired.error, JSON.stringify(retired.error));
+                }
+                const op = call('usp_ArchiveRecord', paramsOf({ Tier: 'operator', Name: names.operator }));
+                assert.ok(!op.error && op.value.status === 'archived', JSON.stringify(op));
+            } finally {
+                mapConnection(null);
+            }
+            const promoted = callAs('kit_curator', 'usp_PromoteRecord', paramsOf({ ProjectKey: key, Name: names.promoted }));
+            assert.ok(!promoted.error, JSON.stringify(promoted.error));
+            const deletedBefore = rowsNamed([names.deleted]);
+
+            // The republish: every file now newer, live and with a changed body.
+            const again = upsertAs('SCOTT-CLAUDE', [v7(names.memq, 'a stale file body', { fileModified: '2026-09-09T00:00:00Z' }),
+                v7(names.archived, 'a2', { fileModified: '2026-09-09T00:00:00Z' }), v7(names.deleted, 'd2', { fileModified: '2026-09-09T00:00:00Z' }),
+                v7(names.promoted, 'p2', { fileModified: '2026-09-09T00:00:00Z' })]);
+            assert.ok(!again.error, JSON.stringify(again.error));
+            assert.strictEqual(again.value.held, 2, 'the memq row and the deleted row are held: ' + JSON.stringify(again.value));
+            const operatorAgain = upsertAs('SCOTT-CLAUDE', [{ tier: 'operator', name: names.operator, fileKey: names.operator + '.md',
+                description: 'd', body: 'o2', bodyHash: 'h-o2', fileModified: '2026-09-09T00:00:00Z', archived: false }]);
+            assert.ok(!operatorAgain.error, JSON.stringify(operatorAgain.error));
+            const after = rowsNamed(Object.values(names));
+            // The project row of a name, or the operator row for the operator name.
+            const liveRow = (name) => after.find((r) => r.Name === name && r.DeletedDt === null
+                && (name === names.operator ? r.ProjectKey === null : r.ProjectKey === key));
+
+            const memqAfter = recordState(corrected.value.recordId);
+            assert.deepStrictEqual({ body: memqAfter.Body, updated: memqAfter.UpdatedDt, origin: memqAfter.Origin },
+                { body: memqBefore.Body, updated: memqBefore.UpdatedDt, origin: 'memq' }, 'a memq row is never written by a publish');
+            assert.deepStrictEqual(rowsNamed([names.deleted]), deletedBefore, 'a verb\'s delete stands, body and all');
+            assert.ok(deletedBefore.length === 1 && deletedBefore[0].DeletedDt !== null, JSON.stringify(deletedBefore));
+            for (const name of [names.archived, names.promoted, names.operator]) {
+                const row = liveRow(name);
+                assert.ok(row && row.IsArchived === true, name + ' keeps the archive a verb set: ' + JSON.stringify(after));
+            }
+            assert.ok(after.some((r) => r.Name === names.archived && r.Body === 'a2'),
+                'the control: the republish did write the archived row\'s new body, so the flag above held by the rule');
+        });
+
+        await t.test('usp_AdoptProjectStore moves a folder store into a remote store with each row\'s embeddings and usage, merges by the target-wins rule, and refuses any other pair of keys', () => {
+            const from = 'path:seg-adopt-' + runId;
+            const to = 'remote:example.test/adopt-' + runId;
+            const n = (s) => 'adopt-' + s + '-' + runId;
+            const names = { move: n('move'), memq: n('memq'), arch: n('arch'), del: n('del'), older: n('older'), newer: n('newer'),
+                clashSource: n('clash-src'), clashTarget: n('clash-tgt') };
+            const src = (name, extra) => fileRow({ segment: 'seg-adopt-' + runId, projectKey: from, name, body: 'source ' + name,
+                fileModified: '2026-09-05T00:00:00Z', ...extra });
+            const tgt = (name, extra) => fileRow({ segment: 'seg-adopt-target-' + runId, projectKey: to, name, body: 'target ' + name,
+                fileModified: '2026-09-05T00:00:00Z', ...extra });
+
+            // The target store: a memq row, an archived row, a deleted row, a
+            // live file row older than its source, one newer, and one holding the
+            // clash's file key under another name.
+            const targets = upsertAs('NEO-CLAUDE', [tgt(names.arch), tgt(names.del), tgt(names.older, { fileModified: '2026-09-01T00:00:00Z' }),
+                tgt(names.newer, { fileModified: '2026-09-09T00:00:00Z' }), tgt(names.clashTarget, { fileKey: 'clash-' + runId + '.md' })]);
+            assert.ok(!targets.error && targets.value.added === 5, JSON.stringify(targets));
+            mapConnection('NEO-CLAUDE');
+            try {
+                const memqRow = put({ Tier: 'project', ProjectKey: to, Name: names.memq, Description: 'corrected', Body: 'target memq' });
+                assert.ok(!memqRow.error && memqRow.value.status === 'stored', JSON.stringify(memqRow));
+                assert.ok(!call('usp_ArchiveRecord', paramsOf({ Tier: 'project', ProjectKey: to, Name: names.arch })).error);
+                assert.ok(!call('usp_ArchiveRecord', paramsOf({ Tier: 'project', ProjectKey: to, Name: names.del, Delete: 1 })).error);
+            } finally {
+                mapConnection(null);
+            }
+            const sources = upsertAs('SCOTT-CLAUDE', [src(names.move), src(names.memq), src(names.arch), src(names.del), src(names.older),
+                src(names.newer), src(names.clashSource, { fileKey: 'clash-' + runId + '.md' })]);
+            assert.ok(!sources.error && sources.value.added === 7, JSON.stringify(sources));
+            const all = Object.values(names);
+            const before = rowsNamed(all);
+            const sourceRow = (rows, name) => rows.find((r) => r.Name === name && r.Body === 'source ' + name);
+            const targetRow = (rows, name) => rows.find((r) => r.Name === name && r.Body !== 'source ' + name);
+            const moving = sourceRow(before, names.move).RecordId;
+            embedOnAxis(moving, 710);
+            sqlOk("INSERT INTO mem.Usage ([RecordId], [Kind], [StampedDt], [SandboxId], [StampId]) VALUES (" + moving
+                + ", 'read', SYSDATETIMEOFFSET(), " + ids.scott + ", N'adopt-stamp-" + runId + "');");
+            const usageOf = (recordId) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage WHERE [RecordId] = "
+                + Number(recordId) + ';'), 'n'));
+
+            // Keys that are not a folder key into a remote key are refused, and
+            // nothing is written; so is an unmapped login.
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                for (const [a, b] of [[to, to], [from, 'path:elsewhere-' + runId], [to, from], ['', to]]) {
+                    const refused = call('usp_AdoptProjectStore', paramsOf({ FromKey: a, ToKey: b }));
+                    assert.ok(refused.error && refused.error.number === 50000 && /path:.*remote:/.test(refused.error.message),
+                        a + ' into ' + b + ': ' + JSON.stringify(refused));
+                }
+            } finally {
+                mapConnection(null);
+            }
+            const unmapped = call('usp_AdoptProjectStore', paramsOf({ FromKey: from, ToKey: to }));
+            assert.ok(unmapped.error && /maps to no sandbox/.test(unmapped.error.message), JSON.stringify(unmapped));
+            assert.deepStrictEqual(rowsNamed(all), before, 'a refused adoption writes nothing');
+
+            mapConnection('SCOTT-CLAUDE');
+            let adopted;
+            let second;
+            let afterFirst;
+            try {
+                adopted = call('usp_AdoptProjectStore', paramsOf({ FromKey: from, ToKey: to }));
+                assert.ok(!adopted.error, JSON.stringify(adopted.error));
+                afterFirst = rowsNamed(all);
+                second = call('usp_AdoptProjectStore', paramsOf({ FromKey: from, ToKey: to }));
+                assert.ok(!second.error, JSON.stringify(second.error));
+            } finally {
+                mapConnection(null);
+            }
+            assert.deepStrictEqual({ moved: adopted.value.moved, merged: adopted.value.merged, skipped: adopted.value.skipped,
+                skippedNames: adopted.value.skippedNames, mergedNames: [...adopted.value.mergedNames].sort() },
+            { moved: 1, merged: 5, skipped: 1, skippedNames: [names.clashSource],
+                mergedNames: [names.memq, names.arch, names.del, names.older, names.newer].sort() }, JSON.stringify(adopted.value));
+
+            const after = afterFirst;
+            // The moved row is in the target store, its vectors and usage with it.
+            const moved = sourceRow(after, names.move);
+            assert.deepStrictEqual([moved.RecordId, moved.ProjectKey, moved.DeletedDt], [moving, to, null], JSON.stringify(moved));
+            assert.strictEqual(embeddingsOf(moving), 1, 'the embedding travels with the row');
+            assert.strictEqual(usageOf(moving), 1, 'and so does its usage');
+            // A memq, an archived and a deleted target row stand unchanged, and
+            // each source row takes the deleted mark where it stands.
+            for (const name of [names.memq, names.arch, names.del, names.newer]) {
+                assert.deepStrictEqual(targetRow(after, name), targetRow(before, name), name + ': the target row is unchanged');
+                const source = sourceRow(after, name);
+                assert.ok(source.ProjectKey === from && source.DeletedDt !== null, name + ': ' + JSON.stringify(source));
+            }
+            // A live, older file row is the one the source replaces, and it moves
+            // into the source store with the deleted mark.
+            const won = sourceRow(after, names.older);
+            const lost = targetRow(after, names.older);
+            assert.deepStrictEqual([won.ProjectKey, won.DeletedDt], [to, null], JSON.stringify(won));
+            assert.ok(lost.ProjectKey === from && lost.DeletedDt !== null, JSON.stringify(lost));
+            // The clash stays in place, live.
+            const clash = sourceRow(after, names.clashSource);
+            assert.deepStrictEqual([clash.ProjectKey, clash.DeletedDt], [from, null], JSON.stringify(clash));
+
+            // A second call changes nothing.
+            assert.deepStrictEqual({ moved: second.value.moved, merged: second.value.merged, skipped: second.value.skipped },
+                { moved: 0, merged: 0, skipped: 1 }, JSON.stringify(second.value));
+            assert.deepStrictEqual(rowsNamed(all), afterFirst, 'the second adoption changes no row');
         });
 
         // The upgrade the fleet host takes: a version 6 database built by the
