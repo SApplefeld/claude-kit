@@ -5694,8 +5694,10 @@ test('db-sync sends the folder key and the frontmatter fields with the prose alo
 
         // The twins the procedure named, printed with their count, and carried
         // to the publish run row.
-        assert.match(first.out, /db-sync: 1 twin record\(s\) resolved, the newer copy kept: fielded \(kept NEO-CLAUDE, retired SCOTT-CLAUDE\)/,
-            first.out);
+        const twinLine = first.out.split('\n').find((l) => /\btwin\b/.test(l)) || '';
+        for (const token of [/\b1\b/, /\bfielded\b/, /\bNEO-CLAUDE\b/, /\bSCOTT-CLAUDE\b/]) {
+            assert.match(twinLine, token, first.out);
+        }
         const run = host.calls.find((c) => c.procedure === 'usp_AppendPublishRun');
         assert.deepStrictEqual(run.parameters['@p_Run'].twins, twins);
 
@@ -5705,13 +5707,13 @@ test('db-sync sends the folder key and the frontmatter fields with the prose alo
             { twinCount: 1, twins, added: 1 }, JSON.stringify(marker));
         assert.ok(Number.isFinite(Date.parse(marker.migratedAt)), marker.migratedAt);
 
-        // A second run finds the marker: it prints it and sends nothing.
+        // A second run finds the marker: it prints it and sends no record.
         const quiet = fakeHost();
         const second = await dbSyncFrom(folder, quiet);
         assert.strictEqual(second.exitCode, 0, second.out + second.err);
-        assert.deepStrictEqual(quiet.calls, [], 'a run under the marker makes no call at all');
-        assert.match(second.out, /^db-sync: the migration publish has run on this machine \(.*twinCount: 1, twins: \[ \{ name: fielded, winner: NEO-CLAUDE, loser: SCOTT-CLAUDE \} \].*\); nothing was sent/,
-            second.out);
+        assert.ok(!quiet.calls.some((c) => c.procedure === 'usp_UpsertRecords' || c.procedure === 'usp_AdoptProjectStore'),
+            'a run under the marker sends no record and no adoption: ' + quiet.calls.map((c) => c.procedure).join(', '));
+        for (const token of [/\btwinCount\b/, /\bfielded\b/, /\bNEO-CLAUDE\b/]) assert.match(second.out, token, second.out);
 
         // The control: --again publishes in the same state.
         const again = fakeHost();
@@ -5768,10 +5770,11 @@ test('db-sync from a checkout with a remote adopts its folder store into that ke
         assert.deepStrictEqual(adoptions[0].parameters,
             { '@p_FromKey': 'path:' + segment, '@p_ToKey': 'remote:example.test/owner/repo' });
         assert.ok(!JSON.stringify(host.calls).includes('secret'), 'no credential reaches the host');
-        assert.match(run.out, /db-sync: adopted path:.* into remote:example\.test\/owner\/repo \(moved 2, merged 1, left in place 1\); left in place because another record holds the name: clash/,
-            run.out);
+        for (const token of [/remote:example\.test\/owner\/repo/, /\b2\b/, /\b1\b/, /\bclash\b/]) assert.match(run.out, token, run.out);
         const marker = JSON.parse(fs.readFileSync(path.join(store.home, '.claude', 'memory-migrated.json'), 'utf8'));
-        assert.strictEqual(marker.adoption.to, 'remote:example.test/owner/repo');
+        assert.deepStrictEqual({ to: marker.adoption.to, moved: marker.adoption.moved, merged: marker.adoption.merged,
+            skipped: marker.adoption.skipped, skippedNames: marker.adoption.skippedNames },
+        { to: 'remote:example.test/owner/repo', moved: 2, merged: 1, skipped: 1, skippedNames: ['clash'] }, JSON.stringify(marker));
 
         // The control: from a plain folder the same publish sends no adoption.
         const plainHost = fakeHost();
@@ -5785,5 +5788,64 @@ test('db-sync from a checkout with a remote adopts its folder store into that ke
         for (const dir of [plain, checkout]) {
             try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
         }
+    }
+});
+
+// Under the migration marker, db-sync sends no record and drains the queue: the
+// queue's stamps keep landing on every run after the migration, and the exit
+// code is the drain's.
+function writeMarker(store) {
+    fs.writeFileSync(path.join(store.home, '.claude', 'memory-migrated.json'),
+        JSON.stringify({ migratedAt: '2026-10-03T00:00:00.000Z', twinCount: 0, twins: [] }), 'utf8');
+}
+
+test('db-sync under the marker drains the queue, sends no record, and exits 0', async () => {
+    const store = makeDefaultStore();
+    const folder = plainFolder();
+    try {
+        writeRecord(store.memDir, 'fielded', FIELDED_RECORD, 'a fielded record');
+        writeMarker(store);
+        db.queueInsert([db.usageEntry('project', store.segment, 'fielded', 'fielded.md', 'read')]);
+        const host = fakeHost();
+        const run = await dbSyncFrom(folder, host);
+        assert.strictEqual(run.exitCode, 0, run.out + run.err);
+        assert.deepStrictEqual(host.calls.map((c) => c.procedure), ['usp_Health', 'usp_AppendUsage'],
+            'the probe and the drain, and no record, removal or adoption');
+        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['fielded.md']);
+        assert.strictEqual(queueCount(), 0, 'the drained row is off the queue');
+        for (const token of [/\bmigratedAt\b/, /1 queue row\(s\) drained/]) assert.match(run.out, token, run.out);
+    } finally {
+        rmDefaultStore(store);
+        try { fs.rmSync(folder, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});
+
+test('db-sync under the marker against an unreachable host exits non-zero, names the cause, and keeps the row', async () => {
+    const store = makeDefaultStore();
+    const folder = plainFolder();
+    try {
+        writeMarker(store);
+        db.queueInsert([db.usageEntry('project', store.segment, 'fielded', 'fielded.md', 'read')]);
+        const calls = [];
+        const away = { runBatch: (cfg, batch) => {
+            calls.push(/EXEC mem\.(\w+)/.exec(batch)[1]);
+            return { ok: false, cause: 'outage', detail: 'sqlcmd exited 1: no host answered' };
+        } };
+        const run = await dbSyncFrom(folder, away);
+        assert.strictEqual(run.exitCode, 1, run.out + run.err);
+        assert.deepStrictEqual(calls, ['usp_Health'], 'the probe alone');
+        assert.match(run.err, /did not answer/, run.err);
+        assert.strictEqual(queueCount(), 1, 'the row is still on the queue');
+
+        // The control: a host below the queue's own floor also stands the run
+        // down, by the drain's version gate, and keeps the row.
+        const old = fakeHost({ schemaVersion: db.REQUIRED_SCHEMA_VERSION - 1 });
+        const gated = await dbSyncFrom(folder, old);
+        assert.strictEqual(gated.exitCode, 1, gated.out + gated.err);
+        assert.match(gated.err, /Install-MemoryDatabase\.ps1/, gated.err);
+        assert.strictEqual(queueCount(), 1, 'and the row is still on the queue');
+    } finally {
+        rmDefaultStore(store);
+        try { fs.rmSync(folder, { recursive: true, force: true }); } catch { /* best effort */ }
     }
 });

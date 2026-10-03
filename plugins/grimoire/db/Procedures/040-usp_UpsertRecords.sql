@@ -49,9 +49,10 @@ BEGIN	-- PROCEDURE
 							moving in the same UPDATE into the caller's older store, created
 							where absent, with the deleted mark. A losing copy's older row
 							takes the deleted mark where it stands; where the caller holds
-							no live older row nothing is written. Every twin is named in the
-							answer with the sandbox whose copy won and the one whose copy
-							lost. After any of these, the caller's older row of the file key
+							no live older row nothing is written. A twin is named in the
+							answer, with the sandbox whose copy won and the one whose copy
+							lost, only by the call that retires a row for it, so a later
+							publish of the same losing copy names none. After any of these, the caller's older row of the file key
 							carries no live record.
 
 							A publish never undoes a database verb. A row whose [Origin] is
@@ -688,13 +689,17 @@ BEGIN	-- PROCEDURE
 				/* A Twin This Copy Loses: Its Live Older Row Takes the Deleted Mark Below, and Nothing Else is Written. */
 				;SET @Action = 'lost'
 
-				;INSERT INTO @Twins (
-					 [Name]
-					,[WinnerSandboxId]
-					,[LoserSandboxId]	)
-				SELECT	 [Name]				= @InName
-						,[WinnerSandboxId]	= @FleetPublisherId
-						,[LoserSandboxId]	= @SandboxId
+				/* The Twin is Named Only Where This Run Retires That Row; a Later Publish of the Same Losing Copy Resolves Nothing. */
+				;IF ( @OldRecordId IS NOT NULL AND @OldDeletedDt IS NULL )
+				BEGIN
+					;INSERT INTO @Twins (
+						 [Name]
+						,[WinnerSandboxId]
+						,[LoserSandboxId]	)
+					SELECT	 [Name]				= @InName
+							,[WinnerSandboxId]	= @FleetPublisherId
+							,[LoserSandboxId]	= @SandboxId
+				END
 			END
 
 			/************************************************************************************

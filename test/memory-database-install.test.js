@@ -2173,20 +2173,38 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 fs.appendFileSync(path.join(memDir, 'MEMORY.md'),
                     '- [' + name + '](' + name + '.md) - a record the live transport case published\n', 'utf8');
             }
+            // One type-tier record, which the publish's own inventory read
+            // lists and its embedding leg therefore embeds, long enough to
+            // take several chunks: the record the embedding assertions read.
+            const typeName = 'livetype-' + runId;
+            const typeDir = path.join(publishRoot, 'memory-types', typeName);
+            const typeBody = '# typed\n\n' + ('a typed sentence that repeats itself. '.repeat(400)) + '\n';
+            const typeChunks = client.chunkBody(typeBody).length;
+            assert.ok(typeChunks > 1, 'the typed record takes several chunks: ' + typeChunks);
+            fs.mkdirSync(typeDir, { recursive: true });
+            fs.writeFileSync(path.join(typeDir, 'typed-long.md'), typeBody, 'utf8');
+            fs.writeFileSync(path.join(typeDir, 'MEMORY.md'),
+                '# Memory\n- [typed-long](typed-long.md) - the type record the live transport case embeds\n', 'utf8');
 
             const clientConfig = {
                 server: SERVER, database: dbName, login: '', password: '',
                 timeoutMs: 30000, windowsAuth: true, trustServerCertificate: true,
                 embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
             };
-            const vectors = (texts) => ({
-                ok: true,
-                vectors: texts.map((text, at) => {
-                    const v = new Array(DIMENSIONS).fill(0);
-                    v[at % DIMENSIONS] = 1;
-                    return v;
-                })
-            });
+            // Every embedding call's texts, so the case can read how many
+            // chunks rode one call.
+            const embedCalls = [];
+            const vectors = (texts) => {
+                embedCalls.push(texts.length);
+                return {
+                    ok: true,
+                    vectors: texts.map((text, at) => {
+                        const v = new Array(DIMENSIONS).fill(0);
+                        v[at % DIMENSIONS] = 1;
+                        return v;
+                    })
+                };
+            };
 
             mapConnection('SCOTT-CLAUDE');
             const before = {
@@ -2213,11 +2231,11 @@ test('live lane: the installer against the local instance', { skip: live.skip },
 
             assert.strictEqual(result.ok, true, JSON.stringify(result));
             assert.deepStrictEqual(result.summary.failed, [], 'nothing may fail on the real transport');
-            assert.strictEqual(result.summary.added, 3, JSON.stringify(result.summary));
-            // The records land in the folder key's fleet store, which the
-            // publish's own inventory read, held to the sandbox's own rows, does
-            // not list, so its embedding leg sends them no vector.
-            assert.strictEqual(result.summary.embedded, 0, JSON.stringify(result.summary));
+            assert.strictEqual(result.summary.added, 4, JSON.stringify(result.summary));
+            // The project records land in the folder key's fleet store, which
+            // the publish's own inventory read, held to the sandbox's own rows,
+            // does not list, so its embedding leg embeds the type record alone.
+            assert.strictEqual(result.summary.embedded, 1, JSON.stringify(result.summary));
 
             // The bodies on the server are the bodies on disk, byte for byte,
             // which is what the ASCII escaping and the doubled quotes exist
@@ -2243,6 +2261,23 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 + " AND R.[Origin] = 'file' AND R.[DeletedDt] IS NULL;");
             assert.strictEqual(one(landed, 'landed'), '3');
 
+            // The type record's embeddings landed through the real procedure at
+            // the real width, one row per chunk, its several chunks riding one
+            // embedding call.
+            const counts = sqlOk([
+                "SELECT 'kittest-rows=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding E",
+                'INNER JOIN mem.Record R ON R.[RecordId] = E.[RecordId]',
+                'INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
+                "WHERE S.[Tier] = 'type' AND S.[Segment] = N'" + typeName + "' AND E.[ModelIdentity] = 'test-model';",
+                "SELECT 'kittest-dims=' + CAST(MIN(E.[Dimensions]) AS VARCHAR(10)) + ':' + CAST(MAX(E.[Dimensions]) AS VARCHAR(10)) FROM mem.Embedding E",
+                'INNER JOIN mem.Record R ON R.[RecordId] = E.[RecordId]',
+                'INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
+                "WHERE S.[Tier] = 'type' AND S.[Segment] = N'" + typeName + "';"
+            ].join('\n'));
+            assert.strictEqual(Number(one(counts, 'rows')), typeChunks, 'one embedding row per chunk: ' + one(counts, 'rows'));
+            assert.strictEqual(one(counts, 'dims'), DIMENSIONS + ':' + DIMENSIONS);
+            assert.ok(embedCalls.some((n) => n >= typeChunks), 'the record\'s chunks rode one call: ' + JSON.stringify(embedCalls));
+
             // The second run is the reader's own answer coming back through
             // the transport: every record sent again, every one unchanged,
             // nothing re-embedded.
@@ -2261,7 +2296,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 else process.env.KIT_MEMORY_ROOT_ALLOW_DATA = before.allow;
             }
             assert.strictEqual(second.ok, true, JSON.stringify(second));
-            assert.strictEqual(second.summary.unchanged, 3, JSON.stringify(second.summary));
+            assert.strictEqual(second.summary.unchanged, 4, JSON.stringify(second.summary));
             assert.strictEqual(second.summary.added, 0, JSON.stringify(second.summary));
             assert.strictEqual(second.summary.embedded, 0,
                 'the reader reported these as embedded, which is the tag parse working: ' + JSON.stringify(second.summary));
@@ -3397,6 +3432,11 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 const stored = JSON.parse(one(sqlOk("SELECT 'kittest-twins=' + [TwinMerges] FROM mem.PublishRun WHERE [PublishRunId] = "
                     + Number(run.value.publishRunId) + ';'), 'twins'));
                 assert.deepStrictEqual(stored.find((tw) => tw.name === names.scottWins).loser, 'NEO-CLAUDE', JSON.stringify(stored));
+                // A twins value that is not an array, a scalar or an object, is refused.
+                for (const twins of ['not a list', { name: 'x' }]) {
+                    const refused = call('usp_AppendPublishRun', '@p_Run = ' + lit(JSON.stringify({ started: '2026-10-03T00:00:00Z', twins })));
+                    assert.ok(refused.error && /twins must be a JSON array/.test(refused.error.message), JSON.stringify(refused));
+                }
             } finally {
                 mapConnection(null);
             }
@@ -3406,6 +3446,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 const again = upsertAs(sandbox, v7(rowsOf));
                 assert.ok(!again.error, JSON.stringify(again.error));
                 assert.strictEqual(again.value.changed + again.value.added, 0, sandbox + ': ' + JSON.stringify(again.value));
+                assert.deepStrictEqual(again.value.twins, [], sandbox + '\'s second upsert resolves no twin, so it names none');
                 assert.deepStrictEqual(rowsNamed(all), rows, sandbox + '\'s second upsert must change nothing');
             }
         });

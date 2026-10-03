@@ -102,7 +102,11 @@ BEGIN	-- PROCEDURE
 		;IF ( @StartedDt IS NULL )
 			THROW 50000, 'mem.usp_AppendPublishRun: the run needs a started timestamp.', 1
 
-		;IF ( @TwinMerges IS NOT NULL AND ISJSON(@TwinMerges, ARRAY) <> 1 )
+		/* Twins, Where Given, Must be an Array; OPENJSON Names a Scalar's Type, Which the AS JSON Read Above Takes as NULL. */
+		;IF EXISTS (	SELECT	NULL
+						FROM	OPENJSON(@p_Run) J
+						WHERE	J.[key] = 'twins'
+								AND J.[type] NOT IN ( 0, 4 )	)
 			THROW 50000, 'mem.usp_AppendPublishRun: twins must be a JSON array when given.', 1
 
 		/* A Run That Resolved No Twin Records None. */

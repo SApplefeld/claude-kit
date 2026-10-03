@@ -6022,6 +6022,7 @@ function usage(problem) {
         + '                        [--confirm-shared]\n'
         + '       memq decay-done\n'
         + '       memq db-sync [--again]\n'
+        + '                (once it has run, drains the queue; --again publishes the files again)\n'
         + '       memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]\n'
         + '                       [--segment <segment>]\n'
         + '       memq db-curate [--unapplied <days>] [--superseded] [--orphans]\n'
@@ -20493,14 +20494,16 @@ function cmdDecayDone(argv) {
 // for a publish and read silence would take the absence for success.
 //
 // The publish is the migration that copies this machine's files into the
-// database, and it runs once. A complete run writes the migration marker, and
-// a later run finding it prints it and sends nothing unless given --again, so
-// a second publish cannot put a file body back over a record a session has
-// since corrected. Run from a checkout whose project key is a git remote, the
-// verb then adopts that checkout's folder-name store into the remote key, so
-// the folder's records join the ones the same repository keeps on every other
-// machine. `options` carries a config and the client's boundary seams for an
-// in-process caller.
+// database, and it runs once. A complete run writes the migration marker. A
+// later run finding it prints it, sends no record, and drains the queue, so the
+// stamps a session queues keep landing; its exit code is the drain's. Given
+// --again, a run publishes the files once more, and a row the database has
+// already retired, by a verb, a twin merge or an adoption, stays retired: the
+// files are history from the first run on. Run from a checkout whose project
+// key is a git remote, a publish then adopts that checkout's folder-name store
+// into the remote key, so the folder's records join the ones the same
+// repository keeps on every other machine. `options` carries a config and the
+// client's boundary seams for an in-process caller.
 const MARKER_SHOWN_CAP = 2000;
 async function cmdDbSync(argv, options) {
     const opts = options || {};
@@ -20509,10 +20512,11 @@ async function cmdDbSync(argv, options) {
         if (a === '--again') again = true;
         else return usage('db-sync takes one option, --again');
     }
-    // The stand-down every store verb spells. This verb resolves no path from
-    // the working directory: the store root comes from the environment and the
-    // home directory, and the walk enumerates the store's own tiers. It is
-    // gated with the rest because it is the verb that spawns a client tool and
+    // The stand-down every store verb spells. The store root comes from the
+    // environment and the home directory, and the walk enumerates the store's
+    // own tiers; the working directory is read once, after the publish, for the
+    // project key the adoption moves the folder's records into. It is gated
+    // with the rest because it is the verb that spawns a client tool and
     // opens a socket, whether a caller runs it or `forget` spawns it, and a
     // child process inherits this process's working directory, so a publish
     // started on an unreachable share carries that share into every spawn it
@@ -20554,7 +20558,29 @@ async function cmdDbSync(argv, options) {
             + (marker.text === null
                 ? 'its marker could not be read: ' + shownText(marker.reason, DB_SYNC_REASON_CAP)
                 : shownText(marker.text.replace(/\s+/g, ' ').trim(), MARKER_SHOWN_CAP))
-            + '); nothing was sent, and db-sync --again publishes again\n');
+            + '); no record was sent. db-sync --again publishes the files again, and a row the database '
+            + 'has already retired stays retired\n');
+        // The queue drains under the marker, through the probe and the drain's
+        // own version gate, and the drain's end is the exit code.
+        const drained = memoryDatabase.drainOnly({ config: opts.config, deps: opts.deps });
+        if (drained.drain === undefined) {
+            process.stderr.write('memq: '
+                + shownText(memoryDatabase.standDownText(drained), DB_SYNC_REASON_CAP) + '\n');
+            process.exitCode = 1;
+            return;
+        }
+        const drain = drained.drain;
+        process.stdout.write('db-sync: ' + drain.drained + ' queue row(s) drained'
+            + (Number.isFinite(drain.remaining) && drain.remaining > 0
+                ? ', ' + drain.remaining + ' queue row(s) still on the queue' : '')
+            + (drain.rejected > 0 ? ', ' + drain.rejected
+                + ' queue row(s) the host would not record, so no row on the host holds them' : '')
+            + '\n');
+        if (drain.detail) {
+            process.stderr.write('memq: ' + shownText('the queue (' + (drain.cause || 'unclear') + '): '
+                + drain.detail, DB_SYNC_REASON_CAP) + '\n');
+        }
+        if (!drained.ok) process.exitCode = 1;
         return;
     }
     const result = await memoryDatabase.publish({ config: opts.config, deps: opts.deps });

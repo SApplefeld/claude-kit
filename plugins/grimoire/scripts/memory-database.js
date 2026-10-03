@@ -3275,6 +3275,32 @@ async function publish(options) {
     return { ok: true, summary };
 }
 
+// The queue drain alone, for `db-sync` under the migration marker, which sends
+// no record: the probe, then drainQueue under its own version gate, as
+// {ok, drain} or a stand-down. `ok` is whether the drain ran to its end. A
+// write lock another connection holds is contention, which the publish counts
+// as no failure either: the host took the rows and the next run's resend
+// inserts once.
+function drainOnly(options) {
+    const opts = options || {};
+    const loaded = opts.config ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath);
+    if (!loaded.ok) return { ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path };
+    const config = loaded.config;
+    const deps = opts.deps || {};
+    const probe = callProcedure(config, 'usp_Health', {},
+        { deps, budgetMs: PROBE_TIMEOUT_MS, killMs: PROBE_TIMEOUT_MS + SQLCMD_FLOOR_MS });
+    if (!probe.ok) return { ok: false, standDown: 'unreachable', detail: probe.detail };
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const drain = drainQueue(config, {
+        deps,
+        budgetMs: config.timeoutMs,
+        deadline: now() + RUN_BUDGET_MS,
+        schemaVersion: counted(probe.rows).schemaVersion
+    });
+    return { ok: drain.ok || Boolean(drain.contended), drain };
+}
+
 // Move the records a project folder's key holds into the remote key of the
 // checkout `db-sync` runs from, through mem.usp_AdoptProjectStore, as
 // {ok, adopted} with the procedure's own counts and names, or a stand-down.
@@ -3633,6 +3659,7 @@ module.exports = {
     collectOrphans,
     publish,
     adoptProjectStore,
+    drainOnly,
     summaryLine,
     standDownText
 };
