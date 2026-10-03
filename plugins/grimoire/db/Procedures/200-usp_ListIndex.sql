@@ -36,8 +36,7 @@ BEGIN	-- PROCEDURE
 							alone. Each row carries the three usage aggregates read from
 							mem.Usage over every sandbox's stamps: the last read stamp, the
 							last applied stamp, and the count of distinct days it was stamped
-							applied. One mem.QueryLog row is written before the result
-							returns, its digest a SHA-256 over the project key.
+							applied.
 
 							Returns one row per record, each one column [Json] holding
 							{recordId, tier, projectKey, typeName, name, description, tags,
@@ -58,8 +57,6 @@ BEGIN	-- PROCEDURE
 	********************************************************************************************/
 	;DECLARE @False				BIT				= 0
 			,@SandboxId			INT				= NULL
-			,@RowCount			INT				= 0
-			,@Digest			VARCHAR(64)		= NULL
 			,@ProjectKey		NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_ProjectKey)), '')
 
 	/* The Index, Created Unconditionally so an Outer Scope Cannot Plant One. */
@@ -81,11 +78,9 @@ BEGIN	-- PROCEDURE
 	)
 
 	/********************************************************************************************
-		RESOLVE THE CALLER, COLLECT THE INDEX, LOG AND RETURN.
+		RESOLVE THE CALLER, COLLECT THE INDEX AND RETURN.
 	********************************************************************************************/
 	;BEGIN TRY
-		;SELECT @Digest = CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', COALESCE(@ProjectKey, N'')), 2)
-
 		/* Resolve the Caller Once; an Unmapped Login Fills Nothing Below. */
 		;SELECT	@SandboxId = CS.[SandboxId]
 		FROM	mem.CallerSandbox() CS
@@ -125,22 +120,6 @@ BEGIN	-- PROCEDURE
 				AND (	(	V.[Tier] = 'project'
 							AND V.[ProjectKey] = @ProjectKey	)
 						OR V.[Tier] IN ('type', 'operator')	)
-
-		;SELECT	@RowCount = COUNT(*)
-		FROM	#Listed
-
-		/* Log the Call Before Returning; the Result Carries Every Sandbox's Rows for the Project. */
-		;INSERT INTO mem.QueryLog (
-			 [Login]
-			,[ProcedureName]
-			,[SandboxId]
-			,[ParametersDigest]
-			,[RowCount]		)
-		SELECT	 [Login]			= ORIGINAL_LOGIN()
-				,[ProcedureName]	= 'usp_ListIndex'
-				,[SandboxId]		= @SandboxId
-				,[ParametersDigest]	= @Digest
-				,[RowCount]			= @RowCount
 
 		/****************************************************************************************
 			DATASET 1: ONE ROW PER RECORD, WITH ITS USAGE AGGREGATES.

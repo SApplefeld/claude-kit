@@ -34,9 +34,9 @@ BEGIN	-- PROCEDURE
 							The record is named by its project key and its name, or, in the
 							version 6 shape, by the sandbox that owns its older store, that
 							store's segment and its name. The operator store takes a copy of
-							every field and every embedding, as a shared row with no stamp
-							id, and the project row is archived, never deleted. A name the
-							operator store already holds live is refused rather than
+							every field and every embedding, as a shared row, and the
+							project row is archived, never deleted. A name the operator
+							store already holds live is refused rather than
 							overwritten; a deleted operator row holding the same file key is
 							the row the copy is written into, since the file key is unique
 							in a store. The copy and the archive are one transaction, and the
@@ -202,7 +202,6 @@ BEGIN	-- PROCEDURE
 				,[CreatedOn]
 				,[Origin]
 				,[WrittenBySandboxId]
-				,[StampId]
 				,[Visibility]
 				,[LastPublishedBySandboxId]
 				,[LastPublishedDt]
@@ -227,7 +226,6 @@ BEGIN	-- PROCEDURE
 					,[CreatedOn]				= R.[CreatedOn]
 					,[Origin]					= R.[Origin]
 					,[WrittenBySandboxId]		= R.[WrittenBySandboxId]
-					,[StampId]					= NULL
 					,[Visibility]				= 'shared'
 					,[LastPublishedBySandboxId]	= R.[LastPublishedBySandboxId]
 					,[LastPublishedDt]			= R.[LastPublishedDt]
@@ -261,7 +259,6 @@ BEGIN	-- PROCEDURE
 					,[CreatedOn]				= R.[CreatedOn]
 					,[Origin]					= R.[Origin]
 					,[WrittenBySandboxId]		= R.[WrittenBySandboxId]
-					,[StampId]					= NULL
 					,[Visibility]				= 'shared'
 					,[LastPublishedBySandboxId]	= R.[LastPublishedBySandboxId]
 					,[LastPublishedDt]			= R.[LastPublishedDt]

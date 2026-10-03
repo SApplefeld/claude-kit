@@ -23,9 +23,16 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_AppendUsage
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.2
+		VERSION:	v1.3
 	*********************************************************************************************
-		NOTES:		v1.2 - 09/18/2026 - SCOTT APPLEFELD
+		NOTES:		v1.3 - 10/03/2026 - SCOTT APPLEFELD
+							An element may carry {projectKey}, which names a project's fleet
+							store: a project tier stamp carrying one resolves by that key and
+							the file key or name, in place of a segment, against a store that
+							belongs to no sandbox. A stamp naming its record by recordId
+							reaches a fleet row as it reaches any row the caller may see.
+
+					v1.2 - 09/18/2026 - SCOTT APPLEFELD
 							A failure unwinds only a transaction this procedure opened and
 							re-raises, so a caller's transaction stays the caller's to
 							unwind. Under an INSERT-EXEC, which holds a transaction of its
@@ -89,6 +96,7 @@ BEGIN	-- PROCEDURE
 		 [RecordIdIn]		BIGINT			NULL
 		,[Tier]				VARCHAR(20)		NULL
 		,[Segment]			NVARCHAR(400)	NULL
+		,[ProjectKey]		NVARCHAR(400)	NULL
 		,[Name]				NVARCHAR(200)	NULL
 		,[FileKey]			NVARCHAR(400)	NULL
 		,[Kind]				VARCHAR(10)		NULL
@@ -118,6 +126,7 @@ BEGIN	-- PROCEDURE
 			 [RecordIdIn]
 			,[Tier]
 			,[Segment]
+			,[ProjectKey]
 			,[Name]
 			,[FileKey]
 			,[Kind]
@@ -130,6 +139,7 @@ BEGIN	-- PROCEDURE
 										THEN NULL
 										ELSE NULLIF(LTRIM(RTRIM(J.[Segment])), '')
 								  END
+				,[ProjectKey]	= NULLIF(LTRIM(RTRIM(J.[ProjectKey])), '')
 				,[Name]			= NULLIF(LTRIM(RTRIM(J.[Name])), '')
 				,[FileKey]		= NULLIF(LTRIM(RTRIM(J.[FileKey])), '')
 				,[Kind]			= LOWER(LTRIM(RTRIM(J.[Kind])))
@@ -140,6 +150,7 @@ BEGIN	-- PROCEDURE
 				WITH (	 [RecordId]		BIGINT			'$.recordId'
 						,[Tier]			VARCHAR(20)		'$.tier'
 						,[Segment]		NVARCHAR(400)	'$.segment'
+						,[ProjectKey]	NVARCHAR(400)	'$.projectKey'
 						,[Name]			NVARCHAR(200)	'$.name'
 						,[FileKey]		NVARCHAR(400)	'$.fileKey'
 						,[Kind]			VARCHAR(10)		'$.kind'
@@ -166,11 +177,15 @@ BEGIN	-- PROCEDURE
 											AND V.[RecordId] = I.[RecordIdIn]	)
 										OR (	I.[RecordIdIn] IS NULL
 												AND V.[Tier] = I.[Tier]
-												AND EXISTS (	SELECT V.[Segment]
-																INTERSECT
-																SELECT I.[Segment]	)
-												AND (	V.[Tier] <> 'project'
-														OR V.[StoreSandboxId] = @SandboxId	)
+												AND (	(	I.[ProjectKey] IS NOT NULL
+															AND V.[Tier] = 'project'
+															AND V.[ProjectKey] = I.[ProjectKey]	)
+														OR (	I.[ProjectKey] IS NULL
+																AND EXISTS (	SELECT V.[Segment]
+																				INTERSECT
+																				SELECT I.[Segment]	)
+																AND (	V.[Tier] <> 'project'
+																		OR V.[StoreSandboxId] = @SandboxId	)	)	)
 												AND (	(	I.[FileKey] IS NOT NULL
 															AND V.[FileKey] = I.[FileKey]	)
 														OR (	I.[FileKey] IS NULL

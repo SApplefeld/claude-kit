@@ -2637,7 +2637,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         // One record's stored state, every column a write can move.
         const recordState = (recordId) => json(sqlOk([
             "SELECT 'kittest-row=' + (SELECT R.[Name], R.[Description], R.[Body], R.[BodyHash], R.[Tags], R.[Triggers], R.[Anchors],",
-            '  R.[Space], R.[IsPinned], R.[SupersedesName], R.[Author], R.[Origin], R.[Visibility], R.[WrittenBySandboxId], R.[StampId],',
+            '  R.[Space], R.[IsPinned], R.[SupersedesName], R.[Author], R.[Origin], R.[Visibility], R.[WrittenBySandboxId],',
             '  R.[IsArchived], R.[DeletedDt], R.[UpdatedDt], [StoreTier] = S.[Tier], [StoreSandboxId] = S.[SandboxId], [StoreSegment] = S.[Segment], S.[ProjectKey]',
             '  FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId] WHERE R.[RecordId] = ' + Number(recordId),
             '  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);'
@@ -2769,11 +2769,15 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.ok(unmapped.error && unmapped.error.message.includes('maps to no sandbox'), JSON.stringify(unmapped));
                 assert.strictEqual(rowsNamed('unmapped-' + runId), 0);
 
-                // The index the skip reads, from the catalog.
+                // The index the skip reads, from the catalog: the stamp ledger's,
+                // unique over the sandbox and the stamp, and none left on the
+                // record row.
                 const index = sqlOk("SELECT 'kittest-ix=' + CAST(I.[is_unique] AS VARCHAR(1)) + ':' + COALESCE(I.[filter_definition], '<none>') FROM sys.indexes I"
-                    + " WHERE I.[object_id] = OBJECT_ID('mem.Record') AND I.[name] = 'IX_Record_WrittenBySandboxId_StampId';");
-                assert.strictEqual(one(index, 'ix'), '1:([StampId] IS NOT NULL)');
-                assert.strictEqual(indexKeyOf('mem.Record', 'IX_Record_WrittenBySandboxId_StampId'), 'WrittenBySandboxId,StampId');
+                    + " WHERE I.[object_id] = OBJECT_ID('mem.RecordStamp') AND I.[name] = 'IX_RecordStamp_WrittenBySandboxId_StampId';");
+                assert.strictEqual(one(index, 'ix'), '1:<none>');
+                assert.strictEqual(indexKeyOf('mem.RecordStamp', 'IX_RecordStamp_WrittenBySandboxId_StampId'), 'WrittenBySandboxId,StampId');
+                const column = sqlOk("SELECT 'kittest-col=' + CASE WHEN COL_LENGTH('mem.Record', 'StampId') IS NULL THEN 'absent' ELSE 'present' END;");
+                assert.strictEqual(one(column, 'col'), 'absent', 'the stamp lives in the ledger alone');
             } finally {
                 mapConnection(null);
             }
@@ -2951,9 +2955,14 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.deepStrictEqual(searchWith(', @p_ProjectKey = ' + lit(keyTwo)), sorted(seeded.two, seeded.type),
                     'the second project\'s scope, the mirror');
 
-                // Both scopes named at once is refused by name.
-                const both = call('usp_Search', "@p_QueryText = N'x', @p_Segment = N'a', @p_ProjectKey = N'b'");
-                assert.ok(both.error && both.error.number === 50000 && both.error.message.includes('not both'), JSON.stringify(both));
+                // Both scopes named at once answer through both predicates:
+                // a segment keeps only older-store project rows and a project
+                // key only fleet-store and shared-tier rows, so no fixture row,
+                // and no row at all, is kept by both.
+                const both = call('usp_Search', "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10, @p_Segment = "
+                    + lit(segment) + ', @p_ProjectKey = ' + lit(keyOne), vectorPrelude(axis));
+                assert.ok(!both.error, 'a call naming both scopes is answered, never refused: ' + JSON.stringify(both.error));
+                assert.deepStrictEqual(both.value, [], 'no row sits in both kinds of store: ' + JSON.stringify(both.value));
 
                 // The version 6 shape: @p_Segment names an older store and
                 // answers its rows as version 6 did, the caller's own and the
@@ -2984,10 +2993,151 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.ok(!curator.error, JSON.stringify(curator.error));
             assert.strictEqual(curator.value.archivedRecordId, written.value.recordId);
             const copy = recordState(curator.value.recordId);
-            assert.deepStrictEqual({ tier: copy.StoreTier, key: copy.ProjectKey, body: copy.Body, anchors: copy.Anchors, archived: copy.IsArchived, stamp: copy.StampId },
-                { tier: 'operator', key: null, body: 'promote body', anchors: '["p.js"]', archived: false, stamp: null }, JSON.stringify(copy));
+            assert.deepStrictEqual({ tier: copy.StoreTier, key: copy.ProjectKey, body: copy.Body, anchors: copy.Anchors, archived: copy.IsArchived },
+                { tier: 'operator', key: null, body: 'promote body', anchors: '["p.js"]', archived: false }, JSON.stringify(copy));
             const source = recordState(written.value.recordId);
             assert.deepStrictEqual([source.IsArchived, source.DeletedDt], [true, null], 'the project row is archived, not deleted');
+        });
+
+        await t.test('a replayed stamp writes nothing after later writes to its record, stamped or not', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const base = (name) => ({ Tier: 'project', ProjectKey: keyOne, Name: name });
+                const ledgerRows = (stamp) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.RecordStamp WHERE [StampId] = N'"
+                    + stamp + "';"), 'n'));
+                const stored = (res) => {
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    assert.strictEqual(res.value.status, 'stored', JSON.stringify(res.value));
+                    return res.value.recordId;
+                };
+
+                // X: written with S1, replaced with S2, then S1 replayed with
+                // other arguments. X keeps S2's body.
+                const nameX = 'ledger-x-' + runId;
+                const s1 = crypto.randomUUID();
+                const s2 = crypto.randomUUID();
+                const x = stored(put({ ...base(nameX), Description: 'x one', Body: 'x body one', StampId: s1 }));
+                assert.strictEqual(stored(put({ ...base(nameX), Description: 'x two', Body: 'x body two', Replace: 1, StampId: s2 })), x);
+                const afterS2 = recordState(x);
+                assert.strictEqual(afterS2.Body, 'x body two');
+                const replayS1 = put({ ...base(nameX), Description: 'x replayed', Body: 'x body replayed', Anchors: '["r.js"]', Replace: 1, StampId: s1 });
+                assert.strictEqual(stored(replayS1), x, 'the replay answers with the record its stamp landed on');
+                assert.deepStrictEqual(recordState(x), afterS2, 'a replay of S1 after S2 writes nothing, and X keeps S2\'s body');
+
+                // Y: written with S3, replaced with no stamp, then S3 replayed.
+                const nameY = 'ledger-y-' + runId;
+                const s3 = crypto.randomUUID();
+                const y = stored(put({ ...base(nameY), Description: 'y one', Body: 'y body one', StampId: s3 }));
+                assert.strictEqual(stored(put({ ...base(nameY), Body: 'y body two', Replace: 1 })), y);
+                const afterUnstamped = recordState(y);
+                assert.strictEqual(afterUnstamped.Body, 'y body two');
+                const replayS3 = put({ ...base(nameY), Body: 'y body replayed', Replace: 1, StampId: s3 });
+                assert.strictEqual(stored(replayS3), y);
+                assert.deepStrictEqual(recordState(y), afterUnstamped, 'a replay of S3 after an unstamped write writes nothing');
+
+                // The ledger holds one row per stamp a stored write carried,
+                // the replays adding none.
+                assert.deepStrictEqual([ledgerRows(s1), ledgerRows(s2), ledgerRows(s3)], [1, 1, 1]);
+                // The control, withheld from the replays above: the same replace
+                // with a fresh stamp does write, so the silence is the ledger.
+                const fresh = put({ ...base(nameX), Body: 'x body three', Replace: 1, StampId: crypto.randomUUID() });
+                assert.strictEqual(stored(fresh), x);
+                assert.strictEqual(recordState(x).Body, 'x body three', 'a fresh stamp writes');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('an archived record counts as present, and a replace takes it back into the index', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const name = 'archived-replace-' + runId;
+                const base = { Tier: 'project', ProjectKey: keyOne, Name: name };
+                const listed = () => rowsAs(null, 'usp_ListIndex', paramsOf({ ProjectKey: keyOne })).rows.some((r) => r.name === name);
+                const written = put({ ...base, Description: 'to archive', Body: 'archived body' });
+                assert.ok(!written.error && written.value.status === 'stored', JSON.stringify(written));
+                assert.ok(listed(), 'the record lists before it is archived, the control for the absence below');
+                const archived = call('usp_ArchiveRecord', paramsOf(base));
+                assert.ok(!archived.error && archived.value.status === 'archived', JSON.stringify(archived));
+                assert.ok(!listed(), 'an archived record does not list');
+
+                const refused = put({ ...base, Description: 'no flag', Body: 'refused body' });
+                assert.ok(!refused.error, JSON.stringify(refused.error));
+                assert.deepStrictEqual({ status: refused.value.status, description: refused.value.description },
+                    { status: 'refused', description: 'to archive' }, 'an archived name is present, so a write without the flag is refused');
+                assert.strictEqual(recordState(written.value.recordId).Body, 'archived body');
+
+                const replaced = put({ ...base, Body: 'replaced body', Replace: 1 });
+                assert.ok(!replaced.error, JSON.stringify(replaced.error));
+                assert.deepStrictEqual({ status: replaced.value.status, recordId: replaced.value.recordId }, { status: 'stored', recordId: written.value.recordId });
+                const state = recordState(written.value.recordId);
+                assert.deepStrictEqual([state.IsArchived, state.Body], [false, 'replaced body']);
+                assert.ok(listed(), 'a replaced record lists again');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        await t.test('a fleet project row is listed on asking, embedded, stamped by its project key, and labelled by its writer', () => {
+            const name = 'fleet-sibling-' + runId;
+            const axis = 800;
+            mapConnection('SCOTT-CLAUDE');
+            const written = put({ Tier: 'project', ProjectKey: keyOne, Name: name, Description: 'a fleet row', Body: 'fleet body' });
+            assert.ok(!written.error && written.value.status === 'stored', JSON.stringify(written));
+            const id = written.value.recordId;
+            mapConnection('NEO-CLAUDE');
+            try {
+                // usp_ListRecords: absent by default, so the publish's own diff
+                // is unchanged, and present when the caller asks for the fleet.
+                const inventory = (includeFleet) => {
+                    const res = rowsAs(null, 'usp_ListRecords', "@p_ModelIdentity = 'test-model'" + (includeFleet ? ', @p_IncludeFleet = 1' : ''));
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    return res.rows;
+                };
+                assert.ok(!inventory(false).some((r) => r.recordId === id), 'the default inventory leaves the fleet row out');
+                const fleetRow = inventory(true).find((r) => r.recordId === id);
+                assert.ok(fleetRow, 'the inventory asked for the fleet lists the fleet row');
+                assert.deepStrictEqual({ tier: fleetRow.tier, segment: fleetRow.segment, embedded: fleetRow.embedded }, { tier: 'project', segment: null, embedded: false });
+
+                // usp_UpsertEmbeddings: NEO, which did not write the row, stores
+                // its vector through the procedure.
+                const embedded = call('usp_UpsertEmbeddings', "@p_Embeddings = N'" + JSON.stringify([{ recordId: id, chunkIndex: 0, chunkOffset: 0,
+                    chunkLength: 10, vector: JSON.parse(axisVector(axis)), model: 'test-model', dimensions: DIMENSIONS }]) + "'");
+                assert.ok(!embedded.error, JSON.stringify(embedded.error));
+                assert.deepStrictEqual(embedded.value, { inserted: 1, updated: 0, rejected: 0 }, 'a fleet row takes any mapped sandbox\'s vector');
+                assert.strictEqual(embeddingsOf(id), 1);
+                assert.strictEqual(inventory(true).find((r) => r.recordId === id).embedded, true);
+
+                // usp_AppendUsage: a project stamp names the fleet row by its
+                // project key and name. The same element with no key, which
+                // falls to the segment locator, finds no row and is rejected.
+                const usageRows = () => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage WHERE [RecordId] = " + id + ';'), 'n'));
+                const stamp = (extra) => call('usp_AppendUsage', "@p_Usage = N'" + JSON.stringify([{ tier: 'project', name, kind: 'read',
+                    at: '2026-10-01T00:00:00Z', stampId: crypto.randomUUID(), ...extra }]) + "'");
+                const byKey = stamp({ projectKey: keyOne });
+                assert.ok(!byKey.error, JSON.stringify(byKey.error));
+                assert.deepStrictEqual(byKey.value, { appended: 1, rejected: 0, skipped: 0 }, 'the project key locates the fleet row');
+                assert.strictEqual(usageRows(), 1);
+                const bySegment = stamp({});
+                assert.ok(!bySegment.error, JSON.stringify(bySegment.error));
+                assert.deepStrictEqual(bySegment.value, { appended: 0, rejected: 1, skipped: 0 }, 'with no key the fleet row is not located');
+                assert.strictEqual(usageRows(), 1);
+                const otherKey = stamp({ projectKey: keyTwo });
+                assert.deepStrictEqual(otherKey.value, { appended: 0, rejected: 1, skipped: 0 }, 'another project\'s key does not locate it');
+
+                // usp_Nearest and usp_Search label the row by the sandbox that
+                // wrote it, read here by NEO.
+                const nearest = call('usp_Nearest', nearestParams, vectorPrelude(axis));
+                assert.ok(!nearest.error, JSON.stringify(nearest.error));
+                const near = nearest.value.find((r) => r.recordId === id);
+                const searched = call('usp_Search', searchParams, vectorPrelude(axis));
+                assert.ok(!searched.error, JSON.stringify(searched.error));
+                const found = searched.value.find((r) => r.recordId === id);
+                assert.ok(near && found, JSON.stringify({ nearest: nearest.value, search: searched.value }));
+                assert.deepStrictEqual([near.sandbox, found.sandbox], ['SCOTT-CLAUDE', 'SCOTT-CLAUDE'], 'both procedures name the writer');
+            } finally {
+                mapConnection(null);
+            }
         });
 
         await t.test('the version 6 publish shape still lands in the sandbox\'s own older store as a file row', () => {
@@ -3071,7 +3221,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 assert.deepStrictEqual(after, { ...before, version: [CARRIED_SCHEMA_VERSION] },
                     'every row is kept, unchanged, and the version moves: ' + JSON.stringify({ before, after }));
                 const defaults = sqlOk("SELECT 'kittest-defaults=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record WHERE [Origin] = 'file' AND [IsPinned] = 0"
-                    + ' AND [Space] IS NULL AND [StampId] IS NULL;', v6Database);
+                    + ' AND [Space] IS NULL AND [WrittenBySandboxId] IS NULL;', v6Database);
                 assert.strictEqual(one(defaults, 'defaults'), '3', 'every kept row takes the new columns\' defaults');
 
                 const settled = runInstaller(v6Args);

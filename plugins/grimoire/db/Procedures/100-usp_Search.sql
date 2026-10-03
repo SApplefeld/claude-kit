@@ -43,8 +43,8 @@ BEGIN	-- PROCEDURE
 							scope a client not yet updated still sends: it keeps a project
 							row whose store names that segment and which is the caller's
 							own or shared, which is the answer the same call drew from
-							version 6's visible set. A call naming both is refused, since
-							no row sits in both kinds of store. With neither named, the
+							version 6's visible set. A call naming both keeps the rows both
+							predicates keep. With neither named, the
 							search ranks every row mem.udf_VisibleRecords serves, which is
 							every undeleted row. The digest input takes the project key
 							after the tag, empty where NULL, so a call that names none
@@ -208,9 +208,6 @@ BEGIN	-- PROCEDURE
 	;BEGIN TRY
 		;IF ( @p_Limit IS NULL OR @p_Limit <= 0 )
 			THROW 50000, 'mem.usp_Search: @p_Limit must be greater than zero.', 1
-
-		;IF ( @p_Segment IS NOT NULL AND @p_ProjectKey IS NOT NULL )
-			THROW 50000, 'mem.usp_Search: name @p_ProjectKey or the version 6 @p_Segment, not both.', 1
 
 		/* Serve an Oversized Request at the Ceiling. */
 		;SELECT @Limit = CASE WHEN @p_Limit > @MaxLimit THEN @MaxLimit ELSE @p_Limit END

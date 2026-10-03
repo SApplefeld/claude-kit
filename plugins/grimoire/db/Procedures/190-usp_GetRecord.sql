@@ -34,9 +34,7 @@ BEGIN	-- PROCEDURE
 							@p_TypeName, an operator record by neither. The row comes from
 							mem.udf_VisibleRecords for the sandbox mem.CallerSandbox()
 							resolves, so an unmapped login is answered with no row, and so is
-							a name the store does not hold live or archived. One mem.QueryLog
-							row is written before the result returns, its digest a SHA-256
-							over the tier, the key and the name.
+							a name the store does not hold live or archived.
 
 							Returns no row, or one row, one column [Json], holding {recordId,
 							tier, projectKey, typeName, name, description, body, tags,
@@ -57,20 +55,17 @@ BEGIN	-- PROCEDURE
 	********************************************************************************************/
 	;DECLARE @SandboxId			INT				= NULL
 			,@RecordId			BIGINT			= NULL
-			,@Digest			VARCHAR(64)		= NULL
 			,@Tier				VARCHAR(20)		= LOWER(LTRIM(RTRIM(@p_Tier)))
 			,@Name				NVARCHAR(200)	= NULLIF(LTRIM(RTRIM(@p_Name)), '')
 			,@ProjectKey		NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_ProjectKey)), '')
 			,@TypeName			NVARCHAR(400)	= NULLIF(LTRIM(RTRIM(@p_TypeName)), '')
 
 	/********************************************************************************************
-		RESOLVE THE CALLER AND THE ROW, LOG AND RETURN.
+		RESOLVE THE CALLER AND THE ROW, AND RETURN.
 	********************************************************************************************/
 	;BEGIN TRY
 		;IF ( @Name IS NULL OR @Tier IS NULL OR @Tier NOT IN ('project', 'type', 'operator') )
 			THROW 50000, 'mem.usp_GetRecord: @p_Name and a @p_Tier of project, type or operator are required.', 1
-
-		;SELECT @Digest = CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT(@Tier, N'|', @ProjectKey, N'|', @TypeName, N'|', @Name)), 2)
 
 		/* Resolve the Caller Once; an Unmapped Login Finds Nothing Below. */
 		;SELECT	@SandboxId = CS.[SandboxId]
@@ -87,19 +82,6 @@ BEGIN	-- PROCEDURE
 								SELECT @ProjectKey, @TypeName	)
 				AND V.[Name] = @Name
 		ORDER BY V.[IsArchived], V.[RecordId] DESC
-
-		/* Log the Call Before Returning; the Result Can Carry Another Sandbox's Row. */
-		;INSERT INTO mem.QueryLog (
-			 [Login]
-			,[ProcedureName]
-			,[SandboxId]
-			,[ParametersDigest]
-			,[RowCount]		)
-		SELECT	 [Login]			= ORIGINAL_LOGIN()
-				,[ProcedureName]	= 'usp_GetRecord'
-				,[SandboxId]		= @SandboxId
-				,[ParametersDigest]	= @Digest
-				,[RowCount]			= CASE WHEN @RecordId IS NULL THEN 0 ELSE 1 END
 
 		/****************************************************************************************
 			DATASET 1: THE RECORD.

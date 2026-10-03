@@ -47,22 +47,25 @@ BEGIN	-- PROCEDURE
 							an operator record by neither. The caller's sandbox comes from
 							mem.CallerSandbox() and an unmapped login is refused.
 
-							The readings, in order. A @p_StampId this sandbox's rows already
-							hold wins over every other reading: nothing is written and the
+							The readings, in order. A @p_StampId this sandbox already holds
+							in mem.RecordStamp wins over every other reading, however much
+							has been written to the record since: nothing is written and the
 							answer is stored, so a client resending a write it could not
 							confirm never meets its own write as a refusal. Otherwise, where
 							a live row of that name is in the store and @p_Replace is 0,
 							nothing is written and the answer is refused, carrying the
-							existing description. Where it is there and @p_Replace is 1, the
-							row is overwritten field by field: a NULL parameter keeps the
+							existing description. An archived row counts as there. Where it
+							is there and @p_Replace is 1, the row is overwritten field by
+							field and takes the archived flag off: a NULL parameter keeps the
 							column and a non-NULL one, an empty JSON array included, is the
 							new value, and the row's embeddings are deleted only where
 							@p_Body is non-NULL. Where no live row has the name, the record
 							is inserted, into the store's deleted row holding the same file
 							key where there is one, since the file key is unique in a store.
 
-							Every row written reads [Origin] memq and [Visibility] shared, and
-							carries the writing sandbox and the stamp id. [Tags], [Triggers]
+							Every row written reads [Origin] memq and [Visibility] shared and
+							carries the writing sandbox, and a stored write that carried a
+							stamp adds its row to mem.RecordStamp. [Tags], [Triggers]
 							and [Anchors] are JSON arrays. Two writes of one store, one name
 							or one stamp queue on the key range locks the lookups deciding
 							them take. Returns one row, one column [Json], holding
@@ -87,6 +90,7 @@ BEGIN	-- PROCEDURE
 			,@StoreId			INT				= NULL
 			,@RecordId			BIGINT			= NULL
 			,@ReuseRecordId		BIGINT			= NULL
+			,@Wrote				BIT				= 0
 			,@Status			VARCHAR(10)		= NULL
 			,@ExistingText		NVARCHAR(MAX)	= NULL
 			,@Tier				VARCHAR(20)		= LOWER(LTRIM(RTRIM(@p_Tier)))
@@ -138,12 +142,11 @@ BEGIN	-- PROCEDURE
 		****************************************************************************************/
 		;IF ( @StampId IS NOT NULL )
 		BEGIN
-			;SELECT	 @RecordId		= R.[RecordId]
-					,@ExistingText	= R.[Description]
+			;SELECT	 @RecordId		= RS.[RecordId]
 					,@Status		= 'stored'
-			FROM	mem.Record R WITH ( UPDLOCK, HOLDLOCK )
-			WHERE	R.[WrittenBySandboxId] = @SandboxId
-					AND R.[StampId] = @StampId
+			FROM	mem.RecordStamp RS WITH ( UPDLOCK, HOLDLOCK )
+			WHERE	RS.[WrittenBySandboxId] = @SandboxId
+					AND RS.[StampId] = @StampId
 		END
 
 		;IF ( @Status IS NULL )
@@ -223,16 +226,17 @@ BEGIN	-- PROCEDURE
 						,[Triggers]				= COALESCE(@p_Triggers, R.[Triggers])
 						,[Anchors]				= COALESCE(@p_Anchors, R.[Anchors])
 						,[IsPinned]				= COALESCE(@p_IsPinned, R.[IsPinned])
+						,[IsArchived]			= @False
 						,[Origin]				= 'memq'
 						,[Visibility]			= 'shared'
 						,[WrittenBySandboxId]	= @SandboxId
-						,[StampId]				= @StampId
 						,[UpdatedDt]			= @Now
 				FROM	mem.Record R
 				WHERE	R.[RecordId] = @RecordId
 
 				;SELECT	 @Status		= 'stored'
 						,@ExistingText	= NULL
+						,@Wrote			= @True
 			END
 
 			/************************************************************************************
@@ -278,7 +282,6 @@ BEGIN	-- PROCEDURE
 							,[Origin]				= 'memq'
 							,[Visibility]			= 'shared'
 							,[WrittenBySandboxId]	= @SandboxId
-							,[StampId]				= @StampId
 							,[DeletedDt]			= NULL
 							,[UpdatedDt]			= @Now
 					FROM	mem.Record R
@@ -303,7 +306,6 @@ BEGIN	-- PROCEDURE
 						,[CreatedOn]
 						,[Origin]
 						,[WrittenBySandboxId]
-						,[StampId]
 						,[Visibility]
 						,[CreatedDt]
 						,[UpdatedDt]			)
@@ -323,7 +325,6 @@ BEGIN	-- PROCEDURE
 							,[CreatedOn]			= CAST(@Now AS DATE)
 							,[Origin]				= 'memq'
 							,[WrittenBySandboxId]	= @SandboxId
-							,[StampId]				= @StampId
 							,[Visibility]			= 'shared'
 							,[CreatedDt]			= @Now
 							,[UpdatedDt]			= @Now
@@ -331,8 +332,21 @@ BEGIN	-- PROCEDURE
 					;SET @RecordId = SCOPE_IDENTITY()
 				END
 
-				;SET @Status = 'stored'
+				;SELECT	 @Status	= 'stored'
+						,@Wrote		= @True
 			END
+		END
+
+		/* Record the Stamp a Stored Write Carried, so a Resend of It Writes Nothing. */
+		;IF ( @Wrote = @True AND @StampId IS NOT NULL )
+		BEGIN
+			;INSERT INTO mem.RecordStamp (
+				 [WrittenBySandboxId]
+				,[StampId]
+				,[RecordId]		)
+			SELECT	 [WrittenBySandboxId]	= @SandboxId
+					,[StampId]				= @StampId
+					,[RecordId]				= @RecordId
 		END
 
 		/* Commit Only a Transaction This Procedure Opened. */

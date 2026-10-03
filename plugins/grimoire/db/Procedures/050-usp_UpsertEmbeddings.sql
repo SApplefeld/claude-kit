@@ -23,9 +23,14 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_UpsertEmbeddings
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.2
+		VERSION:	v1.3
 	*********************************************************************************************
-		NOTES:		v1.2 - 09/18/2026 - SCOTT APPLEFELD
+		NOTES:		v1.3 - 10/03/2026 - SCOTT APPLEFELD
+							A row of a project's fleet store, which belongs to no sandbox, is
+							every mapped sandbox's to embed, as a type or operator row is.
+							Another sandbox's older project store stays that sandbox's alone.
+
+					v1.2 - 09/18/2026 - SCOTT APPLEFELD
 							A row is written only where mem.udf_VisibleRecords hands its
 							record to the caller and that record is not another sandbox's
 							project row. A promoted project record is shared, so the
@@ -160,7 +165,8 @@ BEGIN	-- PROCEDURE
 							FROM	mem.udf_VisibleRecords(@SandboxId) V
 							WHERE	V.[RecordId] = I.[RecordId]
 									AND (	V.[Tier] <> 'project'
-											OR V.[StoreSandboxId] = @SandboxId	)	)
+											OR V.[StoreSandboxId] = @SandboxId
+											OR V.[StoreSandboxId] IS NULL	)	)
 
 		;SELECT	@Rejected = COUNT(*)
 		FROM	@Incoming I

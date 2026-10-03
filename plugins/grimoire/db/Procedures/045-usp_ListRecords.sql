@@ -14,6 +14,7 @@ GO
 	 PARAMETER NAME		DATATYPE		DEFAULT
 	*********************************************************************************************/
 	 @p_ModelIdentity	VARCHAR(200)
+	,@p_IncludeFleet	BIT				= 0
 )
 AS
 BEGIN	-- PROCEDURE
@@ -23,9 +24,17 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_ListRecords
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.1
+		VERSION:	v1.2
 	*********************************************************************************************
-		NOTES:		v1.1 - 09/18/2026 - SCOTT APPLEFELD
+		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
+							@p_IncludeFleet at 1 adds the rows of every project's fleet store,
+							which belongs to no sandbox, to the inventory, so a caller can find
+							the records any sandbox may embed there. At 0, the default, the
+							answer is the v1.1 one: the publish diffs it against this machine's
+							files, and a fleet row, which has no file and no segment, would read
+							there as a removal held back on every run.
+
+					v1.1 - 09/18/2026 - SCOTT APPLEFELD
 							Another sandbox's project rows are left out of the answer. A
 							promoted project record is shared but is not this publisher's to
 							embed or remove, and its file key can match one of this sandbox's
@@ -120,7 +129,9 @@ BEGIN	-- PROCEDURE
 								  END
 		FROM	mem.udf_VisibleRecords(@SandboxId) V
 		WHERE	(	V.[Tier] <> 'project'
-					OR V.[StoreSandboxId] = @SandboxId	)
+					OR V.[StoreSandboxId] = @SandboxId
+					OR (	V.[StoreSandboxId] IS NULL
+							AND COALESCE(@p_IncludeFleet, 0) = 1	)	)
 
 		;SELECT	@RowCount = COUNT(*)
 		FROM	#Listed

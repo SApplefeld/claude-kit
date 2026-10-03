@@ -17,10 +17,9 @@
 		memq		Written by mem.usp_PutRecord. A republish never overwrites one.
 
 	[WrittenBySandboxId] is the sandbox whose mem.usp_PutRecord call last wrote
-	the row, and [StampId] the identifier that call's client generated for it.
-	The unique index over the two together is what makes a resent write land
-	once: a call carrying a stamp its own sandbox's row already holds writes
-	nothing.
+	the row. The stamp ids those calls carried are held in mem.RecordStamp,
+	one row per stamp, so a later write never erases the record of an earlier
+	one.
 
 	VISIBILITY VALUES (fixed, lowercase):
 		private		A version 6 project store row, as its publisher wrote it.
@@ -61,7 +60,6 @@ BEGIN
 		,[CreatedOn]				DATE			NULL
 		,[Origin]					VARCHAR(10)		NOT NULL	DEFAULT('file')
 		,[WrittenBySandboxId]		INT				NULL
-		,[StampId]					NVARCHAR(64)	NULL
 
 		/* Visibility Fields */
 		,[Visibility]				VARCHAR(10)		NOT NULL
@@ -158,15 +156,6 @@ BEGIN
 END
 GO
 
-;IF NOT EXISTS(	SELECT	NULL
-				FROM	sys.columns C
-				WHERE	C.[object_id] = OBJECT_ID('mem.Record')
-						AND C.[name] = 'StampId' )
-BEGIN
-	;ALTER TABLE mem.Record ADD [StampId] NVARCHAR(64) NULL
-END
-GO
-
 -- Check for and Create the Record Fields' Constraints.
 ;IF NOT EXISTS(	SELECT	NULL
 				FROM	sys.check_constraints K
@@ -230,18 +219,5 @@ BEGIN
 	;CREATE NONCLUSTERED INDEX IX_Record_StoreId_Name
 		ON mem.Record (	 [StoreId]
 						,[Name]	)
-END
-GO
-
--- Check for and Create IX_Record_WrittenBySandboxId_StampId.
-;IF NOT EXISTS(	SELECT	NULL
-				FROM	sys.indexes I
-				WHERE	I.[object_id] = OBJECT_ID('mem.Record')
-						AND I.[name] = 'IX_Record_WrittenBySandboxId_StampId' )
-BEGIN
-	;CREATE UNIQUE NONCLUSTERED INDEX IX_Record_WrittenBySandboxId_StampId
-		ON mem.Record (	 [WrittenBySandboxId]
-						,[StampId]	)
-		WHERE [StampId] IS NOT NULL
 END
 GO

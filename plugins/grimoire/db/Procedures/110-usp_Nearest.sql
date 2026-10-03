@@ -26,9 +26,14 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Nearest
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.1
+		VERSION:	v1.2
 	*********************************************************************************************
-		NOTES:		v1.1 - 09/21/2026 - SCOTT APPLEFELD
+		NOTES:		v1.2 - 10/03/2026 - SCOTT APPLEFELD
+							A row from a project's fleet store, which belongs to no sandbox,
+							names the sandbox that last wrote it through mem.usp_PutRecord as
+							its [sandbox], the label mem.usp_Search gives the same row.
+
+					v1.1 - 09/21/2026 - SCOTT APPLEFELD
 							@p_IncludeArchived admits archived records to the scan. At 0,
 							the default, only live records are ranked. At 1, archived
 							records rank beside live ones on the same best-chunk distance
@@ -145,7 +150,7 @@ BEGIN	-- PROCEDURE
 					,[fileKey]		= V.[FileKey]
 					,[tier]			= V.[Tier]
 					,[segment]		= V.[Segment]
-					,[sandbox]		= COALESCE(SS.[Name], PS.[Name])
+					,[sandbox]		= COALESCE(SS.[Name], WS.[Name], PS.[Name])
 					,[visibility]	= V.[Visibility]
 					,[description]	= V.[Description]
 					,[archived]		= V.[IsArchived]
@@ -156,6 +161,8 @@ BEGIN	-- PROCEDURE
 						ON V.[RecordId] = N.[RecordId]
 					LEFT JOIN mem.Sandbox SS
 						ON SS.[SandboxId] = V.[StoreSandboxId]
+					LEFT JOIN mem.Sandbox WS
+						ON WS.[SandboxId] = V.[WrittenBySandboxId]
 					LEFT JOIN mem.Sandbox PS
 						ON PS.[SandboxId] = V.[LastPublishedBySandboxId]
 			ORDER BY N.[NeighbourRank]
