@@ -32,7 +32,7 @@ This skill owns the capture bar. The doctrine's capture bullet carries its core:
 
 The machine-coordinator seat and the kit repo's expert seat each hold the operator's standing authority to disposition the inbox, with no per-note operator round. A pass is attended when it runs on an explicit ask, an accepted end-of-effort or session-start offer, or a pending brief, and an attended pass adds the operator's half of the retro.
 
-The standing authority never widens the capture bar. A materially consequential disposition goes to the operator as a decision ask. A dispatched disposition lands as an artifact in the repo that owns the work, never an instruction to a session on a seat's say-so.
+The standing authority never widens the capture bar. A materially consequential disposition goes to the operator as a decision ask. A dispatched disposition lands as an artifact in the repo that owns the work and reaches a worker as a dispatch under the role skill's chain, per the coordinator skill's dispatch-and-redirect rule.
 
 1. **Gather.**
    - In the kit repo, `git pull` first so every machine's notes merge, and read the lane off its output: `Already up to date` or `Fast-forward` opens the pass on the targeted lane, while a reported merge runs the whole gate over the merged tree with the contention lane beside it before the pass changes anything.

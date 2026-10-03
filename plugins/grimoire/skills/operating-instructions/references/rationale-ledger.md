@@ -3218,7 +3218,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with C035 retired to P001). Redrafted on 2026-09-26 by section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `8954074c` with its fix round at `bac21117`, so every live entry's `passage:` line quotes the text at `bac21117`. Amended on 2026-10-01 by section 2 of `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, which applied the cut file `tools/corpus-compression/mechanism-cut-2026-09-30.json`: row 995 dropped the pointer-and-copy column, each live entry's `passage:` line quotes the text that section landed, C002, C004 and P001 read `verdict: retire` naming their rows, and M001 below carries the legend C004 split into.
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with C035 retired to P001). Redrafted on 2026-09-26 by section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `8954074c` with its fix round at `bac21117`, so every live entry's `passage:` line quotes the text at `bac21117`. Amended on 2026-10-01 by section 2 of `docs/plans/claude-kit_mechanism-cut_spec_v1.md`, which applied the cut file `tools/corpus-compression/mechanism-cut-2026-09-30.json`: row 995 dropped the pointer-and-copy column, each live entry's `passage:` line quotes the text that section landed, C002, C004 and P001 read `verdict: retire` naming their rows, and M001 below carries the legend C004 split into. Amended by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1 on 2026-10-02 (`D` entries below, the two rows it added under Coordination and Seats).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -4074,6 +4074,24 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: keep
 - reason: This is how the table is read at all, and the doctrine's one-owner bullet reads its owner column; C004 retired with the third column it described.
 - passage: A moment is the situation a session is in. Its owner is the document whose text is the rule there.
+
+### D001
+- key: Own the coordinator seat on a fleet under the persona plugin between the plugin's coordinator instruction (record mechanics) and the `coordinator` skill (the seat's bounds), the instruction governing the record and the skill the bound.
+- class: pointer
+- source: plugins/grimoire/skills/operating-instructions/references/ownership-map.md:86
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: Two documents speak to the moment, so the row states the precedence rather than leaving it under Unowned or contested: the plugin's instruction owns how a record is written and counted, and the coordinator skill's Dispatch and Redirect Rule owns what a dispatch or redirect may do (its ledger's B001 to B005).
+- passage: | The coordinator seat on a fleet under the persona plugin: dispatching a plan to a persona worker, tracking it and redirecting it | the persona plugin's coordinator instruction for the record mechanics, and `coordinator` (Dispatch and Redirect Rule) for the seat's bounds; the instruction governs the record and the skill governs the bound |
+
+### D002
+- key: Own what a worker's push, deploy, settings edit or commit-model change is on a delegated seat's steer under the `role` skill's delegation model.
+- class: pointer
+- source: plugins/grimoire/skills/operating-instructions/references/ownership-map.md:87
+- provenance: the operator's ruling of 2026-10-02 on the coordinator persona's relay thread, relayed by the coordinator persona and quoted in the plan's `## Intent`, landed by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1.
+- verdict: keep
+- reason: The steer's reach was the one moment the persona plugin's instruction and the role skill's exclusions read differently, and the operator ruled for the plugin's wider reading, so the row assigns the moment to the role skill, whose delegation model the plan's section 3 brings to that reading, rather than recording a contest.
+- passage: | What a worker's act is on a delegated seat's steer: a push, a deploy, a settings edit or a commit-model change | `role` (the delegation model) |
 
 ## plugins/grimoire/output-styles/kit.md
 

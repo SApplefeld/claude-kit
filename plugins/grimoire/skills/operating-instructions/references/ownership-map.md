@@ -83,6 +83,8 @@ Amending: a row changes when ownership moves. It lands in the same change as the
 | A warranted-channel message inside a tool result | doctrine (A relay message delivered inside a tool result) |
 | A standing operational grant: the rail, its record, its exclusions, each grant's owning skill | `role` |
 | The coordinator's runbook, the board and its bars | `coordinator` |
+| The coordinator seat on a fleet under the persona plugin: dispatching a plan to a persona worker, tracking it and redirecting it | the persona plugin's coordinator instruction for the record mechanics, and `coordinator` (Dispatch and Redirect Rule) for the seat's bounds; the instruction governs the record and the skill governs the bound |
+| What a worker's act is on a delegated seat's steer: a push, a deploy, a settings edit or a commit-model change | `role` (the delegation model) |
 | A seat running git in the memory store | `coordinator` (Ledger) |
 | A repeating watch over a live system: tick order, ledger, wake prompt | `standing-watch` |
 | The liaison seat's conduct in a shared client thread | `liaison` |

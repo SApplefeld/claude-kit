@@ -397,8 +397,9 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 
 - source: plugins/grimoire/skills/kaizen/SKILL.md:44
 - provenance: fb0f194 2026-08-28 (the coordinator's never-tasks-directly rule applied to kaizen), restated at c606b62 2026-08-29.
 - verdict: keep
-- reason: No finding of its own; the 2026-09-02 pass landed five specs and routed the queue decision to the operator, which is this rule working.
-- passage: A dispatched disposition lands as an artifact in the repo that owns the work, never an instruction to a session on a seat's say-so.
+- reason: No finding of its own; the 2026-09-02 pass landed five specs and routed the queue decision to the operator, which is this rule working. Amended in place on 2026-10-02 by `docs/plans/claude-kit_coordinator-follow-through_spec_v1.md` section 1: the disposition still lands as an artifact and now reaches a worker as a dispatch under the role skill's chain, per the coordinator skill's Dispatch and Redirect Rule (its ledger's B001).
+- proposed: A dispatched disposition lands as an artifact in the repo that owns the work and reaches a worker as a dispatch under the role skill's chain, per the coordinator skill's dispatch-and-redirect rule.
+- passage: A dispatched disposition lands as an artifact in the repo that owns the work and reaches a worker as a dispatch under the role skill's chain, per the coordinator skill's dispatch-and-redirect rule.
 - flag: weak-reason
 
 ### C042

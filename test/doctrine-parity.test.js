@@ -2018,7 +2018,7 @@ test('the coordinator skill is tracked and carries what it is pointed at for', (
     // the four-functions test below, which is what reddens a surface left
     // stating the retired closed-at-three set.
     for (const lead of ['- **Operator interface.**',
-        '- **Cross-repo dependency and portfolio sequencing.**',
+        '- **Cross-repo dependency and portfolio dispatch and sequencing.**',
         '- **Machine-resource arbitration.**']) {
         assert.ok(body.includes(lead),
             'README\'s payload map promises the coordinator\'s functions '
@@ -2987,9 +2987,9 @@ test('the role skill still carries the standing-grant rail\'s exclusions and the
 // The coordinator seat carries no git prohibition of its own and no exception
 // to one: it runs under whatever governs every other session on this machine,
 // and what stands where the prohibition stood is the working principle it
-// hardened around, stated in the never-tasks-directly rule's own verbs: the
-// seat dispatches nothing, it produces artifacts and asks. Both
-// halves are pinned, because either alone passes on the wrong tree: a file
+// hardened around, stated in the dispatch-and-redirect rule's own verbs: the
+// seat dispatches plans, tracks them and redirects work in flight, and it
+// writes no worker's code. Both halves are pinned, because either alone passes on the wrong tree: a file
 // that reinstated the bar would still carry the principle, and one that
 // dropped the principle would still be silent under the sweep.
 //
@@ -3260,12 +3260,12 @@ test('the coordinator skill states no git prohibition and carries the workload p
     // that rule never reaches it.
     const boardWrite = sliceBetween(body, '**The board write.**', '\n',
         'the coordinator skill\'s board-write rule');
-    assert.ok(boardWrite.includes('the never-tasks-directly rule\'s own shape '
-        + 'and no second rule beside it: the seat dispatches nothing, it '
-        + 'produces artifacts and asks'),
+    assert.ok(boardWrite.includes('the dispatch-and-redirect rule\'s own shape '
+        + 'and no second rule beside it: the seat dispatches plans, tracks them '
+        + 'and redirects work in flight, and it writes no worker\'s code'),
         'the coordinator skill\'s board-write rule no longer states the '
         + 'workload principle the retired git prohibition hardened around, in '
-        + 'the verbs the never-tasks-directly rule itself uses, so the rule '
+        + 'the verbs the dispatch-and-redirect rule itself uses, so the rule '
         + 'either reads as a bare description of a file write or restates that '
         + 'rule loosely enough to stand beside it as a second, weaker one');
 
