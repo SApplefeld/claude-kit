@@ -264,3 +264,14 @@ corpus: 105549 words of cap 105550
   - Section 4 embeds with `@p_IncludeFleet = 1`.
   - Round 1 and round 2 adjudications are in `.kit/scratch/memory-in-sql/s2/`. Refuted twice: the marker on a partial walk. Justified on the Intent's "the files are history from that run on": a held republish after an adoption retired the row, and a file deletion after the migration.
 - Next: verify the fix round, commit it, then run review round 3 with the full roster at fable, since round 2 carried a Critical that survived adjudication. Then the Minor close pass from `minors-section-2.md`, two security-model sentences in the main thread among them, and the close gate and Chapter 2.
+
+### Interim board 4 - 2026-10-03
+- Section 2, stage: review round 4 adjudicated, its fix round in flight. Commits since board 3, all pushed to `plans/memory-in-sql-run`: `18b95fe7` (round 2 fixes: the archive kept in every store, the adoption keys carried at 400), `08490392` (round 3 fixes: no memq row deleted by the adoption, case-sensitive key prefixes, the created date sent verbatim, three security-model sentences).
+- Live dispatch: the section 2 implementer (implementer-opus), asked for round 4's fixes. (1) An equal-body copy from another sandbox writes its fields only when not older than the fleet row. (2) `memq forget` under the migration marker spawns nothing and says the host row stays. Plus three folded Minors: the bare-prefix key refused, the held summary line, and the "stays retired" sentence.
+- Gate baseline: the targeted lane (memq, memory-database, the live install lane, size-ratchet, memq-grant) at `08490392`, SCOTT-CLAUDE local SQL Server, reads 1165 tests, 1163 pass, 0 fail, 2 skipped, exit 0.
+- Rulings since board 3:
+  - Fleet-row embedding stays with section 4, whose amendment now requires the body `usp_GetRecord` returns, never a local file. The round 2 fix-now lean failed on `usp_ListRecords`' output, which carries no project key or body hash for a fleet row.
+  - The adoption's run time against the 16-minute session-start re-spawn interval is deferred to section 3, which owns the db-refresh adopt call and the interval.
+  - Round 3 ran the full roster at fable after round 2's Critical. Round 4 ran one adversarial lens at opus and high effort through Workflow, since no correctness Critical survived round 3.
+  - Adjudications for rounds 3 and 4 are in `.kit/scratch/memory-in-sql/s2/`.
+- Next: verify the round 4 fix round, commit it, then review round 5, one adversarial lens at opus, which is the operator's backstop round for this section. Then the Minor close pass, the close gate and Chapter 2.
