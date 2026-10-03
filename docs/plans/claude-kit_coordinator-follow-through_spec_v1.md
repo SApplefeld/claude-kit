@@ -90,7 +90,7 @@ Acceptance:
 - The rationale ledger carries one entry per new claim in the file's form.
 - `node --test test/doctrine-parity.test.js test/size-ratchet.test.js` exits 0 from the repository root after `node plugins/grimoire/scripts/kit-size.js sync --repo . plugins/grimoire/skills/coordinator/SKILL.md plugins/grimoire/skills/coordinator/references/rationale-ledger.md`.
 
-Files in scope: `plugins/grimoire/skills/coordinator/SKILL.md`, `plugins/grimoire/skills/coordinator/references/rationale-ledger.md`, `test/size-budget.json`.
+Files in scope: `plugins/grimoire/skills/coordinator/SKILL.md`, `plugins/grimoire/skills/coordinator/references/rationale-ledger.md`, `test/size-budget.json`, `docs/security-model.md` (the step-5 re-open of section 1's document).
 
 Tests: the existing pins are the gate. No new test, for the reason section 1 gives.
 
@@ -183,4 +183,35 @@ test lines: 143383 of cap 143386 across 81 test files
 tests: 4117
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 corpus: 106200 words of cap 105304
+```
+
+### Chapter 2 - 2026-10-02
+Completed: 2. The operator-step shape and the source check
+Implemented By: implementer-opus (one dispatch, resumed once for the round-1 fix round); the `docs/security-model.md` sentence in the main thread
+Metrics: review rounds 1, closed major-closed; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 2 findings, 2 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: the add-decision lines, verbatim from `.kit/scratch/coordinator-follow-through/add-decisions-section-2.md`:
+- section 2 open: adds the operator-step shape to Etiquette and two sources plus the same-pass read to the Reconciliation Pass and the Operator interface bullet, each with a ledger entry; serves the Goal's second and third follow-through rules and section 2's acceptance bullets; adds no mechanism (prose, two reads the pass already performs by kind); size about 4 sentences plus 3 to 4 ledger entries; not building it leaves operator steps unshaped and reports carrying stale pull request and worker state.
+- r1 Major unscreened workdir (adv, coordinator:59; security copy covered by it): give the goal-tree read's `workdir` the peer-sessions path screen the pull request read already takes, an unplaceable one reported unread and that worker's state as cannot measure; serves section 2 bullet 2's goal-tree source; adds no mechanism, since the screen exists and `docs/security-model.md:896` states it as the channel's property rather than one reader's; one clause plus the B018 passage; not fixing leaves a directory any local session can write opened unscreened at every pass.
+- r1 advisory Major gh identifier (sec, coordinator:59; relevance CONFIRM by the scope adjudicator on `docs/security-model.md` threat model lines 15, 17, 19, 23): name the read as `gh pr view <branch> --json state`, the branch passed as one argument and a value that is not a plain branch name reported unplaceable; serves section 2 bullet 2's pull request source; adds no mechanism, since the unplaceable outcome is the path screen's existing one applied to the identifier the same read takes; one clause plus the B017 passage; not fixing lets plan-doc text ride a command line on a seat running with permissions bypassed.
+- Ledger entries B016 to B019 continue this plan's B series under the coordinator heading. B018's provenance cites the persona plugin's own source, `hooks/index.ts:2310` and `:12541` and `bin/supervise-holder.sh:251` in the `agent_persona` repository at trunk `ebbabc9`, read in the main thread, rather than recording the claim as uncheckable.
+- Approval drift: section 2's `Files in scope:` line gains `docs/security-model.md`, the step-5 re-open of a section 1 document. Its input-side control paragraph now names the two reads this section added under the same path screen.
+- The corpus cap: the section adds 233 corpus words (106200 to 106433, cap 105304), held with section 1's for the one operator ruling after section 3.
+- Probe pair: none run for this section. Its delta names no probe moment beyond section 1's `coordinator-cold-start-with-no-board`, and the finishing pass runs the probe set with `--touching` over the whole changeset.
+Failed approaches: none
+Assumptions: decided 2026-10-02 (source: the plan's Approach paragraph "The source check", section 2): the ledger entries continue the B series section 1 opened under the coordinator heading, B016 onward.
+Review Findings: review: adversarial, blind and security at fable, Agent tool (round 1); capacity reading before the round "fable capacity: scoped 45%, 7d 33%, 5h 83% (account 6, fetched 63s ago) -> dispatch"; the scope adjudicator's relevance ruling at fable after "fable capacity: scoped 46%, 7d 33%, 5h 87% (account 6, fetched 37s ago) -> dispatch". Majors: the unscreened `workdir` (adversarial) fixed; the corpus cap (blind, orchestrator-traced to bullet 4) held for the operator's ruling, justified-not-fixed until it lands. Advisory: the security lens's `workdir` Major covered by the adversarial one; its `gh pr view` identifier Major confirmed by the scope adjudicator and fixed. The fix delta is prose alone, so it owed no further round and took the author re-read: the Reconciliation Pass, Operator interface and Etiquette sentences and the B016 to B018 keys and passages, read against the findings. Minors: 7 fixed in the round's pass (the kit's goal CLI qualifier, the pull request set's naming, the command's own-composition clause, the provenance verb, B018's citations, the branch argument, the security model's input-side paragraph), 0 upgraded, 0 left.
+Stamps: adjudicated 1, stamped 0 (`forward-resource-arrangements-into-dispatch-briefs`, read at the dispatch; no arrangement was in effect, so it changed nothing built); window 2h, since Chapter 1.
+Gate: section-close lane, 2026-10-03 02:02Z, worktree `.kit/wt-cft` at `9bba95e9` plus the fix round and the security-model sentence, box clear of foreign runners by a poll before the run: `node --test` over doctrine-parity, size-ratchet, heading-shape, ledger-preamble-parity and review-loop-provenance, 246 tests, 245 pass, 1 fail, exit 1, the red being size-ratchet's "this repository is inside its size budget" on the corpus cap alone; 37.4 s wall clock. Baseline on the same lane at the first-green commit: 246, 245, 1, the same red. Tests added 0, retired 0, edited 0. `kit-size.js check` exit 1 on the corpus cap only.
+Next: 3
+Commit Model: Branch-and-PR
+Delta: 2026-10-03 02:02Z, worktree `.kit/wt-cft`, at `9bba95e9` plus this section's uncommitted fix round:
+```
+repository: wt-cft
+plugins/grimoire/skills/coordinator/SKILL.md: 7631 words, cap 7631, +73
+plugins/grimoire/skills/coordinator/references/rationale-ledger.md: 62100 words, cap 62100, +222
+words: 981408 of cap 981452 across 121 curated files
+test lines: 143383 of cap 143386 across 81 test files
+tests: 4117
+changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+corpus: 106433 words of cap 105304
 ```
