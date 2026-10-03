@@ -52,6 +52,7 @@ Provenance: written by the ARCHITECT persona, session 100aa4c7, on 2026-10-02, f
 - Every T-SQL file follows the `sql-style` skill: the banner header, leading commas, the shell-then-ALTER deployment, and a CATCH that logs and does not re-throw where the existing procedures do so.
 - No section deletes or renames a file under `~/.claude` on any machine, and no test fixture is pointed at a real home.
 - Every section's delta grows a file `test/size-budget.json` caps, so that file is in every section's scope and its line moves with the delta, under the size ratchet's own rule.
+- Section 2: a republish through `usp_UpsertRecords` never undoes what a database verb did. Beside never overwriting a row whose `Origin` is `memq`, it never un-archives or undeletes a row `usp_ArchiveRecord` archived or deleted, and never un-archives a project row `usp_PromoteRecord` moved into the operator store.
 
 ## Sections of Work
 
@@ -71,7 +72,7 @@ Acceptance:
 - `usp_PromoteRecord` under the curator login moves a project row into the operator store, archiving the project row, and refuses under a publisher login.
 - `node --test test/memory-database-install.test.js` is green against the baseline recorded before the section's first edit, with the new cases present and the prior count of checks not reduced.
 
-Files in scope: `plugins/grimoire/db/Schema/050-Store.sql`, `plugins/grimoire/db/Schema/060-Record.sql`, `plugins/grimoire/db/Procedures/030-udf_VisibleRecords.sql`, `100-usp_Search.sql`, `120-usp_PromoteRecord.sql`, `160-usp_Health.sql`, new `180-usp_PutRecord.sql`, `190-usp_GetRecord.sql`, `200-usp_ListIndex.sql`, `210-usp_ArchiveRecord.sql`, `plugins/grimoire/db/Security/010-Roles.sql`, `plugins/grimoire/db/Version/010-RecordSchemaVersion.sql`, `plugins/grimoire/db/Install-MemoryDatabase.ps1`, `plugins/grimoire/db/README.md`, `test/memory-database-install.test.js`, `test/size-budget.json`.
+Files in scope: `plugins/grimoire/db/Schema/050-Store.sql`, `plugins/grimoire/db/Schema/060-Record.sql`, `plugins/grimoire/db/Procedures/030-udf_VisibleRecords.sql`, `100-usp_Search.sql`, `120-usp_PromoteRecord.sql`, `160-usp_Health.sql`, new `180-usp_PutRecord.sql`, `190-usp_GetRecord.sql`, `200-usp_ListIndex.sql`, `210-usp_ArchiveRecord.sql`, folded at round 1: `045-usp_ListRecords.sql`, `050-usp_UpsertEmbeddings.sql`, `060-usp_AppendUsage.sql`, `110-usp_Nearest.sql` and new `plugins/grimoire/db/Schema/065-RecordStamp.sql`, `plugins/grimoire/db/Security/010-Roles.sql`, `plugins/grimoire/db/Version/010-RecordSchemaVersion.sql`, `plugins/grimoire/db/Install-MemoryDatabase.ps1`, `plugins/grimoire/db/README.md`, `test/memory-database-install.test.js`, `test/size-budget.json`.
 Tests: the replace refusal both ways and the keep-on-NULL rule, since a silent overwrite is the one loss the operator named and a field verb must not clobber; the stamp precedence, since the queue resends; the version 6 call shapes, since an un-updated machine keeps calling; the in-place upgrade keeping rows, since the host holds a thousand records with no other copy after plan 2.
 
 ### 2. The project key and the migration by republish
@@ -185,3 +186,11 @@ Tests: the worktree-local read, since the per-client worktrees are the case the 
 - Plan 2, retiring the file store, written after this plan is approved and named here when it exists.
 
 ## Chapters
+
+### Interim board 1 - 2026-10-03
+- Section 1 in its round 1 fix round. First green `20066ad6` on `plans/memory-in-sql-run` (worktree `.kit/wt-mis`), pushed. Status moved Ready to In Progress.
+- Live dispatches: the section 1 implementer (opus), resumed with the round 1 fix brief: a stamp ledger table in new `db/Schema/065-RecordStamp.sql` so a replay survives a later write; replace un-archives; `usp_ListRecords`, `usp_UpsertEmbeddings`, `usp_AppendUsage` and `usp_Nearest` serve fleet-store rows; the both-scopes refusal in `usp_Search` removed. A scope-adjudicator relevance ruling on the security finding that five sentences of `docs/security-model.md` (:160, :164, :166, :172, :174) no longer match the schema.
+- Baselines: whole gate at `b1c83e96`, worktree `.kit/wt-mis`, 2026-10-03 14:15Z to 14:24Z: 4378 tests, 4367 pass, 1 fail, 10 skipped, exit 1, the red `kit-sidecar-memory-index.test.js:37` (linked-worktree red). Live lane before section 1's first edit: 48 tests, 47 pass, 1 skipped, exit 0. Targeted lane at `20066ad6` (install, memory-database, size-ratchet): 278 tests, 276 pass, 2 skipped, exit 0.
+- Rulings since the start: design stop on the both-scopes guard, REFUSE on form by the scope adjudicator (fix written within the bullet's two-predicate form); design stop on `mem.QueryLog` rows in `usp_GetRecord` and `usp_ListIndex`, ASK by the scope adjudicator, put to the operator on the relay 2026-10-03 with option A (keep the logging) recommended; the rows stay as built until the answer. Section 1's Files in scope widened by folds; a Standing Brief Amendment adds the republish's archive and promote guard to section 2.
+- Advisory: the fleet-wide soft delete through `usp_ArchiveRecord` refused (project memories are fleet-wide by the Goal; a publisher may already rewrite any shared body, `db/README.md:58`; the delete is reversible), its trust to be stated in the security document beside the body-rewrite sentence.
+- Next: adjudicate the fix round, write the security document's five sentences on a CONFIRM, run the round 2 review, the Minor pass, then close section 1. Section 2 follows.
