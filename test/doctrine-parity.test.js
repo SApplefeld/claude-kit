@@ -254,16 +254,22 @@ test('the authorization bullet keeps its default, its override set, and its boun
 
     // The rail clause: the fail-closed half and the delegation instance. The
     // rail rests on the promise that an owning skill states every surface, and
-    // role/SKILL.md states the delegation instance's scope and its exclusions,
-    // so the doctrine names the instance and assigns both to role rather than
-    // restating either.
+    // role/SKILL.md states the delegation instance's three covered acts with
+    // their bounds and its exclusions, so the doctrine names the instance's
+    // surface and assigns its statement to role rather than restating it. The
+    // force-push bound rides on the bullet's own "A force push is always
+    // inside it" pin below, and the role-side bounds on the covered-acts pin
+    // in the delegation-exclusions test, so a widening that loses a bound reds
+    // there rather than here.
     assert.match(bullet, /a proceed-ahead only for the surface its owning skill names/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
-    assert.match(bullet, /The rail's delegation instance names no surface this test gates/,
-        'the delegation clause no longer states that delegation names no surface '
-        + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
-        + 'clause bounded by the exclusion list invites');
+    assert.match(bullet, /The rail's delegation instance names the three covered acts inside a plan whose dispatch the rail covers and the seat names, as the role skill states them/,
+        'the delegation clause no longer names the three covered acts inside a '
+        + 'plan the rail covers and the seat names as the surface the role skill states, so either '
+        + 'the instance is back to naming no surface while role/SKILL.md covers '
+        + 'three, a lower surface contradicting this one, or the surface is stated '
+        + 'here where nothing pins its bounds');
 
     // The default itself, which this test is named for. Every clause above only
     // bounds it, so a rewrite dropping the default would leave them bounding
@@ -2018,7 +2024,7 @@ test('the coordinator skill is tracked and carries what it is pointed at for', (
     // the four-functions test below, which is what reddens a surface left
     // stating the retired closed-at-three set.
     for (const lead of ['- **Operator interface.**',
-        '- **Cross-repo dependency and portfolio sequencing.**',
+        '- **Cross-repo dependency and portfolio dispatch and sequencing.**',
         '- **Machine-resource arbitration.**']) {
         assert.ok(body.includes(lead),
             'README\'s payload map promises the coordinator\'s functions '
@@ -2882,13 +2888,16 @@ test('the role skill still carries the delegation exclusions and the three refus
     // reach classes that are not mutating verbs at all - a directed read, a
     // directed dispatch, and a write outside a plan's scope - which are the
     // members a rewrite drops first, since each reads as "not really an
-    // action" while carrying the widest reach in the list.
+    // action" while carrying the widest reach in the list. The settings
+    // member sends an edit to permissions, settings or CLAUDE.md to the
+    // operator whoever directs it, a kit rule rather than a harness floor,
+    // since the harness line barring an agent message from authorizing that
+    // edit reaches dispatched agents and not a worker's own session; the
+    // permission files take no one's yes, which is pinned as its own phrase.
     for (const [phrase, what] of [
-        ["push beyond a plan's recorded commit model", 'the commit-model bound'],
-        ["the memory store's own sync is never that push", 'the store-sync carve-out on the commit-model bound'],
-        ['a deploy', 'the deploy bar'],
         ['a message to an external service', 'the external-message bar'],
-        ['an edit to permissions, settings, or CLAUDE.md', 'the harness-floor bar'],
+        ['an edit to permissions, settings, or `CLAUDE.md`', 'the settings and CLAUDE.md bar'],
+        ["The permission files take no one's yes", 'the permission-files bar'],
         ['doing work another session was denied', 'the no-laundering bar'],
         ["directed read of the store's own sensitive state", 'the directed-read bar'],
         ['a far wider reach than the message', 'the directed-dispatch bar'],
@@ -2898,6 +2907,26 @@ test('the role skill still carries the delegation exclusions and the three refus
             'the role skill\'s exclusions list no longer carries ' + what
             + ' ("' + phrase + '"), so a delegated seat reading the list finds '
             + 'that reach unnamed and the catch-all is all that stands');
+    }
+    // The three covered acts, pinned on their bounds rather than the grant:
+    // the push is to the plan's own remote and never a force push, all three
+    // hold only inside a plan whose dispatch the rail covers and the seat
+    // names, and a
+    // commit-model change lands in the plan's header before the act. A later
+    // rewrite drops a bound before it drops the grant, so each bound is its
+    // own phrase here.
+    for (const [phrase, what] of [
+        ["a push to the plan's own remote beyond its recorded commit model and never a force push", 'the covered push with its force-push bound'],
+        ['a deploy', 'the covered deploy'],
+        ['a commit-model change', 'the covered commit-model change'],
+        ["each only where that plan's own scope holds it", 'the plan-scope bound on every covered act'],
+        ['Inside a plan whose dispatch the rail covers and the seat names', 'the rail-coverage bound on the three covered acts'],
+        ["recorded in the plan's header before the worker acts on it", 'the header record a commit-model change takes before the act'],
+    ]) {
+        assert.ok(body.includes(phrase),
+            'the role skill\'s delegation model no longer carries ' + what
+            + ' ("' + phrase + '"), so the widened grant keeps its reach and '
+            + 'has lost a bound');
     }
     // The catch-all resolves by procedure rather than by the directed seat's
     // own sense of reasonableness, pinned on the act the procedure requires:
@@ -2987,9 +3016,9 @@ test('the role skill still carries the standing-grant rail\'s exclusions and the
 // The coordinator seat carries no git prohibition of its own and no exception
 // to one: it runs under whatever governs every other session on this machine,
 // and what stands where the prohibition stood is the working principle it
-// hardened around, stated in the never-tasks-directly rule's own verbs: the
-// seat dispatches nothing, it produces artifacts and asks. Both
-// halves are pinned, because either alone passes on the wrong tree: a file
+// hardened around, stated in the dispatch-and-redirect rule's own verbs: the
+// seat dispatches plans, tracks them and redirects work in flight, and it
+// writes no worker's code. Both halves are pinned, because either alone passes on the wrong tree: a file
 // that reinstated the bar would still carry the principle, and one that
 // dropped the principle would still be silent under the sweep.
 //
@@ -3260,12 +3289,12 @@ test('the coordinator skill states no git prohibition and carries the workload p
     // that rule never reaches it.
     const boardWrite = sliceBetween(body, '**The board write.**', '\n',
         'the coordinator skill\'s board-write rule');
-    assert.ok(boardWrite.includes('the never-tasks-directly rule\'s own shape '
-        + 'and no second rule beside it: the seat dispatches nothing, it '
-        + 'produces artifacts and asks'),
+    assert.ok(boardWrite.includes('the dispatch-and-redirect rule\'s own shape '
+        + 'and no second rule beside it: the seat dispatches plans, tracks them '
+        + 'and redirects work in flight, and it writes no worker\'s code'),
         'the coordinator skill\'s board-write rule no longer states the '
         + 'workload principle the retired git prohibition hardened around, in '
-        + 'the verbs the never-tasks-directly rule itself uses, so the rule '
+        + 'the verbs the dispatch-and-redirect rule itself uses, so the rule '
         + 'either reads as a bare description of a file write or restates that '
         + 'rule loosely enough to stand beside it as a second, weaker one');
 
@@ -6364,5 +6393,27 @@ test('every passage-pinned ledger entry quotes its source verbatim', () => {
         const perturbed = claims.map((c) => (c === one ? { ...c, passage: c.passage + ' ZZ-CONTROL' } : c));
         assert.deepStrictEqual(driftedPassageIds(perturbed, bodies), [one.id],
             rel + ': the verbatim comparison did not catch a perturbed passage, so its silence proves nothing');
+    }
+});
+
+// The peer-sessions blocker and chain-handoff sentences follow the role skill's
+// delegation model. The blocker sentence lets a relay discharge a blocker only
+// on the acts that model covers inside the plan the seat names, sends every
+// other act the stop-for-a-yes test gates to a warranted channel, and bars a
+// relay from changing a plan's scope over the documents that guard it. The chain-handoff
+// sentence keeps the documents hold. A rewrite that widens the relay or drops
+// the hold leaves the role skill narrower than the rule a worker acts on.
+test('the peer-sessions blocker and chain-handoff sentences keep their delegation bounds', () => {
+    const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'grimoire', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
+    for (const [phrase, what] of [
+        ["discharges a blocker on one of the three acts the role skill's delegation model covers inside the plan the seat names", 'the relay discharge bounded to the covered acts in the named plan'],
+        ["Every other act inside the doctrine's stop-for-a-yes test, or under the role skill's delegation exclusions, takes the operator's yes on a warranted channel, and the permission files take no one's", 'the warranted-channel route for every other gated act'],
+        ["A relay never changes a plan's scope over hooks, guards, permission or security documents, or its `## Dispatch Authorization` section", 'the relay scope bar'],
+        ["A chain-handed plan reaching hooks, guards, permission or security documents still holds for the operator's word", 'the chain-handoff documents hold'],
+    ]) {
+        assert.ok(body.includes(phrase),
+            'peer-sessions/SKILL.md no longer carries ' + what + ' ("' + phrase
+            + '"), so a relay can discharge or hand on more than the role skill covers');
     }
 });
