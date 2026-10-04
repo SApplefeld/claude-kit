@@ -41,9 +41,12 @@ BEGIN	-- PROCEDURE
 							of its file key and the caller's older store's row of it, both
 							compared under the database's collation, so two names differing
 							only in case are one record. Where the fleet store holds no row,
-							the caller's older row moves into it, keeping its usage and its
-							embeddings, or a new row is inserted. Where the fleet row is the
-							caller's own, it is updated or left unchanged as any row is.
+							the caller's live older row moves into it, keeping its usage,
+							and keeping its embeddings only where its name and body hash
+							are unchanged; otherwise a new row is inserted, and a deleted
+							older row stays where it is with its deleted mark. Where the
+							fleet row is the caller's own, it is updated or left unchanged
+							as any row is.
 							Where it is another sandbox's copy holding the same body, it is
 							updated or left unchanged the same way unless the caller's file
 							modification time is older than the row's; then nothing is
@@ -53,13 +56,20 @@ BEGIN	-- PROCEDURE
 							modification time wins, and a tie or a missing time keeps the
 							fleet row. A winning copy takes the fleet slot, the fleet row
 							moving in the same UPDATE into the caller's older store, created
-							where absent, with the deleted mark. A losing copy's older row
-							takes the deleted mark where it stands; where the caller holds
-							no live older row nothing is written. A twin is named in the
-							answer, with the sandbox whose copy won and the one whose copy
-							lost, only by the call that retires a row for it, so a later
-							publish of the same losing copy names none. After any of these,
-							the caller's older row of the file key carries no live record.
+							where absent, with the deleted mark. A losing copy is kept with
+							the deleted mark in the caller's older store, created where
+							absent: inserted where that store holds no row of the file key,
+							and written over the row it holds otherwise, a deleted row
+							keeping its deleted mark. A losing copy that any sandbox's older
+							store for the segment already keeps as a deleted row of the
+							file key with the same body hash, the winner's store where a
+							winning copy put it among them, is left as it is. A twin is named in
+							the answer, with the sandbox whose copy won and the one whose
+							copy lost, only by the call that writes a row for it, so a later
+							publish of the same losing copy names none and a losing copy
+							whose body changed is named again. After any of these, the
+							caller's older row of the file key carries no live record, and
+							the fleet store holds no deleted row a publish wrote.
 
 							A publish never undoes a database verb. A row whose [Origin] is
 							memq is never written, and neither is a fleet row carrying the
@@ -617,14 +627,16 @@ BEGIN	-- PROCEDURE
 			************************************************************************************/
 			;IF ( @FleetRecordId IS NULL )
 			BEGIN
-				/* No Fleet Row: the Older Row Moves In, Keeping Its Archive, or a New Row is Inserted. */
-				;IF ( @OldRecordId IS NOT NULL )
-					SELECT	 @Action			= 'write'
+				/* No Fleet Row: a Live Older Row Moves In, Keeping Its Archive; Otherwise a New Row is Inserted and a Deleted Older Row Stays as It Is. */
+				;IF ( @OldRecordId IS NOT NULL AND @OldDeletedDt IS NULL )
+				BEGIN
+					;SELECT	 @Action			= 'write'
 							,@WriteRecordId		= @OldRecordId
 							,@WriteIsArchived	= CASE WHEN @OldIsArchived = @True THEN @True ELSE @InIsArchived END
-				ELSE
-					SELECT	 @Action			= 'insert'
+				END ELSE BEGIN
+					;SELECT	 @Action			= 'insert'
 							,@WriteIsArchived	= @InIsArchived
+				END
 			END
 			ELSE IF ( @FleetOrigin = 'memq' OR @FleetDeletedDt IS NOT NULL )
 			BEGIN
@@ -658,10 +670,12 @@ BEGIN	-- PROCEDURE
 										INNER JOIN mem.Record R
 											ON R.[RecordId] = @FleetRecordId
 								WHERE	I.[Ordinal] = @Ordinal	)
-					SET @Action = 'stamp'
-				ELSE
-					SELECT	 @Action		= 'write'
+				BEGIN
+					;SET @Action = 'stamp'
+				END ELSE BEGIN
+					;SELECT	 @Action		= 'write'
 							,@WriteRecordId	= @FleetRecordId
+				END
 			END
 			ELSE IF (	@InModifiedDt IS NOT NULL
 						AND @FleetModifiedDt IS NOT NULL
@@ -717,12 +731,115 @@ BEGIN	-- PROCEDURE
 			END
 			ELSE
 			BEGIN
-				/* A Twin This Copy Loses: Its Live Older Row Takes the Deleted Mark Below, and Nothing Else is Written. */
+				/* A Twin This Copy Loses: the Losing Copy is Kept Deleted in the Caller's Older Store, Created Where Absent, and the Twin is Named. */
 				;SET @Action = 'lost'
 
-				/* The Twin is Named Only Where This Run Retires That Row; a Later Publish of the Same Losing Copy Resolves Nothing. */
-				;IF ( @OldRecordId IS NOT NULL AND @OldDeletedDt IS NULL )
+				/* A Losing Copy an Older Store of the Segment Already Keeps Deleted, the Winner's Among Them, is Neither Written Nor Named Again. */
+				;IF NOT EXISTS (	SELECT	NULL
+									FROM	mem.Record R
+											INNER JOIN mem.Store S
+												ON S.[StoreId] = R.[StoreId]
+									WHERE	S.[SandboxId] IS NOT NULL
+											AND S.[Tier] = 'project'
+											AND S.[Segment] = @Segment
+											AND S.[ProjectKey] IS NULL
+											AND R.[FileKey] = @FileKey
+											AND R.[DeletedDt] IS NOT NULL
+											AND R.[BodyHash] = @InBodyHash	)
 				BEGIN
+					;IF ( @OldStoreId IS NULL )
+					BEGIN
+						;INSERT INTO mem.Store (
+							 [SandboxId]
+							,[Tier]
+							,[Segment]	)
+						SELECT	 [SandboxId]	= @SandboxId
+								,[Tier]			= 'project'
+								,[Segment]		= @Segment
+
+						;SET @OldStoreId = SCOPE_IDENTITY()
+					END
+
+					;IF ( @OldRecordId IS NULL )
+					BEGIN
+						;INSERT INTO mem.Record (
+							 [StoreId]
+							,[Name]
+							,[FileKey]
+							,[Description]
+							,[Body]
+							,[BodyHash]
+							,[FileModifiedDt]
+							,[Machine]
+							,[Tags]
+							,[SupersedesName]
+							,[IsArchived]
+							,[Triggers]
+							,[Anchors]
+							,[IsPinned]
+							,[CreatedOn]
+							,[Author]
+							,[Visibility]
+							,[LastPublishedBySandboxId]
+							,[LastPublishedDt]
+							,[DeletedDt]				)
+						SELECT	 [StoreId]					= @OldStoreId
+								,[Name]						= I.[Name]
+								,[FileKey]					= I.[FileKey]
+								,[Description]				= I.[Description]
+								,[Body]						= I.[Body]
+								,[BodyHash]					= I.[BodyHash]
+								,[FileModifiedDt]			= I.[FileModifiedDt]
+								,[Machine]					= I.[Machine]
+								,[Tags]						= I.[Tags]
+								,[SupersedesName]			= I.[SupersedesName]
+								,[IsArchived]				= @InIsArchived
+								,[Triggers]					= I.[Triggers]
+								,[Anchors]					= I.[Anchors]
+								,[IsPinned]					= COALESCE(I.[IsPinned], @False)
+								,[CreatedOn]				= I.[CreatedOn]
+								,[Author]					= I.[Author]
+								,[Visibility]				= 'private'
+								,[LastPublishedBySandboxId]	= @SandboxId
+								,[LastPublishedDt]			= @Now
+								,[DeletedDt]				= @Now
+						FROM	@Incoming I
+						WHERE	I.[Ordinal] = @Ordinal
+					END ELSE BEGIN
+						/* The Older Row Takes the Losing Copy, a Deleted One Keeping Its Mark; a Changed Body or Name Drops the Old Vectors. */
+						;DELETE E
+						FROM	mem.Embedding E
+								INNER JOIN mem.Record R
+									ON R.[RecordId] = E.[RecordId]
+						WHERE	E.[RecordId] = @OldRecordId
+								AND (	R.[BodyHash] <> @InBodyHash
+										OR R.[Name] <> @InName	)
+
+						;UPDATE R
+						SET		 [Name]						= I.[Name]
+								,[Description]				= I.[Description]
+								,[Body]						= I.[Body]
+								,[BodyHash]					= I.[BodyHash]
+								,[FileModifiedDt]			= I.[FileModifiedDt]
+								,[Machine]					= I.[Machine]
+								,[Tags]						= I.[Tags]
+								,[SupersedesName]			= I.[SupersedesName]
+								,[IsArchived]				= CASE WHEN R.[IsArchived] = @True THEN @True ELSE @InIsArchived END
+								,[Triggers]					= COALESCE(I.[Triggers], R.[Triggers])
+								,[Anchors]					= COALESCE(I.[Anchors], R.[Anchors])
+								,[IsPinned]					= COALESCE(I.[IsPinned], R.[IsPinned])
+								,[CreatedOn]				= COALESCE(I.[CreatedOn], R.[CreatedOn])
+								,[Author]					= COALESCE(I.[Author], R.[Author])
+								,[LastPublishedBySandboxId]	= @SandboxId
+								,[LastPublishedDt]			= @Now
+								,[DeletedDt]				= COALESCE(R.[DeletedDt], @Now)
+								,[UpdatedDt]				= @Now
+						FROM	mem.Record R
+								INNER JOIN @Incoming I
+									ON I.[Ordinal] = @Ordinal
+						WHERE	R.[RecordId] = @OldRecordId
+					END
+
 					;INSERT INTO @Twins (
 						 [Name]
 						,[WinnerSandboxId]
@@ -730,6 +847,9 @@ BEGIN	-- PROCEDURE
 					SELECT	 [Name]				= @InName
 							,[WinnerSandboxId]	= @FleetPublisherId
 							,[LoserSandboxId]	= @SandboxId
+
+					/* The Older Row Now Carries the Deleted Mark, so the Retiring Step Below Passes It By. */
+					;SET @OldDeletedDt = COALESCE(@OldDeletedDt, @Now)
 				END
 			END
 

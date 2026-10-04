@@ -20508,9 +20508,9 @@ function cmdDecayDone(argv) {
 // later run finding it prints it, sends no record, and drains the queue, so the
 // stamps a session queues keep landing; its exit code is the drain's. Given
 // --again, a run publishes the files once more under each folder's key. A row
-// a database verb retired stays retired, but a copy an adoption retired out of
-// a folder's key comes back under that key, until the next adoption from a
-// checkout of the project retires it again. Run from a checkout whose project
+// a database verb retired stays retired, and a copy an adoption moved out of a
+// folder's key returns under that key until the next adoption from a checkout
+// of the project. Run from a checkout whose project
 // key is a git remote, a publish then adopts that checkout's folder-name store
 // into the remote key, so the folder's records join the ones the same
 // repository keeps on every other machine. `options` carries a config and the
@@ -20576,8 +20576,8 @@ async function cmdDbSync(argv, options) {
                 ? 'its marker could not be read: ' + shownText(marker.reason, DB_SYNC_REASON_CAP)
                 : shownText(marker.text.replace(/\s+/g, ' ').trim(), MARKER_SHOWN_CAP))
             + '); no record was sent. db-sync --again publishes the files again: a row a database verb '
-            + 'retired stays retired, and a copy an adoption retired returns under its folder key until '
-            + 'the next adoption retires it again\n');
+            + 'retired stays retired, and a copy an adoption moved returns under its folder key until '
+            + 'the next adoption\n');
         // The queue drains under the marker, through the probe and the drain's
         // own version gate, and the drain's end is the exit code.
         const drained = memoryDatabase.drainOnly({ config: opts.config, deps: opts.deps });

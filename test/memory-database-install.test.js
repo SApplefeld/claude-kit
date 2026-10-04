@@ -1007,6 +1007,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             const res = sqlOk([
                 "UPDATE mem.Sandbox SET [PublisherLogin] = N'kit_scott_claude' WHERE [Name] = N'SCOTT-CLAUDE';",
                 "UPDATE mem.Sandbox SET [PublisherLogin] = N'kit_neo_claude' WHERE [Name] = N'NEO-CLAUDE';",
+                "UPDATE mem.Sandbox SET [PublisherLogin] = N'kit_asr_claude' WHERE [Name] = N'ASR-CLAUDE';",
                 sandbox ? "UPDATE mem.Sandbox SET [PublisherLogin] = N'" + me.replace(/'/g, "''") + "' WHERE [Name] = N'" + sandbox + "';" : '',
                 "SELECT 'kittest-mapped=' + COALESCE((SELECT [Name] FROM mem.Sandbox WHERE [PublisherLogin] = ORIGINAL_LOGIN() COLLATE DATABASE_DEFAULT), 'none');"
             ].join('\n'));
@@ -3629,18 +3630,21 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(embeddingsOf(moving), 1, 'the embedding travels with the row');
             assert.strictEqual(usageOf(moving), 1, 'and so does its usage');
             // A memq, an archived and a deleted target row stand unchanged, and
-            // each source row takes the deleted mark where it stands.
+            // each source row moves, deleted, into the caller's older store for
+            // the folder's segment.
+            const inCallersOlderStore = (row) => row.ProjectKey === null && row.SandboxId === ids.scott
+                && row.Segment === from.slice('path:'.length) && row.DeletedDt !== null;
             for (const name of [names.memq, names.arch, names.del, names.newer]) {
                 assert.deepStrictEqual(targetRow(after, name), targetRow(before, name), name + ': the target row is unchanged');
                 const source = sourceRow(after, name);
-                assert.ok(source.ProjectKey === from && source.DeletedDt !== null, name + ': ' + JSON.stringify(source));
+                assert.ok(inCallersOlderStore(source), name + ': ' + JSON.stringify(source));
             }
             // A live, older file row is the one the source replaces, and it moves
-            // into the source store with the deleted mark.
+            // into the caller's older store with the deleted mark.
             const won = sourceRow(after, names.older);
             const lost = targetRow(after, names.older);
             assert.deepStrictEqual([won.ProjectKey, won.DeletedDt], [to, null], JSON.stringify(won));
-            assert.ok(lost.ProjectKey === from && lost.DeletedDt !== null, JSON.stringify(lost));
+            assert.ok(inCallersOlderStore(lost), JSON.stringify(lost));
             // The clash stays in place, live.
             const clash = sourceRow(after, names.clashSource);
             assert.deepStrictEqual([clash.ProjectKey, clash.DeletedDt], [from, null], JSON.stringify(clash));
@@ -3700,7 +3704,8 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.deepStrictEqual(r.adopted.mergedNames, [r.name], JSON.stringify(r.adopted));
             assert.deepStrictEqual([r.source.ProjectKey, r.source.DeletedDt, r.source.Origin], [r.to, null, 'memq'], JSON.stringify(r.rows));
             const file = r.rows.find((row) => row.Origin === 'file');
-            assert.ok(file.ProjectKey === r.from && file.DeletedDt !== null, 'the file row is retired into the folder store: ' + JSON.stringify(file));
+            assert.deepStrictEqual([file.ProjectKey, file.SandboxId, file.Segment, file.DeletedDt !== null], [null, ids.scott, r.from.slice(5), true],
+                'the file row is retired into the caller\'s older store: ' + JSON.stringify(file));
         });
 
         await t.test('usp_AdoptProjectStore leaves a memq source row live in place over an archived file target, named skipped', () => {
@@ -3719,6 +3724,203 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.deepStrictEqual({ merged: r.adopted.mergedNames, skipped: r.adopted.skippedNames }, { merged: [], skipped: [r.name] },
                 JSON.stringify(r.adopted));
             assert.deepStrictEqual([r.source.ProjectKey, r.source.DeletedDt], [r.from, null], JSON.stringify(r.rows));
+        });
+
+        // The invariant every retiring path keeps: a fleet store holds a
+        // deleted row only where a database verb deleted it, and each loser a
+        // publish or an adoption retires sits deleted in a sandbox's older
+        // store. The predicate counts deleted rows in the named fleet stores.
+        const fleetDeletedIn = (keys) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Record R"
+            + ' INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId] WHERE S.[ProjectKey] IN (' + keys.map(lit).join(', ') + ')'
+            + ' AND R.[DeletedDt] IS NOT NULL;'), 'n'));
+        const sandboxIdOf = (name) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST([SandboxId] AS VARCHAR(10)) FROM mem.Sandbox WHERE [Name] = "
+            + lit(name) + ';'), 'n'));
+        const adoptAs = (sandbox, from, to) => {
+            mapConnection(sandbox);
+            try {
+                return call('usp_AdoptProjectStore', paramsOf({ FromKey: from, ToKey: to }));
+            } finally {
+                mapConnection(null);
+            }
+        };
+        // Three sandboxes on one folder key. The remote store first holds
+        // SCOTT's adopted copy, or a memq row; NEO then publishes a newer copy
+        // and adopts, which retires one loser; ASR publishes its copy from
+        // `thirdDay` and adopts last.
+        const thirdAfterAdoption = (label, thirdDay, memqTarget) => {
+            const segment = 'seg-' + label + '-' + runId;
+            const from = 'path:' + segment;
+            const to = 'remote:example.test/' + label + '-' + runId;
+            const name = label + '-' + runId;
+            const copy = (sandbox, day) => fileRow({ segment, projectKey: from, name, body: sandbox + ' body',
+                fileModified: '2026-09-0' + day + 'T00:00:00Z' });
+            let memqId = null;
+            if (memqTarget) {
+                mapConnection('SCOTT-CLAUDE');
+                try {
+                    const written = put({ Tier: 'project', ProjectKey: to, Name: name, Description: 'corrected', Body: 'memq body' });
+                    assert.ok(!written.error && written.value.status === 'stored', JSON.stringify(written));
+                    memqId = written.value.recordId;
+                } finally {
+                    mapConnection(null);
+                }
+            } else {
+                const scott = upsertAs('SCOTT-CLAUDE', [copy('SCOTT-CLAUDE', 2)]);
+                assert.ok(!scott.error && scott.value.added === 1, JSON.stringify(scott));
+                const first = adoptAs('SCOTT-CLAUDE', from, to);
+                assert.ok(!first.error && first.value.moved === 1, JSON.stringify(first));
+            }
+            const memqBefore = memqId === null ? null : recordState(memqId);
+            const neo = upsertAs('NEO-CLAUDE', [copy('NEO-CLAUDE', 3)]);
+            assert.ok(!neo.error && neo.value.added === 1, JSON.stringify(neo));
+            const neoAdopt = adoptAs('NEO-CLAUDE', from, to);
+            assert.ok(!neoAdopt.error && neoAdopt.value.merged === 1, JSON.stringify(neoAdopt));
+            const third = upsertAs('ASR-CLAUDE', [copy('ASR-CLAUDE', thirdDay)]);
+            assert.ok(!third.error, JSON.stringify(third.error));
+            const thirdAdopt = adoptAs('ASR-CLAUDE', from, to);
+            assert.ok(!thirdAdopt.error, JSON.stringify(thirdAdopt.error));
+            const rows = rowsNamed([name]);
+            return { segment, from, to, name, memqId, memqBefore, third: third.value, thirdAdopt: thirdAdopt.value, rows,
+                live: rows.filter((r) => r.DeletedDt === null), deletedIn: (sandbox) => rows.filter((r) => r.DeletedDt !== null
+                    && r.ProjectKey === null && r.SandboxId === sandboxIdOf(sandbox) && r.Segment === segment) };
+        };
+
+        await t.test('a third sandbox publishing its newest copy after another\'s adoption lands it and wins, and no fleet store keeps a deleted row', () => {
+            const r = thirdAfterAdoption('third-new', 4, false);
+            assert.deepStrictEqual({ added: r.third.added, held: r.third.held }, { added: 1, held: 0 }, 'the copy lands: ' + JSON.stringify(r.third));
+            assert.deepStrictEqual(r.thirdAdopt.mergedNames, [r.name], JSON.stringify(r.thirdAdopt));
+            assert.deepStrictEqual(r.live.map((row) => [row.Body, row.ProjectKey]), [['ASR-CLAUDE body', r.to]], JSON.stringify(r.rows));
+            assert.deepStrictEqual(r.deletedIn('ASR-CLAUDE').map((row) => row.Body), ['NEO-CLAUDE body'], 'the beaten copy sits in the caller\'s older store');
+            assert.deepStrictEqual(r.deletedIn('NEO-CLAUDE').map((row) => row.Body), ['SCOTT-CLAUDE body'], JSON.stringify(r.rows));
+            assert.strictEqual(fleetDeletedIn([r.from, r.to]), 0, 'no fleet store holds a deleted row: ' + JSON.stringify(r.rows));
+        });
+
+        await t.test('a third sandbox publishing its oldest copy after another\'s adoption keeps it deleted in its own older store, named', () => {
+            const r = thirdAfterAdoption('third-old', 1, false);
+            assert.deepStrictEqual({ added: r.third.added, held: r.third.held }, { added: 1, held: 0 }, JSON.stringify(r.third));
+            assert.deepStrictEqual(r.thirdAdopt.mergedNames, [r.name], 'the losing copy is named: ' + JSON.stringify(r.thirdAdopt));
+            assert.deepStrictEqual(r.live.map((row) => [row.Body, row.ProjectKey]), [['NEO-CLAUDE body', r.to]], JSON.stringify(r.rows));
+            assert.deepStrictEqual(r.deletedIn('ASR-CLAUDE').map((row) => row.Body), ['ASR-CLAUDE body'], JSON.stringify(r.rows));
+            assert.strictEqual(fleetDeletedIn([r.from, r.to]), 0, JSON.stringify(r.rows));
+        });
+
+        await t.test('a third sandbox publishing after an adoption onto a memq row leaves the memq row untouched and its own copy deleted in its older store', () => {
+            const r = thirdAfterAdoption('third-memq', 4, true);
+            assert.deepStrictEqual({ added: r.third.added, held: r.third.held }, { added: 1, held: 0 }, JSON.stringify(r.third));
+            const memqAfter = recordState(r.memqId);
+            assert.deepStrictEqual({ body: memqAfter.Body, updated: memqAfter.UpdatedDt, deleted: memqAfter.DeletedDt, key: memqAfter.ProjectKey },
+                { body: r.memqBefore.Body, updated: r.memqBefore.UpdatedDt, deleted: null, key: r.to }, 'the memq row is untouched');
+            assert.deepStrictEqual(r.live.map((row) => row.Origin), ['memq'], JSON.stringify(r.rows));
+            assert.deepStrictEqual(r.deletedIn('ASR-CLAUDE').map((row) => row.Body), ['ASR-CLAUDE body'], JSON.stringify(r.rows));
+            assert.deepStrictEqual(r.deletedIn('NEO-CLAUDE').map((row) => row.Body), ['NEO-CLAUDE body'], JSON.stringify(r.rows));
+            assert.strictEqual(fleetDeletedIn([r.from, r.to]), 0, JSON.stringify(r.rows));
+            // The control: a verb's delete is a deleted fleet row the predicate counts.
+            mapConnection('NEO-CLAUDE');
+            try {
+                const retired = call('usp_ArchiveRecord', paramsOf({ Tier: 'project', ProjectKey: r.to, Name: r.name, Delete: 1 }));
+                assert.ok(!retired.error, JSON.stringify(retired.error));
+            } finally {
+                mapConnection(null);
+            }
+            assert.strictEqual(fleetDeletedIn([r.from, r.to]), 1, 'the predicate speaks for a deleted fleet row');
+        });
+
+        await t.test('an adoption loser over a deleted row of its file key in the caller\'s older store rewrites that row in place and removes the moved row', () => {
+            let standingId = null;
+            let embeddedUsage = null;
+            const r = adoptOne('adopt-standing', fileTarget(), ({ from, name }) => {
+                const segment = from.slice(5);
+                const v6 = upsertAs('SCOTT-CLAUDE', [fileRow({ segment, name, fileKey: name + '.md', body: 'old', fileModified: '2026-09-01T00:00:00Z' })]);
+                assert.ok(!v6.error && v6.value.added === 1, JSON.stringify(v6));
+                mapConnection('SCOTT-CLAUDE');
+                try {
+                    const removed = call('usp_UpsertRecords', '@p_Records = N\'[]\', @p_Removed = ' + lit(JSON.stringify([{ segment, fileKey: name + '.md' }])));
+                    assert.ok(!removed.error && removed.value.removed === 1, JSON.stringify(removed));
+                } finally {
+                    mapConnection(null);
+                }
+                const standing = rowsNamed([name]).find((row) => row.SandboxId === ids.scott);
+                assert.ok(standing && standing.DeletedDt !== null, 'the older row is deleted: ' + JSON.stringify(rowsNamed([name])));
+                standingId = standing.RecordId;
+                // A publish under the folder key with no fleet row inserts a new
+                // row and leaves the deleted older row where it is.
+                const v7 = upsertAs('SCOTT-CLAUDE', [fileRow({ segment, projectKey: from, name, fileKey: name + '.md', body: 'source',
+                    fileModified: '2026-09-05T00:00:00Z' })]);
+                assert.ok(!v7.error && v7.value.added === 1, 'a new fleet row, never the deleted older one: ' + JSON.stringify(v7));
+                const afterPublish = rowsNamed([name]);
+                assert.deepStrictEqual(afterPublish.find((row) => row.RecordId === standingId),
+                    { ...standing }, 'the deleted older row stands as it was');
+                const sourceId = afterPublish.find((row) => row.ProjectKey === from).RecordId;
+                embedOnAxis(sourceId, 711);
+                sqlOk("INSERT INTO mem.Usage ([RecordId], [Kind], [StampedDt], [SandboxId], [StampId]) VALUES (" + sourceId
+                    + ", 'read', SYSDATETIMEOFFSET(), " + ids.scott + ", N'standing-stamp-" + runId + "');");
+                embeddedUsage = sourceId;
+                return sourceId;
+            });
+            assert.deepStrictEqual(r.adopted.mergedNames, [r.name], JSON.stringify(r.adopted));
+            assert.strictEqual(r.source, undefined, 'the moved row is gone: ' + JSON.stringify(r.rows));
+            const standing = r.rows.find((row) => row.RecordId === standingId);
+            assert.ok(standing && standing.Body === 'source' && standing.DeletedDt !== null && standing.ProjectKey === null,
+                'the standing row holds the loser\'s fields and keeps its deleted mark: ' + JSON.stringify(r.rows));
+            const counts = one(sqlOk("SELECT 'kittest-n=' + CAST((SELECT COUNT(*) FROM mem.Embedding WHERE [RecordId] = " + embeddedUsage
+                + ") + (SELECT COUNT(*) FROM mem.Usage WHERE [RecordId] = " + embeddedUsage + ") AS VARCHAR(10));"), 'n');
+            assert.strictEqual(Number(counts), 0, 'the moved row\'s embeddings and usage are not kept');
+            assert.strictEqual(fleetDeletedIn([r.from, r.to]), 0, JSON.stringify(r.rows));
+        });
+
+        await t.test('an adoption loser over a live row of its file key in the caller\'s older store leaves both rows and names it skipped', () => {
+            const r = adoptOne('adopt-live-older', fileTarget(), ({ from, name }) => {
+                const segment = from.slice(5);
+                const v6 = upsertAs('SCOTT-CLAUDE', [fileRow({ segment, name, fileKey: name + '.md', body: 'scott older', fileModified: '2026-09-01T00:00:00Z' })]);
+                assert.ok(!v6.error && v6.value.added === 1, JSON.stringify(v6));
+                const neo = upsertAs('NEO-CLAUDE', [fileRow({ segment, projectKey: from, name, fileKey: name + '.md', body: 'source',
+                    fileModified: '2026-09-05T00:00:00Z' })]);
+                assert.ok(!neo.error && neo.value.added === 1, JSON.stringify(neo));
+                return rowsNamed([name]).find((row) => row.ProjectKey === from).RecordId;
+            });
+            assert.deepStrictEqual({ merged: r.adopted.mergedNames, skipped: r.adopted.skippedNames }, { merged: [], skipped: [r.name] },
+                JSON.stringify(r.adopted));
+            assert.deepStrictEqual([r.source.ProjectKey, r.source.DeletedDt], [r.from, null], 'the source row stays live: ' + JSON.stringify(r.rows));
+            const older = r.rows.find((row) => row.SandboxId === ids.scott);
+            assert.deepStrictEqual([older.Body, older.DeletedDt], ['scott older', null], 'the caller\'s live older row is untouched');
+            const again = adoptAs('SCOTT-CLAUDE', r.from, r.to);
+            assert.ok(!again.error && again.value.skipped === 1 && again.value.merged === 0, JSON.stringify(again));
+            assert.deepStrictEqual(rowsNamed([r.name]), r.rows, 'a second call changes nothing');
+        });
+
+        await t.test('a losing twin from a sandbox with no older store is named once and kept deleted in a newly created older store', () => {
+            const segment = 'seg-twin-noold-' + runId;
+            const key = 'path:' + segment;
+            const name = 'twin-noold-' + runId;
+            const copy = (body, day) => fileRow({ segment, projectKey: key, name, body, fileModified: '2026-09-0' + day + 'T00:00:00Z' });
+            const scott = upsertAs('SCOTT-CLAUDE', [copy('scott wins', 5)]);
+            assert.ok(!scott.error && scott.value.added === 1, JSON.stringify(scott));
+            const asrStores = () => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Store WHERE [SandboxId] = "
+                + sandboxIdOf('ASR-CLAUDE') + ' AND [Segment] = ' + lit(segment) + ';'), 'n'));
+            assert.strictEqual(asrStores(), 0, 'ASR has no older store for the segment');
+
+            const lost = upsertAs('ASR-CLAUDE', [copy('asr loses', 1)]);
+            assert.ok(!lost.error, JSON.stringify(lost.error));
+            assert.deepStrictEqual({ twins: lost.value.twins, skippedOlder: lost.value.skippedOlder },
+                { twins: [{ name, winner: 'SCOTT-CLAUDE', loser: 'ASR-CLAUDE' }], skippedOlder: 1 }, JSON.stringify(lost.value));
+            assert.strictEqual(asrStores(), 1, 'the older store is created');
+            const rows = rowsNamed([name]);
+            const kept = rows.filter((r) => r.SandboxId === sandboxIdOf('ASR-CLAUDE'));
+            assert.ok(kept.length === 1 && kept[0].Body === 'asr loses' && kept[0].DeletedDt !== null, JSON.stringify(rows));
+            assert.strictEqual(fleetDeletedIn([key]), 0, JSON.stringify(rows));
+
+            // A second publish of the same losing copy writes nothing and names nothing.
+            const again = upsertAs('ASR-CLAUDE', [copy('asr loses', 1)]);
+            assert.ok(!again.error, JSON.stringify(again.error));
+            assert.deepStrictEqual(again.value.twins, [], JSON.stringify(again.value));
+            assert.deepStrictEqual(rowsNamed([name]), rows, 'the second publish changes no row');
+
+            // A losing copy whose body changed rewrites that row, keeping its deleted mark, and is named again.
+            const changed = upsertAs('ASR-CLAUDE', [copy('asr loses again', 2)]);
+            assert.ok(!changed.error, JSON.stringify(changed.error));
+            assert.deepStrictEqual(changed.value.twins, [{ name, winner: 'SCOTT-CLAUDE', loser: 'ASR-CLAUDE' }], JSON.stringify(changed.value));
+            const rewritten = rowsNamed([name]).find((r) => r.RecordId === kept[0].RecordId);
+            assert.deepStrictEqual([rewritten.Body, rewritten.DeletedDt], ['asr loses again', kept[0].DeletedDt], JSON.stringify(rewritten));
         });
 
         await t.test('usp_AdoptProjectStore refuses a key whose prefix differs in case alone, writing nothing', () => {

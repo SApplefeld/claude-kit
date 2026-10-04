@@ -50,13 +50,26 @@ BEGIN	-- PROCEDURE
 							Otherwise the target row wins unless it is live, neither
 							archived nor deleted, of [Origin] file, and older by
 							[FileModifiedDt] than an undeleted source row. A winning source
-							row takes the target's slot and the target row moves into the
-							source store with the deleted mark, in one UPDATE; a losing
-							source row takes the deleted mark where it stands. So an
-							adoption never writes or deletes a memq row and never clears an
-							archived flag or a deleted mark. A second call changes nothing,
-							since what stays in the source store is a deleted loser or a
-							named row left in place.
+							row takes the target's slot. The row that loses, the target
+							row a source row beats or the source row a target row beats,
+							moves with the deleted mark into the caller's older store: the
+							store of the caller's sandbox, tier project, whose segment is
+							@p_FromKey after path:, created where absent. So a fleet store
+							keeps no deleted row from an adoption, and an adoption never
+							writes or deletes a memq row and never clears an archived flag
+							or a deleted mark.
+
+							That older store holds one row per file key. Where it already
+							holds a deleted row of the loser's file key, that row is
+							rewritten in place with the loser's fields and keeps its deleted
+							mark, and the loser's own row is removed with its mem.Embedding
+							and mem.Usage rows; a deleted loser's usage and embeddings are
+							not kept. Where it holds a live row of the file key, the
+							caller's own older copy, no loser is placed over it: the source
+							row and the target row both stay as they are and the source row
+							is named as skipped, until the caller's next publish retires
+							that older row. A second call changes nothing, since what stays
+							in the source store is a named row left in place.
 
 							Calls serialize with every publish on the fleet publish lock.
 							Returns one row, one column [Json], holding {moved, merged,
@@ -94,6 +107,11 @@ BEGIN	-- PROCEDURE
 			,@TargetIsArchived	BIT				= NULL
 			,@TargetOrigin		VARCHAR(10)		= NULL
 			,@TargetModifiedDt	DATETIMEOFFSET	= NULL
+			,@OlderStoreId		INT				= NULL
+			,@OlderRecordId		BIGINT			= NULL
+			,@OlderDeletedDt	DATETIMEOFFSET	= NULL
+			,@LoserRecordId		BIGINT			= NULL
+			,@Action			VARCHAR(10)		= NULL
 
 	/* What the Adoption Did to Each Source Row. */
 	;DECLARE @Outcome TABLE (
@@ -163,6 +181,14 @@ BEGIN	-- PROCEDURE
 			;SET @TargetStoreId = SCOPE_IDENTITY()
 		END
 
+		/* The Caller's Older Store for the Folder's Segment, Where It Has One; a Loser Creates It Below. */
+		;SELECT	@OlderStoreId = S.[StoreId]
+		FROM	mem.Store S
+		WHERE	S.[SandboxId] = @SandboxId
+				AND S.[Tier] = 'project'
+				AND S.[Segment] = SUBSTRING(@FromKey, 6, 400)
+				AND S.[ProjectKey] IS NULL
+
 		/****************************************************************************************
 			MOVE, MERGE OR LEAVE EACH SOURCE ROW.
 		****************************************************************************************/
@@ -198,74 +224,177 @@ BEGIN	-- PROCEDURE
 			WHERE	T.[StoreId] = @TargetStoreId
 					AND T.[FileKey] = R.[FileKey]
 
+			/* The Caller's Older Row of the Same File Key, Equal Under the Database's Collation. */
+			;SELECT	 @OlderRecordId		= NULL
+					,@OlderDeletedDt	= NULL
+					,@LoserRecordId		= NULL
+					,@Action			= NULL
+
+			;SELECT	 @OlderRecordId		= O.[RecordId]
+					,@OlderDeletedDt	= O.[DeletedDt]
+			FROM	mem.Record O
+					INNER JOIN mem.Record R
+						ON R.[RecordId] = @RecordId
+			WHERE	O.[StoreId] = @OlderStoreId
+					AND O.[FileKey] = R.[FileKey]
+
+			/************************************************************************************
+				DECIDE WHAT THE ROW DOES.
+			************************************************************************************/
 			;IF ( @TargetRecordId IS NULL )
 			BEGIN
 				/* No Target Row: the Row Moves, Its Embeddings and Usage With It. */
-				;UPDATE R
-				SET		 [StoreId]		= @TargetStoreId
-						,[UpdatedDt]	= @Now
-				FROM	mem.Record R
-				WHERE	R.[RecordId] = @RecordId
-
-				;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
-				SELECT @RecordId, @Name, 'moved'
+				;SET @Action = 'move'
 			END
 			ELSE IF (	( @TargetDeletedDt IS NULL AND @TargetName <> @Name )
 						OR ( @TargetDeletedDt IS NOT NULL AND @TargetName COLLATE Latin1_General_CS_AS <> @Name COLLATE Latin1_General_CS_AS )	)
 			BEGIN
 				/* A Target Row of Another Name Holds the File Key: the Row Stays and is Named. A Deleted One Differing in Case Alone is Another Name. */
-				;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
-				SELECT @RecordId, @Name, 'skipped'
+				;SET @Action = 'skip'
 			END
-			ELSE IF ( @SourceDeletedDt IS NULL AND @SourceOrigin = 'memq' )
+			ELSE IF ( @SourceDeletedDt IS NOT NULL )
+			BEGIN
+				/* A Deleted Source Row Over a Target Row of Its Name Changes Nothing. */
+				;SET @Action = NULL
+			END
+			ELSE IF ( @OlderRecordId IS NOT NULL AND @OlderDeletedDt IS NULL )
+			BEGIN
+				/* The Caller's Own Live Older Copy Holds the Slot a Loser Would Take: Both Rows Stay and the Row is Named. */
+				;SET @Action = 'skip'
+			END
+			ELSE IF ( @SourceOrigin = 'memq' )
 			BEGIN
 				/* A memq Source Row is Never Deleted: It Takes a Live, Unarchived File Target's Slot Whatever the Times, and Otherwise Stays and is Named. */
 				;IF ( @TargetDeletedDt IS NULL AND @TargetIsArchived = @False AND @TargetOrigin = 'file' )
 				BEGIN
-					;UPDATE R
-					SET		 [StoreId]		= CASE WHEN R.[RecordId] = @RecordId THEN @TargetStoreId ELSE @SourceStoreId END
-							,[DeletedDt]	= CASE WHEN R.[RecordId] = @RecordId THEN R.[DeletedDt] ELSE @Now END
-							,[UpdatedDt]	= @Now
-					FROM	mem.Record R
-					WHERE	R.[RecordId] IN ( @RecordId, @TargetRecordId )
-
-					;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
-					SELECT @RecordId, @Name, 'merged'
+					;SELECT	 @Action		= 'win'
+							,@LoserRecordId	= @TargetRecordId
 				END ELSE BEGIN
-					;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
-					SELECT @RecordId, @Name, 'skipped'
+					;SET @Action = 'skip'
 				END
 			END
-			ELSE IF (	@SourceDeletedDt IS NULL
-						AND @TargetDeletedDt IS NULL
+			ELSE IF (	@TargetDeletedDt IS NULL
 						AND @TargetIsArchived = @False
 						AND @TargetOrigin = 'file'
 						AND @SourceModifiedDt IS NOT NULL
 						AND @TargetModifiedDt IS NOT NULL
 						AND @SourceModifiedDt > @TargetModifiedDt	)
 			BEGIN
-				/* The Source Row Wins: It Takes the Target's Slot and the Target Row Takes the Source's, Deleted, in One UPDATE. */
+				/* The Source Row Wins and the Target Row Loses. */
+				;SELECT	 @Action		= 'win'
+						,@LoserRecordId	= @TargetRecordId
+			END
+			ELSE
+			BEGIN
+				/* The Target Row Wins and the Source Row Loses. */
+				;SELECT	 @Action		= 'lose'
+						,@LoserRecordId	= @RecordId
+			END
+
+			/************************************************************************************
+				APPLY WHAT WAS DECIDED.
+			************************************************************************************/
+			;IF ( @LoserRecordId IS NOT NULL AND @OlderStoreId IS NULL )
+			BEGIN
+				/* The Caller's Older Store for the Folder's Segment, Created Where Absent. */
+				;INSERT INTO mem.Store (
+					 [SandboxId]
+					,[Tier]
+					,[Segment]	)
+				SELECT	 [SandboxId]	= @SandboxId
+						,[Tier]			= 'project'
+						,[Segment]		= SUBSTRING(@FromKey, 6, 400)
+
+				;SET @OlderStoreId = SCOPE_IDENTITY()
+			END
+
+			;IF ( @LoserRecordId IS NOT NULL AND @OlderRecordId IS NULL )
+			BEGIN
+				/* The Loser Moves Into the Older Store With the Deleted Mark, Its Embeddings and Usage With It. */
 				;UPDATE R
-				SET		 [StoreId]		= CASE WHEN R.[RecordId] = @RecordId THEN @TargetStoreId ELSE @SourceStoreId END
-						,[DeletedDt]	= CASE WHEN R.[RecordId] = @RecordId THEN R.[DeletedDt] ELSE @Now END
+				SET		 [StoreId]		= @OlderStoreId
+						,[DeletedDt]	= @Now
 						,[UpdatedDt]	= @Now
 				FROM	mem.Record R
-				WHERE	R.[RecordId] IN ( @RecordId, @TargetRecordId )
-
-				;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
-				SELECT @RecordId, @Name, 'merged'
+				WHERE	R.[RecordId] = @LoserRecordId
 			END
-			ELSE IF ( @SourceDeletedDt IS NULL )
+			ELSE IF ( @LoserRecordId IS NOT NULL )
 			BEGIN
-				/* The Target Row Wins: the Source Row Takes the Deleted Mark Where It Stands. */
+				/* The Older Store's Deleted Row Takes the Loser's Fields and Keeps Its Deleted Mark; Vectors Made From Other Text Go. */
+				;DELETE E
+				FROM	mem.Embedding E
+						INNER JOIN mem.Record O
+							ON O.[RecordId] = E.[RecordId]
+						INNER JOIN mem.Record L
+							ON L.[RecordId] = @LoserRecordId
+				WHERE	E.[RecordId] = @OlderRecordId
+						AND (	O.[BodyHash] <> L.[BodyHash]
+								OR O.[Name] <> L.[Name]	)
+
+				;UPDATE O
+				SET		 [Name]						= L.[Name]
+						,[Description]				= L.[Description]
+						,[Body]						= L.[Body]
+						,[BodyHash]					= L.[BodyHash]
+						,[FileModifiedDt]			= L.[FileModifiedDt]
+						,[Machine]					= L.[Machine]
+						,[Tags]						= L.[Tags]
+						,[SupersedesName]			= L.[SupersedesName]
+						,[Author]					= L.[Author]
+						,[IsArchived]				= L.[IsArchived]
+						,[Space]					= L.[Space]
+						,[Triggers]					= L.[Triggers]
+						,[Anchors]					= L.[Anchors]
+						,[IsPinned]					= L.[IsPinned]
+						,[CreatedOn]				= L.[CreatedOn]
+						,[Origin]					= L.[Origin]
+						,[WrittenBySandboxId]		= L.[WrittenBySandboxId]
+						,[Visibility]				= L.[Visibility]
+						,[LastPublishedBySandboxId]	= L.[LastPublishedBySandboxId]
+						,[LastPublishedDt]			= L.[LastPublishedDt]
+						,[UpdatedDt]				= @Now
+				FROM	mem.Record O
+						INNER JOIN mem.Record L
+							ON L.[RecordId] = @LoserRecordId
+				WHERE	O.[RecordId] = @OlderRecordId
+
+				/* The Loser's Own Row Goes, With the Rows That Hang From It. */
+				;DELETE E
+				FROM	mem.Embedding E
+				WHERE	E.[RecordId] = @LoserRecordId
+
+				;DELETE U
+				FROM	mem.Usage U
+				WHERE	U.[RecordId] = @LoserRecordId
+
+				;DELETE R
+				FROM	mem.Record R
+				WHERE	R.[RecordId] = @LoserRecordId
+			END
+
+			;IF ( @Action IN ('move', 'win') )
+			BEGIN
+				/* The Source Row Takes the Target Store's Slot, Its Embeddings and Usage With It. */
 				;UPDATE R
-				SET		 [DeletedDt]	= @Now
+				SET		 [StoreId]		= @TargetStoreId
 						,[UpdatedDt]	= @Now
 				FROM	mem.Record R
 				WHERE	R.[RecordId] = @RecordId
+			END
 
-				;INSERT INTO @Outcome ( [RecordId], [Name], [Disposition] )
-				SELECT @RecordId, @Name, 'merged'
+			;IF ( @Action IS NOT NULL )
+			BEGIN
+				;INSERT INTO @Outcome (
+					 [RecordId]
+					,[Name]
+					,[Disposition]	)
+				SELECT	 [RecordId]		= @RecordId
+						,[Name]			= @Name
+						,[Disposition]	= CASE @Action
+											WHEN 'move'	THEN 'moved'
+											WHEN 'skip'	THEN 'skipped'
+											ELSE 'merged'
+										  END
 			END
 
 			;SELECT	@RecordId = MIN(R.[RecordId])
